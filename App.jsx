@@ -28,6 +28,32 @@ const NISA_LIMITS = {
   totalLifetime: 18000000,    // 総枠 生涯（簿価）上限（つみたて+成長）
 };
 
+// 生年月日から、今日時点での正確な年齢（年・月・日・小数の年齢）を計算する
+function computeAgeFromBirthDate(birthDateStr, asOfDate) {
+  if (!birthDateStr) return null;
+  const birth = new Date(birthDateStr + "T00:00:00");
+  const now = asOfDate || new Date();
+  if (isNaN(birth.getTime()) || now < birth) return null;
+
+  let years = now.getFullYear() - birth.getFullYear();
+  let months = now.getMonth() - birth.getMonth();
+  let days = now.getDate() - birth.getDate();
+  if (days < 0) {
+    months -= 1;
+    const prevMonthLastDay = new Date(now.getFullYear(), now.getMonth(), 0).getDate();
+    days += prevMonthLastDay;
+  }
+  if (months < 0) {
+    years -= 1;
+    months += 12;
+  }
+
+  const diffMs = now - birth;
+  const decimal = diffMs / (365.2425 * 24 * 3600 * 1000);
+
+  return { years, months, days, decimal };
+}
+
 function healthAnnualCost(age, brackets) {
   if (age < 60) return 0;
   if (age < 70) return brackets.b60;
@@ -409,7 +435,7 @@ const formatAge = (age) => {
 };
 
 // 年齢を「歳」と「ヶ月」の2つの入力欄に分けて、小数の年齢値として扱う
-function AgeField({ label, value, onChange }) {
+function AgeField({ label, value, onChange, disabled }) {
   const years = Math.floor(value + 1e-9);
   const months = Math.round((value - years) * 12);
   const commit = (y, m) => {
@@ -423,11 +449,11 @@ function AgeField({ label, value, onChange }) {
       <span className="field-label">{label}</span>
       <div style={{ display: "flex", gap: 6 }}>
         <div className="field-input-wrap" style={{ flex: 1 }}>
-          <input type="number" className="mono" value={years} onChange={(e) => commit(Number(e.target.value), months)} />
+          <input type="number" className="mono" value={years} disabled={disabled} onChange={(e) => commit(Number(e.target.value), months)} />
           <span className="field-unit">歳</span>
         </div>
         <div className="field-input-wrap" style={{ flex: 1 }}>
-          <input type="number" className="mono" min={0} max={11} value={months} onChange={(e) => commit(years, Number(e.target.value))} />
+          <input type="number" className="mono" min={0} max={11} value={months} disabled={disabled} onChange={(e) => commit(years, Number(e.target.value))} />
           <span className="field-unit">ヶ月</span>
         </div>
       </div>
@@ -606,6 +632,8 @@ const formatDateLabel = (d) => {
 
 export default function NisaLifePlan() {
   const [inputs, setInputs] = useState({
+    userName: "",
+    birthDate: "",
     currentAge: 35,
     retireAge: 65,
     deathAge: 90,
@@ -849,21 +877,26 @@ export default function NisaLifePlan() {
       }))
     : [];
 
+  // 生年月日が入力されていれば、今日時点での正確な年齢（日単位）をそこから自動計算し、
+  // 現在の年齢として全体のシミュレーションに反映する
+  const preciseAge = useMemo(() => computeAgeFromBirthDate(inputs.birthDate), [inputs.birthDate]);
+  const effectiveCurrentAge = preciseAge ? preciseAge.decimal : inputs.currentAge;
+
   const effectiveInputs = useMemo(
-    () => ({ ...inputs, dynamicFunds }),
-    [inputs, JSON.stringify(dynamicFunds)]
+    () => ({ ...inputs, dynamicFunds, currentAge: effectiveCurrentAge }),
+    [inputs, JSON.stringify(dynamicFunds), effectiveCurrentAge]
   );
 
   const sim = useMemo(() => runSimulation(effectiveInputs), [effectiveInputs]);
   const goldSim = useMemo(
-    () => runGoldSimulation({ currentAge: inputs.currentAge, deathAge: inputs.deathAge, gold: inputs.gold }),
-    [inputs.currentAge, inputs.deathAge, inputs.gold]
+    () => runGoldSimulation({ currentAge: effectiveCurrentAge, deathAge: inputs.deathAge, gold: inputs.gold }),
+    [effectiveCurrentAge, inputs.deathAge, inputs.gold]
   );
   const bankSim = useMemo(
     () => runBankSimulation({
-      currentAge: inputs.currentAge, retireAge: inputs.retireAge, deathAge: inputs.deathAge, banks: inputs.banks,
+      currentAge: effectiveCurrentAge, retireAge: inputs.retireAge, deathAge: inputs.deathAge, banks: inputs.banks,
     }),
-    [inputs.currentAge, inputs.retireAge, inputs.deathAge, inputs.banks]
+    [effectiveCurrentAge, inputs.retireAge, inputs.deathAge, inputs.banks]
   );
   const stockTotalNow = useMemo(() => watchlist.reduce((s, w) => s + (w.value || 0), 0), [watchlist]);
   const stockAllocationItems = useMemo(
@@ -871,20 +904,20 @@ export default function NisaLifePlan() {
     [watchlist]
   );
   const stockSim = useMemo(
-    () => runStockSim({ currentAge: inputs.currentAge, deathAge: inputs.deathAge, totalValue: stockTotalNow, returnPct: inputs.stockReturnPct }),
-    [inputs.currentAge, inputs.deathAge, stockTotalNow, inputs.stockReturnPct]
+    () => runStockSim({ currentAge: effectiveCurrentAge, deathAge: inputs.deathAge, totalValue: stockTotalNow, returnPct: inputs.stockReturnPct }),
+    [effectiveCurrentAge, inputs.deathAge, stockTotalNow, inputs.stockReturnPct]
   );
   const loanSim = useMemo(
-    () => runLoanSimulation({ currentAge: inputs.currentAge, deathAge: inputs.deathAge, loans: inputs.loans }),
-    [inputs.currentAge, inputs.deathAge, inputs.loans]
+    () => runLoanSimulation({ currentAge: effectiveCurrentAge, deathAge: inputs.deathAge, loans: inputs.loans }),
+    [effectiveCurrentAge, inputs.deathAge, inputs.loans]
   );
   const insuranceSim = useMemo(
-    () => runInsuranceSimulation({ currentAge: inputs.currentAge, deathAge: inputs.deathAge, policies: inputs.insurancePolicies }),
-    [inputs.currentAge, inputs.deathAge, inputs.insurancePolicies]
+    () => runInsuranceSimulation({ currentAge: effectiveCurrentAge, deathAge: inputs.deathAge, policies: inputs.insurancePolicies }),
+    [effectiveCurrentAge, inputs.deathAge, inputs.insurancePolicies]
   );
   const pensionSim = useMemo(
-    () => runPrivatePensionSimulation({ currentAge: inputs.currentAge, deathAge: inputs.deathAge, plans: inputs.privatePensionPlans }),
-    [inputs.currentAge, inputs.deathAge, inputs.privatePensionPlans]
+    () => runPrivatePensionSimulation({ currentAge: effectiveCurrentAge, deathAge: inputs.deathAge, plans: inputs.privatePensionPlans }),
+    [effectiveCurrentAge, inputs.deathAge, inputs.privatePensionPlans]
   );
 
   // merge NISA + gold + bank + stocks + 民間年金積立 - loans - 保険料累計 into one net-worth-by-age series for the combined chart
@@ -907,7 +940,7 @@ export default function NisaLifePlan() {
 
   const loanBreakdownByAge = useMemo(() => {
     const ages = [
-      { label: "現在", age: inputs.currentAge },
+      { label: "現在", age: effectiveCurrentAge },
       { label: `${inputs.retireAge}歳`, age: inputs.retireAge },
       { label: `${inputs.deathAge}歳`, age: inputs.deathAge },
     ];
@@ -919,11 +952,11 @@ export default function NisaLifePlan() {
       });
       return row;
     });
-  }, [inputs.loans, inputs.currentAge, inputs.retireAge, inputs.deathAge, loanSim]);
+  }, [inputs.loans, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, loanSim]);
 
   const bankBreakdownByAge = useMemo(() => {
     const ages = [
-      { label: "現在", age: inputs.currentAge },
+      { label: "現在", age: effectiveCurrentAge },
       { label: `${inputs.retireAge}歳`, age: inputs.retireAge },
       { label: `${inputs.deathAge}歳`, age: inputs.deathAge },
     ];
@@ -935,7 +968,7 @@ export default function NisaLifePlan() {
       });
       return row;
     });
-  }, [inputs.banks, inputs.currentAge, inputs.retireAge, inputs.deathAge, bankSim]);
+  }, [inputs.banks, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, bankSim]);
 
   const fundBreakdownAtRetire = useMemo(() => {
     const row = sim.yearly.find((y) => y.age >= inputs.retireAge) || sim.yearly[sim.yearly.length - 1];
@@ -1132,10 +1165,10 @@ export default function NisaLifePlan() {
 
   // つみたて枠・成長投資枠の「これまでの使用累計」は、手入力の基準額に加えて
   // スケジュール（過去分）・一括投資（実行済み分）から自動集計した金額を合算する
-  const tsumitateElapsed = elapsedScheduleAmount(inputs.tsumitateSchedule, inputs.currentAge);
+  const tsumitateElapsed = elapsedScheduleAmount(inputs.tsumitateSchedule, effectiveCurrentAge);
   const growthElapsed =
-    elapsedScheduleAmount(inputs.growthSchedule, inputs.currentAge) +
-    elapsedLumpSumAmount(inputs.lumpSums, inputs.currentAge);
+    elapsedScheduleAmount(inputs.growthSchedule, effectiveCurrentAge) +
+    elapsedLumpSumAmount(inputs.lumpSums, effectiveCurrentAge);
   const computedTsumitateUsed = inputs.tsumitateUsed + tsumitateElapsed;
   const computedGrowthUsed = inputs.growthUsed + growthElapsed;
 
@@ -1159,13 +1192,13 @@ export default function NisaLifePlan() {
   const tsumitateOverage = Math.max(0, computedTsumitateUsed - NISA_LIMITS.totalLifetime);
 
   // 今年時点でのペース（現在の年齢での積立額 × 12ヶ月）が年間上限に対してどうかを表示
-  const currentTsumitateMonthly = scheduledAmount(inputs.tsumitateSchedule, inputs.currentAge);
+  const currentTsumitateMonthly = scheduledAmount(inputs.tsumitateSchedule, effectiveCurrentAge);
   const tsumitateAnnualPace = currentTsumitateMonthly * 12;
   const tsumitateAnnualDiff = NISA_LIMITS.tsumitateAnnual - tsumitateAnnualPace;
   const tsumitateAnnualRemaining = Math.max(0, tsumitateAnnualDiff);
   const tsumitateAnnualOverage = Math.max(0, -tsumitateAnnualDiff);
 
-  const currentGrowthMonthly = scheduledAmount(inputs.growthSchedule, inputs.currentAge);
+  const currentGrowthMonthly = scheduledAmount(inputs.growthSchedule, effectiveCurrentAge);
   const growthAnnualPace = currentGrowthMonthly * 12;
   const growthAnnualDiff = NISA_LIMITS.growthAnnual - growthAnnualPace;
   const growthAnnualRemaining = Math.max(0, growthAnnualDiff);
@@ -1498,11 +1531,20 @@ export default function NisaLifePlan() {
 
       <div className="titleblock">
         <div>
-          <h1>資産形成 総合ライフプラン</h1>
-          <div className="sub">NISA積立 × 老後資産 × 年金 × 健康費用 × 相続 — 統合シミュレーション</div>
+          <h1>資産形成 総合ライフプラン{inputs.userName ? `（${inputs.userName}様）` : ""}</h1>
+          <div className="sub">
+            NISA積立 × 老後資産 × 年金 × 健康費用 × 相続 — 統合シミュレーション
+            <br />
+            本日：{new Date().toLocaleDateString("ja-JP", { year: "numeric", month: "long", day: "numeric" })}
+          </div>
         </div>
         <div className="meta" style={{ alignItems: "center" }}>
-          <div>現在 <span>{inputs.currentAge}歳</span></div>
+          <div>
+            現在{" "}
+            <span>
+              {preciseAge ? `${preciseAge.years}歳${preciseAge.months}ヶ月${preciseAge.days}日` : `${effectiveCurrentAge}歳`}
+            </span>
+          </div>
           <div>引退 <span>{inputs.retireAge}歳</span></div>
           <div>想定寿命 <span>{inputs.deathAge}歳</span></div>
           <div
@@ -1606,8 +1648,47 @@ export default function NisaLifePlan() {
       <div className="grid-main">
         {/* -------- LEFT: INPUT PANEL -------- */}
         <div className="panel">
+          <SectionTitle index="00" title="ご本人情報" icon={Users} />
+          <label className="field">
+            <span className="field-label">お名前（任意）</span>
+            <div className="field-input-wrap">
+              <input
+                type="text"
+                value={inputs.userName}
+                onChange={(e) => update({ userName: e.target.value })}
+                style={{ width: "100%" }}
+              />
+            </div>
+          </label>
+          <label className="field">
+            <span className="field-label">生年月日</span>
+            <div className="field-input-wrap">
+              <input
+                type="date" className="mono"
+                value={inputs.birthDate}
+                onChange={(e) => update({ birthDate: e.target.value })}
+                style={{ width: "100%" }}
+              />
+            </div>
+          </label>
+          {preciseAge && (
+            <div className="note">
+              <Info size={13} />
+              <span>
+                生年月日から計算した現在の年齢：<strong>{preciseAge.years}歳{preciseAge.months}ヶ月{preciseAge.days}日</strong>
+                （本日時点）。この数値がシミュレーション全体の「現在の年齢」として自動的に使われます。
+              </span>
+            </div>
+          )}
+
           <SectionTitle index="01" title="基本情報" icon={Ruler} />
-          <AgeField label="現在の年齢" value={inputs.currentAge} onChange={(v) => update({ currentAge: v })} />
+          <AgeField label="現在の年齢" value={effectiveCurrentAge} disabled={!!preciseAge} onChange={(v) => update({ currentAge: v })} />
+          {preciseAge && (
+            <div className="note" style={{ marginTop: -8 }}>
+              <Info size={13} />
+              <span>生年月日が入力されているため、この欄は自動計算され編集できません。年齢を手動で調整したい場合は、上の生年月日を空欄にしてください。</span>
+            </div>
+          )}
           <AgeField label="引退（年金開始）年齢" value={inputs.retireAge} onChange={(v) => update({ retireAge: v })} />
           <AgeField label="想定寿命" value={inputs.deathAge} onChange={(v) => update({ deathAge: v })} />
 
@@ -2271,7 +2352,7 @@ export default function NisaLifePlan() {
           </div>
 
           <div className="chart-frame">
-            <div className="chart-label">総資産推移 — NISA + 金 + 銀行預金 + 個別株 + 民間年金積立 − 借入金 − 保険料累計（{inputs.currentAge}歳 〜 {inputs.deathAge}歳）</div>
+            <div className="chart-label">総資産推移 — NISA + 金 + 銀行預金 + 個別株 + 民間年金積立 − 借入金 − 保険料累計（{effectiveCurrentAge}歳 〜 {inputs.deathAge}歳）</div>
             <ResponsiveContainer width="100%" height={340}>
               <ComposedChart data={netWorthYearly} margin={{ top: 10, right: 24, left: 8, bottom: 4 }}>
                 <CartesianGrid stroke="#2A363C" strokeDasharray="3 3" />
