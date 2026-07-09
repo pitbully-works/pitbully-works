@@ -1058,10 +1058,16 @@ export default function NisaLifePlan() {
   // 汎用：銘柄別内訳リスト（一括投資／つみたて／成長投資枠で共用）の追加・削除・編集
   const addAllocationItem = (field, newItem, resetNewItem) => {
     if (!newItem.name.trim()) return;
-    setInputs((prev) => ({
-      ...prev,
-      [field]: [...prev[field], { name: newItem.name.trim(), amount: Number(newItem.amount) || 0 }],
-    }));
+    const name = newItem.name.trim();
+    const amount = Number(newItem.amount) || 0;
+    setInputs((prev) => {
+      const updatedField = [...prev[field], { name, amount }];
+      const alreadyInFundAllocation = prev.fundAllocation.some((f) => f.name === name);
+      const updatedFundAllocation = alreadyInFundAllocation
+        ? prev.fundAllocation
+        : [...prev.fundAllocation, { id: `f${Date.now()}`, name, amount, returnPct: 5 }];
+      return { ...prev, [field]: updatedField, fundAllocation: updatedFundAllocation };
+    });
     resetNewItem({ name: "", amount: "" });
   };
   const removeAllocationItem = (field, idx) =>
@@ -1654,7 +1660,7 @@ export default function NisaLifePlan() {
             <span>例：「58歳0ヶ月〜61歳11ヶ月・月11万円」「62歳0ヶ月〜65歳0ヶ月・月9万円」のように、歳とヶ月で区間を分けて毎月投資額を設定できます。区間が重なる場合は合算されます。</span>
           </div>
 
-          <div className="field-label" style={{ marginBottom: 6 }}>つみたて投資枠の銘柄別内訳（金額を入れると割合を自動計算）</div>
+          <div className="field-label" style={{ marginBottom: 6 }}>つみたて投資枠の銘柄別内訳（金額を入れると割合を自動計算・新しい銘柄はNISA配分にも自動追加されます）</div>
           <AllocationBreakdown
             items={inputs.tsumitateAllocation}
             newItem={newTsumitateAllocItem}
@@ -1711,7 +1717,7 @@ export default function NisaLifePlan() {
             <span>例：「50歳0ヶ月〜55歳11ヶ月・月15万円」「56歳0ヶ月〜65歳0ヶ月・月5万円」のように、歳とヶ月で区間を分けて成長投資枠の毎月投資額を設定できます。区間が重なる場合は合算されます。</span>
           </div>
 
-          <div className="field-label" style={{ marginBottom: 6 }}>成長投資枠の銘柄別内訳（金額を入れると割合を自動計算）</div>
+          <div className="field-label" style={{ marginBottom: 6 }}>成長投資枠の銘柄別内訳（金額を入れると割合を自動計算・新しい銘柄はNISA配分にも自動追加されます）</div>
           <AllocationBreakdown
             items={inputs.growthAllocation}
             newItem={newGrowthAllocItem}
@@ -1787,7 +1793,7 @@ export default function NisaLifePlan() {
             <button className="add-btn" onClick={addLump}><Plus size={15} /></button>
           </div>
 
-          <div className="field-label" style={{ marginBottom: 6 }}>一括投資の銘柄別内訳（金額を入れると割合を自動計算）</div>
+          <div className="field-label" style={{ marginBottom: 6 }}>一括投資の銘柄別内訳（金額を入れると割合を自動計算・新しい銘柄はNISA配分にも自動追加されます）</div>
           <AllocationBreakdown
             items={inputs.lumpAllocation}
             newItem={newLumpAllocItem}
