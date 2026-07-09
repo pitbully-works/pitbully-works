@@ -17,6 +17,14 @@ const yen = (n) => {
 };
 const clampPct = (v) => Math.max(0, Math.min(100, v));
 
+const FUND_KEYS = ["global", "sp500", "semi", "india"];
+const FUND_META = {
+  global: { label: "全世界株式", color: "#4FA8D8" },
+  sp500: { label: "S&P500", color: "#7BC9E0" },
+  semi: { label: "半導体・AI", color: "#D9A54F" },
+  india: { label: "インド株式", color: "#8FBF7F" },
+};
+
 function monthlyRate(annualPct) {
   return Math.pow(1 + annualPct / 100, 1 / 12) - 1;
 }
@@ -68,20 +76,16 @@ function runSimulation(inputs) {
     currentAge, retireAge, deathAge,
     currentAssets, tsumitateSchedule, growthSchedule, lumpSums,
     tsumitateUsed, growthUsed,
-    fundAllocation,
+    allocation, returns,
     pensionMonthly, livingCostMonthly, postRetireReturn,
     healthBrackets, inheritanceTarget,
     privatePensionPlans,
   } = inputs;
 
-  const funds_list = (fundAllocation && fundAllocation.length) ? fundAllocation : [{ id: "default", name: "資産", amount: 1, returnPct: 5 }];
-  const totalWeightBasis = funds_list.reduce((s, f) => s + (f.amount || 0), 0);
-  const weightOf = (f) => (totalWeightBasis > 0 ? (f.amount || 0) / totalWeightBasis : 1 / funds_list.length);
-
   const totalMonths = Math.max(1, Math.round((deathAge - currentAge) * 12));
   let funds = {};
-  funds_list.forEach((f) => {
-    funds[f.id] = currentAssets * weightOf(f);
+  FUND_KEYS.forEach((k) => {
+    funds[k] = currentAssets * (allocation[k] / 100);
   });
 
   // lump-sum growth-quota investments, indexed by month offset from currentAge
@@ -147,12 +151,12 @@ function runSimulation(inputs) {
 
       const contribution = effGrowth + effTsumitate + lumpEff;
 
-      funds_list.forEach((f) => {
-        const r = monthlyRate(f.returnPct);
-        funds[f.id] = funds[f.id] * (1 + r) + contribution * weightOf(f);
+      FUND_KEYS.forEach((k) => {
+        const r = monthlyRate(returns[k]);
+        funds[k] = funds[k] * (1 + r) + contribution * (allocation[k] / 100);
       });
     } else {
-      let total = funds_list.reduce((s, f) => s + funds[f.id], 0);
+      let total = FUND_KEYS.reduce((s, k) => s + funds[k], 0);
       const r = monthlyRate(postRetireReturn);
       total = total * (1 + r);
       const healthMonthly = healthAnnualCost(age, healthBrackets) / 12;
@@ -177,21 +181,24 @@ function runSimulation(inputs) {
         }
         total += lumpEff;
       }
-      // collapse into a single post-retirement bucket for simplicity so chart total stays coherent
-      funds = { __cash__: total };
+      // push all into "global" bucket for simplicity post-retirement so chart total stays coherent
+      funds = { global: total, sp500: 0, semi: 0, india: 0 };
     }
 
     if (Math.abs(age - retireAge) < (1 / 24) && assetsAtRetire === null) {
-      assetsAtRetire = Object.values(funds).reduce((s, v) => s + v, 0);
+      assetsAtRetire = FUND_KEYS.reduce((s, k) => s + funds[k], 0);
     }
 
     if (m % 12 === 0) {
-      const total = Object.values(funds).reduce((s, v) => s + v, 0);
+      const total = FUND_KEYS.reduce((s, k) => s + funds[k], 0);
       peakAssets = Math.max(peakAssets, total);
       yearly.push({
         age: Math.round(age),
         total,
-        funds: { ...funds },
+        global: funds.global,
+        sp500: funds.sp500,
+        semi: funds.semi,
+        india: funds.india,
         phase: inAccumulation ? "積立期" : "取崩期",
         tsumitateCum,
         growthCum,
@@ -535,6 +542,47 @@ function AllocationCharts({ items, height = 180 }) {
   );
 }
 
+function AllocationBreakdown({ items, newItem, onNewItemChange, onAdd, onRemove, onUpdate }) {
+  const total = items.reduce((s, it) => s + (it.amount || 0), 0);
+  return (
+    <div>
+      {items.length > 0 && (
+        <table className="watchlist" style={{ marginBottom: 8 }}>
+          <thead><tr><th>銘柄</th><th>金額</th><th>割合</th><th></th></tr></thead>
+          <tbody>
+            {items.map((it, i) => (
+              <tr key={i}>
+                <td>
+                  <input
+                    className="inline-num" value={it.name}
+                    onChange={(e) => onUpdate(i, "name", e.target.value)}
+                  />
+                </td>
+                <td style={{ width: 96 }}>
+                  <input
+                    type="number" className="inline-num" value={it.amount}
+                    onChange={(e) => onUpdate(i, "amount", Number(e.target.value))}
+                  />
+                </td>
+                <td className="mono" style={{ width: 52 }}>{total > 0 ? `${((it.amount / total) * 100).toFixed(1)}%` : "—"}</td>
+                <td style={{ width: 24 }}>
+                  <button className="del-btn" onClick={() => onRemove(i)}><Trash2 size={13} /></button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      <div className="add-row" style={{ marginBottom: total > 0 ? 8 : 0 }}>
+        <input placeholder="銘柄名" value={newItem.name} onChange={(e) => onNewItemChange({ ...newItem, name: e.target.value })} />
+        <input placeholder="金額（円）" type="number" value={newItem.amount} onChange={(e) => onNewItemChange({ ...newItem, amount: e.target.value })} />
+        <button className="add-btn" onClick={onAdd}><Plus size={15} /></button>
+      </div>
+      <AllocationCharts items={items} />
+    </div>
+  );
+}
+
 function SectionTitle({ index, title, icon: Icon }) {
   return (
     <div className="section-title">
@@ -574,12 +622,11 @@ export default function NisaLifePlan() {
     tsumitateUsed: 0,
     growthUsed: 0,
     lumpSums: [],
-    fundAllocation: [
-      { id: "f1", name: "全世界株式", amount: 300000, returnPct: 5 },
-      { id: "f2", name: "S&P500", amount: 300000, returnPct: 6 },
-      { id: "f3", name: "半導体・AI", amount: 250000, returnPct: 8 },
-      { id: "f4", name: "インド株式", amount: 150000, returnPct: 7 },
-    ],
+    lumpAllocation: [],
+    tsumitateAllocation: [],
+    growthAllocation: [],
+    allocation: { global: 30, sp500: 30, semi: 25, india: 15 },
+    returns: { global: 5, sp500: 6, semi: 8, india: 7 },
     pensionMonthly: 150000,
     livingCostMonthly: 250000,
     postRetireReturn: 3,
@@ -627,7 +674,9 @@ export default function NisaLifePlan() {
     payoutToYears: "", payoutToMonths: "",
     monthlyPayout: "",
   });
-  const [newFundItem, setNewFundItem] = useState({ name: "", amount: "" });
+  const [newLumpAllocItem, setNewLumpAllocItem] = useState({ name: "", amount: "" });
+  const [newTsumitateAllocItem, setNewTsumitateAllocItem] = useState({ name: "", amount: "" });
+  const [newGrowthAllocItem, setNewGrowthAllocItem] = useState({ name: "", amount: "" });
   const [loaded, setLoaded] = useState(false);
   const [history, setHistory] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
@@ -780,28 +829,36 @@ export default function NisaLifePlan() {
   };
 
   const update = (patch) => setInputs((prev) => ({ ...prev, ...patch }));
-  const updateFundItem = (id, key, val) =>
-    setInputs((prev) => ({
-      ...prev,
-      fundAllocation: prev.fundAllocation.map((f) => (f.id === id ? { ...f, [key]: val } : f)),
-    }));
-  const addFundItem = (name, amount) => {
-    if (!name || !name.trim()) return;
-    setInputs((prev) => ({
-      ...prev,
-      fundAllocation: [...prev.fundAllocation, { id: `f${Date.now()}`, name: name.trim(), amount: Number(amount) || 0, returnPct: 5 }],
-    }));
-  };
-  const removeFundItem = (id) =>
-    setInputs((prev) => ({ ...prev, fundAllocation: prev.fundAllocation.filter((f) => f.id !== id) }));
+  const updateAllocation = (key, val) =>
+    setInputs((prev) => ({ ...prev, allocation: { ...prev.allocation, [key]: clampPct(val) } }));
+  const updateReturns = (key, val) =>
+    setInputs((prev) => ({ ...prev, returns: { ...prev.returns, [key]: val } }));
   const updateHealth = (key, val) =>
     setInputs((prev) => ({ ...prev, healthBrackets: { ...prev.healthBrackets, [key]: val } }));
   const updateGold = (key, val) =>
     setInputs((prev) => ({ ...prev, gold: { ...prev.gold, [key]: val } }));
 
-  const fundTotalWeight = inputs.fundAllocation.reduce((s, f) => s + (f.amount || 0), 0);
+  const allocationSum = FUND_KEYS.reduce((s, k) => s + inputs.allocation[k], 0);
 
-  const sim = useMemo(() => runSimulation(inputs), [inputs]);
+  // 積立・成長投資枠・一括投資の銘柄別内訳（名前が一致するもの）を銘柄ごとに合算し、
+  // 合計があればスライダーの割合(%)をその合算値から自動計算する
+  const combinedFundTotals = FUND_KEYS.reduce((acc, k) => {
+    const label = FUND_META[k].label;
+    const sumFor = (list) => (list || []).reduce((s, it) => (it.name === label ? s + (it.amount || 0) : s), 0);
+    acc[k] = sumFor(inputs.lumpAllocation) + sumFor(inputs.tsumitateAllocation) + sumFor(inputs.growthAllocation);
+    return acc;
+  }, {});
+  const combinedGrandTotal = FUND_KEYS.reduce((s, k) => s + combinedFundTotals[k], 0);
+  const effectiveAllocation = combinedGrandTotal > 0
+    ? FUND_KEYS.reduce((acc, k) => { acc[k] = (combinedFundTotals[k] / combinedGrandTotal) * 100; return acc; }, {})
+    : inputs.allocation;
+
+  const effectiveInputs = useMemo(
+    () => (combinedGrandTotal > 0 ? { ...inputs, allocation: effectiveAllocation } : inputs),
+    [inputs, combinedGrandTotal, JSON.stringify(effectiveAllocation)]
+  );
+
+  const sim = useMemo(() => runSimulation(effectiveInputs), [effectiveInputs]);
   const goldSim = useMemo(
     () => runGoldSimulation({ currentAge: inputs.currentAge, deathAge: inputs.deathAge, gold: inputs.gold }),
     [inputs.currentAge, inputs.deathAge, inputs.gold]
@@ -886,13 +943,9 @@ export default function NisaLifePlan() {
 
   const fundBreakdownAtRetire = useMemo(() => {
     const row = sim.yearly.find((y) => y.age >= inputs.retireAge) || sim.yearly[sim.yearly.length - 1];
-    if (!row || !row.funds) return [];
-    return inputs.fundAllocation.map((f, i) => ({
-      name: f.name,
-      value: Math.round(row.funds[f.id] || 0),
-      color: PIE_COLORS[i % PIE_COLORS.length],
-    }));
-  }, [sim, inputs.retireAge, inputs.fundAllocation]);
+    if (!row) return [];
+    return FUND_KEYS.map((k) => ({ name: FUND_META[k].label, value: Math.round(row[k]), color: FUND_META[k].color }));
+  }, [sim, inputs.retireAge]);
 
   const addBank = () => {
     const balance = Number(newBank.balance) || 0;
@@ -1007,6 +1060,23 @@ export default function NisaLifePlan() {
     setInputs((prev) => ({ ...prev, privatePensionPlans: prev.privatePensionPlans.filter((_, i) => i !== idx) }));
   const removeInsurance = (idx) =>
     setInputs((prev) => ({ ...prev, insurancePolicies: prev.insurancePolicies.filter((_, i) => i !== idx) }));
+
+  // 汎用：銘柄別内訳リスト（一括投資／つみたて／成長投資枠で共用）の追加・削除・編集
+  const addAllocationItem = (field, newItem, resetNewItem) => {
+    if (!newItem.name.trim()) return;
+    setInputs((prev) => ({
+      ...prev,
+      [field]: [...prev[field], { name: newItem.name.trim(), amount: Number(newItem.amount) || 0 }],
+    }));
+    resetNewItem({ name: "", amount: "" });
+  };
+  const removeAllocationItem = (field, idx) =>
+    setInputs((prev) => ({ ...prev, [field]: prev[field].filter((_, i) => i !== idx) }));
+  const updateAllocationItem = (field, idx, key, val) =>
+    setInputs((prev) => ({
+      ...prev,
+      [field]: prev[field].map((it, i) => (i === idx ? { ...it, [key]: val } : it)),
+    }));
 
   const addStock = () => {
     if (!newStock.name.trim()) return;
@@ -1590,6 +1660,17 @@ export default function NisaLifePlan() {
             <span>例：「58歳0ヶ月〜61歳11ヶ月・月11万円」「62歳0ヶ月〜65歳0ヶ月・月9万円」のように、歳とヶ月で区間を分けて毎月投資額を設定できます。区間が重なる場合は合算されます。</span>
           </div>
 
+          <div className="field-label" style={{ marginBottom: 6 }}>つみたて投資枠の銘柄別内訳（金額を入れると割合を自動計算）</div>
+          <AllocationBreakdown
+            items={inputs.tsumitateAllocation}
+            newItem={newTsumitateAllocItem}
+            onNewItemChange={setNewTsumitateAllocItem}
+            onAdd={() => addAllocationItem("tsumitateAllocation", newTsumitateAllocItem, setNewTsumitateAllocItem)}
+            onRemove={(i) => removeAllocationItem("tsumitateAllocation", i)}
+            onUpdate={(i, key, val) => updateAllocationItem("tsumitateAllocation", i, key, val)}
+          />
+          <div style={{ marginBottom: 18 }} />
+
           <div className="field-label" style={{ marginBottom: 6 }}>成長投資枠：毎月投資額（年齢区間ごとに設定）</div>
           {inputs.growthSchedule.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 8 }}>
@@ -1635,6 +1716,17 @@ export default function NisaLifePlan() {
             <Info size={13} />
             <span>例：「50歳0ヶ月〜55歳11ヶ月・月15万円」「56歳0ヶ月〜65歳0ヶ月・月5万円」のように、歳とヶ月で区間を分けて成長投資枠の毎月投資額を設定できます。区間が重なる場合は合算されます。</span>
           </div>
+
+          <div className="field-label" style={{ marginBottom: 6 }}>成長投資枠の銘柄別内訳（金額を入れると割合を自動計算）</div>
+          <AllocationBreakdown
+            items={inputs.growthAllocation}
+            newItem={newGrowthAllocItem}
+            onNewItemChange={setNewGrowthAllocItem}
+            onAdd={() => addAllocationItem("growthAllocation", newGrowthAllocItem, setNewGrowthAllocItem)}
+            onRemove={(i) => removeAllocationItem("growthAllocation", i)}
+            onUpdate={(i, key, val) => updateAllocationItem("growthAllocation", i, key, val)}
+          />
+          <div style={{ marginBottom: 18 }} />
 
           <Field label="つみたて投資枠：アプリ管理外の使用累計（基準額）" unit="円" step={10000} value={inputs.tsumitateUsed} onChange={(v) => update({ tsumitateUsed: v })} />
           <div className="note" style={{ marginTop: -8 }}>
@@ -1701,61 +1793,60 @@ export default function NisaLifePlan() {
             <button className="add-btn" onClick={addLump}><Plus size={15} /></button>
           </div>
 
-          <div className="field-label" style={{ marginBottom: 6 }}>
-            NISA資産の銘柄別配分（金額を入れると割合を自動計算・想定年率も銘柄ごとに設定）
-          </div>
-          {inputs.fundAllocation.length > 0 && (
-            <table className="watchlist" style={{ marginBottom: 8 }}>
-              <thead><tr><th>銘柄</th><th>金額</th><th>割合</th><th>年率</th><th></th></tr></thead>
-              <tbody>
-                {inputs.fundAllocation.map((f, i) => (
-                  <tr key={f.id}>
-                    <td>
-                      <input
-                        className="inline-num" value={f.name}
-                        onChange={(e) => updateFundItem(f.id, "name", e.target.value)}
-                      />
-                    </td>
-                    <td style={{ width: 90 }}>
-                      <input
-                        type="number" className="inline-num" value={f.amount}
-                        onChange={(e) => updateFundItem(f.id, "amount", Number(e.target.value))}
-                      />
-                    </td>
-                    <td className="mono" style={{ width: 46 }}>
-                      {fundTotalWeight > 0 ? `${((f.amount / fundTotalWeight) * 100).toFixed(1)}%` : "—"}
-                    </td>
-                    <td style={{ width: 60 }}>
-                      <input
-                        type="number" step={0.5} className="inline-num" value={f.returnPct}
-                        onChange={(e) => updateFundItem(f.id, "returnPct", Number(e.target.value))}
-                      />
-                    </td>
-                    <td style={{ width: 24 }}>
-                      <button className="del-btn" onClick={() => removeFundItem(f.id)}><Trash2 size={13} /></button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-          <div className="add-row">
-            <input placeholder="銘柄名" value={newFundItem.name} onChange={(e) => setNewFundItem((p) => ({ ...p, name: e.target.value }))} />
-            <input placeholder="金額（割合の基準）" type="number" value={newFundItem.amount} onChange={(e) => setNewFundItem((p) => ({ ...p, amount: e.target.value }))} />
-            <button
-              className="add-btn"
-              onClick={() => { addFundItem(newFundItem.name, newFundItem.amount); setNewFundItem({ name: "", amount: "" }); }}
-            >
-              <Plus size={15} />
-            </button>
+          <div className="field-label" style={{ marginBottom: 6 }}>一括投資の銘柄別内訳（金額を入れると割合を自動計算）</div>
+          <AllocationBreakdown
+            items={inputs.lumpAllocation}
+            newItem={newLumpAllocItem}
+            onNewItemChange={setNewLumpAllocItem}
+            onAdd={() => addAllocationItem("lumpAllocation", newLumpAllocItem, setNewLumpAllocItem)}
+            onRemove={(i) => removeAllocationItem("lumpAllocation", i)}
+            onUpdate={(i, key, val) => updateAllocationItem("lumpAllocation", i, key, val)}
+          />
+
+          <div style={{ marginTop: 10 }}>
+            {FUND_KEYS.map((k) => (
+              <div key={k} className="alloc-row">
+                <span className="alloc-dot" style={{ background: FUND_META[k].color }} />
+                <div>
+                  <div style={{ fontSize: 11, marginBottom: 2 }}>{FUND_META[k].label}</div>
+                  <input
+                    type="range" min={0} max={100}
+                    value={combinedGrandTotal > 0 ? effectiveAllocation[k] : inputs.allocation[k]}
+                    disabled={combinedGrandTotal > 0}
+                    onChange={(e) => updateAllocation(k, Number(e.target.value))}
+                  />
+                </div>
+                <span className="alloc-val">
+                  {(combinedGrandTotal > 0 ? effectiveAllocation[k] : inputs.allocation[k]).toFixed(1)}%
+                </span>
+              </div>
+            ))}
+            {combinedGrandTotal > 0 ? (
+              <div className="alloc-sum">
+                積立・成長投資枠・一括投資の内訳合計（{yen(combinedGrandTotal)}）から自動計算されています。手動調整したい場合は、下の内訳をすべて空にしてください。
+              </div>
+            ) : (
+              <div className={`alloc-sum ${allocationSum !== 100 ? "warn" : ""}`}>
+                配分合計: {allocationSum}% {allocationSum !== 100 && "（100%になるよう調整してください）"}
+              </div>
+            )}
           </div>
 
           <div className="note">
             <Info size={13} />
-            <span>
-              銘柄は自由に追加・削除できます。「金額」はその銘柄への配分の重み（今すでに投資済みの金額である必要はありません）で、割合(%)は金額の比率から自動計算されます。米国株比重の高いファンドを重ねすぎると分散効果が薄れる点にご注意ください。
-            </span>
+            <span>全世界株式とS&P500は米国株の比重が構造的に重なりやすい組み合わせです。分散効果を狙うなら比率に留意してください。</span>
           </div>
+
+          {FUND_KEYS.map((k) => (
+            <Field
+              key={k}
+              label={`${FUND_META[k].label} 想定年率`}
+              unit="%"
+              step={0.5}
+              value={inputs.returns[k]}
+              onChange={(v) => updateReturns(k, v)}
+            />
+          ))}
 
           <SectionTitle index="03" title="老後・年金" icon={Landmark} />
           <Field label="年金受給見込み額" unit="円/月" value={inputs.pensionMonthly} step={5000} onChange={(v) => update({ pensionMonthly: v })} />
