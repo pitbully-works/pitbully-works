@@ -1461,6 +1461,21 @@ export default function NisaLifePlan() {
           font-size: 10.5px; color: var(--muted); padding: 20px 28px 0;
           line-height: 1.6; border-top: 1px solid var(--line); margin-top: 10px;
         }
+
+        @media print {
+          .app { background: #fff !important; color: #111 !important; background-image: none !important; }
+          button, .add-row, .history-panel, .save-warning, .history-toggle { display: none !important; }
+          .grid-main { grid-template-columns: 1fr !important; }
+          .panel { border-right: none !important; border-bottom: 2px solid #ccc; }
+          .stat-card, .chart-frame, .panel, .content { background: #fff !important; border-color: #ccc !important; color: #111 !important; }
+          .stat-value, h1, h2, .field-label, .stat-label, .stat-sub { color: #111 !important; }
+          input, select { border: none !important; background: transparent !important; color: #111 !important; }
+          .field-input-wrap { border: none !important; }
+          .field-unit { border-left: none !important; color: #555 !important; }
+          table.watchlist th, table.watchlist td { color: #111 !important; }
+          .chart-frame { break-inside: avoid; }
+          .stat-card { break-inside: avoid; }
+        }
       `}</style>
 
       <div className="titleblock">
@@ -1487,6 +1502,9 @@ export default function NisaLifePlan() {
           </button>
           <button className="history-toggle" onClick={() => setShowBackup((v) => !v)}>
             {showBackup ? "バックアップを閉じる" : "手動バックアップ"}
+          </button>
+          <button className="history-toggle no-print" onClick={() => window.print()}>
+            PDFで保存 / 印刷
           </button>
         </div>
       </div>
