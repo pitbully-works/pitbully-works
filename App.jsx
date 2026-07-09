@@ -535,47 +535,6 @@ function AllocationCharts({ items, height = 180 }) {
   );
 }
 
-function AllocationBreakdown({ items, newItem, onNewItemChange, onAdd, onRemove, onUpdate }) {
-  const total = items.reduce((s, it) => s + (it.amount || 0), 0);
-  return (
-    <div>
-      {items.length > 0 && (
-        <table className="watchlist" style={{ marginBottom: 8 }}>
-          <thead><tr><th>銘柄</th><th>金額</th><th>割合</th><th></th></tr></thead>
-          <tbody>
-            {items.map((it, i) => (
-              <tr key={i}>
-                <td>
-                  <input
-                    className="inline-num" value={it.name}
-                    onChange={(e) => onUpdate(i, "name", e.target.value)}
-                  />
-                </td>
-                <td style={{ width: 96 }}>
-                  <input
-                    type="number" className="inline-num" value={it.amount}
-                    onChange={(e) => onUpdate(i, "amount", Number(e.target.value))}
-                  />
-                </td>
-                <td className="mono" style={{ width: 52 }}>{total > 0 ? `${((it.amount / total) * 100).toFixed(1)}%` : "—"}</td>
-                <td style={{ width: 24 }}>
-                  <button className="del-btn" onClick={() => onRemove(i)}><Trash2 size={13} /></button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-      <div className="add-row" style={{ marginBottom: total > 0 ? 8 : 0 }}>
-        <input placeholder="銘柄名" value={newItem.name} onChange={(e) => onNewItemChange({ ...newItem, name: e.target.value })} />
-        <input placeholder="金額（円）" type="number" value={newItem.amount} onChange={(e) => onNewItemChange({ ...newItem, amount: e.target.value })} />
-        <button className="add-btn" onClick={onAdd}><Plus size={15} /></button>
-      </div>
-      <AllocationCharts items={items} />
-    </div>
-  );
-}
-
 function SectionTitle({ index, title, icon: Icon }) {
   return (
     <div className="section-title">
@@ -638,9 +597,6 @@ export default function NisaLifePlan() {
     loans: [],
     insurancePolicies: [],
     privatePensionPlans: [],
-    lumpAllocation: [],
-    tsumitateAllocation: [],
-    growthAllocation: [],
   });
   const [watchlist, setWatchlist] = useState(DEFAULT_WATCHLIST);
   const [newStock, setNewStock] = useState({ name: "", sector: "" });
@@ -671,9 +627,6 @@ export default function NisaLifePlan() {
     payoutToYears: "", payoutToMonths: "",
     monthlyPayout: "",
   });
-  const [newLumpAllocItem, setNewLumpAllocItem] = useState({ name: "", amount: "" });
-  const [newTsumitateAllocItem, setNewTsumitateAllocItem] = useState({ name: "", amount: "" });
-  const [newGrowthAllocItem, setNewGrowthAllocItem] = useState({ name: "", amount: "" });
   const [newFundItem, setNewFundItem] = useState({ name: "", amount: "" });
   const [loaded, setLoaded] = useState(false);
   const [history, setHistory] = useState([]);
@@ -1054,29 +1007,6 @@ export default function NisaLifePlan() {
     setInputs((prev) => ({ ...prev, privatePensionPlans: prev.privatePensionPlans.filter((_, i) => i !== idx) }));
   const removeInsurance = (idx) =>
     setInputs((prev) => ({ ...prev, insurancePolicies: prev.insurancePolicies.filter((_, i) => i !== idx) }));
-
-  // 汎用：銘柄別内訳リスト（一括投資／つみたて／成長投資枠で共用）の追加・削除・編集
-  const addAllocationItem = (field, newItem, resetNewItem) => {
-    if (!newItem.name.trim()) return;
-    const name = newItem.name.trim();
-    const amount = Number(newItem.amount) || 0;
-    setInputs((prev) => {
-      const updatedField = [...prev[field], { name, amount }];
-      const alreadyInFundAllocation = prev.fundAllocation.some((f) => f.name === name);
-      const updatedFundAllocation = alreadyInFundAllocation
-        ? prev.fundAllocation
-        : [...prev.fundAllocation, { id: `f${Date.now()}`, name, amount, returnPct: 5 }];
-      return { ...prev, [field]: updatedField, fundAllocation: updatedFundAllocation };
-    });
-    resetNewItem({ name: "", amount: "" });
-  };
-  const removeAllocationItem = (field, idx) =>
-    setInputs((prev) => ({ ...prev, [field]: prev[field].filter((_, i) => i !== idx) }));
-  const updateAllocationItem = (field, idx, key, val) =>
-    setInputs((prev) => ({
-      ...prev,
-      [field]: prev[field].map((it, i) => (i === idx ? { ...it, [key]: val } : it)),
-    }));
 
   const addStock = () => {
     if (!newStock.name.trim()) return;
@@ -1660,17 +1590,6 @@ export default function NisaLifePlan() {
             <span>例：「58歳0ヶ月〜61歳11ヶ月・月11万円」「62歳0ヶ月〜65歳0ヶ月・月9万円」のように、歳とヶ月で区間を分けて毎月投資額を設定できます。区間が重なる場合は合算されます。</span>
           </div>
 
-          <div className="field-label" style={{ marginBottom: 6 }}>つみたて投資枠の銘柄別内訳（金額を入れると割合を自動計算・新しい銘柄はNISA配分にも自動追加されます）</div>
-          <AllocationBreakdown
-            items={inputs.tsumitateAllocation}
-            newItem={newTsumitateAllocItem}
-            onNewItemChange={setNewTsumitateAllocItem}
-            onAdd={() => addAllocationItem("tsumitateAllocation", newTsumitateAllocItem, setNewTsumitateAllocItem)}
-            onRemove={(i) => removeAllocationItem("tsumitateAllocation", i)}
-            onUpdate={(i, key, val) => updateAllocationItem("tsumitateAllocation", i, key, val)}
-          />
-          <div style={{ marginBottom: 18 }} />
-
           <div className="field-label" style={{ marginBottom: 6 }}>成長投資枠：毎月投資額（年齢区間ごとに設定）</div>
           {inputs.growthSchedule.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 8 }}>
@@ -1716,17 +1635,6 @@ export default function NisaLifePlan() {
             <Info size={13} />
             <span>例：「50歳0ヶ月〜55歳11ヶ月・月15万円」「56歳0ヶ月〜65歳0ヶ月・月5万円」のように、歳とヶ月で区間を分けて成長投資枠の毎月投資額を設定できます。区間が重なる場合は合算されます。</span>
           </div>
-
-          <div className="field-label" style={{ marginBottom: 6 }}>成長投資枠の銘柄別内訳（金額を入れると割合を自動計算・新しい銘柄はNISA配分にも自動追加されます）</div>
-          <AllocationBreakdown
-            items={inputs.growthAllocation}
-            newItem={newGrowthAllocItem}
-            onNewItemChange={setNewGrowthAllocItem}
-            onAdd={() => addAllocationItem("growthAllocation", newGrowthAllocItem, setNewGrowthAllocItem)}
-            onRemove={(i) => removeAllocationItem("growthAllocation", i)}
-            onUpdate={(i, key, val) => updateAllocationItem("growthAllocation", i, key, val)}
-          />
-          <div style={{ marginBottom: 18 }} />
 
           <Field label="つみたて投資枠：アプリ管理外の使用累計（基準額）" unit="円" step={10000} value={inputs.tsumitateUsed} onChange={(v) => update({ tsumitateUsed: v })} />
           <div className="note" style={{ marginTop: -8 }}>
@@ -1792,16 +1700,6 @@ export default function NisaLifePlan() {
             <input placeholder="金額（円）" type="number" value={newLump.amount} onChange={(e) => setNewLump((p) => ({ ...p, amount: e.target.value }))} />
             <button className="add-btn" onClick={addLump}><Plus size={15} /></button>
           </div>
-
-          <div className="field-label" style={{ marginBottom: 6 }}>一括投資の銘柄別内訳（金額を入れると割合を自動計算・新しい銘柄はNISA配分にも自動追加されます）</div>
-          <AllocationBreakdown
-            items={inputs.lumpAllocation}
-            newItem={newLumpAllocItem}
-            onNewItemChange={setNewLumpAllocItem}
-            onAdd={() => addAllocationItem("lumpAllocation", newLumpAllocItem, setNewLumpAllocItem)}
-            onRemove={(i) => removeAllocationItem("lumpAllocation", i)}
-            onUpdate={(i, key, val) => updateAllocationItem("lumpAllocation", i, key, val)}
-          />
 
           <div className="field-label" style={{ marginBottom: 6 }}>
             NISA資産の銘柄別配分（金額を入れると割合を自動計算・想定年率も銘柄ごとに設定）
