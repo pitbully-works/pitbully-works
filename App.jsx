@@ -15,15 +15,6 @@ const yen = (n) => {
   if (n >= 10000) return `${sign}¥${(n / 10000).toFixed(1)}万`;
   return `${sign}¥${n.toLocaleString()}`;
 };
-const clampPct = (v) => Math.max(0, Math.min(100, v));
-
-const FUND_KEYS = ["global", "sp500", "semi", "india"];
-const FUND_META = {
-  global: { label: "全世界株式", color: "#4FA8D8" },
-  sp500: { label: "S&P500", color: "#7BC9E0" },
-  semi: { label: "半導体・AI", color: "#D9A54F" },
-  india: { label: "インド株式", color: "#8FBF7F" },
-};
 
 function monthlyRate(annualPct) {
   return Math.pow(1 + annualPct / 100, 1 / 12) - 1;
@@ -76,17 +67,16 @@ function runSimulation(inputs) {
     currentAge, retireAge, deathAge,
     currentAssets, tsumitateSchedule, growthSchedule, lumpSums,
     tsumitateUsed, growthUsed,
-    allocation, returns, extraFunds,
+    dynamicFunds,
     pensionMonthly, livingCostMonthly, postRetireReturn,
     healthBrackets, inheritanceTarget,
     privatePensionPlans,
   } = inputs;
 
-  // 固定4カテゴリ + 追加銘柄（トヨタ等）をまとめた配分リスト
-  const allFundEntries = [
-    ...FUND_KEYS.map((k) => ({ id: k, pct: allocation[k], returnPct: returns[k] })),
-    ...(extraFunds || []),
-  ];
+  // 積立・成長投資枠・一括投資の内訳に入力された銘柄だけで配分リストを作る（固定カテゴリなし）
+  const allFundEntries = (dynamicFunds && dynamicFunds.length)
+    ? dynamicFunds
+    : [{ id: "未分類", pct: 100, returnPct: 5 }];
 
   const totalMonths = Math.max(1, Math.round((deathAge - currentAge) * 12));
   let funds = {};
@@ -628,8 +618,6 @@ export default function NisaLifePlan() {
     lumpAllocation: [],
     tsumitateAllocation: [],
     growthAllocation: [],
-    allocation: { global: 30, sp500: 30, semi: 25, india: 15 },
-    returns: { global: 5, sp500: 6, semi: 8, india: 7 },
     extraFundReturns: {},
     pensionMonthly: 150000,
     livingCostMonthly: 250000,
@@ -833,10 +821,6 @@ export default function NisaLifePlan() {
   };
 
   const update = (patch) => setInputs((prev) => ({ ...prev, ...patch }));
-  const updateAllocation = (key, val) =>
-    setInputs((prev) => ({ ...prev, allocation: { ...prev.allocation, [key]: clampPct(val) } }));
-  const updateReturns = (key, val) =>
-    setInputs((prev) => ({ ...prev, returns: { ...prev.returns, [key]: val } }));
   const updateExtraFundReturn = (name, val) =>
     setInputs((prev) => ({ ...prev, extraFundReturns: { ...prev.extraFundReturns, [name]: val } }));
   const updateHealth = (key, val) =>
@@ -844,42 +828,30 @@ export default function NisaLifePlan() {
   const updateGold = (key, val) =>
     setInputs((prev) => ({ ...prev, gold: { ...prev.gold, [key]: val } }));
 
-  const allocationSum = FUND_KEYS.reduce((s, k) => s + inputs.allocation[k], 0);
-
-  // 積立・成長投資枠・一括投資の銘柄別内訳を集約し、
-  // ①固定4カテゴリと同じ名前の金額は合算してスライダーへ、
-  // ②それ以外の自由な名前（トヨタ・たわら8など）は「追加銘柄」として自動的にシミュレーションへ反映する
-  const FIXED_LABELS = FUND_KEYS.map((k) => FUND_META[k].label);
+  // 積立・成長投資枠・一括投資の銘柄別内訳に入力された銘柄だけを集約して、
+  // そのままスライダー（自動計算・操作不可）として表示する
   const allBreakdownItems = [
     ...(inputs.lumpAllocation || []),
     ...(inputs.tsumitateAllocation || []),
     ...(inputs.growthAllocation || []),
   ];
-  const combinedFundTotals = FUND_KEYS.reduce((acc, k) => {
-    const label = FUND_META[k].label;
-    acc[k] = allBreakdownItems.reduce((s, it) => (it.name === label ? s + (it.amount || 0) : s), 0);
-    return acc;
-  }, {});
-  const extraNames = [...new Set(allBreakdownItems.filter((it) => it.name && !FIXED_LABELS.includes(it.name)).map((it) => it.name))];
-  const extraAmounts = extraNames.reduce((acc, name) => {
+  const fundNames = [...new Set(allBreakdownItems.filter((it) => it.name && it.name.trim()).map((it) => it.name))];
+  const fundAmounts = fundNames.reduce((acc, name) => {
     acc[name] = allBreakdownItems.reduce((s, it) => (it.name === name ? s + (it.amount || 0) : s), 0);
     return acc;
   }, {});
-  const combinedGrandTotal = FUND_KEYS.reduce((s, k) => s + combinedFundTotals[k], 0) + extraNames.reduce((s, n) => s + extraAmounts[n], 0);
-  const effectiveAllocation = combinedGrandTotal > 0
-    ? FUND_KEYS.reduce((acc, k) => { acc[k] = (combinedFundTotals[k] / combinedGrandTotal) * 100; return acc; }, {})
-    : inputs.allocation;
-  const extraFundsForSim = combinedGrandTotal > 0
-    ? extraNames.map((name) => ({
+  const combinedGrandTotal = fundNames.reduce((s, n) => s + fundAmounts[n], 0);
+  const dynamicFunds = combinedGrandTotal > 0
+    ? fundNames.map((name) => ({
         id: name,
-        pct: (extraAmounts[name] / combinedGrandTotal) * 100,
+        pct: (fundAmounts[name] / combinedGrandTotal) * 100,
         returnPct: (inputs.extraFundReturns && inputs.extraFundReturns[name] !== undefined) ? inputs.extraFundReturns[name] : 5,
       }))
     : [];
 
   const effectiveInputs = useMemo(
-    () => (combinedGrandTotal > 0 ? { ...inputs, allocation: effectiveAllocation, extraFunds: extraFundsForSim } : inputs),
-    [inputs, combinedGrandTotal, JSON.stringify(effectiveAllocation), JSON.stringify(extraFundsForSim)]
+    () => ({ ...inputs, dynamicFunds }),
+    [inputs, JSON.stringify(dynamicFunds)]
   );
 
   const sim = useMemo(() => runSimulation(effectiveInputs), [effectiveInputs]);
@@ -968,14 +940,12 @@ export default function NisaLifePlan() {
   const fundBreakdownAtRetire = useMemo(() => {
     const row = sim.yearly.find((y) => y.age >= inputs.retireAge) || sim.yearly[sim.yearly.length - 1];
     if (!row || !row.funds) return [];
-    const fixedRows = FUND_KEYS.map((k) => ({ name: FUND_META[k].label, value: Math.round(row.funds[k] || 0), color: FUND_META[k].color }));
-    const extraRows = extraFundsForSim.map((f, i) => ({
+    return dynamicFunds.map((f, i) => ({
       name: f.id,
       value: Math.round(row.funds[f.id] || 0),
       color: PIE_COLORS[i % PIE_COLORS.length],
     }));
-    return [...fixedRows, ...extraRows];
-  }, [sim, inputs.retireAge, JSON.stringify(extraFundsForSim)]);
+  }, [sim, inputs.retireAge, JSON.stringify(dynamicFunds)]);
 
   const addBank = () => {
     const balance = Number(newBank.balance) || 0;
@@ -1833,41 +1803,12 @@ export default function NisaLifePlan() {
             onUpdate={(i, key, val) => updateAllocationItem("lumpAllocation", i, key, val)}
           />
 
-          <div style={{ marginTop: 10 }}>
-            {FUND_KEYS.map((k) => (
-              <div key={k} className="alloc-row">
-                <span className="alloc-dot" style={{ background: FUND_META[k].color }} />
-                <div>
-                  <div style={{ fontSize: 11, marginBottom: 2 }}>{FUND_META[k].label}</div>
-                  <input
-                    type="range" min={0} max={100}
-                    value={combinedGrandTotal > 0 ? effectiveAllocation[k] : inputs.allocation[k]}
-                    disabled={combinedGrandTotal > 0}
-                    onChange={(e) => updateAllocation(k, Number(e.target.value))}
-                  />
-                </div>
-                <span className="alloc-val">
-                  {(combinedGrandTotal > 0 ? effectiveAllocation[k] : inputs.allocation[k]).toFixed(1)}%
-                </span>
-              </div>
-            ))}
-            {combinedGrandTotal > 0 ? (
-              <div className="alloc-sum">
-                積立・成長投資枠・一括投資の内訳合計（{yen(combinedGrandTotal)}）から自動計算されています。手動調整したい場合は、下の内訳をすべて空にしてください。
-              </div>
-            ) : (
-              <div className={`alloc-sum ${allocationSum !== 100 ? "warn" : ""}`}>
-                配分合計: {allocationSum}% {allocationSum !== 100 && "（100%になるよう調整してください）"}
-              </div>
-            )}
+          <div className="field-label" style={{ marginTop: 16, marginBottom: 6 }}>
+            NISA資産の配分（積立・成長投資枠・一括投資の内訳に入れた銘柄がそのままスライダーになります）
           </div>
-
-          {extraFundsForSim.length > 0 && (
-            <div style={{ marginTop: 12 }}>
-              <div className="field-label" style={{ marginBottom: 6 }}>
-                固定4カテゴリ以外の追加銘柄（内訳から自動検出・スライダーも自動追加されます）
-              </div>
-              {extraFundsForSim.map((f, i) => (
+          {dynamicFunds.length > 0 ? (
+            <>
+              {dynamicFunds.map((f, i) => (
                 <div key={f.id}>
                   <div className="alloc-row">
                     <span className="alloc-dot" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
@@ -1888,28 +1829,21 @@ export default function NisaLifePlan() {
                   </div>
                 </div>
               ))}
-              <div className="note">
-                <Info size={13} />
-                <span>固定4カテゴリと同じ名前ではない銘柄（例：トヨタ、たわら8）は、ここにスライダー付きで自動的に追加されます。割合は内訳の金額から自動計算されるため操作できません。想定年率だけ、こちらで個別に設定してください。</span>
+              <div className="alloc-sum">
+                積立・成長投資枠・一括投資の内訳合計（{yen(combinedGrandTotal)}）から自動計算されています。
               </div>
+            </>
+          ) : (
+            <div className="note">
+              <Info size={13} />
+              <span>まだ銘柄が入力されていません。上の「積立投資枠」「成長投資枠」「一括投資」いずれかの銘柄別内訳に銘柄名と金額を入力すると、ここにスライダーが自動的に表示されます。</span>
             </div>
           )}
 
           <div className="note">
             <Info size={13} />
-            <span>全世界株式とS&P500は米国株の比重が構造的に重なりやすい組み合わせです。分散効果を狙うなら比率に留意してください。</span>
+            <span>同じ系統のファンドを重ねすぎると分散効果が薄れる点にご注意ください（例：全世界株式とS&P500は米国株の比重が重なりやすい組み合わせです）。</span>
           </div>
-
-          {FUND_KEYS.map((k) => (
-            <Field
-              key={k}
-              label={`${FUND_META[k].label} 想定年率`}
-              unit="%"
-              step={0.5}
-              value={inputs.returns[k]}
-              onChange={(v) => updateReturns(k, v)}
-            />
-          ))}
 
           <SectionTitle index="03" title="老後・年金" icon={Landmark} />
           <Field label="年金受給見込み額" unit="円/月" value={inputs.pensionMonthly} step={5000} onChange={(v) => update({ pensionMonthly: v })} />
