@@ -76,16 +76,22 @@ function runSimulation(inputs) {
     currentAge, retireAge, deathAge,
     currentAssets, tsumitateSchedule, growthSchedule, lumpSums,
     tsumitateUsed, growthUsed,
-    allocation, returns,
+    allocation, returns, extraFunds,
     pensionMonthly, livingCostMonthly, postRetireReturn,
     healthBrackets, inheritanceTarget,
     privatePensionPlans,
   } = inputs;
 
+  // 固定4カテゴリ + 追加銘柄（トヨタ等）をまとめた配分リスト
+  const allFundEntries = [
+    ...FUND_KEYS.map((k) => ({ id: k, pct: allocation[k], returnPct: returns[k] })),
+    ...(extraFunds || []),
+  ];
+
   const totalMonths = Math.max(1, Math.round((deathAge - currentAge) * 12));
   let funds = {};
-  FUND_KEYS.forEach((k) => {
-    funds[k] = currentAssets * (allocation[k] / 100);
+  allFundEntries.forEach((f) => {
+    funds[f.id] = currentAssets * (f.pct / 100);
   });
 
   // lump-sum growth-quota investments, indexed by month offset from currentAge
@@ -151,12 +157,12 @@ function runSimulation(inputs) {
 
       const contribution = effGrowth + effTsumitate + lumpEff;
 
-      FUND_KEYS.forEach((k) => {
-        const r = monthlyRate(returns[k]);
-        funds[k] = funds[k] * (1 + r) + contribution * (allocation[k] / 100);
+      allFundEntries.forEach((f) => {
+        const r = monthlyRate(f.returnPct);
+        funds[f.id] = funds[f.id] * (1 + r) + contribution * (f.pct / 100);
       });
     } else {
-      let total = FUND_KEYS.reduce((s, k) => s + funds[k], 0);
+      let total = Object.values(funds).reduce((s, v) => s + v, 0);
       const r = monthlyRate(postRetireReturn);
       total = total * (1 + r);
       const healthMonthly = healthAnnualCost(age, healthBrackets) / 12;
@@ -181,24 +187,21 @@ function runSimulation(inputs) {
         }
         total += lumpEff;
       }
-      // push all into "global" bucket for simplicity post-retirement so chart total stays coherent
-      funds = { global: total, sp500: 0, semi: 0, india: 0 };
+      // collapse into a single post-retirement bucket for simplicity so chart total stays coherent
+      funds = { __cash__: total };
     }
 
     if (Math.abs(age - retireAge) < (1 / 24) && assetsAtRetire === null) {
-      assetsAtRetire = FUND_KEYS.reduce((s, k) => s + funds[k], 0);
+      assetsAtRetire = Object.values(funds).reduce((s, v) => s + v, 0);
     }
 
     if (m % 12 === 0) {
-      const total = FUND_KEYS.reduce((s, k) => s + funds[k], 0);
+      const total = Object.values(funds).reduce((s, v) => s + v, 0);
       peakAssets = Math.max(peakAssets, total);
       yearly.push({
         age: Math.round(age),
         total,
-        global: funds.global,
-        sp500: funds.sp500,
-        semi: funds.semi,
-        india: funds.india,
+        funds: { ...funds },
         phase: inAccumulation ? "積立期" : "取崩期",
         tsumitateCum,
         growthCum,
@@ -627,6 +630,7 @@ export default function NisaLifePlan() {
     growthAllocation: [],
     allocation: { global: 30, sp500: 30, semi: 25, india: 15 },
     returns: { global: 5, sp500: 6, semi: 8, india: 7 },
+    extraFundReturns: {},
     pensionMonthly: 150000,
     livingCostMonthly: 250000,
     postRetireReturn: 3,
@@ -833,6 +837,8 @@ export default function NisaLifePlan() {
     setInputs((prev) => ({ ...prev, allocation: { ...prev.allocation, [key]: clampPct(val) } }));
   const updateReturns = (key, val) =>
     setInputs((prev) => ({ ...prev, returns: { ...prev.returns, [key]: val } }));
+  const updateExtraFundReturn = (name, val) =>
+    setInputs((prev) => ({ ...prev, extraFundReturns: { ...prev.extraFundReturns, [name]: val } }));
   const updateHealth = (key, val) =>
     setInputs((prev) => ({ ...prev, healthBrackets: { ...prev.healthBrackets, [key]: val } }));
   const updateGold = (key, val) =>
@@ -840,22 +846,40 @@ export default function NisaLifePlan() {
 
   const allocationSum = FUND_KEYS.reduce((s, k) => s + inputs.allocation[k], 0);
 
-  // 積立・成長投資枠・一括投資の銘柄別内訳（名前が一致するもの）を銘柄ごとに合算し、
-  // 合計があればスライダーの割合(%)をその合算値から自動計算する
+  // 積立・成長投資枠・一括投資の銘柄別内訳を集約し、
+  // ①固定4カテゴリと同じ名前の金額は合算してスライダーへ、
+  // ②それ以外の自由な名前（トヨタ・たわら8など）は「追加銘柄」として自動的にシミュレーションへ反映する
+  const FIXED_LABELS = FUND_KEYS.map((k) => FUND_META[k].label);
+  const allBreakdownItems = [
+    ...(inputs.lumpAllocation || []),
+    ...(inputs.tsumitateAllocation || []),
+    ...(inputs.growthAllocation || []),
+  ];
   const combinedFundTotals = FUND_KEYS.reduce((acc, k) => {
     const label = FUND_META[k].label;
-    const sumFor = (list) => (list || []).reduce((s, it) => (it.name === label ? s + (it.amount || 0) : s), 0);
-    acc[k] = sumFor(inputs.lumpAllocation) + sumFor(inputs.tsumitateAllocation) + sumFor(inputs.growthAllocation);
+    acc[k] = allBreakdownItems.reduce((s, it) => (it.name === label ? s + (it.amount || 0) : s), 0);
     return acc;
   }, {});
-  const combinedGrandTotal = FUND_KEYS.reduce((s, k) => s + combinedFundTotals[k], 0);
+  const extraNames = [...new Set(allBreakdownItems.filter((it) => it.name && !FIXED_LABELS.includes(it.name)).map((it) => it.name))];
+  const extraAmounts = extraNames.reduce((acc, name) => {
+    acc[name] = allBreakdownItems.reduce((s, it) => (it.name === name ? s + (it.amount || 0) : s), 0);
+    return acc;
+  }, {});
+  const combinedGrandTotal = FUND_KEYS.reduce((s, k) => s + combinedFundTotals[k], 0) + extraNames.reduce((s, n) => s + extraAmounts[n], 0);
   const effectiveAllocation = combinedGrandTotal > 0
     ? FUND_KEYS.reduce((acc, k) => { acc[k] = (combinedFundTotals[k] / combinedGrandTotal) * 100; return acc; }, {})
     : inputs.allocation;
+  const extraFundsForSim = combinedGrandTotal > 0
+    ? extraNames.map((name) => ({
+        id: name,
+        pct: (extraAmounts[name] / combinedGrandTotal) * 100,
+        returnPct: (inputs.extraFundReturns && inputs.extraFundReturns[name] !== undefined) ? inputs.extraFundReturns[name] : 5,
+      }))
+    : [];
 
   const effectiveInputs = useMemo(
-    () => (combinedGrandTotal > 0 ? { ...inputs, allocation: effectiveAllocation } : inputs),
-    [inputs, combinedGrandTotal, JSON.stringify(effectiveAllocation)]
+    () => (combinedGrandTotal > 0 ? { ...inputs, allocation: effectiveAllocation, extraFunds: extraFundsForSim } : inputs),
+    [inputs, combinedGrandTotal, JSON.stringify(effectiveAllocation), JSON.stringify(extraFundsForSim)]
   );
 
   const sim = useMemo(() => runSimulation(effectiveInputs), [effectiveInputs]);
@@ -943,9 +967,15 @@ export default function NisaLifePlan() {
 
   const fundBreakdownAtRetire = useMemo(() => {
     const row = sim.yearly.find((y) => y.age >= inputs.retireAge) || sim.yearly[sim.yearly.length - 1];
-    if (!row) return [];
-    return FUND_KEYS.map((k) => ({ name: FUND_META[k].label, value: Math.round(row[k]), color: FUND_META[k].color }));
-  }, [sim, inputs.retireAge]);
+    if (!row || !row.funds) return [];
+    const fixedRows = FUND_KEYS.map((k) => ({ name: FUND_META[k].label, value: Math.round(row.funds[k] || 0), color: FUND_META[k].color }));
+    const extraRows = extraFundsForSim.map((f, i) => ({
+      name: f.id,
+      value: Math.round(row.funds[f.id] || 0),
+      color: PIE_COLORS[i % PIE_COLORS.length],
+    }));
+    return [...fixedRows, ...extraRows];
+  }, [sim, inputs.retireAge, JSON.stringify(extraFundsForSim)]);
 
   const addBank = () => {
     const balance = Number(newBank.balance) || 0;
@@ -1831,6 +1861,39 @@ export default function NisaLifePlan() {
               </div>
             )}
           </div>
+
+          {extraFundsForSim.length > 0 && (
+            <div style={{ marginTop: 12 }}>
+              <div className="field-label" style={{ marginBottom: 6 }}>
+                固定4カテゴリ以外の追加銘柄（内訳から自動検出・スライダーも自動追加されます）
+              </div>
+              {extraFundsForSim.map((f, i) => (
+                <div key={f.id}>
+                  <div className="alloc-row">
+                    <span className="alloc-dot" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
+                    <div>
+                      <div style={{ fontSize: 11, marginBottom: 2 }}>{f.id}</div>
+                      <input type="range" min={0} max={100} value={f.pct} disabled />
+                    </div>
+                    <span className="alloc-val">{f.pct.toFixed(1)}%</span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: -4, marginBottom: 10, paddingLeft: 24 }}>
+                    <span style={{ fontSize: 10, color: "#7C8A90" }}>想定年率</span>
+                    <input
+                      type="number" step={0.5} className="inline-num" style={{ width: 60 }}
+                      value={inputs.extraFundReturns[f.id] !== undefined ? inputs.extraFundReturns[f.id] : 5}
+                      onChange={(e) => updateExtraFundReturn(f.id, Number(e.target.value))}
+                    />
+                    <span style={{ fontSize: 10, color: "#7C8A90" }}>%</span>
+                  </div>
+                </div>
+              ))}
+              <div className="note">
+                <Info size={13} />
+                <span>固定4カテゴリと同じ名前ではない銘柄（例：トヨタ、たわら8）は、ここにスライダー付きで自動的に追加されます。割合は内訳の金額から自動計算されるため操作できません。想定年率だけ、こちらで個別に設定してください。</span>
+              </div>
+            </div>
+          )}
 
           <div className="note">
             <Info size={13} />
