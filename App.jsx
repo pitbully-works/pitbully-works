@@ -894,14 +894,13 @@ export default function NisaLifePlan() {
   const lumpElapsedTotal = elapsedLumpSumAmount(inputs.lumpSums, effectiveCurrentAge);
 
   const autoHoldingRowsFor = (allocationList, elapsedTotal, categoryLabel) => {
-    const listTotal = (allocationList || []).reduce((s, it) => s + (it.amount || 0), 0);
-    if (listTotal <= 0 || elapsedTotal <= 0) return [];
-    return allocationList
-      .filter((it) => it.name && it.name.trim())
-      .map((it) => ({
-        name: `${it.name}（${categoryLabel}）`,
-        value: (it.amount / listTotal) * elapsedTotal,
-      }));
+    const named = (allocationList || []).filter((it) => it.name && it.name.trim());
+    if (named.length === 0) return [];
+    const listTotal = named.reduce((s, it) => s + (it.amount || 0), 0);
+    return named.map((it) => ({
+      name: `${it.name}（${categoryLabel}）`,
+      value: listTotal > 0 ? (it.amount / listTotal) * elapsedTotal : 0,
+    }));
   };
   const autoHoldingRows = [
     ...autoHoldingRowsFor(inputs.tsumitateAllocation, tsumitateElapsedTotal, "つみたて"),
@@ -2088,13 +2087,16 @@ export default function NisaLifePlan() {
             </div>
           )}
           <Field
-            label={inputs.inheritancePlans.length > 0 ? "子孫に残したい金額（上の合計が使われます・参考値）" : "子孫に残したい金額"}
-            unit="円" step={100000} value={inputs.inheritanceTarget} onChange={(v) => update({ inheritanceTarget: v })}
+            label={inputs.inheritancePlans.length > 0 ? "子孫に残したい金額（上の合計が自動反映）" : "子孫に残したい金額"}
+            unit="円" step={100000}
+            value={effectiveInheritanceTarget}
+            disabled={inputs.inheritancePlans.length > 0}
+            onChange={(v) => update({ inheritanceTarget: v })}
           />
           {inputs.inheritancePlans.length > 0 && (
             <div className="note" style={{ marginTop: -8 }}>
               <Info size={13} />
-              <span>相続予定を1人以上登録すると、シミュレーションの目標額には上の合計金額（{yen(inheritanceTotal)}）が自動的に使われます。</span>
+              <span>相続予定を1人以上登録すると、この欄には自動的にその合計金額が反映され、編集できなくなります。手入力に戻したい場合は、登録した相続予定をすべて削除してください。</span>
             </div>
           )}
 
