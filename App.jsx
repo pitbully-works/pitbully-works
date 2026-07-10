@@ -887,8 +887,31 @@ export default function NisaLifePlan() {
   const preciseAge = useMemo(() => computeAgeFromBirthDate(inputs.birthDate), [inputs.birthDate]);
   const effectiveCurrentAge = preciseAge ? preciseAge.decimal : inputs.currentAge;
 
-  // 現在のNISA資産を、銘柄別の時価入力（1件以上あれば）の合計から自動計算する
-  const currentAssetHoldingsTotal = inputs.currentAssetHoldings.reduce((s, h) => s + (h.value || 0), 0);
+  // 現在のNISA資産：手入力の時価に加えて、つみたて・成長投資枠・一括投資それぞれの
+  // 「現在の日付までに経過した分」を、銘柄別内訳の比率に応じて自動計算する
+  const tsumitateElapsedTotal = elapsedScheduleAmount(inputs.tsumitateSchedule, effectiveCurrentAge);
+  const growthElapsedTotal = elapsedScheduleAmount(inputs.growthSchedule, effectiveCurrentAge);
+  const lumpElapsedTotal = elapsedLumpSumAmount(inputs.lumpSums, effectiveCurrentAge);
+
+  const autoHoldingRowsFor = (allocationList, elapsedTotal, categoryLabel) => {
+    const listTotal = (allocationList || []).reduce((s, it) => s + (it.amount || 0), 0);
+    if (listTotal <= 0 || elapsedTotal <= 0) return [];
+    return allocationList
+      .filter((it) => it.name && it.name.trim())
+      .map((it) => ({
+        name: `${it.name}（${categoryLabel}）`,
+        value: (it.amount / listTotal) * elapsedTotal,
+      }));
+  };
+  const autoHoldingRows = [
+    ...autoHoldingRowsFor(inputs.tsumitateAllocation, tsumitateElapsedTotal, "つみたて"),
+    ...autoHoldingRowsFor(inputs.growthAllocation, growthElapsedTotal, "成長投資枠"),
+    ...autoHoldingRowsFor(inputs.lumpAllocation, lumpElapsedTotal, "一括投資"),
+  ];
+  const autoHoldingsTotal = autoHoldingRows.reduce((s, r) => s + r.value, 0);
+
+  // 現在のNISA資産を、手入力 + 手動追加の時価 + 上の自動計算分の合計から算出する
+  const currentAssetHoldingsTotal = inputs.currentAssetHoldings.reduce((s, h) => s + (h.value || 0), 0) + autoHoldingsTotal;
   const effectiveCurrentAssets = inputs.currentAssets + currentAssetHoldingsTotal;
 
   const effectiveInputs = useMemo(
@@ -1738,6 +1761,27 @@ export default function NisaLifePlan() {
             value={inputs.currentAssets}
             onChange={(v) => update({ currentAssets: v })}
           />
+
+          {autoHoldingRows.length > 0 && (
+            <>
+              <div className="field-label" style={{ marginBottom: 6 }}>
+                時価（自動計算：現在の日付までの積立・成長投資枠・一括投資の経過分）
+              </div>
+              <table className="watchlist" style={{ marginBottom: 8 }}>
+                <thead><tr><th>銘柄</th><th>時価（自動）</th></tr></thead>
+                <tbody>
+                  {autoHoldingRows.map((r, i) => (
+                    <tr key={i}>
+                      <td>{r.name}</td>
+                      <td className="mono">{yen(r.value)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          )}
+
+          <div className="field-label" style={{ marginBottom: 6 }}>時価（手入力で追加）</div>
           {inputs.currentAssetHoldings.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 8 }}>
               <thead><tr><th>銘柄</th><th>時価</th><th></th></tr></thead>
@@ -1763,7 +1807,7 @@ export default function NisaLifePlan() {
           <div className="note" style={{ marginTop: -8 }}>
             <Info size={13} />
             <span>
-              上の「手入力」欄と、時価の合計（{yen(currentAssetHoldingsTotal)}）を足したものが、この「合計」欄に自動的に反映され、シミュレーションではこの合計金額が使われます。
+              「手入力」欄 + 自動計算の時価（{yen(autoHoldingsTotal)}） + 手入力で追加した時価（{yen(currentAssetHoldingsTotal - autoHoldingsTotal)}）を合計したものが、この「合計」欄に反映され、シミュレーションではこの金額が使われます。自動計算分は、積立・成長投資枠・一括投資それぞれの「銘柄別内訳」に入力した比率と、現在の年齢までの経過期間から算出しています。
             </span>
           </div>
 
