@@ -844,6 +844,9 @@ export default function NisaLifePlan() {
     if (entry.inputs) setInputs((prev) => ({ ...prev, ...entry.inputs }));
     if (entry.watchlist) setWatchlist(entry.watchlist);
   };
+  const scrollToSimulator = () => {
+    document.getElementById("simulator")?.scrollIntoView({ behavior: "smooth" });
+  };
   const deleteSnapshot = async (date) => {
     try {
       await window.storage?.delete(SNAPSHOT_PREFIX + date, false);
@@ -1589,9 +1592,138 @@ export default function NisaLifePlan() {
           .chart-frame { break-inside: avoid; }
           .stat-card { break-inside: avoid; }
         }
+
+        /* ---------- 紹介セクション（初めて訪れた人向け） ---------- */
+        .landing {
+          padding: 40px 24px 36px;
+          border-bottom: 1px solid var(--line);
+          background-image:
+            linear-gradient(var(--line-faint) 1px, transparent 1px),
+            linear-gradient(90deg, var(--line-faint) 1px, transparent 1px);
+          background-size: 28px 28px;
+        }
+        .landing-hero { max-width: 640px; margin: 0 auto; text-align: center; }
+        .landing-hero h1 {
+          font-family: 'Zen Kaku Gothic New', sans-serif;
+          font-size: 26px; font-weight: 700; line-height: 1.4;
+          margin: 0 0 14px; color: var(--text);
+        }
+        .landing-catch {
+          font-size: 16px; line-height: 1.7; color: var(--blue);
+          margin: 0 0 16px; font-weight: 500;
+        }
+        .landing-sub {
+          font-size: 13.5px; line-height: 1.8; color: var(--muted);
+          margin: 0 0 26px;
+        }
+        .landing-cta {
+          display: inline-block; width: 100%; max-width: 360px;
+          background: var(--blue); color: #0E1316; border: none;
+          font-family: 'Zen Kaku Gothic New', sans-serif;
+          font-size: 15px; font-weight: 700; letter-spacing: 0.02em;
+          padding: 15px 20px; border-radius: 6px; cursor: pointer;
+        }
+        .landing-cta:hover { background: #6BB8E0; }
+
+        .landing-features {
+          max-width: 640px; margin: 40px auto 0;
+          display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+        }
+        @media (max-width: 520px) { .landing-features { grid-template-columns: 1fr; } }
+        .landing-feature-card {
+          border: 1px solid var(--line); background: var(--panel);
+          border-radius: 6px; padding: 16px 18px; text-align: left;
+          position: relative;
+        }
+        .landing-feature-card::before {
+          content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 2px;
+          background: var(--blue-dim);
+        }
+        .landing-feature-num {
+          font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--blue);
+          margin-bottom: 6px; display: block;
+        }
+        .landing-feature-card h3 {
+          font-family: 'Zen Kaku Gothic New', sans-serif; font-size: 14.5px; font-weight: 700;
+          margin: 0 0 6px; color: var(--text);
+        }
+        .landing-feature-card p {
+          font-size: 12.5px; line-height: 1.6; color: var(--muted); margin: 0;
+        }
+
+        .landing-audience {
+          max-width: 640px; margin: 34px auto 0;
+          border: 1px solid var(--line); border-left: 2px solid var(--amber);
+          background: var(--panel); border-radius: 4px; padding: 18px 20px;
+        }
+        .landing-audience h4 {
+          font-family: 'Zen Kaku Gothic New', sans-serif; font-size: 13.5px; font-weight: 700;
+          margin: 0 0 10px; color: var(--amber);
+        }
+        .landing-audience ul { margin: 0; padding-left: 18px; }
+        .landing-audience li { font-size: 13px; line-height: 1.9; color: var(--text); }
+
+        .landing-disclaimer {
+          max-width: 640px; margin: 22px auto 0;
+          font-size: 11px; line-height: 1.7; color: var(--muted); text-align: center;
+        }
       `}</style>
 
-      <div className="titleblock">
+      <div className="landing">
+        <div className="landing-hero">
+          <h1>資産形成 総合ライフプラン</h1>
+          <p className="landing-catch">
+            NISA・年金・金・保険・預貯金をまとめて管理。<br />
+            95歳までの資産推移を見える化します。
+          </p>
+          <p className="landing-sub">
+            現在の資産と将来の収入・支出を入力するだけで、<br />
+            老後資金が何歳まで持つのかを無料でシミュレーションできます。
+          </p>
+          <button className="landing-cta" onClick={scrollToSimulator}>
+            無料でシミュレーションを始める
+          </button>
+        </div>
+
+        <div className="landing-features">
+          <div className="landing-feature-card">
+            <span className="landing-feature-num">01</span>
+            <h3>資産を一括管理</h3>
+            <p>NISA・預貯金・金・個別株・保険などをまとめて確認</p>
+          </div>
+          <div className="landing-feature-card">
+            <span className="landing-feature-num">02</span>
+            <h3>年金と生活費を反映</h3>
+            <p>公的年金・企業年金・生活費・医療費を年齢別に計算</p>
+          </div>
+          <div className="landing-feature-card">
+            <span className="landing-feature-num">03</span>
+            <h3>95歳まで見える化</h3>
+            <p>年齢ごとの総資産と純資産をグラフで表示</p>
+          </div>
+          <div className="landing-feature-card">
+            <span className="landing-feature-num">04</span>
+            <h3>無料・登録不要</h3>
+            <p>入力データは端末内に保存し、すぐに利用可能</p>
+          </div>
+        </div>
+
+        <div className="landing-audience">
+          <h4>こんな方におすすめ</h4>
+          <ul>
+            <li>定年後のお金が足りるか不安な方</li>
+            <li>NISAを何歳まで続けるか考えたい方</li>
+            <li>年金と資産を合わせて確認したい方</li>
+            <li>保険や医療費も含めて老後を考えたい方</li>
+          </ul>
+        </div>
+
+        <p className="landing-disclaimer">
+          本サービスの結果は入力された条件に基づく試算です。将来の運用成果や生活を保証するものではなく、特定の金融商品を推奨するものではありません。
+        </p>
+      </div>
+
+      <div className="titleblock" id="simulator">
         <div>
           <h1>資産形成 総合ライフプラン{inputs.userName ? `（${inputs.userName}様）` : ""}</h1>
           <div className="sub">
