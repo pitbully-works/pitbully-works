@@ -408,7 +408,7 @@ const DEFAULT_WATCHLIST = [
 ];
 
 // ---------- UI atoms ----------
-function Field({ label, unit, value, onChange, step = 1, min = 0, max, mono = true }) {
+function Field({ label, unit, value, onChange, step = 1, min = 0, max, mono = true, disabled = false }) {
   return (
     <label className="field">
       <span className="field-label">{label}</span>
@@ -419,6 +419,7 @@ function Field({ label, unit, value, onChange, step = 1, min = 0, max, mono = tr
           step={step}
           min={min}
           max={max}
+          disabled={disabled}
           onChange={(e) => onChange(Number(e.target.value))}
           className={mono ? "mono" : ""}
         />
@@ -638,6 +639,7 @@ export default function NisaLifePlan() {
     retireAge: 65,
     deathAge: 90,
     currentAssets: 3000000,
+    currentAssetHoldings: [],
     tsumitateSchedule: [{ fromAge: 35, toAge: 65, monthlyYen: 100000 }],
     growthSchedule: [{ fromAge: 35, toAge: 65, monthlyYen: 50000 }],
     tsumitateUsed: 0,
@@ -652,6 +654,7 @@ export default function NisaLifePlan() {
     postRetireReturn: 3,
     healthBrackets: { b60: 150000, b70: 250000, b80: 400000 },
     inheritanceTarget: 10000000,
+    inheritancePlans: [],
     gold: {
       currentGrams: 0,
       pricePerGram: 24000,
@@ -675,6 +678,8 @@ export default function NisaLifePlan() {
     fromYears: "", fromMonths: "", toYears: "", toMonths: "", monthlyYen: "",
   });
   const [newBank, setNewBank] = useState({ name: "", balance: "", monthlyDeposit: "", interestPct: "" });
+  const [newInheritance, setNewInheritance] = useState({ name: "", relation: "", amount: "" });
+  const [newAssetHolding, setNewAssetHolding] = useState({ name: "", value: "" });
   const [newLoan, setNewLoan] = useState({ name: "", principal: "", annualRatePct: "", monthlyPayment: "" });
   const [newInsurance, setNewInsurance] = useState({
     name: "",
@@ -882,9 +887,13 @@ export default function NisaLifePlan() {
   const preciseAge = useMemo(() => computeAgeFromBirthDate(inputs.birthDate), [inputs.birthDate]);
   const effectiveCurrentAge = preciseAge ? preciseAge.decimal : inputs.currentAge;
 
+  // 現在のNISA資産を、銘柄別の時価入力（1件以上あれば）の合計から自動計算する
+  const currentAssetHoldingsTotal = inputs.currentAssetHoldings.reduce((s, h) => s + (h.value || 0), 0);
+  const effectiveCurrentAssets = inputs.currentAssets + currentAssetHoldingsTotal;
+
   const effectiveInputs = useMemo(
-    () => ({ ...inputs, dynamicFunds, currentAge: effectiveCurrentAge }),
-    [inputs, JSON.stringify(dynamicFunds), effectiveCurrentAge]
+    () => ({ ...inputs, dynamicFunds, currentAge: effectiveCurrentAge, currentAssets: effectiveCurrentAssets }),
+    [inputs, JSON.stringify(dynamicFunds), effectiveCurrentAge, effectiveCurrentAssets]
   );
 
   const sim = useMemo(() => runSimulation(effectiveInputs), [effectiveInputs]);
@@ -936,7 +945,9 @@ export default function NisaLifePlan() {
     });
   }, [sim, goldSim, bankSim, stockSim, loanSim, insuranceSim, pensionSim]);
   const netWorthFinal = netWorthYearly.length ? netWorthYearly[netWorthYearly.length - 1].netWorth : sim.finalAssets;
-  const netInheritanceGap = netWorthFinal - inputs.inheritanceTarget;
+  const inheritanceTotal = inputs.inheritancePlans.reduce((s, p) => s + (p.amount || 0), 0);
+  const effectiveInheritanceTarget = inputs.inheritancePlans.length > 0 ? inheritanceTotal : inputs.inheritanceTarget;
+  const netInheritanceGap = netWorthFinal - effectiveInheritanceTarget;
 
   const loanBreakdownByAge = useMemo(() => {
     const ages = [
@@ -995,6 +1006,35 @@ export default function NisaLifePlan() {
     setNewBank({ name: "", balance: "", monthlyDeposit: "", interestPct: "" });
   };
   const removeBank = (idx) => setInputs((prev) => ({ ...prev, banks: prev.banks.filter((_, i) => i !== idx) }));
+
+  const addInheritancePlan = () => {
+    if (!newInheritance.name.trim()) return;
+    setInputs((prev) => ({
+      ...prev,
+      inheritancePlans: [...prev.inheritancePlans, {
+        name: newInheritance.name.trim(),
+        relation: newInheritance.relation.trim(),
+        amount: Number(newInheritance.amount) || 0,
+      }],
+    }));
+    setNewInheritance({ name: "", relation: "", amount: "" });
+  };
+  const removeInheritancePlan = (idx) =>
+    setInputs((prev) => ({ ...prev, inheritancePlans: prev.inheritancePlans.filter((_, i) => i !== idx) }));
+
+  const addAssetHolding = () => {
+    if (!newAssetHolding.name.trim()) return;
+    setInputs((prev) => ({
+      ...prev,
+      currentAssetHoldings: [...prev.currentAssetHoldings, {
+        name: newAssetHolding.name.trim(),
+        value: Number(newAssetHolding.value) || 0,
+      }],
+    }));
+    setNewAssetHolding({ name: "", value: "" });
+  };
+  const removeAssetHolding = (idx) =>
+    setInputs((prev) => ({ ...prev, currentAssetHoldings: prev.currentAssetHoldings.filter((_, i) => i !== idx) }));
 
   const addLoan = () => {
     const principal = Number(newLoan.principal) || 0;
@@ -1693,7 +1733,39 @@ export default function NisaLifePlan() {
           <AgeField label="想定寿命" value={inputs.deathAge} onChange={(v) => update({ deathAge: v })} />
 
           <SectionTitle index="02" title="NISA積立（つみたて枠 + 成長投資枠）" icon={TrendingUp} />
-          <Field label="現在のNISA資産" unit="円" value={inputs.currentAssets} step={100000} onChange={(v) => update({ currentAssets: v })} />
+          <Field
+            label="現在のNISA資産（手入力）" unit="円" step={100000}
+            value={inputs.currentAssets}
+            onChange={(v) => update({ currentAssets: v })}
+          />
+          {inputs.currentAssetHoldings.length > 0 && (
+            <table className="watchlist" style={{ marginBottom: 8 }}>
+              <thead><tr><th>銘柄</th><th>時価</th><th></th></tr></thead>
+              <tbody>
+                {inputs.currentAssetHoldings.map((h, i) => (
+                  <tr key={i}>
+                    <td>{h.name}</td>
+                    <td className="mono">{yen(h.value)}</td>
+                    <td style={{ width: 24 }}>
+                      <button className="del-btn" onClick={() => removeAssetHolding(i)}><Trash2 size={13} /></button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          <div className="add-row" style={{ marginBottom: 8 }}>
+            <input placeholder="銘柄名" value={newAssetHolding.name} onChange={(e) => setNewAssetHolding((p) => ({ ...p, name: e.target.value }))} />
+            <input placeholder="時価（円）" type="number" value={newAssetHolding.value} onChange={(e) => setNewAssetHolding((p) => ({ ...p, value: e.target.value }))} />
+            <button className="add-btn" onClick={addAssetHolding}><Plus size={15} /></button>
+          </div>
+          <Field label="現在のNISA資産：合計（手入力 + 時価の合計）" unit="円" value={effectiveCurrentAssets} disabled onChange={() => {}} />
+          <div className="note" style={{ marginTop: -8 }}>
+            <Info size={13} />
+            <span>
+              上の「手入力」欄と、時価の合計（{yen(currentAssetHoldingsTotal)}）を足したものが、この「合計」欄に自動的に反映され、シミュレーションではこの合計金額が使われます。
+            </span>
+          </div>
 
           <div className="field-label" style={{ marginBottom: 6 }}>つみたて投資枠：毎月投資額（年齢区間ごとに設定）</div>
           {inputs.tsumitateSchedule.length > 0 && (
@@ -1941,7 +2013,46 @@ export default function NisaLifePlan() {
           </div>
 
           <SectionTitle index="05" title="相続プラン" icon={Users} />
-          <Field label="子孫に残したい金額" unit="円" step={100000} value={inputs.inheritanceTarget} onChange={(v) => update({ inheritanceTarget: v })} />
+          {inputs.inheritancePlans.length > 0 && (
+            <table className="watchlist" style={{ marginBottom: 8 }}>
+              <thead><tr><th>名前</th><th>続柄</th><th>金額</th><th></th></tr></thead>
+              <tbody>
+                {inputs.inheritancePlans.map((p, i) => (
+                  <tr key={i}>
+                    <td>{p.name}</td>
+                    <td style={{ color: "#7C8A90" }}>{p.relation || "—"}</td>
+                    <td className="mono">{yen(p.amount)}</td>
+                    <td style={{ width: 24 }}>
+                      <button className="del-btn" onClick={() => removeInheritancePlan(i)}><Trash2 size={13} /></button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          <div className="add-row" style={{ flexWrap: "wrap" }}>
+            <input placeholder="名前" value={newInheritance.name} onChange={(e) => setNewInheritance((p) => ({ ...p, name: e.target.value }))} />
+            <input placeholder="続柄（例：妻・長男）" value={newInheritance.relation} onChange={(e) => setNewInheritance((p) => ({ ...p, relation: e.target.value }))} />
+          </div>
+          <div className="add-row" style={{ marginBottom: 10 }}>
+            <input placeholder="残したい金額（円）" type="number" value={newInheritance.amount} onChange={(e) => setNewInheritance((p) => ({ ...p, amount: e.target.value }))} />
+            <button className="add-btn" onClick={addInheritancePlan}><Plus size={15} /></button>
+          </div>
+          {inputs.inheritancePlans.length > 0 && (
+            <div className="stat-sub" style={{ marginBottom: 10 }}>
+              相続予定 合計：<span className="mono">{yen(inheritanceTotal)}</span>（{inputs.inheritancePlans.length}名）
+            </div>
+          )}
+          <Field
+            label={inputs.inheritancePlans.length > 0 ? "子孫に残したい金額（上の合計が使われます・参考値）" : "子孫に残したい金額"}
+            unit="円" step={100000} value={inputs.inheritanceTarget} onChange={(v) => update({ inheritanceTarget: v })}
+          />
+          {inputs.inheritancePlans.length > 0 && (
+            <div className="note" style={{ marginTop: -8 }}>
+              <Info size={13} />
+              <span>相続予定を1人以上登録すると、シミュレーションの目標額には上の合計金額（{yen(inheritanceTotal)}）が自動的に使われます。</span>
+            </div>
+          )}
 
           <SectionTitle index="06" title="金（ゴールド）資産形成" icon={Coins} />
           <Field label="現在の保有量" unit="g" step={1} value={inputs.gold.currentGrams} onChange={(v) => updateGold("currentGrams", v)} />
