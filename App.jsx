@@ -1674,7 +1674,7 @@ export default function NisaLifePlan() {
           <h1>資産形成 総合ライフプラン</h1>
           <p className="landing-catch">
             NISA・年金・金・保険・預貯金をまとめて管理。<br />
-            95歳までの資産推移を見える化します。
+            想定寿命までの資産推移を見える化します。
           </p>
           <p className="landing-sub">
             現在の資産と将来の収入・支出を入力するだけで、<br />
@@ -1698,7 +1698,7 @@ export default function NisaLifePlan() {
           </div>
           <div className="landing-feature-card">
             <span className="landing-feature-num">03</span>
-            <h3>95歳まで見える化</h3>
+            <h3>想定寿命まで見える化</h3>
             <p>年齢ごとの総資産と純資産をグラフで表示</p>
           </div>
           <div className="landing-feature-card">
