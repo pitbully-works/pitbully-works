@@ -118,11 +118,47 @@ function elapsedScheduleAmount(schedule, currentAge) {
   }, 0);
 }
 
-// 一括投資のうち「すでに投資時期を迎えた（現在の年齢より前の）」ものを合算する
+// スケジュールの毎月の拠出額を、それぞれ「引き落とされた月」に元本として加え、
+// そこから現在（toAge）まで想定利回りで複利運用したものとして、経過分の評価額を計算する
+// （実際に投資してきた金額が、これまでの運用成果も含めて今いくらになっているかを近似するため）
+function compoundedElapsedValue(schedule, fromAge, toAge, annualReturnPct) {
+  if (!schedule || !schedule.length || fromAge === null || fromAge === undefined || fromAge >= toAge) return 0;
+  const totalMonths = Math.max(0, Math.round((toAge - fromAge) * 12));
+  const r = monthlyRate(annualReturnPct || 0);
+  let value = 0;
+  for (let m = 0; m < totalMonths; m++) {
+    const age = fromAge + m / 12;
+    const contribution = scheduledAmount(schedule, age);
+    value = value * (1 + r) + contribution;
+  }
+  return value;
+}
+
+// 手入力した「その時点での実際の金額」を、基準日から現在まで想定利回りで複利成長させる
+function compoundPrincipal(value, fromAge, toAge, annualReturnPct) {
+  if (fromAge === null || fromAge === undefined || fromAge >= toAge) return value || 0;
+  const months = Math.max(0, Math.round((toAge - fromAge) * 12));
+  const r = monthlyRate(annualReturnPct || 0);
+  return (value || 0) * Math.pow(1 + r, months);
+}
+
+// 一括投資のうち「すでに投資時期を迎えた（現在の年齢より前の）」ものを合算する（簿価ベース、NISA枠の使用量トラッキング用）
 // ※ ちょうど現在の年齢と同じものは、以降のシミュレーションのm=0処理側で計上されるためここでは含めない
 function elapsedLumpSumAmount(lumpSums, currentAge) {
   if (!lumpSums || !lumpSums.length) return 0;
   return lumpSums.reduce((sum, e) => (e.age < currentAge ? sum + (e.amount || 0) : sum), 0);
+}
+
+// 一括投資のうち「すでに投資時期を迎えた（現在の年齢より前の）」ものを、
+// それぞれの投資日から現在まで想定利回りで複利運用したものとして合算する（現在資産の評価額用）
+function compoundedLumpSumValue(lumpSums, currentAge, annualReturnPct) {
+  if (!lumpSums || !lumpSums.length) return 0;
+  const r = monthlyRate(annualReturnPct || 0);
+  return lumpSums.reduce((sum, e) => {
+    if (e.age >= currentAge) return sum;
+    const months = Math.max(0, Math.round((currentAge - e.age) * 12));
+    return sum + (e.amount || 0) * Math.pow(1 + r, months);
+  }, 0);
 }
 
 function runSimulation(inputs) {
@@ -787,7 +823,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     currentAssets: 3000000,
     currentAssetHoldings: [],
     tsumitateHoldings: [],
+    tsumitateHoldingsAsOfYears: "", tsumitateHoldingsAsOfMonths: "", // この残高の基準年齢（未入力なら現在の年齢＝追加計算なし）
     growthHoldings: [],
+    growthHoldingsAsOfYears: "", growthHoldingsAsOfMonths: "", // この残高の基準年齢（未入力なら現在の年齢＝追加計算なし）
     tsumitateSchedule: [{ fromAge: 35, toAge: 65, monthlyYen: 100000 }],
     growthSchedule: [{ fromAge: 35, toAge: 65, monthlyYen: 50000 }],
     tsumitateUsed: 0,
@@ -981,7 +1019,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       const bankTotal = (nextInputs.banks || []).reduce((s, b) => s + (b.balance || 0), 0);
       const snapshot = {
         date,
-        currentAssets: nextInputs.currentAssets,
+        currentAssets: (nextInputs.tsumitateHoldings || []).reduce((s, h) => s + (h.value || 0), 0)
+          + (nextInputs.growthHoldings || []).reduce((s, h) => s + (h.value || 0), 0),
         tsumitateUsed: nextInputs.tsumitateUsed,
         growthUsed: nextInputs.growthUsed,
         goldGrams: nextInputs.gold?.currentGrams ?? 0,
@@ -1066,9 +1105,24 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const preciseAge = useMemo(() => computeAgeFromBirthDate(inputs.birthDate), [inputs.birthDate]);
   const effectiveCurrentAge = preciseAge ? preciseAge.decimal : inputs.currentAge;
 
-  // 一括投資のみ、現在の日付までに実行済みの分を銘柄別内訳の比率に応じて自動計算する
-  // （つみたて・成長投資枠は、スケジュールからの推定ではなく、下の「実際の残高」欄への直接入力を使う）
-  const lumpElapsedTotal = elapsedLumpSumAmount(inputs.lumpSums, effectiveCurrentAge);
+  // 銘柄名から、その銘柄の想定年率（利回り）を取得する（銘柄別内訳のスライダーで手動調整した値があればそちらを優先）
+  const getFundReturnPct = (name) =>
+    (inputs.extraFundReturns && inputs.extraFundReturns[name] !== undefined) ? inputs.extraFundReturns[name] : guessDefaultReturn(name);
+
+  // カテゴリ（つみたて／成長／一括投資）の銘柄別内訳から、加重平均の想定利回りを算出する
+  // （経過分の積立額を複利で運用成長させる際の利回りとして使う。内訳が空ならフォールバック値を使う）
+  const categoryWeightedReturn = (allocationList, fallback) => {
+    const named = (allocationList || []).filter((it) => it.name && it.name.trim());
+    if (!named.length) return fallback;
+    const total = named.reduce((s, it) => s + (it.amount || 0), 0);
+    if (total <= 0) return fallback;
+    return named.reduce((s, it) => s + (it.amount / total) * getFundReturnPct(it.name), 0);
+  };
+
+  // 一括投資：それぞれの投資日から現在まで、想定利回りで複利運用したものとして評価額を計算する
+  // （投資した金額をそのまま元本として加え、その時点から利回りを積み上げていく）
+  const lumpScheduleReturn = categoryWeightedReturn(inputs.lumpAllocation, guessDefaultReturn("全世界株式"));
+  const lumpElapsedTotal = compoundedLumpSumValue(inputs.lumpSums, effectiveCurrentAge, lumpScheduleReturn);
 
   const autoHoldingRowsFor = (allocationList, elapsedTotal, categoryLabel) => {
     const named = (allocationList || []).filter((it) => it.name && it.name.trim());
@@ -1084,14 +1138,43 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   ];
   const autoHoldingsTotal = autoHoldingRows.reduce((s, r) => s + r.value, 0);
 
-  // つみたて投資枠・成長投資枠それぞれの「実際の残高」欄（銘柄・金額の直接入力）の合計
-  const tsumitateHoldingsTotal = (inputs.tsumitateHoldings || []).reduce((s, h) => s + (h.value || 0), 0);
-  const growthHoldingsTotal = (inputs.growthHoldings || []).reduce((s, h) => s + (h.value || 0), 0);
+  // 「実際の残高」の基準年齢（年・月の入力から小数年齢に変換。未入力なら null＝現在の年齢として扱う＝追加計算なし）
+  const tsumitateHoldingsAsOfAge = (inputs.tsumitateHoldingsAsOfYears !== "" && inputs.tsumitateHoldingsAsOfYears !== undefined && inputs.tsumitateHoldingsAsOfYears !== null)
+    ? Number(inputs.tsumitateHoldingsAsOfYears || 0) + Number(inputs.tsumitateHoldingsAsOfMonths || 0) / 12
+    : null;
+  const growthHoldingsAsOfAge = (inputs.growthHoldingsAsOfYears !== "" && inputs.growthHoldingsAsOfYears !== undefined && inputs.growthHoldingsAsOfYears !== null)
+    ? Number(inputs.growthHoldingsAsOfYears || 0) + Number(inputs.growthHoldingsAsOfMonths || 0) / 12
+    : null;
 
+  // 手入力した「実際の残高」（＝基準年齢時点で実際にいくらだったかという金額）を、
+  // その銘柄の想定利回りで基準年齢〜現在まで複利成長させる（基準年齢が未入力ならそのままの金額を使う）
+  const tsumitateHoldingsManualTotal = (inputs.tsumitateHoldings || []).reduce((s, h) => {
+    const rate = getFundReturnPct(h.name);
+    return s + compoundPrincipal(h.value || 0, tsumitateHoldingsAsOfAge, effectiveCurrentAge, rate);
+  }, 0);
+  const growthHoldingsManualTotal = (inputs.growthHoldings || []).reduce((s, h) => {
+    const rate = getFundReturnPct(h.name);
+    return s + compoundPrincipal(h.value || 0, growthHoldingsAsOfAge, effectiveCurrentAge, rate);
+  }, 0);
 
-  // 現在のNISA資産を、手入力 + つみたて/成長投資枠の実際の残高 + 一括投資の自動計算分の合計から算出する
+  // 基準年齢〜現在の年齢までの間、スケジュール（毎月投資額）通りに毎月積み立てたはずの金額を、
+  // その都度（引き落とされた月ごとに）想定利回りで複利運用したものとして計算する
+  // （基準年齢が未入力、または現在の年齢以降の場合は追加計算なし＝手入力の残高だけを使う）
+  const tsumitateScheduleReturn = categoryWeightedReturn(inputs.tsumitateAllocation, guessDefaultReturn("全世界株式"));
+  const growthScheduleReturn = categoryWeightedReturn(inputs.growthAllocation, guessDefaultReturn("全世界株式"));
+  const tsumitateCatchUp = (tsumitateHoldingsAsOfAge !== null && tsumitateHoldingsAsOfAge < effectiveCurrentAge)
+    ? compoundedElapsedValue(inputs.tsumitateSchedule, tsumitateHoldingsAsOfAge, effectiveCurrentAge, tsumitateScheduleReturn)
+    : 0;
+  const growthCatchUp = (growthHoldingsAsOfAge !== null && growthHoldingsAsOfAge < effectiveCurrentAge)
+    ? compoundedElapsedValue(inputs.growthSchedule, growthHoldingsAsOfAge, effectiveCurrentAge, growthScheduleReturn)
+    : 0;
+
+  const tsumitateHoldingsTotal = tsumitateHoldingsManualTotal + tsumitateCatchUp;
+  const growthHoldingsTotal = growthHoldingsManualTotal + growthCatchUp;
+
+  // 現在のNISA資産は手入力せず、つみたて/成長投資枠の実際の残高（＋基準年齢以降の複利成長分）＋一括投資の自動計算分から完全に自動算出する
   const currentAssetHoldingsTotal = tsumitateHoldingsTotal + growthHoldingsTotal + autoHoldingsTotal;
-  const effectiveCurrentAssets = inputs.currentAssets + currentAssetHoldingsTotal;
+  const effectiveCurrentAssets = currentAssetHoldingsTotal;
 
   // 退職後の想定利回りを、現役時代（銘柄別スライダー）の加重平均利回りの半分から自動で仮設定する
   const weightedAvgReturn = dynamicFunds.reduce((s, f) => s + (f.pct / 100) * f.returnPct, 0);
@@ -2232,11 +2315,6 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           <AgeField label="想定寿命" value={inputs.deathAge} onChange={(v) => update({ deathAge: v })} />
 
           <SectionTitle index="02" title="NISA積立（つみたて枠 + 成長投資枠）" icon={TrendingUp} />
-          <Field
-            label="現在のNISA資産（手入力）" unit="円" step={100000}
-            value={inputs.currentAssets}
-            onChange={(v) => update({ currentAssets: v })}
-          />
 
           <div className="field-label" style={{ marginBottom: 6 }}>つみたて投資枠：実際の残高（銘柄・金額）</div>
           {inputs.tsumitateHoldings.length > 0 && (
@@ -2255,10 +2333,18 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               </tbody>
             </table>
           )}
-          <div className="add-row" style={{ marginBottom: 12 }}>
+          <div className="add-row" style={{ marginBottom: 8 }}>
             <input placeholder="銘柄名" value={newTsumitateHolding.name} onChange={(e) => setNewTsumitateHolding((p) => ({ ...p, name: e.target.value }))} />
             <input placeholder="金額（円）" type="number" value={newTsumitateHolding.value} onChange={(e) => setNewTsumitateHolding((p) => ({ ...p, value: e.target.value }))} />
             <button className="add-btn" onClick={addTsumitateHolding}><Plus size={15} /></button>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
+            <span style={{ fontSize: 10, color: "#7C8A90", whiteSpace: "nowrap" }}>この残高の基準年齢（任意）</span>
+            <AgeYMInput
+              placeholder="基準年齢" years={inputs.tsumitateHoldingsAsOfYears} months={inputs.tsumitateHoldingsAsOfMonths}
+              onYears={(v) => update({ tsumitateHoldingsAsOfYears: v })}
+              onMonths={(v) => update({ tsumitateHoldingsAsOfMonths: v })}
+            />
           </div>
 
           <div className="field-label" style={{ marginBottom: 6 }}>成長投資枠：実際の残高（銘柄・金額）</div>
@@ -2278,10 +2364,18 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               </tbody>
             </table>
           )}
-          <div className="add-row" style={{ marginBottom: 12 }}>
+          <div className="add-row" style={{ marginBottom: 8 }}>
             <input placeholder="銘柄名" value={newGrowthHolding.name} onChange={(e) => setNewGrowthHolding((p) => ({ ...p, name: e.target.value }))} />
             <input placeholder="金額（円）" type="number" value={newGrowthHolding.value} onChange={(e) => setNewGrowthHolding((p) => ({ ...p, value: e.target.value }))} />
             <button className="add-btn" onClick={addGrowthHolding}><Plus size={15} /></button>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
+            <span style={{ fontSize: 10, color: "#7C8A90", whiteSpace: "nowrap" }}>この残高の基準年齢（任意）</span>
+            <AgeYMInput
+              placeholder="基準年齢" years={inputs.growthHoldingsAsOfYears} months={inputs.growthHoldingsAsOfMonths}
+              onYears={(v) => update({ growthHoldingsAsOfYears: v })}
+              onMonths={(v) => update({ growthHoldingsAsOfMonths: v })}
+            />
           </div>
 
           {autoHoldingRows.length > 0 && (
@@ -2303,11 +2397,11 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             </>
           )}
 
-          <Field label="現在のNISA資産：合計（手入力 + つみたて実際残高 + 成長実際残高 + 一括投資自動計算分）" unit="円" value={effectiveCurrentAssets} disabled onChange={() => {}} />
+          <Field label="現在のNISA資産：合計（自動計算）" unit="円" value={effectiveCurrentAssets} disabled onChange={() => {}} />
           <div className="note" style={{ marginTop: -8 }}>
             <Info size={13} />
             <span>
-              「手入力」欄（{yen(inputs.currentAssets)}） + つみたて投資枠の実際残高（{yen(tsumitateHoldingsTotal)}） + 成長投資枠の実際残高（{yen(growthHoldingsTotal)}） + 一括投資の自動計算分（{yen(autoHoldingsTotal)}）を合計したものが、この「合計」欄に反映され、シミュレーションではこの金額が使われます。ここで入力した銘柄名は、下の「NISA資産の配分」スライダーにもそのまま反映され、想定年率（利回り）はそちらで銘柄ごとに自動設定・調整されます（この欄自体には利回りの入力は不要です）。
+              つみたて投資枠の評価額（{yen(tsumitateHoldingsTotal)}） + 成長投資枠の評価額（{yen(growthHoldingsTotal)}） + 一括投資の評価額（{yen(autoHoldingsTotal)}）を合計したものが、この「合計」欄（{yen(effectiveCurrentAssets)}）に反映され、シミュレーションではこの金額が使われます。「実際の残高」は基準年齢時点で実際にいくらだったかという金額として入力してください。基準年齢を入力すると、そこから現在の年齢まで銘柄ごとの想定利回りで複利運用したものとして評価額を計算します（つみたてスケジュールの経過分の複利成長：{yen(tsumitateCatchUp)}／成長投資枠：{yen(growthCatchUp)}を含む）。一括投資も同様に、それぞれの投資日から現在まで複利運用したものとして自動計算されます。基準年齢が未入力の場合は、入力した金額をそのまま現在の評価額として使います。ここで入力した銘柄名は、下の「NISA資産の配分」スライダーにもそのまま反映され、想定年率（利回り）はそちらで銘柄ごとに自動設定・調整されます（この欄自体には利回りの入力は不要です）。
             </span>
           </div>
 
