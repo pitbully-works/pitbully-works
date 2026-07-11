@@ -2413,7 +2413,15 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             </>
           )}
 
-          <Field label="現在のNISA資産：合計（自動計算）" unit="円" value={Math.round(effectiveCurrentAssets)} disabled onChange={() => {}} />
+          <label className="field">
+            <span className="field-label">現在のNISA資産：合計（自動計算）</span>
+            <div className="field-input-wrap">
+              <div className="mono" style={{ flex: 1, padding: "8px 10px", fontSize: 13 }}>
+                {Math.round(effectiveCurrentAssets).toLocaleString()}
+              </div>
+              <span className="field-unit">円</span>
+            </div>
+          </label>
           <div className="note" style={{ marginTop: -8 }}>
             <Info size={13} />
             <span>
