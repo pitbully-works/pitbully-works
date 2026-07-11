@@ -1644,6 +1644,13 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   return (
     <div className="app">
       <style>{`
+        html, body {
+          overflow-x: hidden;
+          max-width: 100%;
+        }
+        *, *::before, *::after {
+          box-sizing: border-box;
+        }
         @import url('https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Noto+Sans+JP:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
         * { box-sizing: border-box; }
@@ -1868,7 +1875,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         }
         @media (max-width: 880px) { .two-col { grid-template-columns: 1fr; } }
 
-        table.watchlist { width: 100%; border-collapse: collapse; font-size: 12px; }
+        table.watchlist { width: 100%; max-width: 100%; display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; border-collapse: collapse; font-size: 12px; }
         table.watchlist th {
           text-align: left; color: var(--muted); font-weight: 500;
           border-bottom: 1px solid var(--line); padding: 6px 8px; font-size: 11px;
@@ -2406,7 +2413,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             </>
           )}
 
-          <Field label="現在のNISA資産：合計（自動計算）" unit="円" value={effectiveCurrentAssets} disabled onChange={() => {}} />
+          <Field label="現在のNISA資産：合計（自動計算）" unit="円" value={Math.round(effectiveCurrentAssets)} disabled onChange={() => {}} />
           <div className="note" style={{ marginTop: -8 }}>
             <Info size={13} />
             <span>
@@ -3502,4 +3509,3 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     </div>
   );
 }
-
