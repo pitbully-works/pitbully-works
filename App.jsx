@@ -413,8 +413,11 @@ function runInsuranceSimulation({ currentAge, deathAge, policies }) {
 function runPrivatePensionSimulation({ currentAge, deathAge, plans }) {
   const totalMonths = Math.max(1, Math.round((deathAge - currentAge) * 12));
   // 現在の年齢より前（例：35歳〜現在）にすでに積み立ててきた分を遡って開始残高に反映する。
-  // 受給がすでに現在より前に始まっているケースは考慮せず、単純に「積立開始年齢〜現在 or 積立終了年齢の早い方」までの月数×毎月積立額とする。
+  // ただし、証書などで実際の現在残高が手入力されている場合はそちらを優先する。
   const balances = (plans || []).map((pl) => {
+    if (pl.currentBalance !== null && pl.currentBalance !== undefined) {
+      return pl.currentBalance;
+    }
     const priorContribEndAge = Math.min(pl.contribToAge, currentAge);
     const priorContribMonths = Math.max(0, Math.round((priorContribEndAge - pl.contribFromAge) * 12));
     return priorContribMonths * (pl.monthlyContribution || 0);
@@ -783,6 +786,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     deathAge: 90,
     currentAssets: 3000000,
     currentAssetHoldings: [],
+    tsumitateHoldings: [],
+    growthHoldings: [],
     tsumitateSchedule: [{ fromAge: 35, toAge: 65, monthlyYen: 100000 }],
     growthSchedule: [{ fromAge: 35, toAge: 65, monthlyYen: 50000 }],
     tsumitateUsed: 0,
@@ -844,6 +849,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const [newInheritance, setNewInheritance] = useState({ name: "", relation: "", amount: "" });
   const [newPensionSource, setNewPensionSource] = useState({ name: "", monthlyAmount: "" });
   const [newAssetHolding, setNewAssetHolding] = useState({ name: "", value: "" });
+  const [newTsumitateHolding, setNewTsumitateHolding] = useState({ name: "", value: "" });
+  const [newGrowthHolding, setNewGrowthHolding] = useState({ name: "", value: "" });
   const [newLoan, setNewLoan] = useState({ name: "", principal: "", annualRatePct: "", monthlyPayment: "" });
   const [newInsurance, setNewInsurance] = useState({
     name: "",
@@ -862,6 +869,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     payoutFromYears: "", payoutFromMonths: "",
     payoutToYears: "", payoutToMonths: "",
     monthlyPayout: "",
+    currentBalance: "",
   });
   const [newLumpAllocItem, setNewLumpAllocItem] = useState({ name: "", amount: "" });
   const [newTsumitateAllocItem, setNewTsumitateAllocItem] = useState({ name: "", amount: "" });
@@ -1030,12 +1038,14 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const updateIdeco = (key, val) =>
     setInputs((prev) => ({ ...prev, ideco: { ...prev.ideco, [key]: val } }));
 
-  // 積立・成長投資枠・一括投資の銘柄別内訳に入力された銘柄だけを集約して、
+  // 積立・成長投資枠・一括投資の銘柄別内訳、および「つみたて/成長投資枠：実際の残高」に入力された銘柄を集約して、
   // そのままスライダー（自動計算・操作不可）として表示する
   const allBreakdownItems = [
     ...(inputs.lumpAllocation || []),
     ...(inputs.tsumitateAllocation || []),
     ...(inputs.growthAllocation || []),
+    ...(inputs.tsumitateHoldings || []).map((h) => ({ name: h.name, amount: h.value })),
+    ...(inputs.growthHoldings || []).map((h) => ({ name: h.name, amount: h.value })),
   ];
   const fundNames = [...new Set(allBreakdownItems.filter((it) => it.name && it.name.trim()).map((it) => it.name))];
   const fundAmounts = fundNames.reduce((acc, name) => {
@@ -1056,10 +1066,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const preciseAge = useMemo(() => computeAgeFromBirthDate(inputs.birthDate), [inputs.birthDate]);
   const effectiveCurrentAge = preciseAge ? preciseAge.decimal : inputs.currentAge;
 
-  // 現在のNISA資産：手入力の時価に加えて、つみたて・成長投資枠・一括投資それぞれの
-  // 「現在の日付までに経過した分」を、銘柄別内訳の比率に応じて自動計算する
-  const tsumitateElapsedTotal = elapsedScheduleAmount(inputs.tsumitateSchedule, effectiveCurrentAge);
-  const growthElapsedTotal = elapsedScheduleAmount(inputs.growthSchedule, effectiveCurrentAge);
+  // 一括投資のみ、現在の日付までに実行済みの分を銘柄別内訳の比率に応じて自動計算する
+  // （つみたて・成長投資枠は、スケジュールからの推定ではなく、下の「実際の残高」欄への直接入力を使う）
   const lumpElapsedTotal = elapsedLumpSumAmount(inputs.lumpSums, effectiveCurrentAge);
 
   const autoHoldingRowsFor = (allocationList, elapsedTotal, categoryLabel) => {
@@ -1072,14 +1080,17 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     }));
   };
   const autoHoldingRows = [
-    ...autoHoldingRowsFor(inputs.tsumitateAllocation, tsumitateElapsedTotal, "つみたて"),
-    ...autoHoldingRowsFor(inputs.growthAllocation, growthElapsedTotal, "成長投資枠"),
     ...autoHoldingRowsFor(inputs.lumpAllocation, lumpElapsedTotal, "一括投資"),
   ];
   const autoHoldingsTotal = autoHoldingRows.reduce((s, r) => s + r.value, 0);
 
-  // 現在のNISA資産を、手入力 + 手動追加の時価 + 上の自動計算分の合計から算出する
-  const currentAssetHoldingsTotal = inputs.currentAssetHoldings.reduce((s, h) => s + (h.value || 0), 0) + autoHoldingsTotal;
+  // つみたて投資枠・成長投資枠それぞれの「実際の残高」欄（銘柄・金額の直接入力）の合計
+  const tsumitateHoldingsTotal = (inputs.tsumitateHoldings || []).reduce((s, h) => s + (h.value || 0), 0);
+  const growthHoldingsTotal = (inputs.growthHoldings || []).reduce((s, h) => s + (h.value || 0), 0);
+
+
+  // 現在のNISA資産を、手入力 + つみたて/成長投資枠の実際の残高 + 一括投資の自動計算分の合計から算出する
+  const currentAssetHoldingsTotal = tsumitateHoldingsTotal + growthHoldingsTotal + autoHoldingsTotal;
   const effectiveCurrentAssets = inputs.currentAssets + currentAssetHoldingsTotal;
 
   // 退職後の想定利回りを、現役時代（銘柄別スライダー）の加重平均利回りの半分から自動で仮設定する
@@ -1295,6 +1306,34 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const removeAssetHolding = (idx) =>
     setInputs((prev) => ({ ...prev, currentAssetHoldings: prev.currentAssetHoldings.filter((_, i) => i !== idx) }));
 
+  const addTsumitateHolding = () => {
+    if (!newTsumitateHolding.name.trim()) return;
+    setInputs((prev) => ({
+      ...prev,
+      tsumitateHoldings: [...prev.tsumitateHoldings, {
+        name: newTsumitateHolding.name.trim(),
+        value: Number(newTsumitateHolding.value) || 0,
+      }],
+    }));
+    setNewTsumitateHolding({ name: "", value: "" });
+  };
+  const removeTsumitateHolding = (idx) =>
+    setInputs((prev) => ({ ...prev, tsumitateHoldings: prev.tsumitateHoldings.filter((_, i) => i !== idx) }));
+
+  const addGrowthHolding = () => {
+    if (!newGrowthHolding.name.trim()) return;
+    setInputs((prev) => ({
+      ...prev,
+      growthHoldings: [...prev.growthHoldings, {
+        name: newGrowthHolding.name.trim(),
+        value: Number(newGrowthHolding.value) || 0,
+      }],
+    }));
+    setNewGrowthHolding({ name: "", value: "" });
+  };
+  const removeGrowthHolding = (idx) =>
+    setInputs((prev) => ({ ...prev, growthHoldings: prev.growthHoldings.filter((_, i) => i !== idx) }));
+
   const addLoan = () => {
     const principal = Number(newLoan.principal) || 0;
     if (!newLoan.name.trim() || !principal) return;
@@ -1376,6 +1415,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         monthlyContribution: Number(np.monthlyContribution) || 0,
         payoutFromAge, payoutToAge,
         monthlyPayout: Number(np.monthlyPayout) || 0,
+        // 任意：現在すでにある実際の残高（証書記載の解約返戻金額など）。未入力なら積立実績から自動概算する。
+        currentBalance: np.currentBalance === "" ? null : Number(np.currentBalance) || 0,
       }],
     }));
     setNewPension({
@@ -1386,6 +1427,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       payoutFromYears: "", payoutFromMonths: "",
       payoutToYears: "", payoutToMonths: "",
       monthlyPayout: "",
+      currentBalance: "",
     });
   };
   const removePension = (idx) =>
@@ -2196,10 +2238,56 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             onChange={(v) => update({ currentAssets: v })}
           />
 
+          <div className="field-label" style={{ marginBottom: 6 }}>つみたて投資枠：実際の残高（銘柄・金額）</div>
+          {inputs.tsumitateHoldings.length > 0 && (
+            <table className="watchlist" style={{ marginBottom: 8 }}>
+              <thead><tr><th>銘柄</th><th>金額</th><th></th></tr></thead>
+              <tbody>
+                {inputs.tsumitateHoldings.map((h, i) => (
+                  <tr key={i}>
+                    <td>{h.name}</td>
+                    <td className="mono">{yen(h.value)}</td>
+                    <td style={{ width: 24 }}>
+                      <button className="del-btn" onClick={() => removeTsumitateHolding(i)}><Trash2 size={13} /></button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          <div className="add-row" style={{ marginBottom: 12 }}>
+            <input placeholder="銘柄名" value={newTsumitateHolding.name} onChange={(e) => setNewTsumitateHolding((p) => ({ ...p, name: e.target.value }))} />
+            <input placeholder="金額（円）" type="number" value={newTsumitateHolding.value} onChange={(e) => setNewTsumitateHolding((p) => ({ ...p, value: e.target.value }))} />
+            <button className="add-btn" onClick={addTsumitateHolding}><Plus size={15} /></button>
+          </div>
+
+          <div className="field-label" style={{ marginBottom: 6 }}>成長投資枠：実際の残高（銘柄・金額）</div>
+          {inputs.growthHoldings.length > 0 && (
+            <table className="watchlist" style={{ marginBottom: 8 }}>
+              <thead><tr><th>銘柄</th><th>金額</th><th></th></tr></thead>
+              <tbody>
+                {inputs.growthHoldings.map((h, i) => (
+                  <tr key={i}>
+                    <td>{h.name}</td>
+                    <td className="mono">{yen(h.value)}</td>
+                    <td style={{ width: 24 }}>
+                      <button className="del-btn" onClick={() => removeGrowthHolding(i)}><Trash2 size={13} /></button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          <div className="add-row" style={{ marginBottom: 12 }}>
+            <input placeholder="銘柄名" value={newGrowthHolding.name} onChange={(e) => setNewGrowthHolding((p) => ({ ...p, name: e.target.value }))} />
+            <input placeholder="金額（円）" type="number" value={newGrowthHolding.value} onChange={(e) => setNewGrowthHolding((p) => ({ ...p, value: e.target.value }))} />
+            <button className="add-btn" onClick={addGrowthHolding}><Plus size={15} /></button>
+          </div>
+
           {autoHoldingRows.length > 0 && (
             <>
               <div className="field-label" style={{ marginBottom: 6 }}>
-                時価（自動計算：現在の日付までの積立・成長投資枠・一括投資の経過分）
+                時価（自動計算：現在の日付までの一括投資の経過分）
               </div>
               <table className="watchlist" style={{ marginBottom: 8 }}>
                 <thead><tr><th>銘柄</th><th>時価（自動）</th></tr></thead>
@@ -2215,34 +2303,13 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             </>
           )}
 
-          <div className="field-label" style={{ marginBottom: 6 }}>時価（手入力で追加）</div>
-          {inputs.currentAssetHoldings.length > 0 && (
-            <table className="watchlist" style={{ marginBottom: 8 }}>
-              <thead><tr><th>銘柄</th><th>時価</th><th></th></tr></thead>
-              <tbody>
-                {inputs.currentAssetHoldings.map((h, i) => (
-                  <tr key={i}>
-                    <td>{h.name}</td>
-                    <td className="mono">{yen(h.value)}</td>
-                    <td style={{ width: 24 }}>
-                      <button className="del-btn" onClick={() => removeAssetHolding(i)}><Trash2 size={13} /></button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-          <div className="add-row" style={{ marginBottom: 8 }}>
-            <input placeholder="銘柄名" value={newAssetHolding.name} onChange={(e) => setNewAssetHolding((p) => ({ ...p, name: e.target.value }))} />
-            <input placeholder="時価（円）" type="number" value={newAssetHolding.value} onChange={(e) => setNewAssetHolding((p) => ({ ...p, value: e.target.value }))} />
-            <button className="add-btn" onClick={addAssetHolding}><Plus size={15} /></button>
-          </div>
-          <Field label="現在のNISA資産：合計（手入力 + 時価の合計）" unit="円" value={effectiveCurrentAssets} disabled onChange={() => {}} />
+          <Field label="現在のNISA資産：合計（手入力 + つみたて実際残高 + 成長実際残高 + 一括投資自動計算分）" unit="円" value={effectiveCurrentAssets} disabled onChange={() => {}} />
           <div className="note" style={{ marginTop: -8 }}>
             <Info size={13} />
             <span>
-              「手入力」欄 + 自動計算の時価（{yen(autoHoldingsTotal)}） + 手入力で追加した時価（{yen(currentAssetHoldingsTotal - autoHoldingsTotal)}）を合計したものが、この「合計」欄に反映され、シミュレーションではこの金額が使われます。自動計算分は、積立・成長投資枠・一括投資それぞれの「銘柄別内訳」に入力した比率と、現在の年齢までの経過期間から算出しています。
+              「手入力」欄（{yen(inputs.currentAssets)}） + つみたて投資枠の実際残高（{yen(tsumitateHoldingsTotal)}） + 成長投資枠の実際残高（{yen(growthHoldingsTotal)}） + 一括投資の自動計算分（{yen(autoHoldingsTotal)}）を合計したものが、この「合計」欄に反映され、シミュレーションではこの金額が使われます。ここで入力した銘柄名は、下の「NISA資産の配分」スライダーにもそのまま反映され、想定年率（利回り）はそちらで銘柄ごとに自動設定・調整されます（この欄自体には利回りの入力は不要です）。
             </span>
+          </div>
           </div>
 
           <div className="field-label" style={{ marginBottom: 6 }}>つみたて投資枠：毎月投資額（年齢区間ごとに設定）</div>
@@ -2909,6 +2976,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                     <td className="mono" style={{ fontSize: 10.5 }}>
                       <div>積立 {formatAge(pl.contribFromAge)}〜{formatAge(pl.contribToAge)}：{yen(pl.monthlyContribution)}/月</div>
                       <div style={{ color: "#7C8A90" }}>受給 {formatAge(pl.payoutFromAge)}〜{formatAge(pl.payoutToAge)}：{yen(pl.monthlyPayout)}/月</div>
+                      {pl.currentBalance !== null && pl.currentBalance !== undefined && (
+                        <div style={{ color: "#6FA88A" }}>現在の残高（手入力）：{yen(pl.currentBalance)}</div>
+                      )}
                     </td>
                     <td style={{ width: 24 }}>
                       <button className="del-btn" onClick={() => removePension(i)}><Trash2 size={13} /></button>
@@ -2957,12 +3027,21 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           <div className="add-row" style={{ marginBottom: 10 }}>
             <LabeledMiniInput label="受給時に毎月もらえる金額（円）" value={newPension.monthlyPayout} onChange={(e) => setNewPension((p) => ({ ...p, monthlyPayout: e.target.value }))} />
           </div>
+          <div className="field-label" style={{ marginBottom: 4 }}>現在の残高（円・任意）</div>
+          <div className="add-row" style={{ marginBottom: 10 }}>
+            <input
+              type="number"
+              placeholder="未入力なら積立実績から自動概算"
+              value={newPension.currentBalance}
+              onChange={(e) => setNewPension((p) => ({ ...p, currentBalance: e.target.value }))}
+            />
+          </div>
           <div className="add-row" style={{ marginBottom: 14 }}>
             <button className="add-btn" onClick={addPension} style={{ width: "100%" }}><Plus size={15} /></button>
           </div>
           <div className="note">
             <Info size={13} />
-            <span>積立期間中は毎月の積立額を貯め、受給期間中はそこから毎月の受給額を取り崩していく残高として、生涯資産グラフに資産の一部として反映されます。さらに受給額は、公的年金と同様に生活費・健康費用の補填としても扱われ、NISA資産の取り崩しペースを緩める効果があります。</span>
+            <span>積立期間中は毎月の積立額を貯め、受給期間中はそこから毎月の受給額を取り崩していく残高として、生涯資産グラフに資産の一部として反映されます。さらに受給額は、公的年金と同様に生活費・健康費用の補填としても扱われ、NISA資産の取り崩しペースを緩める効果があります。「現在の残高」を入力すると、証書に記載の実際の解約返戻金額などをそのまま開始残高として使用します（未入力の場合は積立開始年齢〜現在までの積立額の単純合計＝0%運用想定で自動概算します）。</span>
           </div>
         </div>
 
