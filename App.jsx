@@ -631,7 +631,7 @@ const formatDateLabel = (d) => {
   return `${dt.getFullYear()}/${dt.getMonth() + 1}/${dt.getDate()}`;
 };
 
-export default function NisaLifePlan() {
+export default function NisaLifePlan({ onOpenBlog } = {}) {
   const [inputs, setInputs] = useState({
     userName: "",
     birthDate: "",
@@ -1695,6 +1695,20 @@ export default function NisaLifePlan() {
         .landing-audience ul { margin: 0; padding-left: 18px; }
         .landing-audience li { font-size: 13px; line-height: 1.9; color: var(--text); }
 
+        .landing-blog-section {
+          max-width: 640px; margin: 34px auto 0; padding: 30px 24px;
+          text-align: center; border: 1px solid var(--line); border-radius: 8px;
+          background: var(--panel);
+        }
+        .landing-blog-section h3 {
+          font-family: 'Zen Kaku Gothic New', sans-serif; font-size: 18px; font-weight: 700;
+          margin: 0 0 12px; color: var(--text);
+        }
+        .landing-blog-section p {
+          font-size: 13px; line-height: 1.8; color: var(--muted);
+          margin: 0 0 20px;
+        }
+
         .landing-disclaimer {
           max-width: 640px; margin: 22px auto 0;
           font-size: 11px; line-height: 1.7; color: var(--muted); text-align: center;
@@ -1759,6 +1773,19 @@ export default function NisaLifePlan() {
             <li>ライフプランを見える化したい方</li>
           </ul>
         </div>
+
+        {onOpenBlog && (
+          <div className="landing-blog-section">
+            <h3>資産形成コラム</h3>
+            <p>
+              老後資産・NISA・年金・保険・ライフプランに役立つ情報を分かりやすく解説しています。<br />
+              シミュレーションだけでは伝えきれない考え方や資産形成のポイントも随時更新していきます。
+            </p>
+            <button className="landing-cta" onClick={onOpenBlog}>
+              資産形成コラムを見る
+            </button>
+          </div>
+        )}
 
         <p className="landing-disclaimer">
           本サービスは入力された条件に基づくシミュレーションです。将来の運用成果や生活を保証するものではありません。特定の金融商品を推奨するサービスではありません。
