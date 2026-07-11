@@ -412,7 +412,13 @@ function runInsuranceSimulation({ currentAge, deathAge, policies }) {
 // ---------- 民間年金積立：積立期間で貯め、受給期間で取り崩す個人年金のシミュレーション ----------
 function runPrivatePensionSimulation({ currentAge, deathAge, plans }) {
   const totalMonths = Math.max(1, Math.round((deathAge - currentAge) * 12));
-  const balances = (plans || []).map(() => 0);
+  // 現在の年齢より前（例：35歳〜現在）にすでに積み立ててきた分を遡って開始残高に反映する。
+  // 受給がすでに現在より前に始まっているケースは考慮せず、単純に「積立開始年齢〜現在 or 積立終了年齢の早い方」までの月数×毎月積立額とする。
+  const balances = (plans || []).map((pl) => {
+    const priorContribEndAge = Math.min(pl.contribToAge, currentAge);
+    const priorContribMonths = Math.max(0, Math.round((priorContribEndAge - pl.contribFromAge) * 12));
+    return priorContribMonths * (pl.monthlyContribution || 0);
+  });
   const yearly = [];
 
   for (let m = 0; m <= totalMonths; m++) {
