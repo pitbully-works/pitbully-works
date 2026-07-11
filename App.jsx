@@ -3143,7 +3143,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           </div>
 
           <div className="chart-frame">
-            <div className="chart-label">総資産推移 — NISA + 金 + 銀行預金 + 個別株 + 民間年金積立 − 借入金 − 保険料累計（{effectiveCurrentAge}歳 〜 {inputs.deathAge}歳）</div>
+            <div className="chart-label">総資産推移 — NISA + 金 + 銀行預金 + 個別株 + 民間年金積立 + iDeCo − 借入金 − 保険料累計（{effectiveCurrentAge}歳 〜 {inputs.deathAge}歳）</div>
             <ResponsiveContainer width="100%" height={340}>
               <ComposedChart data={netWorthYearly} margin={{ top: 10, right: 24, left: 8, bottom: 4 }}>
                 <CartesianGrid stroke="#2A363C" strokeDasharray="3 3" />
@@ -3167,6 +3167,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 <Area type="monotone" dataKey="bankValue" name="銀行預金" stackId="net" stroke="#8FBF7F" fill="rgba(143,191,127,0.35)" strokeWidth={1.5} />
                 <Area type="monotone" dataKey="stockValue" name="個別株" stackId="net" stroke="#B08FD6" fill="rgba(176,143,214,0.35)" strokeWidth={1.5} />
                 <Area type="monotone" dataKey="pensionValue" name="民間年金積立" stackId="net" stroke="#6FA88A" fill="rgba(111,168,138,0.35)" strokeWidth={1.5} />
+                <Area type="monotone" dataKey="idecoLockedValue" name="iDeCo資産" stackId="net" stroke="#D68FB0" fill="rgba(214,143,176,0.35)" strokeWidth={1.5} />
                 <Line type="monotone" dataKey="netWorth" name="純資産（借入金・保険料控除後）" stroke="#F2F5F6" strokeWidth={2} dot={false} />
               </ComposedChart>
             </ResponsiveContainer>
