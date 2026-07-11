@@ -1700,7 +1700,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         }
         .titleblock .meta {
           display: flex;
-          gap: 18px;
+          flex-wrap: wrap;
+          gap: 10px 18px;
           font-size: 11px;
           color: var(--muted);
           font-family: 'JetBrains Mono', monospace;
