@@ -2612,26 +2612,6 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           />
           <div style={{ marginBottom: 18 }} />
 
-          <Field label="つみたて投資枠：アプリ管理外の使用累計（基準額）" unit="円" step={10000} value={inputs.tsumitateUsed} onChange={(v) => update({ tsumitateUsed: v })} />
-          <div className="note" style={{ marginTop: -8 }}>
-            <Info size={13} />
-            <span>
-              スケジュールの過去分（自動計算 {yen(tsumitateElapsed)}）を合算した<strong>現在日付での使用累計：{yen(computedTsumitateUsed)}</strong>／
-              年間上限まであと{yen(tsumitateAnnualRemaining)}（現在のペース基準）／生涯投資枠（総枠）まであと{yen(remainingTotal)}
-            </span>
-          </div>
-          <Field label="成長投資枠：アプリ管理外の使用累計（基準額）" unit="円" step={10000} value={inputs.growthUsed} onChange={(v) => update({ growthUsed: v })} />
-          <div className="note" style={{ marginTop: -8 }}>
-            <Info size={13} />
-            <span>
-              スケジュール＋一括投資の実行済み分（自動計算 {yen(growthElapsed)}）を合算した<strong>現在日付での使用累計：{yen(computedGrowthUsed)}</strong>／
-              年間上限まであと{yen(growthAnnualRemaining)}（現在のペース基準）／生涯投資枠（総枠）まであと{yen(remainingTotal)}
-            </span>
-          </div>
-          <div className="note">
-            <Info size={13} />
-            <span>ここに入力するのは、このアプリのスケジュールや一括投資に含まれていない「それ以前の実績」だけで構いません。スケジュール・一括投資に登録済みの過去分は自動で合算されます。</span>
-          </div>
           <div className="note">
             <Info size={13} />
             <span>
