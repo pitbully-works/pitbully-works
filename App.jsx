@@ -173,6 +173,8 @@ function runSimulation(inputs) {
     // 追加パラメータ（省略時は既存のNISA計算と完全に同一の結果になる、後方互換の任意フック）
     // iDeCoの年金受取分など、老後の収支に上乗せしたい追加収入を年齢から算出する関数
     extraRetirementIncomeMonthly,
+    // iDeCo一時金など、指定月に一度だけ使用可能資産へ移す金額を年齢から算出する関数
+    extraSpendableLumpSum,
   } = inputs;
 
   // 積立・成長投資枠・一括投資の内訳に入力された銘柄だけで配分リストを作る（固定カテゴリなし）
@@ -189,7 +191,7 @@ function runSimulation(inputs) {
   // lump-sum growth-quota investments, indexed by month offset from currentAge
   const lumpByMonth = new Map();
   (lumpSums || []).forEach((entry) => {
-    const targetMonth = Math.round((entry.age - currentAge) * 12);
+    const targetMonth = Math.max(1, Math.round((entry.age - currentAge) * 12));
     if (targetMonth >= 0 && targetMonth <= totalMonths) {
       lumpByMonth.set(targetMonth, (lumpByMonth.get(targetMonth) || 0) + entry.amount);
     }
@@ -204,15 +206,25 @@ function runSimulation(inputs) {
   let growthMaxedAge = null;
   let totalMaxedAge = null;
 
-  const yearly = [];
+  const initialTotal = Object.values(funds).reduce((sum, value) => sum + value, 0);
+  const yearly = [{
+    age: Math.round(currentAge),
+    total: initialTotal,
+    funds: { ...funds },
+    phase: currentAge < retireAge ? "積立期" : "取崩期",
+    tsumitateCum,
+    growthCum,
+  }];
   let depletionAge = null;
-  let peakAssets = 0;
-  let assetsAtRetire = null;
+  let peakAssets = initialTotal;
+  let assetsAtRetire = currentAge >= retireAge ? initialTotal : null;
 
-  for (let m = 0; m <= totalMonths; m++) {
+  for (let m = 1; m <= totalMonths; m++) {
     const age = currentAge + m / 12;
     const inAccumulation = age < retireAge;
     const lumpGross = lumpByMonth.get(m) || 0;
+    // iDeCo一時金などの外部一時金。呼び出し側が受取月だけ金額を返すため、二重加算されない。
+    const extraSpendableLump = typeof extraSpendableLumpSum === "function" ? (extraSpendableLumpSum(age) || 0) : 0;
 
     if (inAccumulation) {
       // enforce annual-rate caps
@@ -253,10 +265,16 @@ function runSimulation(inputs) {
         const r = monthlyRate(f.returnPct);
         funds[f.id] = funds[f.id] * (1 + r) + contribution * (f.pct / 100);
       });
+      // 退職前にiDeCo一時金を受け取った場合も、使用可能な現金として保持する。
+      if (extraSpendableLump > 0) {
+        funds.__ideco_cash__ = (funds.__ideco_cash__ || 0) + extraSpendableLump;
+      }
     } else {
       let total = Object.values(funds).reduce((s, v) => s + v, 0);
       const r = monthlyRate(postRetireReturn);
       total = total * (1 + r);
+      // 受取開始月に一度だけ、iDeCo一時金を生活費に使える資産へ移す。
+      total += extraSpendableLump;
       const healthMonthly = healthAnnualCost(age, healthBrackets) / 12;
       const privatePensionIncome = (privatePensionPlans || []).reduce(
         (s, pl) => (age >= pl.payoutFromAge && age <= pl.payoutToAge ? s + (pl.monthlyPayout || 0) : s),
@@ -328,10 +346,10 @@ function runGoldSimulation({ currentAge, deathAge, gold }) {
   const r = monthlyRate(priceGrowthPct);
   let grams = currentGrams;
   let price = pricePerGram;
-  const yearly = [];
-  let valueAtTarget = null;
+  const yearly = [{ age: Math.round(currentAge), grams, price, value: grams * price }];
+  let valueAtTarget = currentAge >= accumulateUntilAge ? grams * price : null;
 
-  for (let m = 0; m <= totalMonths; m++) {
+  for (let m = 1; m <= totalMonths; m++) {
     const age = currentAge + m / 12;
     if (age < accumulateUntilAge && monthlyYen > 0 && price > 0) {
       grams += monthlyYen / price;
@@ -354,9 +372,11 @@ function runGoldSimulation({ currentAge, deathAge, gold }) {
 function runBankSimulation({ currentAge, retireAge, deathAge, banks }) {
   const totalMonths = Math.max(1, Math.round((deathAge - currentAge) * 12));
   const balances = banks.map((b) => b.balance);
-  const yearly = [];
+  const initialBankRow = { age: Math.round(currentAge), total: balances.reduce((sum, value) => sum + value, 0) };
+  banks.forEach((b, i) => { initialBankRow[`bank_${i}`] = balances[i]; });
+  const yearly = [initialBankRow];
 
-  for (let m = 0; m <= totalMonths; m++) {
+  for (let m = 1; m <= totalMonths; m++) {
     const age = currentAge + m / 12;
     banks.forEach((b, i) => {
       const r = monthlyRate(b.interestPct || 0);
@@ -381,8 +401,8 @@ function runStockSim({ currentAge, deathAge, totalValue, returnPct }) {
   const totalMonths = Math.max(1, Math.round((deathAge - currentAge) * 12));
   const r = monthlyRate(returnPct);
   let value = totalValue;
-  const yearly = [];
-  for (let m = 0; m <= totalMonths; m++) {
+  const yearly = [{ age: Math.round(currentAge), value }];
+  for (let m = 1; m <= totalMonths; m++) {
     const age = currentAge + m / 12;
     if (m % 12 === 0) yearly.push({ age: Math.round(age), value });
     value = value * (1 + r);
@@ -398,9 +418,11 @@ function runLoanSimulation({ currentAge, deathAge, loans }) {
   const totalMonths = Math.max(1, Math.round((deathAge - currentAge) * 12));
   const balances = loans.map((l) => l.principal);
   const payoffAges = loans.map(() => null);
-  const yearly = [];
+  const initialLoanRow = { age: Math.round(currentAge), total: balances.reduce((sum, value) => sum + value, 0) };
+  loans.forEach((l, i) => { initialLoanRow[`loan_${i}`] = balances[i]; });
+  const yearly = [initialLoanRow];
 
-  for (let m = 0; m <= totalMonths; m++) {
+  for (let m = 1; m <= totalMonths; m++) {
     const age = currentAge + m / 12;
     loans.forEach((l, i) => {
       if (balances[i] > 0) {
@@ -428,17 +450,16 @@ function runLoanSimulation({ currentAge, deathAge, loans }) {
 function runInsuranceSimulation({ currentAge, deathAge, policies }) {
   const totalMonths = Math.max(1, Math.round((deathAge - currentAge) * 12));
   let cumulative = 0;
-  const yearly = [];
+  const yearly = [{ age: Math.round(currentAge), total: 0 }];
   let cumulativeAtCurrentAge = 0;
 
-  for (let m = 0; m <= totalMonths; m++) {
+  for (let m = 1; m <= totalMonths; m++) {
     const age = currentAge + m / 12;
     (policies || []).forEach((p) => {
       if (age >= p.premiumFromAge && age <= p.premiumToAge) {
         cumulative += p.monthlyPremium || 0;
       }
     });
-    if (m === 0) cumulativeAtCurrentAge = cumulative;
     if (m % 12 === 0) yearly.push({ age: Math.round(age), total: cumulative });
   }
   const totalFinal = yearly.length ? yearly[yearly.length - 1].total : cumulative;
@@ -458,9 +479,11 @@ function runPrivatePensionSimulation({ currentAge, deathAge, plans }) {
     const priorContribMonths = Math.max(0, Math.round((priorContribEndAge - pl.contribFromAge) * 12));
     return priorContribMonths * (pl.monthlyContribution || 0);
   });
-  const yearly = [];
+  const initialPrivatePensionRow = { age: Math.round(currentAge), total: balances.reduce((sum, value) => sum + value, 0) };
+  (plans || []).forEach((pl, i) => { initialPrivatePensionRow[`pension_${i}`] = balances[i]; });
+  const yearly = [initialPrivatePensionRow];
 
-  for (let m = 0; m <= totalMonths; m++) {
+  for (let m = 1; m <= totalMonths; m++) {
     const age = currentAge + m / 12;
     (plans || []).forEach((pl, i) => {
       if (age >= pl.contribFromAge && age <= pl.contribToAge) {
@@ -484,11 +507,13 @@ function runPrivatePensionSimulation({ currentAge, deathAge, plans }) {
 // NISAの計算式（runSimulation）は変更していません。iDeCo専用の計算関数として独立させています。
 // 受取開始年齢までは生活費に使わず増やすだけ。受取開始後は受取方法に応じて、
 // 一時金は「使用可能資産へ一度だけ加算」、年金は「受取期間中、年間収入へ加算」します。
-function levelPayment(principal, annualRatePct, years) {
-  if (years <= 0) return principal;
-  const r = annualRatePct / 100;
-  if (Math.abs(r) < 1e-9) return principal / years;
-  return (principal * r) / (1 - Math.pow(1 + r, -years));
+function levelMonthlyPayment(principal, annualRatePct, years) {
+  const safePrincipal = Math.max(0, Number(principal) || 0);
+  const safeYears = Math.max(1, Number(years) || 1);
+  const months = Math.max(1, Math.round(safeYears * 12));
+  const r = monthlyRate(Number(annualRatePct) || 0);
+  if (Math.abs(r) < 1e-12) return safePrincipal / months;
+  return (safePrincipal * r) / (1 - Math.pow(1 + r, -months));
 }
 
 function runIdecoSimulation({ currentAge, deathAge, ideco }) {
@@ -498,9 +523,9 @@ function runIdecoSimulation({ currentAge, deathAge, ideco }) {
   } = ideco;
 
   // 既存データ（新項目未設定の場合）でもエラーにならないよう安全な既定値を使用
-  const safePayoutYears = payoutYears || 10;
-  const safeLumpPct = (lumpPortionPct ?? 50) / 100;
-  const safePayoutReturn = payoutReturnPct ?? 0;
+  const safePayoutYears = Math.max(1, Number(payoutYears) || 10);
+  const safeLumpPct = Math.min(1, Math.max(0, Number(lumpPortionPct ?? 50) / 100));
+  const safePayoutReturn = Number(payoutReturnPct) || 0;
 
   const totalMonths = Math.max(1, Math.round((deathAge - currentAge) * 12));
   const accR = monthlyRate(returnPct);
@@ -512,9 +537,14 @@ function runIdecoSimulation({ currentAge, deathAge, ideco }) {
   let annualPayout = 0;    // 受取期間中、毎年「年間収入」へ加算される金額
   let payoutEndAge = payoutStartAge;
 
-  const yearly = [];
+  const yearly = [{
+    age: Math.round(currentAge),
+    value,
+    lumpAmount: 0,
+    annualIncomeThisYear: 0,
+  }];
 
-  for (let m = 0; m <= totalMonths; m++) {
+  for (let m = 1; m <= totalMonths; m++) {
     const age = currentAge + m / 12;
 
     if (age < payoutStartAge) {
@@ -533,13 +563,13 @@ function runIdecoSimulation({ currentAge, deathAge, ideco }) {
           payoutEndAge = payoutStartAge;
         } else if (payoutMethod === "pension") {
           lumpAmount = 0;
-          annualPayout = levelPayment(valueAtPayout, safePayoutReturn, safePayoutYears);
+          annualPayout = levelMonthlyPayment(valueAtPayout, safePayoutReturn, safePayoutYears) * 12;
           payoutEndAge = payoutStartAge + safePayoutYears;
         } else {
           // 併用：指定割合を一時金、残りを年金原資として指定年数で分割
           lumpAmount = valueAtPayout * safeLumpPct;
           const pensionBase = valueAtPayout * (1 - safeLumpPct);
-          annualPayout = levelPayment(pensionBase, safePayoutReturn, safePayoutYears);
+          annualPayout = levelMonthlyPayment(pensionBase, safePayoutReturn, safePayoutYears) * 12;
           payoutEndAge = payoutStartAge + safePayoutYears;
           value = pensionBase;
         }
@@ -1198,6 +1228,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     return (age) => (age >= idecoSim.payoutStartAge && age < idecoSim.payoutEndAge) ? idecoSim.annualPayout / 12 : 0;
   }, [idecoPayoutMethod, idecoSim.payoutStartAge, idecoSim.payoutEndAge, idecoSim.annualPayout]);
 
+  const getIdecoSpendableLump = useMemo(() => {
+    if (idecoPayoutMethod !== "lump" && idecoPayoutMethod !== "both") return null;
+    // 月次シミュレーションのうち、受取開始月にだけ一時金を返す。
+    return (age) => Math.abs(age - idecoSim.payoutStartAge) < (1 / 24) ? idecoSim.lumpAmount : 0;
+  }, [idecoPayoutMethod, idecoSim.payoutStartAge, idecoSim.lumpAmount]);
+
   // 年金受給見込み額：国民年金・企業年金基金など複数の項目を追加すると、その合計が自動的に使われる
   const pensionSourcesTotal = inputs.pensionSources.reduce((s, p) => s + (p.monthlyAmount || 0), 0);
   const effectivePensionMonthly = inputs.pensionSources.length > 0 ? pensionSourcesTotal : inputs.pensionMonthly;
@@ -1205,10 +1241,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const effectiveInputs = useMemo(
     () => ({
       ...inputs, dynamicFunds, currentAge: effectiveCurrentAge, currentAssets: effectiveCurrentAssets,
-      postRetireReturn: effectivePostRetireReturn, extraRetirementIncomeMonthly: getIdecoMonthlyIncome,
+      postRetireReturn: effectivePostRetireReturn,
+      extraRetirementIncomeMonthly: getIdecoMonthlyIncome,
+      extraSpendableLumpSum: getIdecoSpendableLump,
       pensionMonthly: effectivePensionMonthly,
     }),
-    [inputs, JSON.stringify(dynamicFunds), effectiveCurrentAge, effectiveCurrentAssets, effectivePostRetireReturn, getIdecoMonthlyIncome, effectivePensionMonthly]
+    [inputs, JSON.stringify(dynamicFunds), effectiveCurrentAge, effectiveCurrentAssets, effectivePostRetireReturn, getIdecoMonthlyIncome, getIdecoSpendableLump, effectivePensionMonthly]
   );
 
   const sim = useMemo(() => runSimulation(effectiveInputs), [effectiveInputs]);
@@ -1273,14 +1311,15 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       const insuranceValue = insuranceSim.yearly[i]?.total ?? insuranceSim.totalFinal;
       const pensionValue = pensionSim.yearly[i]?.total ?? pensionSim.totalFinal;
       const idecoRow = idecoSim.yearly[i];
-      // 受取開始前：まだロックされたiDeCo残高（総資産には含めるが、使用可能資産には含めない）
+      // 受取開始前および年金受取中に残っている、まだロックされたiDeCo残高。
+      // 一時金部分は受取開始月にrunSimulation側へ一度だけ移され、row.totalへ含まれる。
       const idecoLockedValue = idecoRow ? idecoRow.value : idecoSim.finalValue;
-      // 一時金部分：受取開始年に一度だけ計算され、以降の年もそのまま含まれ続ける（重複加算はしない）
-      const idecoSpendableValue = idecoRow ? idecoRow.lumpAmount : idecoSim.lumpAmount;
+      const spendableNetWorth = row.total + goldValue + bankValue + stockValue + pensionValue - loanValue - insuranceValue;
       return {
         ...row, goldValue, bankValue, stockValue, loanValue, insuranceValue, pensionValue,
-        idecoLockedValue, idecoSpendableValue,
-        netWorth: row.total + goldValue + bankValue + stockValue + pensionValue + idecoSpendableValue - loanValue - insuranceValue,
+        idecoLockedValue,
+        spendableNetWorth,
+        netWorth: spendableNetWorth + idecoLockedValue,
       };
     });
   }, [sim, goldSim, bankSim, stockSim, loanSim, insuranceSim, pensionSim, idecoSim]);
@@ -1644,10 +1683,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   return (
     <div className="app">
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Noto+Sans+JP:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap');
         html, body {
           background: #0E1316;
         }
-        @import url('https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Noto+Sans+JP:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
         * { box-sizing: border-box; }
         .app {
@@ -1674,6 +1713,47 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           padding: 0 0 60px 0;
         }
         .mono { font-family: 'JetBrains Mono', monospace; }
+
+        /* ---------- responsive safety ---------- */
+        .app, .app * { box-sizing: border-box; }
+        .app { width: 100%; max-width: 100%; overflow-x: hidden; }
+        .grid-main, .panel, .content, .two-col, .stat-grid, .chart-frame { min-width: 0; }
+        img, svg, canvas { max-width: 100%; }
+        img { height: auto; }
+        input, select, textarea, button { max-width: 100%; }
+        .field-input-wrap, .add-row { min-width: 0; }
+        .add-row input { min-width: 0; }
+        table.watchlist { table-layout: fixed; }
+        table.watchlist th, table.watchlist td { overflow-wrap: anywhere; word-break: break-word; }
+
+        @media (max-width: 640px) {
+          .titleblock { padding: 16px 14px 12px; align-items: flex-start; }
+          .titleblock h1 { font-size: 19px; line-height: 1.35; }
+          .titleblock .meta { width: 100%; gap: 6px 12px; }
+          .panel, .content { padding: 16px 14px; border-right: none; }
+          .save-warning, .history-panel { padding-left: 14px; padding-right: 14px; }
+          .footer-note { padding-left: 14px; padding-right: 14px; }
+          .stat-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+          .stat-card { padding: 12px; }
+          .stat-value { font-size: 17px; overflow-wrap: anywhere; }
+          .chart-frame { padding-left: 0; padding-right: 0; }
+          .chart-frame .chart-label { padding-left: 10px; padding-right: 10px; }
+          .add-row { flex-wrap: wrap; }
+          .add-row input { flex: 1 1 140px; }
+          .add-btn { min-height: 36px; }
+          table.watchlist { display: block; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; table-layout: auto; }
+          table.watchlist th, table.watchlist td { white-space: nowrap; }
+          .landing { padding: 30px 14px 28px; }
+          .landing-hero h1 { font-size: 22px; }
+          .landing-screenshot { width: 100%; }
+          .landing-screenshot img { width: 100%; max-width: 100%; margin: 0; border-radius: 10px; }
+        }
+
+        @media (max-width: 420px) {
+          .stat-grid { grid-template-columns: 1fr; }
+          .titleblock .meta { display: grid; grid-template-columns: 1fr; }
+          .landing-cta { width: 100%; }
+        }
 
         .titleblock {
           border-bottom: 1px solid var(--line);
@@ -2011,14 +2091,6 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           box-shadow: 0 8px 30px rgba(0,0,0,0.35);
           border: 1px solid var(--line);
           display: block; margin: 0 auto;
-        }
-        @media (max-width: 640px) {
-          .landing-screenshot img {
-            width: 96vw; max-width: 96vw;
-            margin-left: calc(50% - 48vw);
-            margin-right: calc(50% - 48vw);
-            border-radius: 10px;
-          }
         }
 
         .landing-features {
@@ -2765,7 +2837,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           <div className="stat-sub" style={{ marginBottom: 8 }}>積立終了までの累計節税額（概算）：<span className="mono">{yen(idecoCumulativeTaxSaving)}</span></div>
           <div className="note" style={{ marginTop: -4 }}>
             <Info size={13} />
-            <span>節税額は、年収から見積もった大まかな税率をもとにした概算です。実際の控除状況により変動します。年収を入力しない場合は目安の税率(20%)で計算しています。</span>
+            <span>節税額は、年収から推定した税率を使う簡易計算です。実際は給与所得控除、社会保険料、扶養・配偶者控除などを差し引いた課税所得で決まるため、表示額と異なる場合があります。年収未入力時は目安の税率20%で計算します。</span>
           </div>
           <div className="note">
             <Info size={13} />
@@ -3168,7 +3240,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           <div className="stat-grid" style={{ marginBottom: 14 }}>
             <StatCard
               label="現在使える資産"
-              value={yen((netWorthYearly[0]?.netWorth) ?? (netWorthFinal - idecoSim.finalValue))}
+              value={yen((netWorthYearly[0]?.spendableNetWorth) ?? (netWorthFinal - idecoSim.finalValue))}
               sub="iDeCoロック分を除く、現時点の資産"
               tone="good"
             />
