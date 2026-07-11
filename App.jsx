@@ -633,6 +633,7 @@ function Field({ label, unit, value, onChange, step = 1, min = 0, max, mono = tr
           max={max}
           disabled={disabled}
           onChange={(e) => onChange(Number(e.target.value))}
+          onFocus={(e) => e.target.select()}
           className={mono ? "mono" : ""}
         />
         {unit && <span className="field-unit">{unit}</span>}
@@ -662,11 +663,11 @@ function AgeField({ label, value, onChange, disabled }) {
       <span className="field-label">{label}</span>
       <div style={{ display: "flex", gap: 6 }}>
         <div className="field-input-wrap" style={{ flex: 1 }}>
-          <input type="number" className="mono" value={years} disabled={disabled} onChange={(e) => commit(Number(e.target.value), months)} />
+          <input type="number" className="mono" value={years} disabled={disabled} onChange={(e) => commit(Number(e.target.value), months)} onFocus={(e) => e.target.select()} />
           <span className="field-unit">歳</span>
         </div>
         <div className="field-input-wrap" style={{ flex: 1 }}>
-          <input type="number" className="mono" min={0} max={11} value={months} disabled={disabled} onChange={(e) => commit(years, Number(e.target.value))} />
+          <input type="number" className="mono" min={0} max={11} value={months} disabled={disabled} onChange={(e) => commit(years, Number(e.target.value))} onFocus={(e) => e.target.select()} />
           <span className="field-unit">ヶ月</span>
         </div>
       </div>
@@ -681,11 +682,13 @@ function AgeYMInput({ years, months, onYears, onMonths, placeholder }) {
       <input
         type="number" placeholder={`${placeholder}歳`} value={years}
         onChange={(e) => onYears(e.target.value)}
+        onFocus={(e) => e.target.select()}
         style={{ width: "50%" }}
       />
       <input
         type="number" placeholder="ヶ月" min={0} max={11} value={months}
         onChange={(e) => onMonths(e.target.value)}
+        onFocus={(e) => e.target.select()}
         style={{ width: "50%" }}
       />
     </div>
@@ -2230,7 +2233,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
       <div className="titleblock" id="simulator">
         <div>
-          <h1>資産形成 総合ライフプラン{inputs.userName ? `（${inputs.userName}様）` : ""}</h1>
+          <h1>
+            資産形成 総合ライフプラン
+            {inputs.userName && <><br />{`（${inputs.userName}様）`}</>}
+          </h1>
           <div className="sub">
             NISA積立 × 老後資産 × 年金 × 健康費用 × 相続 — 統合シミュレーション
             <br />
