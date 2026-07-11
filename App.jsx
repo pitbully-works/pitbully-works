@@ -630,12 +630,12 @@ function AgeField({ label, value, onChange, disabled }) {
   return (
     <label className="field">
       <span className="field-label">{label}</span>
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-        <div className="field-input-wrap" style={{ flex: 1, minWidth: 90 }}>
+      <div style={{ display: "flex", gap: 6 }}>
+        <div className="field-input-wrap" style={{ flex: 1 }}>
           <input type="number" className="mono" value={years} disabled={disabled} onChange={(e) => commit(Number(e.target.value), months)} />
           <span className="field-unit">歳</span>
         </div>
-        <div className="field-input-wrap" style={{ flex: 1, minWidth: 90 }}>
+        <div className="field-input-wrap" style={{ flex: 1 }}>
           <input type="number" className="mono" min={0} max={11} value={months} disabled={disabled} onChange={(e) => commit(years, Number(e.target.value))} />
           <span className="field-unit">ヶ月</span>
         </div>
@@ -647,16 +647,16 @@ function AgeField({ label, value, onChange, disabled }) {
 // 追加フォーム用の小型「歳＋ヶ月」入力（2つの数値を親のuseState断片として管理）
 function AgeYMInput({ years, months, onYears, onMonths, placeholder }) {
   return (
-    <div style={{ display: "flex", gap: 4, flex: 1, minWidth: 110 }}>
+    <div style={{ display: "flex", gap: 4, flex: 1 }}>
       <input
         type="number" placeholder={`${placeholder}歳`} value={years}
         onChange={(e) => onYears(e.target.value)}
-        style={{ width: "50%", minWidth: 0 }}
+        style={{ width: "50%" }}
       />
       <input
         type="number" placeholder="ヶ月" min={0} max={11} value={months}
         onChange={(e) => onMonths(e.target.value)}
-        style={{ width: "50%", minWidth: 0 }}
+        style={{ width: "50%" }}
       />
     </div>
   );
@@ -666,7 +666,7 @@ function AgeYMInput({ years, months, onYears, onMonths, placeholder }) {
 // ラベルを別要素として常時表示する）
 function LabeledMiniInput({ label, value, onChange, type = "number" }) {
   return (
-    <div style={{ flex: 1, minWidth: 0 }}>
+    <div style={{ flex: 1 }}>
       <div style={{ fontSize: 10, color: "#7C8A90", marginBottom: 2 }}>{label}</div>
       <input type={type} value={value} onChange={onChange} style={{ width: "100%" }} />
     </div>
@@ -1645,11 +1645,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     <div className="app">
       <style>{`
         html, body {
-          overflow-x: hidden;
-          max-width: 100%;
-        }
-        *, *::before, *::after {
-          box-sizing: border-box;
+          background: #0E1316;
         }
         @import url('https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Noto+Sans+JP:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
@@ -1875,7 +1871,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         }
         @media (max-width: 880px) { .two-col { grid-template-columns: 1fr; } }
 
-        table.watchlist { width: 100%; max-width: 100%; display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; border-collapse: collapse; font-size: 12px; }
+        table.watchlist { width: 100%; border-collapse: collapse; font-size: 12px; }
         table.watchlist th {
           text-align: left; color: var(--muted); font-weight: 500;
           border-bottom: 1px solid var(--line); padding: 6px 8px; font-size: 11px;
@@ -1889,10 +1885,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         .del-btn:hover { color: var(--danger); }
 
         .add-row {
-          display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap;
+          display: flex; gap: 8px; margin-top: 10px;
         }
         .add-row input {
-          flex: 1; min-width: 70px; background: var(--panel-2); border: 1px solid var(--line);
+          flex: 1; background: var(--panel-2); border: 1px solid var(--line);
           color: var(--text); padding: 7px 9px; border-radius: 3px; font-size: 12px; outline: none;
         }
         .add-row input:focus { border-color: var(--blue-dim); }
@@ -2346,7 +2342,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <input placeholder="金額（円）" type="number" value={newTsumitateHolding.value} onChange={(e) => setNewTsumitateHolding((p) => ({ ...p, value: e.target.value }))} />
             <button className="add-btn" onClick={addTsumitateHolding}><Plus size={15} /></button>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
             <span style={{ fontSize: 10, color: "#7C8A90", whiteSpace: "nowrap" }}>この残高の基準年齢（任意）</span>
             <AgeYMInput
               placeholder="基準年齢" years={inputs.tsumitateHoldingsAsOfYears} months={inputs.tsumitateHoldingsAsOfMonths}
@@ -2381,7 +2377,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <input placeholder="金額（円）" type="number" value={newGrowthHolding.value} onChange={(e) => setNewGrowthHolding((p) => ({ ...p, value: e.target.value }))} />
             <button className="add-btn" onClick={addGrowthHolding}><Plus size={15} /></button>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
             <span style={{ fontSize: 10, color: "#7C8A90", whiteSpace: "nowrap" }}>この残高の基準年齢（任意）</span>
             <AgeYMInput
               placeholder="基準年齢" years={inputs.growthHoldingsAsOfYears} months={inputs.growthHoldingsAsOfMonths}
