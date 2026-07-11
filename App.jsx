@@ -1608,6 +1608,11 @@ export default function NisaLifePlan() {
           font-size: 26px; font-weight: 700; line-height: 1.4;
           margin: 0 0 14px; color: var(--text);
         }
+        .landing-free-notice {
+          font-size: 11.5px; line-height: 1.6; color: var(--green);
+          margin: -6px 0 16px;
+        }
+        .landing-free-notice strong { color: var(--green); font-weight: 700; }
         .landing-catch {
           font-size: 16px; line-height: 1.7; color: var(--blue);
           margin: 0 0 16px; font-weight: 500;
@@ -1642,6 +1647,14 @@ export default function NisaLifePlan() {
           box-shadow: 0 8px 30px rgba(0,0,0,0.35);
           border: 1px solid var(--line);
           display: block; margin: 0 auto;
+        }
+        @media (max-width: 640px) {
+          .landing-screenshot img {
+            width: 96vw; max-width: 96vw;
+            margin-left: calc(50% - 48vw);
+            margin-right: calc(50% - 48vw);
+            border-radius: 10px;
+          }
         }
 
         .landing-features {
@@ -1691,6 +1704,10 @@ export default function NisaLifePlan() {
       <div className="landing">
         <div className="landing-hero">
           <h1>資産形成 総合ライフプラン</h1>
+          <p className="landing-free-notice">
+            <strong>完全無料・登録不要</strong><br />
+            現在はすべての機能を無料でご利用いただけます。
+          </p>
           <p className="landing-catch">
             あなたの人生設計を、ひとつの画面で。
           </p>
