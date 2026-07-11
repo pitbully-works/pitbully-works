@@ -1625,6 +1625,25 @@ export default function NisaLifePlan() {
         }
         .landing-cta:hover { background: #6BB8E0; }
 
+        .landing-screenshot {
+          max-width: 900px; margin: 36px auto 0; text-align: center;
+        }
+        .landing-screenshot h2 {
+          font-family: 'Zen Kaku Gothic New', sans-serif; font-size: 16px; font-weight: 700;
+          margin: 0 0 8px; color: var(--text);
+        }
+        .landing-screenshot p {
+          font-size: 12.5px; line-height: 1.7; color: var(--muted);
+          margin: 0 0 18px; max-width: 480px; margin-left: auto; margin-right: auto;
+        }
+        .landing-screenshot img {
+          width: 100%; max-width: 900px; height: auto;
+          border-radius: 16px;
+          box-shadow: 0 8px 30px rgba(0,0,0,0.35);
+          border: 1px solid var(--line);
+          display: block; margin: 0 auto;
+        }
+
         .landing-features {
           max-width: 640px; margin: 40px auto 0;
           display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
@@ -1673,53 +1692,59 @@ export default function NisaLifePlan() {
         <div className="landing-hero">
           <h1>資産形成 総合ライフプラン</h1>
           <p className="landing-catch">
-            NISA・年金・金・保険・預貯金をまとめて管理。<br />
-            想定寿命までの資産推移を見える化します。
+            あなたの人生設計を、ひとつの画面で。
           </p>
           <p className="landing-sub">
-            現在の資産と将来の収入・支出を入力するだけで、<br />
-            老後資金が何歳まで持つのかを無料でシミュレーションできます。
+            入力するだけで、NISA・年金・預貯金・金・保険を含めた将来の資産推移をシミュレーションできます。<br />
+            老後資金が何歳まで持つのか、将来必要となる資産を「見える化」し、安心できるライフプラン作りをサポートします。
           </p>
           <button className="landing-cta" onClick={scrollToSimulator}>
             無料でシミュレーションを始める
           </button>
         </div>
 
+        <div className="landing-screenshot">
+          <h2>実際のシミュレーション画面</h2>
+          <p>現在の資産・年金・NISA・保険・金などを入力するだけで、将来の資産推移を分かりやすく確認できます。</p>
+          <img src="/ogp.png" alt="資産形成 総合ライフプラン シミュレーション画面" loading="lazy" />
+        </div>
+
         <div className="landing-features">
           <div className="landing-feature-card">
             <span className="landing-feature-num">01</span>
             <h3>資産を一括管理</h3>
-            <p>NISA・預貯金・金・個別株・保険などをまとめて確認</p>
+            <p>NISA・預貯金・金・個別株・保険などをまとめて管理</p>
           </div>
           <div className="landing-feature-card">
             <span className="landing-feature-num">02</span>
-            <h3>年金と生活費を反映</h3>
-            <p>公的年金・企業年金・生活費・医療費を年齢別に計算</p>
+            <h3>年金・生活費を反映</h3>
+            <p>公的年金・企業年金・生活費・医療費まで考慮してシミュレーション</p>
           </div>
           <div className="landing-feature-card">
             <span className="landing-feature-num">03</span>
-            <h3>想定寿命まで見える化</h3>
-            <p>年齢ごとの総資産と純資産をグラフで表示</p>
+            <h3>将来の資産推移を見える化</h3>
+            <p>年齢ごとの資産推移をグラフで確認</p>
           </div>
           <div className="landing-feature-card">
             <span className="landing-feature-num">04</span>
             <h3>無料・登録不要</h3>
-            <p>入力データは端末内に保存し、すぐに利用可能</p>
+            <p>すぐ利用でき、入力データは端末内へ保存</p>
           </div>
         </div>
 
         <div className="landing-audience">
           <h4>こんな方におすすめ</h4>
           <ul>
-            <li>定年後のお金が足りるか不安な方</li>
-            <li>NISAを何歳まで続けるか考えたい方</li>
-            <li>年金と資産を合わせて確認したい方</li>
-            <li>保険や医療費も含めて老後を考えたい方</li>
+            <li>老後資金が足りるか不安な方</li>
+            <li>NISAを始めたい方</li>
+            <li>退職後の生活をシミュレーションしたい方</li>
+            <li>年金と資産をまとめて管理したい方</li>
+            <li>ライフプランを見える化したい方</li>
           </ul>
         </div>
 
         <p className="landing-disclaimer">
-          本サービスの結果は入力された条件に基づく試算です。将来の運用成果や生活を保証するものではなく、特定の金融商品を推奨するものではありません。
+          本サービスは入力された条件に基づくシミュレーションです。将来の運用成果や生活を保証するものではありません。特定の金融商品を推奨するサービスではありません。
         </p>
       </div>
 
