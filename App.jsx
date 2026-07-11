@@ -1157,17 +1157,14 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     return s + compoundPrincipal(h.value || 0, growthHoldingsAsOfAge, effectiveCurrentAge, rate);
   }, 0);
 
-  // 基準年齢〜現在の年齢までの間、スケジュール（毎月投資額）通りに毎月積み立てたはずの金額を、
-  // その都度（引き落とされた月ごとに）想定利回りで複利運用したものとして計算する
-  // （基準年齢が未入力、または現在の年齢以降の場合は追加計算なし＝手入力の残高だけを使う）
+  // つみたて・成長投資枠のスケジュール（毎月投資額）に沿って、これまで実際に引き落とされてきたはずの金額を、
+  // その都度（引き落とされた月ごとに）想定利回りで複利運用したものとして自動計算する
+  // （一括投資と同様、これは基準年齢の入力有無に関わらず常に自動で計算される。手入力の「実際の残高」とは別建てで加算されるため、
+  // 　手入力欄にはスケジュールで既に積み立てられている分を重複して含めないよう入力してください）
   const tsumitateScheduleReturn = categoryWeightedReturn(inputs.tsumitateAllocation, guessDefaultReturn("全世界株式"));
   const growthScheduleReturn = categoryWeightedReturn(inputs.growthAllocation, guessDefaultReturn("全世界株式"));
-  const tsumitateCatchUp = (tsumitateHoldingsAsOfAge !== null && tsumitateHoldingsAsOfAge < effectiveCurrentAge)
-    ? compoundedElapsedValue(inputs.tsumitateSchedule, tsumitateHoldingsAsOfAge, effectiveCurrentAge, tsumitateScheduleReturn)
-    : 0;
-  const growthCatchUp = (growthHoldingsAsOfAge !== null && growthHoldingsAsOfAge < effectiveCurrentAge)
-    ? compoundedElapsedValue(inputs.growthSchedule, growthHoldingsAsOfAge, effectiveCurrentAge, growthScheduleReturn)
-    : 0;
+  const tsumitateCatchUp = compoundedElapsedValue(inputs.tsumitateSchedule, 0, effectiveCurrentAge, tsumitateScheduleReturn);
+  const growthCatchUp = compoundedElapsedValue(inputs.growthSchedule, 0, effectiveCurrentAge, growthScheduleReturn);
 
   const tsumitateHoldingsTotal = tsumitateHoldingsManualTotal + tsumitateCatchUp;
   const growthHoldingsTotal = growthHoldingsManualTotal + growthCatchUp;
@@ -2401,7 +2398,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           <div className="note" style={{ marginTop: -8 }}>
             <Info size={13} />
             <span>
-              つみたて投資枠の評価額（{yen(tsumitateHoldingsTotal)}） + 成長投資枠の評価額（{yen(growthHoldingsTotal)}） + 一括投資の評価額（{yen(autoHoldingsTotal)}）を合計したものが、この「合計」欄（{yen(effectiveCurrentAssets)}）に反映され、シミュレーションではこの金額が使われます。「実際の残高」は基準年齢時点で実際にいくらだったかという金額として入力してください。基準年齢を入力すると、そこから現在の年齢まで銘柄ごとの想定利回りで複利運用したものとして評価額を計算します（つみたてスケジュールの経過分の複利成長：{yen(tsumitateCatchUp)}／成長投資枠：{yen(growthCatchUp)}を含む）。一括投資も同様に、それぞれの投資日から現在まで複利運用したものとして自動計算されます。基準年齢が未入力の場合は、入力した金額をそのまま現在の評価額として使います。ここで入力した銘柄名は、下の「NISA資産の配分」スライダーにもそのまま反映され、想定年率（利回り）はそちらで銘柄ごとに自動設定・調整されます（この欄自体には利回りの入力は不要です）。
+              つみたて投資枠の評価額（{yen(tsumitateHoldingsTotal)}） + 成長投資枠の評価額（{yen(growthHoldingsTotal)}） + 一括投資の評価額（{yen(autoHoldingsTotal)}）を合計したものが、この「合計」欄（{yen(effectiveCurrentAssets)}）に反映され、シミュレーションではこの金額が使われます。「実際の残高」は基準年齢時点で実際にいくらだったかという金額として入力してください。基準年齢を入力すると、そこから現在の年齢まで銘柄ごとの想定利回りで複利運用したものとして評価額を計算します（未入力ならそのままの金額を使用）。それとは別に、つみたて・成長投資枠それぞれの毎月投資額スケジュールで実際に引き落とされてきたはずの金額も、その都度の想定利回りで複利運用したものとして自動計算・加算されます（つみたてスケジュール分：{yen(tsumitateCatchUp)}／成長投資枠スケジュール分：{yen(growthCatchUp)}）。一括投資も同様に、それぞれの投資日から現在まで複利運用したものとして自動計算されます。※スケジュール分は自動加算されるため、「実際の残高」にはスケジュールで積み立て済みの分を重複して含めないようご注意ください。ここで入力した銘柄名は、下の「NISA資産の配分」スライダーにもそのまま反映され、想定年率（利回り）はそちらで銘柄ごとに自動設定・調整されます（この欄自体には利回りの入力は不要です）。
             </span>
           </div>
 
