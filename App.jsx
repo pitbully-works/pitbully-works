@@ -29,6 +29,43 @@ const NISA_LIMITS = {
 };
 
 // 生年月日から、今日時点での正確な年齢（年・月・日・小数の年齢）を計算する
+// 銘柄名からよくある想定年率の目安を推測する（実際の市場データではなく、一般的な傾向に基づく参考値）
+// マッチしない場合は中立的な既定値 5% を返す。あくまで初期値で、いつでも手動で書き換え可能。
+const RETURN_GUESS_TABLE = [
+  { keywords: ["半導体", "ai", "エヌビディア", "nvidia"], pct: 8 },
+  { keywords: ["ナスダック", "nasdaq"], pct: 7 },
+  { keywords: ["インド"], pct: 7 },
+  { keywords: ["新興国", "emerging"], pct: 6.5 },
+  { keywords: ["s&p500", "sp500", "s&p 500", "米国株", "全米"], pct: 6 },
+  { keywords: ["全世界", "オルカン", "先進国"], pct: 5 },
+  { keywords: ["高配当"], pct: 5 },
+  { keywords: ["日経", "topix", "日本株"], pct: 4 },
+  { keywords: ["reit", "リート", "不動産"], pct: 4 },
+  { keywords: ["ゴールド", "gold", "金"], pct: 3 },
+  { keywords: ["バランス"], pct: 3 },
+  { keywords: ["債券", "国債", "ボンド", "bond"], pct: 2 },
+  { keywords: ["預金", "貯金", "定期"], pct: 0.2 },
+];
+function guessDefaultReturn(name) {
+  const lower = (name || "").toLowerCase();
+  for (const row of RETURN_GUESS_TABLE) {
+    if (row.keywords.some((k) => lower.includes(k))) return row.pct;
+  }
+  return 5;
+}
+
+// iDeCoの節税額（概算）用：所得税＋住民税をまとめた大まかな実効税率の目安
+// ※実際の税額は控除の状況等により異なります。あくまで概算です。
+function estimateMarginalTaxRate(annualIncome) {
+  if (!annualIncome || annualIncome <= 0) return 0.2; // 年収未入力時の目安
+  if (annualIncome <= 1950000) return 0.15;
+  if (annualIncome <= 3300000) return 0.2;
+  if (annualIncome <= 6950000) return 0.3;
+  if (annualIncome <= 9000000) return 0.33;
+  if (annualIncome <= 18000000) return 0.43;
+  return 0.5;
+}
+
 function computeAgeFromBirthDate(birthDateStr, asOfDate) {
   if (!birthDateStr) return null;
   const birth = new Date(birthDateStr + "T00:00:00");
@@ -97,6 +134,9 @@ function runSimulation(inputs) {
     pensionMonthly, livingCostMonthly, postRetireReturn,
     healthBrackets, inheritanceTarget,
     privatePensionPlans,
+    // 追加パラメータ（省略時は既存のNISA計算と完全に同一の結果になる、後方互換の任意フック）
+    // iDeCoの年金受取分など、老後の収支に上乗せしたい追加収入を年齢から算出する関数
+    extraRetirementIncomeMonthly,
   } = inputs;
 
   // 積立・成長投資枠・一括投資の内訳に入力された銘柄だけで配分リストを作る（固定カテゴリなし）
@@ -186,7 +226,9 @@ function runSimulation(inputs) {
         (s, pl) => (age >= pl.payoutFromAge && age <= pl.payoutToAge ? s + (pl.monthlyPayout || 0) : s),
         0
       );
-      const netOutflow = livingCostMonthly + healthMonthly - pensionMonthly - privatePensionIncome;
+      // 追加収入（iDeCo年金受取分など）：未指定なら0のため、既存の計算結果に一切影響しない
+      const extraIncome = typeof extraRetirementIncomeMonthly === "function" ? extraRetirementIncomeMonthly(age) : 0;
+      const netOutflow = livingCostMonthly + healthMonthly - pensionMonthly - privatePensionIncome - extraIncome;
       total -= netOutflow;
       if (total < 0) {
         if (depletionAge === null) depletionAge = age;
@@ -391,6 +433,101 @@ function runPrivatePensionSimulation({ currentAge, deathAge, plans }) {
   }
   const totalFinal = yearly.length ? yearly[yearly.length - 1].total : 0;
   return { yearly, totalFinal, totalNow: yearly[0] ? yearly[0].total : 0 };
+}
+
+// ---------- iDeCo（個人型確定拠出年金）シミュレーション ----------
+// NISAの計算式（runSimulation）は変更していません。iDeCo専用の計算関数として独立させています。
+// 受取開始年齢までは生活費に使わず増やすだけ。受取開始後は受取方法に応じて、
+// 一時金は「使用可能資産へ一度だけ加算」、年金は「受取期間中、年間収入へ加算」します。
+function levelPayment(principal, annualRatePct, years) {
+  if (years <= 0) return principal;
+  const r = annualRatePct / 100;
+  if (Math.abs(r) < 1e-9) return principal / years;
+  return (principal * r) / (1 - Math.pow(1 + r, -years));
+}
+
+function runIdecoSimulation({ currentAge, deathAge, ideco }) {
+  const {
+    currentValue, monthlyContribution, startAge, endAge, returnPct,
+    payoutStartAge, payoutMethod, payoutYears, lumpPortionPct, payoutReturnPct,
+  } = ideco;
+
+  // 既存データ（新項目未設定の場合）でもエラーにならないよう安全な既定値を使用
+  const safePayoutYears = payoutYears || 10;
+  const safeLumpPct = (lumpPortionPct ?? 50) / 100;
+  const safePayoutReturn = payoutReturnPct ?? 0;
+
+  const totalMonths = Math.max(1, Math.round((deathAge - currentAge) * 12));
+  const accR = monthlyRate(returnPct);
+  let value = currentValue || 0;
+  let contributedSinceNow = 0;
+
+  let valueAtPayout = null;
+  let lumpAmount = 0;      // 受取開始年に一度だけ「使用可能資産」へ加算される金額
+  let annualPayout = 0;    // 受取期間中、毎年「年間収入」へ加算される金額
+  let payoutEndAge = payoutStartAge;
+
+  const yearly = [];
+
+  for (let m = 0; m <= totalMonths; m++) {
+    const age = currentAge + m / 12;
+
+    if (age < payoutStartAge) {
+      // 受取開始前：掛金を積み立てて運用するだけ（生活費には使用しない）
+      const contributing = age >= startAge && age < endAge;
+      const contribution = contributing ? (monthlyContribution || 0) : 0;
+      value = value * (1 + accR) + contribution;
+      if (contributing) contributedSinceNow += contribution;
+    } else {
+      if (valueAtPayout === null) {
+        valueAtPayout = value;
+        if (payoutMethod === "lump") {
+          lumpAmount = valueAtPayout;
+          annualPayout = 0;
+          value = 0;
+          payoutEndAge = payoutStartAge;
+        } else if (payoutMethod === "pension") {
+          lumpAmount = 0;
+          annualPayout = levelPayment(valueAtPayout, safePayoutReturn, safePayoutYears);
+          payoutEndAge = payoutStartAge + safePayoutYears;
+        } else {
+          // 併用：指定割合を一時金、残りを年金原資として指定年数で分割
+          lumpAmount = valueAtPayout * safeLumpPct;
+          const pensionBase = valueAtPayout * (1 - safeLumpPct);
+          annualPayout = levelPayment(pensionBase, safePayoutReturn, safePayoutYears);
+          payoutEndAge = payoutStartAge + safePayoutYears;
+          value = pensionBase;
+        }
+      }
+      if (age < payoutEndAge && annualPayout > 0) {
+        const payR = monthlyRate(safePayoutReturn);
+        value = Math.max(0, value * (1 + payR) - annualPayout / 12);
+      } else if (age >= payoutEndAge) {
+        value = 0;
+      }
+    }
+
+    if (m % 12 === 0) {
+      const inPayoutPeriod = age >= payoutStartAge && age < payoutEndAge;
+      yearly.push({
+        age: Math.round(age),
+        value,
+        lumpAmount, // 一度だけ加算する金額（表示・加算判定は呼び出し側でage===payoutStartAgeの年にのみ使用）
+        annualIncomeThisYear: inPayoutPeriod ? annualPayout : 0,
+      });
+    }
+  }
+
+  return {
+    yearly,
+    finalValue: yearly.length ? yearly[yearly.length - 1].value : value,
+    valueAtPayout,
+    lumpAmount,
+    annualPayout,
+    payoutStartAge,
+    payoutEndAge,
+    contributedSinceNow,
+  };
 }
 
 // ---------- default watchlist (personal holdings + reference sectors) ----------
@@ -650,8 +787,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     growthAllocation: [],
     extraFundReturns: {},
     pensionMonthly: 150000,
+    pensionSources: [],
     livingCostMonthly: 250000,
     postRetireReturn: 3,
+    postRetireReturnAuto: true,
     healthBrackets: { b60: 150000, b70: 250000, b80: 400000 },
     inheritanceTarget: 10000000,
     inheritancePlans: [],
@@ -659,11 +798,29 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       currentGrams: 0,
       pricePerGram: 24000,
       priceGrowthPct: 3,
+      priceGrowthPctAuto: true,
       monthlyYen: 20000,
       accumulateUntilAge: 65,
     },
     banks: [],
     stockReturnPct: 6,
+    stockReturnPctAuto: true,
+    ideco: {
+      currentValue: 1000000,
+      principalTotal: 900000,
+      monthlyContribution: 23000,
+      startAge: 35,
+      endAge: 60,
+      productName: "全世界株式",
+      returnPct: 5,
+      returnPctAuto: true,
+      payoutStartAge: 60,
+      payoutMethod: "lump", // "lump" | "pension" | "both"
+      payoutYears: 10,
+      lumpPortionPct: 50, // 併用時の一時金割合（%）
+      payoutReturnPct: 0, // 受取中の想定運用利回り
+      annualIncome: 0,
+    },
     loans: [],
     insurancePolicies: [],
     privatePensionPlans: [],
@@ -679,6 +836,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   });
   const [newBank, setNewBank] = useState({ name: "", balance: "", monthlyDeposit: "", interestPct: "" });
   const [newInheritance, setNewInheritance] = useState({ name: "", relation: "", amount: "" });
+  const [newPensionSource, setNewPensionSource] = useState({ name: "", monthlyAmount: "" });
   const [newAssetHolding, setNewAssetHolding] = useState({ name: "", value: "" });
   const [newLoan, setNewLoan] = useState({ name: "", principal: "", annualRatePct: "", monthlyPayment: "" });
   const [newInsurance, setNewInsurance] = useState({
@@ -863,6 +1021,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     setInputs((prev) => ({ ...prev, healthBrackets: { ...prev.healthBrackets, [key]: val } }));
   const updateGold = (key, val) =>
     setInputs((prev) => ({ ...prev, gold: { ...prev.gold, [key]: val } }));
+  const updateIdeco = (key, val) =>
+    setInputs((prev) => ({ ...prev, ideco: { ...prev.ideco, [key]: val } }));
 
   // 積立・成長投資枠・一括投資の銘柄別内訳に入力された銘柄だけを集約して、
   // そのままスライダー（自動計算・操作不可）として表示する
@@ -881,7 +1041,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     ? fundNames.map((name) => ({
         id: name,
         pct: (fundAmounts[name] / combinedGrandTotal) * 100,
-        returnPct: (inputs.extraFundReturns && inputs.extraFundReturns[name] !== undefined) ? inputs.extraFundReturns[name] : 5,
+        returnPct: (inputs.extraFundReturns && inputs.extraFundReturns[name] !== undefined) ? inputs.extraFundReturns[name] : guessDefaultReturn(name),
       }))
     : [];
 
@@ -916,15 +1076,46 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const currentAssetHoldingsTotal = inputs.currentAssetHoldings.reduce((s, h) => s + (h.value || 0), 0) + autoHoldingsTotal;
   const effectiveCurrentAssets = inputs.currentAssets + currentAssetHoldingsTotal;
 
+  // 退職後の想定利回りを、現役時代（銘柄別スライダー）の加重平均利回りの半分から自動で仮設定する
+  const weightedAvgReturn = dynamicFunds.reduce((s, f) => s + (f.pct / 100) * f.returnPct, 0);
+  const autoPostRetireReturn = dynamicFunds.length > 0 ? Math.round((weightedAvgReturn / 2) * 10) / 10 : inputs.postRetireReturn;
+  const effectivePostRetireReturn = (inputs.postRetireReturnAuto && dynamicFunds.length > 0) ? autoPostRetireReturn : inputs.postRetireReturn;
+
+  // iDeCo：NISAとは別の専用計算関数（受取前は生活費に使わず増やすだけ）。
+  // ここで先に受取額を算出し、年金・併用の場合のみ「追加収入」としてNISA側の取り崩し計算へ渡す。
+  const effectiveIdecoReturn = inputs.ideco.returnPctAuto ? guessDefaultReturn(inputs.ideco.productName) : inputs.ideco.returnPct;
+  const idecoSim = useMemo(
+    () => runIdecoSimulation({
+      currentAge: effectiveCurrentAge, deathAge: inputs.deathAge,
+      ideco: { ...inputs.ideco, returnPct: effectiveIdecoReturn },
+    }),
+    [effectiveCurrentAge, inputs.deathAge, inputs.ideco, effectiveIdecoReturn]
+  );
+  const idecoPayoutMethod = inputs.ideco.payoutMethod;
+  const getIdecoMonthlyIncome = useMemo(() => {
+    if (idecoPayoutMethod !== "pension" && idecoPayoutMethod !== "both") return null;
+    return (age) => (age >= idecoSim.payoutStartAge && age < idecoSim.payoutEndAge) ? idecoSim.annualPayout / 12 : 0;
+  }, [idecoPayoutMethod, idecoSim.payoutStartAge, idecoSim.payoutEndAge, idecoSim.annualPayout]);
+
+  // 年金受給見込み額：国民年金・企業年金基金など複数の項目を追加すると、その合計が自動的に使われる
+  const pensionSourcesTotal = inputs.pensionSources.reduce((s, p) => s + (p.monthlyAmount || 0), 0);
+  const effectivePensionMonthly = inputs.pensionSources.length > 0 ? pensionSourcesTotal : inputs.pensionMonthly;
+
   const effectiveInputs = useMemo(
-    () => ({ ...inputs, dynamicFunds, currentAge: effectiveCurrentAge, currentAssets: effectiveCurrentAssets }),
-    [inputs, JSON.stringify(dynamicFunds), effectiveCurrentAge, effectiveCurrentAssets]
+    () => ({
+      ...inputs, dynamicFunds, currentAge: effectiveCurrentAge, currentAssets: effectiveCurrentAssets,
+      postRetireReturn: effectivePostRetireReturn, extraRetirementIncomeMonthly: getIdecoMonthlyIncome,
+      pensionMonthly: effectivePensionMonthly,
+    }),
+    [inputs, JSON.stringify(dynamicFunds), effectiveCurrentAge, effectiveCurrentAssets, effectivePostRetireReturn, getIdecoMonthlyIncome, effectivePensionMonthly]
   );
 
   const sim = useMemo(() => runSimulation(effectiveInputs), [effectiveInputs]);
+  const autoGoldReturn = guessDefaultReturn("金");
+  const effectiveGoldReturnPct = inputs.gold.priceGrowthPctAuto ? autoGoldReturn : inputs.gold.priceGrowthPct;
   const goldSim = useMemo(
-    () => runGoldSimulation({ currentAge: effectiveCurrentAge, deathAge: inputs.deathAge, gold: inputs.gold }),
-    [effectiveCurrentAge, inputs.deathAge, inputs.gold]
+    () => runGoldSimulation({ currentAge: effectiveCurrentAge, deathAge: inputs.deathAge, gold: { ...inputs.gold, priceGrowthPct: effectiveGoldReturnPct } }),
+    [effectiveCurrentAge, inputs.deathAge, inputs.gold, effectiveGoldReturnPct]
   );
   const bankSim = useMemo(
     () => runBankSimulation({
@@ -937,9 +1128,16 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     () => watchlist.filter((w) => (w.value || 0) > 0).map((w) => ({ name: w.name, amount: w.value })),
     [watchlist]
   );
+  const autoStockReturn = useMemo(() => {
+    const held = watchlist.filter((w) => (w.value || 0) > 0);
+    const total = held.reduce((s, w) => s + w.value, 0);
+    if (total <= 0) return inputs.stockReturnPct;
+    return Math.round((held.reduce((s, w) => s + (w.value / total) * guessDefaultReturn(w.name), 0)) * 10) / 10;
+  }, [watchlist, inputs.stockReturnPct]);
+  const effectiveStockReturnPct = inputs.stockReturnPctAuto ? autoStockReturn : inputs.stockReturnPct;
   const stockSim = useMemo(
-    () => runStockSim({ currentAge: effectiveCurrentAge, deathAge: inputs.deathAge, totalValue: stockTotalNow, returnPct: inputs.stockReturnPct }),
-    [effectiveCurrentAge, inputs.deathAge, stockTotalNow, inputs.stockReturnPct]
+    () => runStockSim({ currentAge: effectiveCurrentAge, deathAge: inputs.deathAge, totalValue: stockTotalNow, returnPct: effectiveStockReturnPct }),
+    [effectiveCurrentAge, inputs.deathAge, stockTotalNow, effectiveStockReturnPct]
   );
   const loanSim = useMemo(
     () => runLoanSimulation({ currentAge: effectiveCurrentAge, deathAge: inputs.deathAge, loans: inputs.loans }),
@@ -954,7 +1152,17 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     [effectiveCurrentAge, inputs.deathAge, inputs.privatePensionPlans]
   );
 
-  // merge NISA + gold + bank + stocks + 民間年金積立 - loans - 保険料累計 into one net-worth-by-age series for the combined chart
+  // iDeCo 自動計算項目
+  const idecoAnnualContribution = (inputs.ideco.monthlyContribution || 0) * 12;
+  const idecoRemainingContribYears = Math.max(0, inputs.ideco.endAge - Math.max(inputs.ideco.startAge, effectiveCurrentAge));
+  const idecoContributionTotal = (inputs.ideco.principalTotal || 0) + idecoAnnualContribution * idecoRemainingContribYears;
+  const idecoInvestmentGain = (inputs.ideco.currentValue || 0) - (inputs.ideco.principalTotal || 0);
+  // iDeCo 節税シミュレーション（概算）
+  const idecoMarginalTaxRate = estimateMarginalTaxRate(inputs.ideco.annualIncome);
+  const idecoAnnualTaxSaving = idecoAnnualContribution * idecoMarginalTaxRate;
+  const idecoCumulativeTaxSaving = idecoAnnualTaxSaving * idecoRemainingContribYears;
+
+  // merge NISA + gold + bank + stocks + 民間年金積立 + iDeCo一時金 - loans - 保険料累計 into one net-worth-by-age series for the combined chart
   const netWorthYearly = useMemo(() => {
     return sim.yearly.map((row, i) => {
       const goldValue = goldSim.yearly[i]?.value ?? goldSim.finalValue;
@@ -963,12 +1171,18 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       const loanValue = loanSim.yearly[i]?.total ?? loanSim.totalFinal;
       const insuranceValue = insuranceSim.yearly[i]?.total ?? insuranceSim.totalFinal;
       const pensionValue = pensionSim.yearly[i]?.total ?? pensionSim.totalFinal;
+      const idecoRow = idecoSim.yearly[i];
+      // 受取開始前：まだロックされたiDeCo残高（総資産には含めるが、使用可能資産には含めない）
+      const idecoLockedValue = idecoRow ? idecoRow.value : idecoSim.finalValue;
+      // 一時金部分：受取開始年に一度だけ計算され、以降の年もそのまま含まれ続ける（重複加算はしない）
+      const idecoSpendableValue = idecoRow ? idecoRow.lumpAmount : idecoSim.lumpAmount;
       return {
         ...row, goldValue, bankValue, stockValue, loanValue, insuranceValue, pensionValue,
-        netWorth: row.total + goldValue + bankValue + stockValue + pensionValue - loanValue - insuranceValue,
+        idecoLockedValue, idecoSpendableValue,
+        netWorth: row.total + goldValue + bankValue + stockValue + pensionValue + idecoSpendableValue - loanValue - insuranceValue,
       };
     });
-  }, [sim, goldSim, bankSim, stockSim, loanSim, insuranceSim, pensionSim]);
+  }, [sim, goldSim, bankSim, stockSim, loanSim, insuranceSim, pensionSim, idecoSim]);
   const netWorthFinal = netWorthYearly.length ? netWorthYearly[netWorthYearly.length - 1].netWorth : sim.finalAssets;
   const inheritanceTotal = inputs.inheritancePlans.reduce((s, p) => s + (p.amount || 0), 0);
   const effectiveInheritanceTarget = inputs.inheritancePlans.length > 0 ? inheritanceTotal : inputs.inheritanceTarget;
@@ -1046,6 +1260,20 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   };
   const removeInheritancePlan = (idx) =>
     setInputs((prev) => ({ ...prev, inheritancePlans: prev.inheritancePlans.filter((_, i) => i !== idx) }));
+
+  const addPensionSource = () => {
+    if (!newPensionSource.name.trim()) return;
+    setInputs((prev) => ({
+      ...prev,
+      pensionSources: [...prev.pensionSources, {
+        name: newPensionSource.name.trim(),
+        monthlyAmount: Number(newPensionSource.monthlyAmount) || 0,
+      }],
+    }));
+    setNewPensionSource({ name: "", monthlyAmount: "" });
+  };
+  const removePensionSource = (idx) =>
+    setInputs((prev) => ({ ...prev, pensionSources: prev.pensionSources.filter((_, i) => i !== idx) }));
 
   const addAssetHolding = () => {
     if (!newAssetHolding.name.trim()) return;
@@ -2219,7 +2447,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                     <span style={{ fontSize: 10, color: "#7C8A90" }}>想定年率</span>
                     <input
                       type="number" step={0.5} className="inline-num" style={{ width: 60 }}
-                      value={inputs.extraFundReturns[f.id] !== undefined ? inputs.extraFundReturns[f.id] : 5}
+                      value={inputs.extraFundReturns[f.id] !== undefined ? inputs.extraFundReturns[f.id] : guessDefaultReturn(f.id)}
                       onChange={(e) => updateExtraFundReturn(f.id, Number(e.target.value))}
                     />
                     <span style={{ fontSize: 10, color: "#7C8A90" }}>%</span>
@@ -2228,6 +2456,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               ))}
               <div className="alloc-sum">
                 積立・成長投資枠・一括投資の内訳合計（{yen(combinedGrandTotal)}）から自動計算されています。
+              </div>
+              <div className="note" style={{ marginTop: 8 }}>
+                <Info size={13} />
+                <span>想定年率は、銘柄名から一般的な目安を自動で仮設定しています（実際の市場データではありません）。数値はいつでも手動で書き換えられます。</span>
               </div>
             </>
           ) : (
@@ -2242,12 +2474,177 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <span>同じ系統のファンドを重ねすぎると分散効果が薄れる点にご注意ください（例：全世界株式とS&P500は米国株の比重が重なりやすい組み合わせです）。</span>
           </div>
 
-          <SectionTitle index="03" title="老後・年金" icon={Landmark} />
-          <Field label="年金受給見込み額" unit="円/月" value={inputs.pensionMonthly} step={5000} onChange={(v) => update({ pensionMonthly: v })} />
-          <Field label="老後の生活費" unit="円/月" value={inputs.livingCostMonthly} step={5000} onChange={(v) => update({ livingCostMonthly: v })} />
-          <Field label="退職後の想定運用利回り" unit="%" step={0.5} value={inputs.postRetireReturn} onChange={(v) => update({ postRetireReturn: v })} />
+          <SectionTitle index="03" title="iDeCo積立（個人型確定拠出年金）" icon={Landmark} />
 
-          <SectionTitle index="04" title="健康リスク費用（自己負担目安）" icon={HeartPulse} />
+          <div className="note">
+            <Info size={13} />
+            <span>
+              iDeCoは老後資産形成制度です。原則として受給可能年齢まで引き出せません。運用成果は将来を保証するものではありません。節税額は概算です。
+            </span>
+          </div>
+
+          <Field label="現在評価額" unit="円" step={10000} value={inputs.ideco.currentValue} onChange={(v) => updateIdeco("currentValue", v)} />
+          <Field label="投資元本（これまでの掛金累計）" unit="円" step={10000} value={inputs.ideco.principalTotal} onChange={(v) => updateIdeco("principalTotal", v)} />
+          <Field label="毎月掛金" unit="円" step={1000} value={inputs.ideco.monthlyContribution} onChange={(v) => updateIdeco("monthlyContribution", v)} />
+          <AgeField label="掛金開始年齢" value={inputs.ideco.startAge} onChange={(v) => updateIdeco("startAge", v)} />
+          <AgeField label="掛金終了年齢" value={inputs.ideco.endAge} onChange={(v) => updateIdeco("endAge", v)} />
+
+          <label className="field">
+            <span className="field-label">運用商品名</span>
+            <div className="field-input-wrap">
+              <input
+                type="text" value={inputs.ideco.productName}
+                onChange={(e) => updateIdeco("productName", e.target.value)}
+                style={{ width: "100%" }}
+              />
+            </div>
+          </label>
+
+          <Field
+            label={`想定年間利回り${inputs.ideco.returnPctAuto ? "（自動：商品名から仮設定）" : ""}`}
+            unit="%" step={0.5}
+            value={effectiveIdecoReturn}
+            onChange={(v) => { updateIdeco("returnPct", v); updateIdeco("returnPctAuto", false); }}
+          />
+          {!inputs.ideco.returnPctAuto && (
+            <div className="note" style={{ marginTop: -8 }}>
+              <Info size={13} />
+              <span>
+                手動設定中です。
+                <span
+                  style={{ color: "#4FA8D8", textDecoration: "underline", cursor: "pointer", marginLeft: 4 }}
+                  onClick={() => updateIdeco("returnPctAuto", true)}
+                >
+                  自動計算に戻す
+                </span>
+              </span>
+            </div>
+          )}
+
+          <AgeField label="受取開始年齢" value={inputs.ideco.payoutStartAge} onChange={(v) => updateIdeco("payoutStartAge", v)} />
+
+          <div className="field-label" style={{ marginBottom: 6 }}>受取方法</div>
+          <div className="add-row" style={{ marginBottom: 14 }}>
+            {[
+              { key: "lump", label: "一時金" },
+              { key: "pension", label: "年金" },
+              { key: "both", label: "併用" },
+            ].map((opt) => (
+              <button
+                key={opt.key}
+                onClick={() => updateIdeco("payoutMethod", opt.key)}
+                style={{
+                  flex: 1, padding: "9px 8px", borderRadius: 4, fontSize: 12.5, cursor: "pointer",
+                  border: inputs.ideco.payoutMethod === opt.key ? "1px solid #4FA8D8" : "1px solid var(--line)",
+                  background: inputs.ideco.payoutMethod === opt.key ? "rgba(79,168,216,0.15)" : "var(--panel)",
+                  color: inputs.ideco.payoutMethod === opt.key ? "#4FA8D8" : "var(--text)",
+                }}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
+          {(inputs.ideco.payoutMethod === "pension" || inputs.ideco.payoutMethod === "both") && (
+            <>
+              <Field label="年金受取期間" unit="年" step={1} value={inputs.ideco.payoutYears} onChange={(v) => updateIdeco("payoutYears", v)} />
+              <Field label="受取中の想定運用利回り" unit="%" step={0.5} value={inputs.ideco.payoutReturnPct} onChange={(v) => updateIdeco("payoutReturnPct", v)} />
+            </>
+          )}
+          {inputs.ideco.payoutMethod === "both" && (
+            <Field label="一時金として受け取る割合" unit="%" step={5} min={0} max={100} value={inputs.ideco.lumpPortionPct} onChange={(v) => updateIdeco("lumpPortionPct", v)} />
+          )}
+
+          <div className="stat-sub" style={{ marginBottom: 4 }}>年間掛金：<span className="mono">{yen(idecoAnnualContribution)}</span></div>
+          <div className="stat-sub" style={{ marginBottom: 4 }}>積立総額（見込み）：<span className="mono">{yen(idecoContributionTotal)}</span></div>
+          <div className="stat-sub" style={{ marginBottom: 4 }}>運用益（現時点）：<span className="mono">{yen(idecoInvestmentGain)}</span></div>
+          <div className="stat-sub" style={{ marginBottom: 4 }}>
+            受取開始時点の予想資産：<span className="mono">{idecoSim.valueAtPayout !== null ? yen(idecoSim.valueAtPayout) : "—"}</span>
+          </div>
+          {(inputs.ideco.payoutMethod === "lump" || inputs.ideco.payoutMethod === "both") && (
+            <div className="stat-sub" style={{ marginBottom: 4 }}>
+              一時金として受け取る額（{inputs.ideco.payoutStartAge}歳に一度）：<span className="mono">{yen(idecoSim.lumpAmount)}</span>
+            </div>
+          )}
+          {(inputs.ideco.payoutMethod === "pension" || inputs.ideco.payoutMethod === "both") && (
+            <div className="stat-sub" style={{ marginBottom: 14 }}>
+              年間予想受取額（{inputs.ideco.payoutStartAge}〜{idecoSim.payoutEndAge - 1}歳）：<span className="mono">{yen(idecoSim.annualPayout)}</span>
+            </div>
+          )}
+
+          <div className="field-label" style={{ marginBottom: 6 }}>節税シミュレーション（概算）</div>
+          <Field label="年収（任意）" unit="円" step={100000} value={inputs.ideco.annualIncome} onChange={(v) => updateIdeco("annualIncome", v)} />
+          <div className="stat-sub" style={{ marginBottom: 4 }}>年間節税額（概算）：<span className="mono">{yen(idecoAnnualTaxSaving)}</span></div>
+          <div className="stat-sub" style={{ marginBottom: 8 }}>積立終了までの累計節税額（概算）：<span className="mono">{yen(idecoCumulativeTaxSaving)}</span></div>
+          <div className="note" style={{ marginTop: -4 }}>
+            <Info size={13} />
+            <span>節税額は、年収から見積もった大まかな税率をもとにした概算です。実際の控除状況により変動します。年収を入力しない場合は目安の税率(20%)で計算しています。</span>
+          </div>
+          <div className="note">
+            <Info size={13} />
+            <span>受取開始後は、一時金は受取年に「現在使える資産」へ一度だけ加算され、年金は受取期間中「年間収入」へ加算されて生活費との差額の取り崩しに反映されます。受取期間が終わるとiDeCoからの収入加算は終了します。</span>
+          </div>
+
+          <SectionTitle index="04" title="老後・年金" icon={Landmark} />
+          <div className="field-label" style={{ marginBottom: 6 }}>年金受給見込み額（国民年金・企業年金基金など、いくつでも追加できます）</div>
+          {inputs.pensionSources.length > 0 && (
+            <table className="watchlist" style={{ marginBottom: 8 }}>
+              <thead><tr><th>年金の種類</th><th>月額</th><th></th></tr></thead>
+              <tbody>
+                {inputs.pensionSources.map((p, i) => (
+                  <tr key={i}>
+                    <td>{p.name}</td>
+                    <td className="mono">{yen(p.monthlyAmount)}</td>
+                    <td style={{ width: 24 }}>
+                      <button className="del-btn" onClick={() => removePensionSource(i)}><Trash2 size={13} /></button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          <div className="add-row" style={{ marginBottom: 8 }}>
+            <input placeholder="例：国民年金、企業年金基金" value={newPensionSource.name} onChange={(e) => setNewPensionSource((p) => ({ ...p, name: e.target.value }))} />
+            <input placeholder="月額（円）" type="number" value={newPensionSource.monthlyAmount} onChange={(e) => setNewPensionSource((p) => ({ ...p, monthlyAmount: e.target.value }))} />
+            <button className="add-btn" onClick={addPensionSource}><Plus size={15} /></button>
+          </div>
+          <Field
+            label={inputs.pensionSources.length > 0 ? "年金受給見込み額：合計（上のリストから自動反映）" : "年金受給見込み額"}
+            unit="円/月"
+            value={effectivePensionMonthly}
+            disabled={inputs.pensionSources.length > 0}
+            step={5000}
+            onChange={(v) => update({ pensionMonthly: v })}
+          />
+          {inputs.pensionSources.length > 0 && (
+            <div className="note" style={{ marginTop: -8 }}>
+              <Info size={13} />
+              <span>年金の種類を1件以上登録すると、この欄には自動的にその合計月額が反映され、編集できなくなります。手入力に戻したい場合は、登録した項目をすべて削除してください。</span>
+            </div>
+          )}
+          <Field label="老後の生活費" unit="円/月" value={inputs.livingCostMonthly} step={5000} onChange={(v) => update({ livingCostMonthly: v })} />
+          <Field
+            label={`退職後の想定運用利回り${inputs.postRetireReturnAuto && dynamicFunds.length > 0 ? "（自動：現役時代の加重平均の半分）" : ""}`}
+            unit="%" step={0.5}
+            value={effectivePostRetireReturn}
+            onChange={(v) => update({ postRetireReturn: v, postRetireReturnAuto: false })}
+          />
+          {!inputs.postRetireReturnAuto && dynamicFunds.length > 0 && (
+            <div className="note" style={{ marginTop: -8 }}>
+              <Info size={13} />
+              <span>
+                手動設定中です。
+                <span
+                  style={{ color: "#4FA8D8", textDecoration: "underline", cursor: "pointer", marginLeft: 4 }}
+                  onClick={() => update({ postRetireReturnAuto: true })}
+                >
+                  自動計算に戻す
+                </span>
+              </span>
+            </div>
+          )}
+
+          <SectionTitle index="05" title="健康リスク費用（自己負担目安）" icon={HeartPulse} />
           <Field label="60代 年間自己負担" unit="円/年" step={10000} value={inputs.healthBrackets.b60} onChange={(v) => updateHealth("b60", v)} />
           <Field label="70代 年間自己負担" unit="円/年" step={10000} value={inputs.healthBrackets.b70} onChange={(v) => updateHealth("b70", v)} />
           <Field label="80代以降 年間自己負担" unit="円/年" step={10000} value={inputs.healthBrackets.b80} onChange={(v) => updateHealth("b80", v)} />
@@ -2256,7 +2653,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <span>公的医療保険の高額療養費制度を考慮した後の自己負担額の概算です。実際は所得区分により上限が変わるため目安としてご利用ください。</span>
           </div>
 
-          <SectionTitle index="05" title="相続プラン" icon={Users} />
+          <SectionTitle index="06" title="相続プラン" icon={Users} />
           {inputs.inheritancePlans.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 8 }}>
               <thead><tr><th>名前</th><th>続柄</th><th>金額</th><th></th></tr></thead>
@@ -2301,10 +2698,29 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             </div>
           )}
 
-          <SectionTitle index="06" title="金（ゴールド）資産形成" icon={Coins} />
+          <SectionTitle index="07" title="金（ゴールド）資産形成" icon={Coins} />
           <Field label="現在の保有量" unit="g" step={1} value={inputs.gold.currentGrams} onChange={(v) => updateGold("currentGrams", v)} />
           <Field label="現在の金価格（参考）" unit="円/g" step={100} value={inputs.gold.pricePerGram} onChange={(v) => updateGold("pricePerGram", v)} />
-          <Field label="想定 年率価格上昇率" unit="%" step={0.5} value={inputs.gold.priceGrowthPct} onChange={(v) => updateGold("priceGrowthPct", v)} />
+          <Field
+            label={`想定 年率価格上昇率${inputs.gold.priceGrowthPctAuto ? "（自動仮設定）" : ""}`}
+            unit="%" step={0.5}
+            value={effectiveGoldReturnPct}
+            onChange={(v) => { updateGold("priceGrowthPct", v); updateGold("priceGrowthPctAuto", false); }}
+          />
+          {!inputs.gold.priceGrowthPctAuto && (
+            <div className="note" style={{ marginTop: -8 }}>
+              <Info size={13} />
+              <span>
+                手動設定中です。
+                <span
+                  style={{ color: "#4FA8D8", textDecoration: "underline", cursor: "pointer", marginLeft: 4 }}
+                  onClick={() => updateGold("priceGrowthPctAuto", true)}
+                >
+                  自動計算に戻す
+                </span>
+              </span>
+            </div>
+          )}
           <Field label="毎月の積立額" unit="円/月" step={1000} value={inputs.gold.monthlyYen} onChange={(v) => updateGold("monthlyYen", v)} />
           <AgeField label="積立を続ける年齢（まで）" value={inputs.gold.accumulateUntilAge} onChange={(v) => updateGold("accumulateUntilAge", v)} />
           <div className="note">
@@ -2312,7 +2728,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <span>金価格は2026年7月時点の店頭小売価格（1g ≈ 24,000円前後）を参考値としています。実際の価格は日々変動するため、最新の価格に置き換えてご利用ください。</span>
           </div>
 
-          <SectionTitle index="07" title="銀行預金（銀行別）" icon={PiggyBank} />
+          <SectionTitle index="08" title="銀行預金（銀行別）" icon={PiggyBank} />
           {inputs.banks.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 8 }}>
               <thead><tr><th>銀行名</th><th>残高</th><th>月次入金</th><th></th></tr></thead>
@@ -2344,7 +2760,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <span>毎月入金は引退年齢（{inputs.retireAge}歳）まで継続する前提で計算します。金利は普通預金なら0〜0.1%程度が目安です。</span>
           </div>
 
-          <SectionTitle index="08" title="借入金（返済シミュレーション）" icon={Landmark} />
+          <SectionTitle index="09" title="借入金（返済シミュレーション）" icon={Landmark} />
           {inputs.loans.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 8 }}>
               <thead><tr><th>名称</th><th>残元本</th><th>金利</th><th>月返済</th><th></th></tr></thead>
@@ -2383,7 +2799,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             </div>
           )}
 
-          <SectionTitle index="09" title="生命保険" icon={HeartPulse} />
+          <SectionTitle index="10" title="生命保険" icon={HeartPulse} />
           {inputs.insurancePolicies.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 10 }}>
               <thead><tr><th>保険名</th><th>払込 / 保障</th><th></th></tr></thead>
@@ -2476,7 +2892,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <span>払込中の保険料は将来資産から自動的に控除されます。入院・手術等の給付額は保障内容の記録用で、発生が不確実なため資産予測には自動反映されません（必要に応じて健康費用の想定額をご自身で調整してください）。登録後、各保険の項目下にある欄から項目名を自由に追加できます。</span>
           </div>
 
-          <SectionTitle index="10" title="民間年金積立" icon={PiggyBank} />
+          <SectionTitle index="11" title="民間年金積立" icon={PiggyBank} />
           {inputs.privatePensionPlans.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 10 }}>
               <thead><tr><th>年金名</th><th>積立 / 受給</th><th></th></tr></thead>
@@ -2546,6 +2962,23 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
         {/* -------- RIGHT: DASHBOARD -------- */}
         <div className="content">
+          <div className="stat-grid" style={{ marginBottom: 10 }}>
+            <StatCard label="投資資産：NISA" value={yen(effectiveCurrentAssets)} sub="現在のNISA評価額" />
+            <StatCard label="投資資産：iDeCo" value={yen(inputs.ideco.currentValue)} sub="現在のiDeCo評価額" />
+          </div>
+          <div className="stat-grid" style={{ marginBottom: 14 }}>
+            <StatCard
+              label="現在使える資産"
+              value={yen((netWorthYearly[0]?.netWorth) ?? (netWorthFinal - idecoSim.finalValue))}
+              sub="iDeCoロック分を除く、現時点の資産"
+              tone="good"
+            />
+            <StatCard
+              label="老後専用資産（iDeCo）"
+              value={yen((netWorthYearly[0]?.idecoLockedValue) ?? idecoSim.finalValue)}
+              sub="受取開始年齢までは引き出せません"
+            />
+          </div>
           <div className="stat-grid" style={{ marginBottom: 10 }}>
             <StatCard
               label="つみたて投資枠 残り"
@@ -2811,9 +3244,23 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               </div>
               <div className="stat-sub" style={{ marginTop: 10 }}>保有合計：<span className="mono">{yen(stockTotalNow)}</span></div>
               <Field
-                label={`${inputs.deathAge}歳までの想定年率（個別株全体）`} unit="%" step={0.5}
-                value={inputs.stockReturnPct} onChange={(v) => update({ stockReturnPct: v })}
+                label={`${inputs.deathAge}歳までの想定年率（個別株全体）${inputs.stockReturnPctAuto ? "（自動：保有銘柄名から仮設定）" : ""}`} unit="%" step={0.5}
+                value={effectiveStockReturnPct} onChange={(v) => update({ stockReturnPct: v, stockReturnPctAuto: false })}
               />
+              {!inputs.stockReturnPctAuto && (
+                <div className="note" style={{ marginTop: -8 }}>
+                  <Info size={13} />
+                  <span>
+                    手動設定中です。
+                    <span
+                      style={{ color: "#4FA8D8", textDecoration: "underline", cursor: "pointer", marginLeft: 4 }}
+                      onClick={() => update({ stockReturnPctAuto: true })}
+                    >
+                      自動計算に戻す
+                    </span>
+                  </span>
+                </div>
+              )}
               {stockAllocationItems.length > 0 && (
                 <>
                   <div className="chart-label" style={{ padding: 0, margin: "12px 0 4px" }}>保有金額に連動した銘柄別割合</div>
