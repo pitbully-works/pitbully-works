@@ -2310,7 +2310,6 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               「手入力」欄（{yen(inputs.currentAssets)}） + つみたて投資枠の実際残高（{yen(tsumitateHoldingsTotal)}） + 成長投資枠の実際残高（{yen(growthHoldingsTotal)}） + 一括投資の自動計算分（{yen(autoHoldingsTotal)}）を合計したものが、この「合計」欄に反映され、シミュレーションではこの金額が使われます。ここで入力した銘柄名は、下の「NISA資産の配分」スライダーにもそのまま反映され、想定年率（利回り）はそちらで銘柄ごとに自動設定・調整されます（この欄自体には利回りの入力は不要です）。
             </span>
           </div>
-          </div>
 
           <div className="field-label" style={{ marginBottom: 6 }}>つみたて投資枠：毎月投資額（年齢区間ごとに設定）</div>
           {inputs.tsumitateSchedule.length > 0 && (
