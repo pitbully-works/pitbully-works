@@ -1133,10 +1133,6 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       value: listTotal > 0 ? (it.amount / listTotal) * elapsedTotal : 0,
     }));
   };
-  const autoHoldingRows = [
-    ...autoHoldingRowsFor(inputs.lumpAllocation, lumpElapsedTotal, "一括投資"),
-  ];
-  const autoHoldingsTotal = autoHoldingRows.reduce((s, r) => s + r.value, 0);
 
   // 「実際の残高」の基準年齢（年・月の入力から小数年齢に変換。未入力なら null＝現在の年齢として扱う＝追加計算なし）
   const tsumitateHoldingsAsOfAge = (inputs.tsumitateHoldingsAsOfYears !== "" && inputs.tsumitateHoldingsAsOfYears !== undefined && inputs.tsumitateHoldingsAsOfYears !== null)
@@ -1168,6 +1164,14 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
   const tsumitateHoldingsTotal = tsumitateHoldingsManualTotal + tsumitateCatchUp;
   const growthHoldingsTotal = growthHoldingsManualTotal + growthCatchUp;
+
+  // 時価（自動計算）の一覧：一括投資に加え、つみたて・成長投資枠のスケジュール分もまとめて銘柄別に表示する
+  const autoHoldingRows = [
+    ...autoHoldingRowsFor(inputs.tsumitateAllocation, tsumitateCatchUp, "つみたてスケジュール分"),
+    ...autoHoldingRowsFor(inputs.growthAllocation, growthCatchUp, "成長投資枠スケジュール分"),
+    ...autoHoldingRowsFor(inputs.lumpAllocation, lumpElapsedTotal, "一括投資"),
+  ];
+  const autoHoldingsTotal = lumpElapsedTotal;
 
   // 現在のNISA資産は手入力せず、つみたて/成長投資枠の実際の残高（＋基準年齢以降の複利成長分）＋一括投資の自動計算分から完全に自動算出する
   const currentAssetHoldingsTotal = tsumitateHoldingsTotal + growthHoldingsTotal + autoHoldingsTotal;
@@ -2386,7 +2390,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           {autoHoldingRows.length > 0 && (
             <>
               <div className="field-label" style={{ marginBottom: 6 }}>
-                時価（自動計算：現在の日付までの一括投資の経過分）
+                時価（自動計算：つみたて・成長投資枠のスケジュール分＋一括投資の経過分）
               </div>
               <table className="watchlist" style={{ marginBottom: 8 }}>
                 <thead><tr><th>銘柄</th><th>時価（自動）</th></tr></thead>
