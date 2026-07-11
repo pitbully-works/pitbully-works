@@ -1695,8 +1695,8 @@ export default function NisaLifePlan() {
             あなたの人生設計を、ひとつの画面で。
           </p>
           <p className="landing-sub">
-            入力するだけで、NISA・年金・預貯金・金・保険を含めた将来の資産推移をシミュレーションできます。<br />
-            老後資金が何歳まで持つのか、将来必要となる資産を「見える化」し、安心できるライフプラン作りをサポートします。
+            入力するだけで、将来のお金の流れを見える化。<br />
+            NISA・年金・預貯金・金・保険をまとめて管理し、将来の資産推移をシミュレーションできます。
           </p>
           <button className="landing-cta" onClick={scrollToSimulator}>
             無料でシミュレーションを始める
@@ -1705,7 +1705,7 @@ export default function NisaLifePlan() {
 
         <div className="landing-screenshot">
           <h2>実際のシミュレーション画面</h2>
-          <p>現在の資産・年金・NISA・保険・金などを入力するだけで、将来の資産推移を分かりやすく確認できます。</p>
+          <p>現在の資産・NISA・年金・預貯金・金・保険などを入力するだけで、将来の資産推移をグラフで分かりやすく確認できます。</p>
           <img src="/ogp.png" alt="資産形成 総合ライフプラン シミュレーション画面" loading="lazy" />
         </div>
 
