@@ -2343,6 +2343,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               onMonths={(v) => update({ tsumitateHoldingsAsOfMonths: v })}
             />
           </div>
+          <div className="note" style={{ marginBottom: 12 }}>
+            <Info size={13} />
+            <span>つみたて投資枠スケジュール分（自動計算・複利込み）：<span className="mono">{yen(tsumitateCatchUp)}</span>　※上の「実際の残高」とは別に自動加算されます</span>
+          </div>
 
           <div className="field-label" style={{ marginBottom: 6 }}>成長投資枠：実際の残高（銘柄・金額）</div>
           {inputs.growthHoldings.length > 0 && (
@@ -2373,6 +2377,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               onYears={(v) => update({ growthHoldingsAsOfYears: v })}
               onMonths={(v) => update({ growthHoldingsAsOfMonths: v })}
             />
+          </div>
+          <div className="note" style={{ marginBottom: 12 }}>
+            <Info size={13} />
+            <span>成長投資枠スケジュール分（自動計算・複利込み）：<span className="mono">{yen(growthCatchUp)}</span>　※上の「実際の残高」とは別に自動加算されます</span>
           </div>
 
           {autoHoldingRows.length > 0 && (
