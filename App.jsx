@@ -677,19 +677,29 @@ function AgeField({ label, value, onChange, disabled }) {
 
 // 追加フォーム用の小型「歳＋ヶ月」入力（2つの数値を親のuseState断片として管理）
 function AgeYMInput({ years, months, onYears, onMonths, placeholder }) {
+  const inputStyle = {
+    width: "50%",
+    background: "var(--panel-2)",
+    border: "1px solid var(--line)",
+    color: "var(--text)",
+    padding: "7px 9px",
+    borderRadius: 3,
+    fontSize: 12,
+    outline: "none",
+  };
   return (
     <div style={{ display: "flex", gap: 4, flex: 1 }}>
       <input
         type="number" placeholder={`${placeholder}歳`} value={years}
         onChange={(e) => onYears(e.target.value)}
         onFocus={(e) => e.target.select()}
-        style={{ width: "50%" }}
+        style={inputStyle}
       />
       <input
         type="number" placeholder="ヶ月" min={0} max={11} value={months}
         onChange={(e) => onMonths(e.target.value)}
         onFocus={(e) => e.target.select()}
-        style={{ width: "50%" }}
+        style={inputStyle}
       />
     </div>
   );
@@ -2433,7 +2443,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <button className="add-btn" onClick={addTsumitateHolding}><Plus size={15} /></button>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
-            <span style={{ fontSize: 10, color: "#7C8A90", whiteSpace: "nowrap" }}>この残高の基準年齢（任意）</span>
+            <span style={{ fontSize: 10, color: "#7C8A90", whiteSpace: "nowrap" }}>この残高時点の基準年齢（任意）</span>
             <AgeYMInput
               placeholder="基準年齢" years={inputs.tsumitateHoldingsAsOfYears} months={inputs.tsumitateHoldingsAsOfMonths}
               onYears={(v) => update({ tsumitateHoldingsAsOfYears: v })}
@@ -2468,7 +2478,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <button className="add-btn" onClick={addGrowthHolding}><Plus size={15} /></button>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
-            <span style={{ fontSize: 10, color: "#7C8A90", whiteSpace: "nowrap" }}>この残高の基準年齢（任意）</span>
+            <span style={{ fontSize: 10, color: "#7C8A90", whiteSpace: "nowrap" }}>この残高時点の基準年齢（任意）</span>
             <AgeYMInput
               placeholder="基準年齢" years={inputs.growthHoldingsAsOfYears} months={inputs.growthHoldingsAsOfMonths}
               onYears={(v) => update({ growthHoldingsAsOfYears: v })}
