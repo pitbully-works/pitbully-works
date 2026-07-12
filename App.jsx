@@ -247,8 +247,10 @@ const TRANSLATIONS = {
     "goldPriceRefNote": "金価格は2026年7月時点の店頭小売価格（1g ≈ 24,000円前後）を参考値としています。実際の価格は日々変動するため、最新の価格に置き換えてご利用ください。",
     "growthAllocationLabel": "成長投資枠の銘柄別内訳（金額を入れると割合を自動計算）",
     "growthAsOfNote": "残高時点の基準年齢を基に計算いたします。（現在の実際の残高＋利率　{manual}）＋（スケジュール分＋利率　{catchup}）＝現在のNISA資産合計。",
+    "growthFrameLabel": "成長投資枠",
     "growthHoldingsLabel": "成長投資枠：実際の残高（銘柄・金額）",
     "growthOverageDetail": "成長投資枠は上限を{amount}超過。",
+    "growthScheduleCategoryLabel": "成長投資枠スケジュール分",
     "growthScheduleExampleNote": "例：「50歳0ヶ月〜55歳11ヶ月・月15万円」「56歳0ヶ月〜65歳0ヶ月・月5万円」のように、歳とヶ月で区間を分けて成長投資枠の毎月投資額を設定できます。区間が重なる場合は合算されます。",
     "growthScheduleLabel": "成長投資枠：毎月投資額（年齢区間ごとに設定）",
     "health60sLabel": "60代 年間自己負担",
@@ -260,6 +262,7 @@ const TRANSLATIONS = {
     "historyColGoldGrams": "金保有量",
     "historyColNisaPrincipal": "NISA元本",
     "historyEmpty": "まだ記録がありません。入力すると今日の日付で自動記録されます。",
+    "historyFetchErrorDebug": "履歴の取得中にエラー: {message}",
     "historyRecordNow": "今すぐ記録する",
     "historyReload": "履歴を再読み込み",
     "historyRestore": "この記録を復元",
@@ -278,7 +281,10 @@ const TRANSLATIONS = {
     "idecoIntroNote": "iDeCoは老後資産形成制度です。原則として受給可能年齢まで引き出せません。運用成果は将来を保証するものではありません。節税額は概算です。",
     "idecoMonthlyContributionLabel": "毎月掛金",
     "idecoPrincipalLabel": "投資元本（これまでの掛金累計）",
+    "idecoProductDefault": "全世界株式",
     "idecoProductNameLabel": "運用商品名",
+    "importFailedError": "読み込みに失敗しました。正しいバックアップテキストか確認してください。（{message}）",
+    "importInputsNotFoundError": "inputsが見つかりません",
     "inheritanceAmountPlaceholder": "残したい金額（円）",
     "inheritanceAutoNote": "相続予定を1人以上登録すると、この欄には自動的にその合計金額が反映され、編集できなくなります。手入力に戻したい場合は、登録した相続予定をすべて削除してください。",
     "inheritanceTargetAutoLabel": "子孫に残したい金額（上の合計が自動反映）",
@@ -341,6 +347,7 @@ const TRANSLATIONS = {
     "lumpAllocationLabel": "一括投資の銘柄別内訳（金額を入れると割合を自動計算）",
     "lumpPayoutAmountLabel": "一時金として受け取る額（{age}に一度）",
     "lumpPortionPctLabel": "一時金として受け取る割合",
+    "lumpSumCategoryLabel": "一括投資",
     "lumpSumLabel": "一括投資（成長投資枠・年齢と金額を指定）",
     "lumpSumMarkerLabel": "一括",
     "lumpTruncationAt": "時点で{amount}",
@@ -394,6 +401,8 @@ const TRANSLATIONS = {
     "perMonthSuffix": "/月",
     "periodMonth": "月",
     "periodYear": "年間",
+    "phaseAccumulation": "積立期",
+    "phaseDrawdown": "取崩期",
     "postRetireReturnLabel": "退職後の想定運用利回り",
     "premiumCoverageCol": "払込 / 保障",
     "premiumPeriodLabel": "掛け金払込：開始〜終了",
@@ -485,6 +494,8 @@ const TRANSLATIONS = {
     "stockCurrentTotalLabel": "個別株 現在の金額（合計）",
     "stockReturnLabel": "{age}までの想定年率（個別株全体）",
     "stockWatchlistTitle": "個別株 保有一覧（個数・保有金額を入力）",
+    "storageKeyCountDebug": "ストレージ内のキー数: {count}",
+    "storageUnavailableDebug": "ストレージ機能が利用できません（window.storage未対応の環境）",
     "taxSavingCaveatNote": "節税額は、年収から推定した税率を使う簡易計算です。実際は給与所得控除、社会保険料、扶養・配偶者控除などを差し引いた課税所得で決まるため、表示額と異なる場合があります。年収未入力時は目安の税率20%で計算します。",
     "taxSavingSimLabel": "節税シミュレーション（概算）",
     "todayLabel": "本日",
@@ -493,12 +504,16 @@ const TRANSLATIONS = {
     "totalOverageDetail": "総枠（生涯上限）は{amount}超過。",
     "tsumitateAllocationLabel": "つみたて投資枠の銘柄別内訳（金額を入れると割合を自動計算）",
     "tsumitateAsOfNote": "残高時点の基準年齢を基に計算いたします。（現在の実際の残高＋利率　{manual}）＋（スケジュール分＋利率　{catchup}）＝現在のNISA資産合計。",
+    "tsumitateFrameLabel": "つみたて投資枠",
     "tsumitateHoldingsLabel": "つみたて投資枠：実際の残高（銘柄・金額）",
+    "tsumitateScheduleCategoryLabel": "つみたてスケジュール分",
     "tsumitateScheduleLabel": "つみたて投資枠：毎月投資額（年齢区間ごとに設定）",
+    "uncategorizedLabel": "未分類",
     "unitMonths": "ヶ月",
     "unitYears": "歳",
     "unitYearsShort": "歳",
     "unknownError": "不明なエラー",
+    "unknownShort": "不明",
   },
   en: {
     "advancedMedicalLabel": "Advanced medical care",
@@ -596,8 +611,10 @@ const TRANSLATIONS = {
     "goldPriceRefNote": "The gold price uses the retail spot price as of July 2026 (about $155/g) as a reference. Actual prices fluctuate daily, so replace this with the latest price when using the tool.",
     "growthAllocationLabel": "Breakdown by Holding for Growth Allocation (enter an amount to auto-calculate the percentage)",
     "growthAsOfNote": "Calculated based on the reference age for this balance. (Actual balance plus growth: {manual}) + (Contribution schedule plus growth: {catchup}) = current investment account total.",
+    "growthFrameLabel": "Growth Allocation",
     "growthHoldingsLabel": "Growth Investment Allocation: Actual Balance (Holding & Amount)",
     "growthOverageDetail": "Growth allocation exceeds its limit by {amount}.",
+    "growthScheduleCategoryLabel": "Growth Allocation Schedule",
     "growthScheduleExampleNote": "Example: you can split growth allocation contributions into ranges by year and month, such as “50y0m to 55y11m: $1,500/month” and “56y0m to 65y0m: $500/month.” Overlapping ranges are added together.",
     "growthScheduleLabel": "Growth Investment Allocation: Monthly Contribution (by age range)",
     "health60sLabel": "Annual Out-of-Pocket (60s)",
@@ -609,6 +626,7 @@ const TRANSLATIONS = {
     "historyColGoldGrams": "Gold Holdings",
     "historyColNisaPrincipal": "Investment Principal",
     "historyEmpty": "No records yet. Records are saved automatically under today's date as you enter data.",
+    "historyFetchErrorDebug": "Error while fetching history: {message}",
     "historyRecordNow": "Record Now",
     "historyReload": "Reload History",
     "historyRestore": "Restore This Record",
@@ -627,7 +645,10 @@ const TRANSLATIONS = {
     "idecoIntroNote": "An IRA is a retirement savings account. In principle, funds cannot be withdrawn before the eligible age. Investment returns are not guaranteed. The tax savings shown are estimates.",
     "idecoMonthlyContributionLabel": "Monthly Contribution",
     "idecoPrincipalLabel": "Principal (Total Contributions So Far)",
+    "idecoProductDefault": "Global Equity Index Fund",
     "idecoProductNameLabel": "Investment Product Name",
+    "importFailedError": "Failed to load. Please check that this is the correct backup text. ({message})",
+    "importInputsNotFoundError": "No inputs field found",
     "inheritanceAmountPlaceholder": "Amount to leave",
     "inheritanceAutoNote": "Once you register one or more heirs, this field is automatically filled with their combined total and can no longer be edited. To go back to manual entry, remove all registered heirs.",
     "inheritanceTargetAutoLabel": "Amount to Leave to Heirs (auto-filled from the total above)",
@@ -690,6 +711,7 @@ const TRANSLATIONS = {
     "lumpAllocationLabel": "Breakdown by Holding for Lump-Sum Investments (enter an amount to auto-calculate the percentage)",
     "lumpPayoutAmountLabel": "Lump-sum payout (once, at {age})",
     "lumpPortionPctLabel": "Portion Received as Lump Sum",
+    "lumpSumCategoryLabel": "Lump-Sum Investments",
     "lumpSumLabel": "Lump-Sum Investments (growth allocation, specify age and amount)",
     "lumpSumMarkerLabel": "Lump Sum",
     "lumpTruncationAt": " (shortfall {amount})",
@@ -743,6 +765,8 @@ const TRANSLATIONS = {
     "perMonthSuffix": "/month",
     "periodMonth": "monthly",
     "periodYear": "annual",
+    "phaseAccumulation": "Accumulation Phase",
+    "phaseDrawdown": "Drawdown Phase",
     "postRetireReturnLabel": "Expected Return After Retirement",
     "premiumCoverageCol": "Premiums / Coverage",
     "premiumPeriodLabel": "Premium Payment Period: Start–End",
@@ -834,6 +858,8 @@ const TRANSLATIONS = {
     "stockCurrentTotalLabel": "Individual Stocks Current Value (Total)",
     "stockReturnLabel": "Expected Annual Return Until {age} (All Individual Stocks)",
     "stockWatchlistTitle": "Individual Stock Holdings (enter shares and value)",
+    "storageKeyCountDebug": "Number of keys in storage: {count}",
+    "storageUnavailableDebug": "Storage is not available (this environment does not support window.storage)",
     "taxSavingCaveatNote": "Tax savings are a simplified estimate based on a tax rate inferred from annual income. Actual amounts depend on taxable income after deductions for salary income, social insurance, dependents, and spouse, so results may differ from the figure shown. If annual income is left blank, a default rate of 20% is used.",
     "taxSavingSimLabel": "Tax Savings Simulation (Estimate)",
     "todayLabel": "Today",
@@ -842,12 +868,16 @@ const TRANSLATIONS = {
     "totalOverageDetail": "The lifetime total limit is exceeded by {amount}.",
     "tsumitateAllocationLabel": "Breakdown by Holding for Regular Allocation (enter an amount to auto-calculate the percentage)",
     "tsumitateAsOfNote": "Calculated based on the reference age for this balance. (Actual balance plus growth: {manual}) + (Contribution schedule plus growth: {catchup}) = current investment account total.",
+    "tsumitateFrameLabel": "Regular Allocation",
     "tsumitateHoldingsLabel": "Regular Investment Allocation: Actual Balance (Holding & Amount)",
+    "tsumitateScheduleCategoryLabel": "Regular Allocation Schedule",
     "tsumitateScheduleLabel": "Regular Investment Allocation: Monthly Contribution (by age range)",
+    "uncategorizedLabel": "Uncategorized",
     "unitMonths": "months",
     "unitYears": "years",
     "unitYearsShort": "y",
     "unknownError": "Unknown error",
+    "unknownShort": "Unknown",
   },
 };
 
@@ -1063,7 +1093,7 @@ function compoundedLumpSumValue(lumpSums, currentAge, annualReturnPct) {
   }, 0);
 }
 
-function runSimulation(inputs) {
+function runSimulation(inputs, uncategorizedLabel, phaseAccumLabel, phaseDrawdownLabel) {
   const {
     currentAge, retireAge, deathAge,
     currentAssets, tsumitateSchedule, growthSchedule, lumpSums,
@@ -1082,7 +1112,7 @@ function runSimulation(inputs) {
   // 積立・成長投資枠・一括投資の内訳に入力された銘柄だけで配分リストを作る（固定カテゴリなし）
   const allFundEntries = (dynamicFunds && dynamicFunds.length)
     ? dynamicFunds
-    : [{ id: "未分類", pct: 100, returnPct: 5 }];
+    : [{ id: uncategorizedLabel || "未分類", pct: 100, returnPct: 5 }];
 
   const totalMonths = Math.max(1, Math.round((deathAge - currentAge) * 12));
   let funds = {};
@@ -1113,7 +1143,7 @@ function runSimulation(inputs) {
     age: Math.round(currentAge),
     total: initialTotal,
     funds: { ...funds },
-    phase: currentAge < retireAge ? "積立期" : "取崩期",
+    phase: currentAge < retireAge ? (phaseAccumLabel || "積立期") : (phaseDrawdownLabel || "取崩期"),
     tsumitateCum,
     growthCum,
   }];
@@ -1216,7 +1246,7 @@ function runSimulation(inputs) {
         age: Math.round(age),
         total,
         funds: { ...funds },
-        phase: inAccumulation ? "積立期" : "取崩期",
+        phase: inAccumulation ? (phaseAccumLabel || "積立期") : (phaseDrawdownLabel || "取崩期"),
         tsumitateCum,
         growthCum,
       });
@@ -1538,18 +1568,37 @@ function runIdecoSimulation({ currentAge, deathAge, ideco }) {
 }
 
 // ---------- default watchlist (personal holdings + reference sectors) ----------
-const DEFAULT_WATCHLIST = [
-  { name: "東京エレクトロン", sector: "半導体製造装置", shares: 0, value: 0 },
-  { name: "アドバンテスト", sector: "半導体製造装置", shares: 0, value: 0 },
-  { name: "信越化学工業", sector: "半導体材料", shares: 0, value: 0 },
-  { name: "東京応化工業", sector: "半導体材料", shares: 0, value: 0 },
-  { name: "ローム", sector: "半導体", shares: 0, value: 0 },
-  { name: "ファナック", sector: "FA・産業用ロボット", shares: 0, value: 0 },
-  { name: "安川電機", sector: "FA・産業用ロボット", shares: 0, value: 0 },
-  { name: "ダイキン工業", sector: "空調・FA関連", shares: 0, value: 0 },
-  { name: "三菱重工業", sector: "重工業", shares: 0, value: 0 },
-  { name: "INPEX", sector: "資源・エネルギー", shares: 0, value: 0 },
+const DEFAULT_WATCHLIST_JP = [
+  { name: "東京エレクトロン", sector: "半導体製造装置", shares: 0, value: 0, currency: "JPY" },
+  { name: "アドバンテスト", sector: "半導体製造装置", shares: 0, value: 0, currency: "JPY" },
+  { name: "信越化学工業", sector: "半導体材料", shares: 0, value: 0, currency: "JPY" },
+  { name: "東京応化工業", sector: "半導体材料", shares: 0, value: 0, currency: "JPY" },
+  { name: "ローム", sector: "半導体", shares: 0, value: 0, currency: "JPY" },
+  { name: "ファナック", sector: "FA・産業用ロボット", shares: 0, value: 0, currency: "JPY" },
+  { name: "安川電機", sector: "FA・産業用ロボット", shares: 0, value: 0, currency: "JPY" },
+  { name: "ダイキン工業", sector: "空調・FA関連", shares: 0, value: 0, currency: "JPY" },
+  { name: "三菱重工業", sector: "重工業", shares: 0, value: 0, currency: "JPY" },
+  { name: "INPEX", sector: "資源・エネルギー", shares: 0, value: 0, currency: "JPY" },
 ];
+
+// アメリカ選択時の個別株初期候補（代表的な米国大型株の例。実際の保有銘柄に合わせて自由に編集・削除可能）
+const DEFAULT_WATCHLIST_US = [
+  { name: "Apple", sector: "Technology", shares: 0, value: 0, currency: "USD" },
+  { name: "Microsoft", sector: "Technology", shares: 0, value: 0, currency: "USD" },
+  { name: "NVIDIA", sector: "Semiconductors", shares: 0, value: 0, currency: "USD" },
+  { name: "Amazon", sector: "Consumer/E-commerce", shares: 0, value: 0, currency: "USD" },
+  { name: "Alphabet", sector: "Technology", shares: 0, value: 0, currency: "USD" },
+  { name: "Tesla", sector: "Automotive", shares: 0, value: 0, currency: "USD" },
+  { name: "Berkshire Hathaway", sector: "Diversified Holdings", shares: 0, value: 0, currency: "USD" },
+  { name: "JPMorgan Chase", sector: "Financials", shares: 0, value: 0, currency: "USD" },
+];
+
+// 既存の呼び出し箇所（初期状態の既定値）との後方互換のための別名。日本版の挙動は一切変わらない。
+const DEFAULT_WATCHLIST = DEFAULT_WATCHLIST_JP;
+
+function defaultWatchlistFor(country) {
+  return country === "US" ? DEFAULT_WATCHLIST_US : DEFAULT_WATCHLIST_JP;
+}
 
 // ---------- UI atoms ----------
 function Field({ label, unit, value, onChange, step = 1, min = 0, max, mono = true, disabled = false }) {
@@ -1852,7 +1901,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       monthlyContribution: 23000,
       startAge: 35,
       endAge: 60,
-      productName: "全世界株式",
+      productName: "全世界株式", // 初期値（日本版の既定値）。国を切り替えると、未編集の場合のみ translations.idecoProductDefault に沿って自動的に入れ替わる
       returnPct: 5,
       returnPctAuto: true,
       payoutStartAge: 60,
@@ -1885,10 +1934,11 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     [country, baseCurrency, language, money, label, t]
   );
   // Field/表示用の単位文字列（通貨のみ切替、円建て表示のロジック自体は変更しない）
-  const uCurrency = baseCurrency === "JPY" ? "円" : baseCurrency;
-  const uPerMonth = baseCurrency === "JPY" ? "円/月" : `${baseCurrency}/month`;
-  const uPerYear = baseCurrency === "JPY" ? "円/年" : `${baseCurrency}/year`;
-  const uPerGram = baseCurrency === "JPY" ? "円/g" : `${baseCurrency}/g`;
+  const currencySymbol = (CURRENCY_BY_CODE[baseCurrency] || CURRENCY_BY_CODE.JPY).symbol;
+  const uCurrency = baseCurrency === "JPY" ? "円" : currencySymbol;
+  const uPerMonth = baseCurrency === "JPY" ? "円/月" : `${currencySymbol}/month`;
+  const uPerYear = baseCurrency === "JPY" ? "円/年" : `${currencySymbol}/year`;
+  const uPerGram = baseCurrency === "JPY" ? "円/g" : `${currencySymbol}/g`;
   const uYears = language === "en" ? "years" : "年";
   const formatAge = useCallback((age) => {
     const y = Math.floor(age + 1e-9);
@@ -1982,24 +2032,24 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     setImportOk(false);
     try {
       const parsed = JSON.parse(importText);
-      if (!parsed.inputs) throw new Error("inputsが見つかりません");
+      if (!parsed.inputs) throw new Error(t("importInputsNotFoundError"));
       setInputs((prev) => ({ ...prev, ...parsed.inputs }));
       if (parsed.watchlist) setWatchlist(parsed.watchlist);
       setImportOk(true);
     } catch (e) {
-      setImportError("読み込みに失敗しました。正しいバックアップテキストか確認してください。（" + (e?.message || "") + "）");
+      setImportError(t("importFailedError", { message: e?.message || "" }));
     }
   };
 
   const refreshHistory = useCallback(async () => {
     if (!window.storage) {
-      setHistoryDebug("ストレージ機能が利用できません（window.storage未対応の環境）");
+      setHistoryDebug(t("storageUnavailableDebug"));
       return;
     }
     try {
       const list = await window.storage.list(SNAPSHOT_PREFIX, false);
       const keys = list?.keys || [];
-      setHistoryDebug(`ストレージ内のキー数: ${keys.length}`);
+      setHistoryDebug(t("storageKeyCountDebug", { count: keys.length }));
       if (!keys.length) return; // nothing stored yet — leave any locally-known entries as-is
       const entries = await Promise.all(
         keys.map(async (k) => {
@@ -2018,9 +2068,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         return [...map.values()].sort((a, b) => (a.date < b.date ? 1 : -1));
       });
     } catch (e) {
-      setHistoryDebug("履歴の取得中にエラー: " + (e?.message || "不明"));
+      setHistoryDebug(t("historyFetchErrorDebug", { message: e?.message || t("unknownShort") }));
     }
-  }, []);
+  }, [t]);
 
   const save = useCallback(async (nextInputs, nextWatchlist) => {
     if (!window.storage) {
@@ -2188,9 +2238,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
   // 時価（自動計算）の一覧：一括投資に加え、つみたて・成長投資枠のスケジュール分もまとめて銘柄別に表示する
   const autoHoldingRows = [
-    ...autoHoldingRowsFor(inputs.tsumitateAllocation, tsumitateCatchUp, "つみたてスケジュール分"),
-    ...autoHoldingRowsFor(inputs.growthAllocation, growthCatchUp, "成長投資枠スケジュール分"),
-    ...autoHoldingRowsFor(inputs.lumpAllocation, lumpElapsedTotal, "一括投資"),
+    ...autoHoldingRowsFor(inputs.tsumitateAllocation, tsumitateCatchUp, t("tsumitateScheduleCategoryLabel")),
+    ...autoHoldingRowsFor(inputs.growthAllocation, growthCatchUp, t("growthScheduleCategoryLabel")),
+    ...autoHoldingRowsFor(inputs.lumpAllocation, lumpElapsedTotal, t("lumpSumCategoryLabel")),
   ];
   const autoHoldingsTotal = lumpElapsedTotal;
 
@@ -2244,7 +2294,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     [inputs, JSON.stringify(dynamicFunds), effectiveCurrentAge, effectiveCurrentAssets, effectivePostRetireReturn, getIdecoMonthlyIncome, getIdecoSpendableLump, effectivePensionMonthly]
   );
 
-  const sim = useMemo(() => runSimulation(effectiveInputs), [effectiveInputs]);
+  const sim = useMemo(
+    () => runSimulation(effectiveInputs, t("uncategorizedLabel"), t("phaseAccumulation"), t("phaseDrawdown")),
+    [effectiveInputs, t]
+  );
   const autoGoldReturn = guessDefaultReturn("金");
   const effectiveGoldReturnPct = inputs.gold.priceGrowthPctAuto ? autoGoldReturn : inputs.gold.priceGrowthPct;
   // 「現在の保有量」の基準年齢（年・月の入力から小数年齢に変換。未入力なら null＝現在の年齢として扱う＝追加計算なし）
@@ -2579,7 +2632,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
   const addStock = () => {
     if (!newStock.name.trim()) return;
-    setWatchlist((prev) => [...prev, { name: newStock.name.trim(), sector: newStock.sector.trim() || "未分類", shares: 0, value: 0, currency: baseCurrency }]);
+    setWatchlist((prev) => [...prev, { name: newStock.name.trim(), sector: newStock.sector.trim() || t("uncategorizedLabel"), shares: 0, value: 0, currency: baseCurrency }]);
     setNewStock({ name: "", sector: "" });
   };
   const removeStock = (idx) => setWatchlist((prev) => prev.filter((_, i) => i !== idx));
@@ -2648,8 +2701,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
   // 現在のNISA資産の内訳（つみたて投資枠 / 成長投資枠）— 円グラフ・棒グラフ用
   const nisaFrameAllocationItems = [
-    { name: "つみたて投資枠", amount: Math.max(0, computedTsumitateUsed) },
-    { name: "成長投資枠", amount: Math.max(0, computedGrowthUsed) },
+    { name: t("tsumitateFrameLabel"), amount: Math.max(0, computedTsumitateUsed) },
+    { name: t("growthFrameLabel"), amount: Math.max(0, computedGrowthUsed) },
   ];
 
   const growthDiff = NISA_LIMITS.growthLifetime - computedGrowthUsed;
@@ -3287,6 +3340,24 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                   baseCurrency: DEFAULT_CURRENCY_BY_COUNTRY[nextCountry] || "JPY",
                   language: DEFAULT_LANGUAGE_BY_COUNTRY[nextCountry] || "ja",
                 });
+                // 個別株の初期候補も国別に切り替える。ただし、現在のリストが
+                // どちらかの国の「未編集の初期候補」と完全一致する場合のみ入れ替え、
+                // ユーザーが実際に入力した保有銘柄は絶対に上書きしない。
+                const currentJson = JSON.stringify(watchlist);
+                const isUntouchedDefault =
+                  currentJson === JSON.stringify(DEFAULT_WATCHLIST_JP) ||
+                  currentJson === JSON.stringify(DEFAULT_WATCHLIST_US);
+                if (isUntouchedDefault) {
+                  setWatchlist(defaultWatchlistFor(nextCountry));
+                }
+                // iDeCo「運用商品名」の初期値も、未編集（既定値のまま）の場合のみ国別に切り替える。
+                const untouchedProductNames = [
+                  translateWith("ja", "idecoProductDefault"),
+                  translateWith("en", "idecoProductDefault"),
+                ];
+                if (untouchedProductNames.includes(inputs.ideco.productName)) {
+                  updateIdeco("productName", translateWith(DEFAULT_LANGUAGE_BY_COUNTRY[nextCountry] || "ja", "idecoProductDefault"));
+                }
               }}
               title={t("countrySelectTitle")}
             >
@@ -3565,7 +3636,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               <div className="mono" style={{ flex: 1, padding: "8px 10px", fontSize: 13 }}>
                 {Math.round(effectiveCurrentAssets).toLocaleString()}
               </div>
-              <span className="field-unit">{baseCurrency === "JPY" ? "円" : baseCurrency}</span>
+              <span className="field-unit">{uCurrency}</span>
             </div>
           </label>
           <div className="note" style={{ marginTop: -8 }}>
@@ -3827,7 +3898,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               <div className="mono" style={{ flex: 1, padding: "8px 10px", fontSize: 13 }}>
                 {Math.round(idecoSim.currentValueAdjusted).toLocaleString()}
               </div>
-              <span className="field-unit">{baseCurrency === "JPY" ? "円" : baseCurrency}</span>
+              <span className="field-unit">{uCurrency}</span>
             </div>
           </label>
           <Field label={t("idecoPrincipalLabel")} unit={uCurrency} step={10000} value={inputs.ideco.principalTotal} onChange={(v) => updateIdeco("principalTotal", v)} />
@@ -4072,7 +4143,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               <div className="mono" style={{ flex: 1, padding: "8px 10px", fontSize: 13 }}>
                 {Math.round(goldSim.currentValue).toLocaleString()}
               </div>
-              <span className="field-unit">{baseCurrency === "JPY" ? "円" : baseCurrency}</span>
+              <span className="field-unit">{uCurrency}</span>
             </div>
           </label>
           <Field label={t("goldPriceRefLabel")} unit={uPerGram} step={100} value={inputs.gold.pricePerGram} onChange={(v) => updateGold("pricePerGram", v)} />
