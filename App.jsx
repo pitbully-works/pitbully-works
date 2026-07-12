@@ -1827,8 +1827,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           .add-row { flex-wrap: wrap; }
           .add-row input { flex: 1 1 140px; }
           .add-btn { min-height: 36px; }
-          table.watchlist { display: block; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; table-layout: auto; }
-          table.watchlist th, table.watchlist td { white-space: nowrap; }
+          table.watchlist { width: 100%; table-layout: fixed; }
+          table.watchlist th, table.watchlist td { white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
           .landing { padding: 30px 14px 28px; }
           .landing-hero h1 { font-size: 22px; }
           .landing-screenshot { width: 100%; }
