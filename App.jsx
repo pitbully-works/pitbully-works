@@ -1889,6 +1889,16 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         }
         .content { padding: 20px 28px; }
 
+        .section-block {
+          border: 1.5px solid;
+          border-radius: 8px;
+          padding: 14px 14px 4px;
+          margin-bottom: 18px;
+          opacity: 0.92;
+        }
+        .section-block .section-title {
+          margin-top: 4px;
+        }
         .section-title {
           display: flex;
           align-items: center;
@@ -2441,6 +2451,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       <div className="grid-main">
         {/* -------- LEFT: INPUT PANEL -------- */}
         <div className="panel">
+          <div className="section-block" style={{ borderColor: "#4FA8D8" }}>
           <SectionTitle index="00" title="ご本人情報" icon={Users} />
           <label className="field">
             <span className="field-label">お名前（任意）</span>
@@ -2474,6 +2485,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             </div>
           )}
 
+          </div>
+          <div className="section-block" style={{ borderColor: "#D9A54F" }}>
           <SectionTitle index="01" title="基本情報" icon={Ruler} />
           <AgeField label="現在の年齢" value={effectiveCurrentAge} disabled={!!preciseAge} onChange={(v) => update({ currentAge: v })} />
           {preciseAge && (
@@ -2485,6 +2498,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           <AgeField label="引退（年金開始）年齢" value={inputs.retireAge} onChange={(v) => update({ retireAge: v })} />
           <AgeField label="想定寿命" value={inputs.deathAge} onChange={(v) => update({ deathAge: v })} />
 
+          </div>
+          <div className="section-block" style={{ borderColor: "#8FBF7F" }}>
           <SectionTitle index="02" title="NISA積立（つみたて枠 + 成長投資枠）" icon={TrendingUp} />
 
           <div className="field-label" style={{ marginBottom: 6 }}>つみたて投資枠：実際の残高（銘柄・金額）</div>
@@ -2807,6 +2822,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <span>同じ系統のファンドを重ねすぎると分散効果が薄れる点にご注意ください（例：全世界株式とS&P500は米国株の比重が重なりやすい組み合わせです）。</span>
           </div>
 
+          </div>
+          <div className="section-block" style={{ borderColor: "#B08FD6" }}>
           <SectionTitle index="03" title="iDeCo積立（個人型確定拠出年金）" icon={Landmark} />
 
           <div className="note">
@@ -2939,6 +2956,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <span>受取開始後は、一時金は受取年に「現在使える資産」へ一度だけ加算され、年金は受取期間中「年間収入」へ加算されて生活費との差額の取り崩しに反映されます。受取期間が終わるとiDeCoからの収入加算は終了します。</span>
           </div>
 
+          </div>
+          <div className="section-block" style={{ borderColor: "#C2694F" }}>
           <SectionTitle index="04" title="老後・年金" icon={Landmark} />
           <div className="field-label" style={{ marginBottom: 6 }}>年金受給見込み額（国民年金・企業年金基金など、いくつでも追加できます）</div>
           {inputs.pensionSources.length > 0 && (
@@ -2998,6 +3017,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             </div>
           )}
 
+          </div>
+          <div className="section-block" style={{ borderColor: "#7BC9E0" }}>
           <SectionTitle index="05" title="健康リスク費用（自己負担目安）" icon={HeartPulse} />
           <Field label="60代 年間自己負担" unit="円/年" step={10000} value={inputs.healthBrackets.b60} onChange={(v) => updateHealth("b60", v)} />
           <Field label="70代 年間自己負担" unit="円/年" step={10000} value={inputs.healthBrackets.b70} onChange={(v) => updateHealth("b70", v)} />
@@ -3007,6 +3028,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <span>公的医療保険の高額療養費制度を考慮した後の自己負担額の概算です。実際は所得区分により上限が変わるため目安としてご利用ください。</span>
           </div>
 
+          </div>
+          <div className="section-block" style={{ borderColor: "#E6B0A6" }}>
           <SectionTitle index="06" title="相続プラン" icon={Users} />
           {inputs.inheritancePlans.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 8 }}>
@@ -3052,6 +3075,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             </div>
           )}
 
+          </div>
+          <div className="section-block" style={{ borderColor: "#6FA88A" }}>
           <SectionTitle index="07" title="金（ゴールド）資産形成" icon={Coins} />
           <Field label="現在の保有量" unit="g" step={1} value={inputs.gold.currentGrams} onChange={(v) => updateGold("currentGrams", v)} />
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
@@ -3103,6 +3128,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <span>金価格は2026年7月時点の店頭小売価格（1g ≈ 24,000円前後）を参考値としています。実際の価格は日々変動するため、最新の価格に置き換えてご利用ください。</span>
           </div>
 
+          </div>
+          <div className="section-block" style={{ borderColor: "#E0C34F" }}>
           <SectionTitle index="08" title="銀行預金（銀行別）" icon={PiggyBank} />
           {inputs.banks.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 8 }}>
@@ -3140,6 +3167,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <span>毎月入金は引退年齢（{inputs.retireAge}歳）まで継続する前提で計算します。金利は普通預金なら0〜0.1%程度が目安です。</span>
           </div>
 
+          </div>
+          <div className="section-block" style={{ borderColor: "#9D8FD6" }}>
           <SectionTitle index="09" title="借入金（返済シミュレーション）" icon={Landmark} />
           {inputs.loans.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 8 }}>
@@ -3179,6 +3208,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             </div>
           )}
 
+          </div>
+          <div className="section-block" style={{ borderColor: "#5FB0A0" }}>
           <SectionTitle index="10" title="生命保険" icon={HeartPulse} />
           {inputs.insurancePolicies.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 10 }}>
@@ -3272,6 +3303,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <span>払込中の保険料は将来資産から自動的に控除されます。入院・手術等の給付額は保障内容の記録用で、発生が不確実なため資産予測には自動反映されません（必要に応じて健康費用の想定額をご自身で調整してください）。登録後、各保険の項目下にある欄から項目名を自由に追加できます。</span>
           </div>
 
+          </div>
+          <div className="section-block" style={{ borderColor: "#D67F9E" }}>
           <SectionTitle index="11" title="民間年金積立" icon={PiggyBank} />
           {inputs.privatePensionPlans.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 10 }}>
@@ -3354,6 +3387,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           <div className="note">
             <Info size={13} />
             <span>積立期間中は毎月の積立額を貯め、受給期間中はそこから毎月の受給額を取り崩していく残高として、生涯資産グラフに資産の一部として反映されます。さらに受給額は、公的年金と同様に生活費・健康費用の補填としても扱われ、NISA資産の取り崩しペースを緩める効果があります。「現在の残高」を入力すると、証書に記載の実際の解約返戻金額などをそのまま開始残高として使用します（未入力の場合は積立開始年齢〜現在までの積立額の単純合計＝0%運用想定で自動概算します）。</span>
+          </div>
           </div>
         </div>
 
