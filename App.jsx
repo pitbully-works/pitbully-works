@@ -2462,7 +2462,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <button className="add-btn" onClick={addTsumitateHolding}><Plus size={15} /></button>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
-            <span style={{ fontSize: 10, color: "#7C8A90", whiteSpace: "nowrap" }}>この残高時点の基準年齢（任意）</span>
+            <span style={{ fontSize: 10, color: "#E07A5F", whiteSpace: "nowrap", fontWeight: 700 }}>この残高時点の基準年齢（必須）</span>
             <AgeYMInput
               placeholder="基準年齢" years={inputs.tsumitateHoldingsAsOfYears} months={inputs.tsumitateHoldingsAsOfMonths}
               onYears={(v) => update({ tsumitateHoldingsAsOfYears: v })}
@@ -2471,7 +2471,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           </div>
           <div className="note" style={{ marginBottom: 12 }}>
             <Info size={13} />
-            <span>上で設定した毎月の積立予定額から、これまで積み立てられてきたはずの金額を自動計算すると<span className="mono">{yen(tsumitateCatchUp)}</span>になります。これは上の「実際の残高」の入力欄とは別に、自動で上乗せされます（合計＝実際の残高の入力額＋この自動計算額）</span>
+            <span>現在の残高を、入力した月を基準に計算いたします。現在の実際の残高（<span className="mono">{yen(tsumitateHoldingsManualTotal)}</span>）＋スケジュール分・自動計算（<span className="mono">{yen(tsumitateCatchUp)}</span>）＝現在のNISA資産合計。</span>
           </div>
 
           <div className="field-label" style={{ marginBottom: 6 }}>成長投資枠：実際の残高（銘柄・金額）</div>
@@ -2497,7 +2497,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <button className="add-btn" onClick={addGrowthHolding}><Plus size={15} /></button>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
-            <span style={{ fontSize: 10, color: "#7C8A90", whiteSpace: "nowrap" }}>この残高時点の基準年齢（任意）</span>
+            <span style={{ fontSize: 10, color: "#E07A5F", whiteSpace: "nowrap", fontWeight: 700 }}>この残高時点の基準年齢（必須）</span>
             <AgeYMInput
               placeholder="基準年齢" years={inputs.growthHoldingsAsOfYears} months={inputs.growthHoldingsAsOfMonths}
               onYears={(v) => update({ growthHoldingsAsOfYears: v })}
@@ -2506,7 +2506,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           </div>
           <div className="note" style={{ marginBottom: 12 }}>
             <Info size={13} />
-            <span>上で設定した毎月の積立予定額から、これまで積み立てられてきたはずの金額を自動計算すると<span className="mono">{yen(growthCatchUp)}</span>になります。これは上の「実際の残高」の入力欄とは別に、自動で上乗せされます（合計＝実際の残高の入力額＋この自動計算額）</span>
+            <span>現在の残高を、入力した月を基準に計算いたします。現在の実際の残高（<span className="mono">{yen(growthHoldingsManualTotal)}</span>）＋スケジュール分・自動計算（<span className="mono">{yen(growthCatchUp)}</span>）＝現在のNISA資産合計。</span>
           </div>
 
           {autoHoldingRows.length > 0 && (
