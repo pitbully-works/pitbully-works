@@ -520,6 +520,8 @@ const TRANSLATIONS = {
     "unknownError": "不明なエラー",
     "unknownShort": "不明",
     "us401kLabel": "401(k)",
+    "usAccountBreakdownChartTitle": "{age}時点 口座別内訳（401(k)/Traditional IRA/Roth IRA/Brokerage）",
+    "usAccountBreakdownNote": "現在のデータ構造では口座内の銘柄・ファンド別の内訳までは追跡していないため、口座種別ごとの内訳を表示しています。",
     "usAnnualContributionLabel": "年間拠出額",
     "usBrokerageBalanceLabel": "投資資産：Brokerage（課税口座）",
     "usBrokerageBalanceSub": "現在のBrokerage評価額",
@@ -532,6 +534,7 @@ const TRANSLATIONS = {
     "usCombinedLimitLabel": "従業員＋雇用主 合計上限（2026年）",
     "usCoveredByPlanLabel": "勤務先の企業年金制度に加入している",
     "usDeductibleAmountLabel": "所得控除の対象額（概算）",
+    "usEarlyWithdrawalWarning": "Early withdrawals from retirement accounts may be subject to taxes and penalties. This planner uses a simplified model.",
     "usEmployeeLimitLabel": "従業員拠出 上限（2026年）",
     "usExpensesLabel": "退職後の生活費（Expenses）",
     "usExpensesMonthlyLabel": "毎月の生活費見込み",
@@ -554,6 +557,8 @@ const TRANSLATIONS = {
     "usIraCombinedNote": "Traditional IRAとRoth IRAは拠出上限を共有します。合算した残り拠出可能額：{amount}",
     "usIraSharedLimitLabel": "IRA拠出上限（Traditional + Rothの合算・2026年）",
     "usIraSharedRemainingSub": "IRA合算上限までの残り拠出可能額",
+    "usLiquidAssetsLabel": "Liquid / Accessible Assets（引き出し可能資産）",
+    "usLiquidAssetsSub": "現金・Brokerage・59歳半以降なら401(k)/Traditional IRAも含む",
     "usMedicareAutoLabel": "Medicare Part B（自動計算・年額）",
     "usMedicareAutoNote": "上のセクションで入力した申告区分・MAGIに基づき、IRMAA（所得連動追加保険料）を含めて自動計算しています。",
     "usMedicareLabel": "Medicare Part B（年額）",
@@ -570,6 +575,9 @@ const TRANSLATIONS = {
     "usPiaLabel": "満額支給開始年齢（67歳）時点の月額見込み（PIA）",
     "usRemainingLabel": "上限まであと{amount}",
     "usRemainingOfLimitSub": "2026年上限までの残り拠出可能額",
+    "usRestrictedAssetsLabel": "Retirement / Restricted Assets（制約付き資産）",
+    "usRestrictedAssetsSubOver595": "Roth IRA（簡易的に常に制約資産として計上）",
+    "usRestrictedAssetsSubUnder595": "59歳半未満のため401(k)/Traditional IRA＋Roth IRAが対象",
     "usRetirementIncomeLabel": "Retirement Income（年金収入）",
     "usRetirementIncomeSub": "Social Security年間受給額",
     "usRothAllowedLabel": "拠出可能額（所得フェーズアウト後）",
@@ -970,6 +978,8 @@ const TRANSLATIONS = {
     "unknownError": "Unknown error",
     "unknownShort": "Unknown",
     "us401kLabel": "401(k)",
+    "usAccountBreakdownChartTitle": "Breakdown by Account at {age} (401(k)/Traditional IRA/Roth IRA/Brokerage)",
+    "usAccountBreakdownNote": "The current data model does not track individual holdings within each account, so this shows the breakdown by account type instead.",
     "usAnnualContributionLabel": "Annual Contribution",
     "usBrokerageBalanceLabel": "Investment Assets: Brokerage (Taxable)",
     "usBrokerageBalanceSub": "Current brokerage account value",
@@ -982,6 +992,7 @@ const TRANSLATIONS = {
     "usCombinedLimitLabel": "Combined Employee + Employer Limit (2026)",
     "usCoveredByPlanLabel": "Covered by a workplace retirement plan",
     "usDeductibleAmountLabel": "Estimated Tax-Deductible Amount",
+    "usEarlyWithdrawalWarning": "Early withdrawals from retirement accounts may be subject to taxes and penalties. This planner uses a simplified model.",
     "usEmployeeLimitLabel": "Employee Contribution Limit (2026)",
     "usExpensesLabel": "Retirement Expenses",
     "usExpensesMonthlyLabel": "Estimated Monthly Living Expenses",
@@ -1004,6 +1015,8 @@ const TRANSLATIONS = {
     "usIraCombinedNote": "Traditional and Roth IRA contributions share one annual limit. Combined remaining room: {amount}",
     "usIraSharedLimitLabel": "IRA Contribution Limit (Traditional + Roth combined, 2026)",
     "usIraSharedRemainingSub": "Remaining room before the combined IRA limit",
+    "usLiquidAssetsLabel": "Liquid / Accessible Assets",
+    "usLiquidAssetsSub": "Cash, Brokerage, and 401(k)/Traditional IRA once age 59½ or older",
     "usMedicareAutoLabel": "Medicare Part B (Auto-calculated, Annual)",
     "usMedicareAutoNote": "Calculated automatically, including IRMAA (income-based surcharge), using the filing status and MAGI entered in the Investment section above.",
     "usMedicareLabel": "Medicare Part B (Annual)",
@@ -1020,6 +1033,9 @@ const TRANSLATIONS = {
     "usPiaLabel": "Estimated Monthly Benefit at Full Retirement Age (67, PIA)",
     "usRemainingLabel": "{amount} remaining before the limit",
     "usRemainingOfLimitSub": "Remaining room before the 2026 limit",
+    "usRestrictedAssetsLabel": "Retirement / Restricted Assets",
+    "usRestrictedAssetsSubOver595": "Roth IRA (treated as restricted in this simplified model)",
+    "usRestrictedAssetsSubUnder595": "401(k)/Traditional IRA + Roth IRA, since you are under 59½",
     "usRetirementIncomeLabel": "Retirement Income",
     "usRetirementIncomeSub": "Annual Social Security benefit",
     "usRothAllowedLabel": "Allowed Contribution (after income phase-out)",
@@ -1303,34 +1319,61 @@ const US_COUNTRY_RULES = {
       }
       return 1 - this._phaseOutRatio(magi, range);
     },
-    // 401(k)/Traditional IRA/Roth IRA/Brokerageの合計残高を、現在の年齢から死亡想定年齢まで
-    // 年単位で積み上げる（退職年齢までは拠出を継続、退職後は年間取崩し額を差し引く）。
+    // 401(k)/Traditional IRA/Roth IRA/Brokerageの残高を、現在の年齢から死亡想定年齢まで
+    // 口座ごとに年単位で積み上げる（退職年齢までは各口座へ拠出を継続、退職後は年間取崩し額を
+    // 差し引く）。取崩しは「Brokerage → Traditional IRA → 401(k) → Roth IRA」の順に行う
+    // （課税口座を先に使い、Rothを最後まで温存する一般的な考え方の簡易モデル）。
     // JPのrunSimulation（NISA専用）とは完全に別関数。US_COUNTRY_RULES以外からは呼ばれない。
     simulateGrowth({ currentAge, retireAge, deathAge, accounts, returnPct, annualWithdrawalNeeded }) {
       const rate = (Number(returnPct) || 0) / 100;
-      let balance =
-        (Number(accounts.k401.currentValue) || 0) +
-        (Number(accounts.traditionalIra.currentValue) || 0) +
-        (Number(accounts.rothIra.currentValue) || 0) +
-        (Number(accounts.brokerage.currentValue) || 0);
-      const annualContribution =
-        (Number(accounts.k401.annualContribution) || 0) +
-        (Number(accounts.traditionalIra.annualContribution) || 0) +
-        (Number(accounts.rothIra.annualContribution) || 0) +
-        (Number(accounts.brokerage.annualContribution) || 0);
+      const balances = {
+        k401: Number(accounts.k401.currentValue) || 0,
+        traditionalIra: Number(accounts.traditionalIra.currentValue) || 0,
+        rothIra: Number(accounts.rothIra.currentValue) || 0,
+        brokerage: Number(accounts.brokerage.currentValue) || 0,
+      };
+      const contributions = {
+        k401: Number(accounts.k401.annualContribution) || 0,
+        traditionalIra: Number(accounts.traditionalIra.annualContribution) || 0,
+        rothIra: Number(accounts.rothIra.annualContribution) || 0,
+        brokerage: Number(accounts.brokerage.annualContribution) || 0,
+      };
+      const withdrawalOrder = ["brokerage", "traditionalIra", "k401", "rothIra"];
+      const combinedValue = (b) => b.k401 + b.traditionalIra + b.rothIra + b.brokerage;
       const startAge = Math.round(currentAge);
       const endAge = Math.round(deathAge);
-      const yearly = [{ age: startAge, value: balance }];
+      const yearly = [{ age: startAge, value: combinedValue(balances), accounts: { ...balances } }];
       for (let age = startAge + 1; age <= endAge; age++) {
-        balance = balance * (1 + rate);
+        Object.keys(balances).forEach((k) => { balances[k] = balances[k] * (1 + rate); });
         if (age <= retireAge) {
-          balance += annualContribution;
+          Object.keys(balances).forEach((k) => { balances[k] += contributions[k]; });
         } else {
-          balance = Math.max(0, balance - (Number(annualWithdrawalNeeded) || 0));
+          let remaining = Number(annualWithdrawalNeeded) || 0;
+          for (const key of withdrawalOrder) {
+            if (remaining <= 0) break;
+            const take = Math.min(balances[key], remaining);
+            balances[key] -= take;
+            remaining -= take;
+          }
         }
-        yearly.push({ age, value: balance });
+        yearly.push({ age, value: combinedValue(balances), accounts: { ...balances } });
       }
-      return { yearly, finalValue: balance };
+      return { yearly, finalValue: combinedValue(balances), finalAccounts: { ...balances } };
+    },
+    // 59½歳未満の場合、401(k)・Traditional IRAは早期引き出しに税金・ペナルティが伴うため
+    // 「制約付き資産」として扱う。Roth IRAは拠出元本と運用益を分離できない現在のデータ構造の
+    // 制約上、簡易的に常に「退職資産（制約付き）」として扱う。Brokerageは常に「引き出し可能資産」。
+    // 今回は完全な税額計算は行わない（画面上に注意書きを表示するのみ）。
+    earlyWithdrawalAge: 59.5,
+    splitLiquidRestricted(age, accounts) {
+      const isAccessibleAge = age >= this.earlyWithdrawalAge;
+      const k401 = Number(accounts.k401) || 0;
+      const traditionalIra = Number(accounts.traditionalIra) || 0;
+      const rothIra = Number(accounts.rothIra) || 0;
+      const brokerage = Number(accounts.brokerage) || 0;
+      const liquid = brokerage + (isAccessibleAge ? k401 + traditionalIra : 0);
+      const restricted = rothIra + (isAccessibleAge ? 0 : k401 + traditionalIra);
+      return { liquid, restricted, isAccessibleAge };
     },
   },
   retirement: {
@@ -2464,6 +2507,13 @@ function USInvestmentAccountsPanel({ usInvestment, onUpdate, onUpdateAccount, ag
   const brokerageValue = Number(usInvestment.brokerage.currentValue) || 0;
   const brokerageContribution = Number(usInvestment.brokerage.annualContribution) || 0;
 
+  const liquidRestricted = investmentRules.splitLiquidRestricted(age, {
+    k401: usInvestment.k401.currentValue,
+    traditionalIra: usInvestment.traditionalIra.currentValue,
+    rothIra: usInvestment.rothIra.currentValue,
+    brokerage: usInvestment.brokerage.currentValue,
+  });
+
   return (
     <div>
       <div className="note" style={{ marginBottom: 14 }}>
@@ -2580,6 +2630,18 @@ function USInvestmentAccountsPanel({ usInvestment, onUpdate, onUpdateAccount, ag
 
       <div className="stat-grid" style={{ marginTop: 16 }}>
         <StatCard label={t("usTotalInvestmentLabel")} value={money(Number(usInvestment.k401.currentValue || 0) + Number(usInvestment.traditionalIra.currentValue || 0) + Number(usInvestment.rothIra.currentValue || 0) + brokerageValue)} sub={t("usTotalInvestmentSub")} />
+      </div>
+      <div className="stat-grid" style={{ marginTop: 10 }}>
+        <StatCard label={t("usLiquidAssetsLabel")} value={money(liquidRestricted.liquid)} sub={t("usLiquidAssetsSub")} tone="good" />
+        <StatCard
+          label={t("usRestrictedAssetsLabel")}
+          value={money(liquidRestricted.restricted)}
+          sub={liquidRestricted.isAccessibleAge ? t("usRestrictedAssetsSubOver595") : t("usRestrictedAssetsSubUnder595")}
+        />
+      </div>
+      <div className="note" style={{ marginTop: 10 }}>
+        <Info size={13} />
+        <span>{t("usEarlyWithdrawalWarning")}</span>
       </div>
 
       <div className="section-block" style={{ borderColor: "#5FB0A0", marginTop: 16 }}>
@@ -3116,6 +3178,18 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const preciseAge = useMemo(() => computeAgeFromBirthDate(inputs.birthDate), [inputs.birthDate]);
   const effectiveCurrentAge = preciseAge ? preciseAge.decimal : inputs.currentAge;
 
+  // ①401(k)②Traditional IRA③Roth IRA④Brokerageを、現在の年齢時点で
+  // Liquid/Accessible（引き出し可能）とRetirement/Restricted（制約付き）に分ける。
+  // 合計は必ずusTotalInvestmentBalanceと一致する（内訳のみの分離のため）。
+  const usLiquidRestrictedSplit = (country === "US" && rules.investment.implemented)
+    ? rules.investment.splitLiquidRestricted(effectiveCurrentAge, {
+        k401: inputs.usInvestment.k401.currentValue,
+        traditionalIra: inputs.usInvestment.traditionalIra.currentValue,
+        rothIra: inputs.usInvestment.rothIra.currentValue,
+        brokerage: inputs.usInvestment.brokerage.currentValue,
+      })
+    : { liquid: 0, restricted: 0, isAccessibleAge: false };
+
   // 銘柄名から、その銘柄の想定年率（利回り）を取得する（銘柄別内訳のスライダーで手動調整した値があればそちらを優先）
   const getFundReturnPct = (name) =>
     (inputs.extraFundReturns && inputs.extraFundReturns[name] !== undefined) ? inputs.extraFundReturns[name] : guessDefaultReturn(name);
@@ -3382,6 +3456,25 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       color: PIE_COLORS[i % PIE_COLORS.length],
     }));
   }, [sim, inputs.retireAge, JSON.stringify(dynamicFunds)]);
+
+  // アメリカ選択時：退職時点の401(k)/Traditional IRA/Roth IRA/Brokerage 口座別内訳。
+  // JPのfundBreakdownAtRetire（NISA銘柄別）とは別データ・別ロジック。
+  const usAccountBreakdownAtRetire = useMemo(() => {
+    if (country !== "US" || !rules.investment.implemented) return [];
+    const row = usInvestmentSim.yearly.find((y) => y.age >= inputs.retireAge) || usInvestmentSim.yearly[usInvestmentSim.yearly.length - 1];
+    if (!row || !row.accounts) return [];
+    const labels = [
+      { key: "k401", label: t("us401kLabel") },
+      { key: "traditionalIra", label: t("usTraditionalIraLabel") },
+      { key: "rothIra", label: t("usRothIraLabel") },
+      { key: "brokerage", label: t("usBrokerageLabel") },
+    ];
+    return labels.map((l, i) => ({
+      name: l.label,
+      value: Math.round(row.accounts[l.key] || 0),
+      color: PIE_COLORS[i % PIE_COLORS.length],
+    }));
+  }, [country, rules, usInvestmentSim, inputs.retireAge, t]);
 
   const addBank = () => {
     const balance = Number(newBank.balance) || 0;
@@ -5489,14 +5582,15 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             {country === "US" ? (
               <>
                 <StatCard
-                  label={t("usTaxAdvantagedTotalLabel")}
-                  value={money((Number(inputs.usInvestment.k401.currentValue) || 0) + (Number(inputs.usInvestment.traditionalIra.currentValue) || 0) + (Number(inputs.usInvestment.rothIra.currentValue) || 0))}
-                  sub={t("usTaxAdvantagedTotalSub")}
+                  label={t("usLiquidAssetsLabel")}
+                  value={money(usLiquidRestrictedSplit.liquid)}
+                  sub={t("usLiquidAssetsSub")}
+                  tone="good"
                 />
                 <StatCard
-                  label={t("usBrokerageBalanceLabel")}
-                  value={money(Number(inputs.usInvestment.brokerage.currentValue) || 0)}
-                  sub={t("usBrokerageBalanceSub")}
+                  label={t("usRestrictedAssetsLabel")}
+                  value={money(usLiquidRestrictedSplit.restricted)}
+                  sub={usLiquidRestrictedSplit.isAccessibleAge ? t("usRestrictedAssetsSubOver595") : t("usRestrictedAssetsSubUnder595")}
                 />
               </>
             ) : (
@@ -5506,6 +5600,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               </>
             )}
           </div>
+          {country === "US" && (
+            <div className="note" style={{ marginBottom: 14, marginTop: -6 }}>
+              <Info size={13} />
+              <span>{t("usEarlyWithdrawalWarning")}</span>
+            </div>
+          )}
           <div className="stat-grid" style={{ marginBottom: 14 }}>
             <StatCard
               label={t("statSpendableAssetsLabel")}
@@ -5768,20 +5868,30 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
           <div className="two-col">
             <div className="chart-frame">
-              <div className="chart-label">{t("fundBreakdownChartTitle", { age: t("ageYears", { age: inputs.retireAge }) })}</div>
+              <div className="chart-label">
+                {country === "US"
+                  ? t("usAccountBreakdownChartTitle", { age: t("ageYears", { age: inputs.retireAge }) })
+                  : t("fundBreakdownChartTitle", { age: t("ageYears", { age: inputs.retireAge }) })}
+              </div>
               <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={fundBreakdownAtRetire} layout="vertical" margin={{ left: 8, right: 16 }}>
+                <BarChart data={country === "US" ? usAccountBreakdownAtRetire : fundBreakdownAtRetire} layout="vertical" margin={{ left: 8, right: 16 }}>
                   <CartesianGrid stroke="#2A363C" strokeDasharray="3 3" horizontal={false} />
                   <XAxis type="number" stroke="#7C8A90" fontSize={11} tickFormatter={(v) => money(v)} />
                   <YAxis type="category" dataKey="name" stroke="#7C8A90" fontSize={11} width={90} />
                   <Tooltip contentStyle={{ background: "#151C20", border: "1px solid #2A363C", fontSize: 12 }} formatter={(v) => money(v)} />
                   <Bar dataKey="value" radius={[0, 3, 3, 0]}>
-                    {fundBreakdownAtRetire.map((f, i) => (
+                    {(country === "US" ? usAccountBreakdownAtRetire : fundBreakdownAtRetire).map((f, i) => (
                       <Cell key={i} fill={f.color} />
                     ))}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
+              {country === "US" && (
+                <div className="note" style={{ marginTop: 8 }}>
+                  <Info size={13} />
+                  <span>{t("usAccountBreakdownNote")}</span>
+                </div>
+              )}
             </div>
 
             <div className="chart-frame" style={{ padding: "16px 16px 18px" }}>
