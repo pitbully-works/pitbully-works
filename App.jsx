@@ -341,11 +341,26 @@ function runSimulation(inputs) {
 
 // ---------- gold (純金積立) simulation ----------
 function runGoldSimulation({ currentAge, deathAge, gold }) {
-  const { currentGrams, pricePerGram, priceGrowthPct, monthlyYen, accumulateUntilAge } = gold;
-  const totalMonths = Math.max(1, Math.round((deathAge - currentAge) * 12));
+  const { currentGrams, pricePerGram, priceGrowthPct, monthlyYen, accumulateUntilAge, asOfAge } = gold;
   const r = monthlyRate(priceGrowthPct);
+
+  // 「基準年齢」時点の保有量（currentGrams）を、基準年齢〜現在の年齢まで
+  // 毎月積立を加算しながら複利成長させ、"現在"時点の実際の保有量・評価額を算出する
   let grams = currentGrams;
   let price = pricePerGram;
+  if (asOfAge !== null && asOfAge !== undefined && asOfAge < currentAge) {
+    const catchUpMonths = Math.max(0, Math.round((currentAge - asOfAge) * 12));
+    for (let m = 1; m <= catchUpMonths; m++) {
+      const age = asOfAge + m / 12;
+      if (age < accumulateUntilAge && monthlyYen > 0 && price > 0) {
+        grams += monthlyYen / price;
+      }
+      price = price * (1 + r);
+    }
+  }
+  const currentValue = grams * price; // 現在の日付時点での金資産評価額
+
+  const totalMonths = Math.max(1, Math.round((deathAge - currentAge) * 12));
   const yearly = [{ age: Math.round(currentAge), grams, price, value: grams * price }];
   let valueAtTarget = currentAge >= accumulateUntilAge ? grams * price : null;
 
@@ -365,7 +380,7 @@ function runGoldSimulation({ currentAge, deathAge, gold }) {
   const finalValue = yearly.length ? yearly[yearly.length - 1].value : grams * price;
   if (valueAtTarget === null) valueAtTarget = finalValue;
 
-  return { yearly, finalGrams: grams, finalValue, valueAtTarget };
+  return { yearly, finalGrams: grams, finalValue, valueAtTarget, currentValue, currentGrams: grams };
 }
 
 // ---------- bank savings (銀行別) simulation ----------
@@ -904,6 +919,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       priceGrowthPctAuto: true,
       monthlyYen: 20000,
       accumulateUntilAge: 65,
+      asOfYears: "",
+      asOfMonths: "",
     },
     banks: [],
     stockReturnPct: 6,
@@ -1277,9 +1294,13 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const sim = useMemo(() => runSimulation(effectiveInputs), [effectiveInputs]);
   const autoGoldReturn = guessDefaultReturn("金");
   const effectiveGoldReturnPct = inputs.gold.priceGrowthPctAuto ? autoGoldReturn : inputs.gold.priceGrowthPct;
+  // 「現在の保有量」の基準年齢（年・月の入力から小数年齢に変換。未入力なら null＝現在の年齢として扱う＝追加計算なし）
+  const goldAsOfAge = (inputs.gold.asOfYears !== "" && inputs.gold.asOfYears !== undefined && inputs.gold.asOfYears !== null)
+    ? Number(inputs.gold.asOfYears || 0) + Number(inputs.gold.asOfMonths || 0) / 12
+    : null;
   const goldSim = useMemo(
-    () => runGoldSimulation({ currentAge: effectiveCurrentAge, deathAge: inputs.deathAge, gold: { ...inputs.gold, priceGrowthPct: effectiveGoldReturnPct } }),
-    [effectiveCurrentAge, inputs.deathAge, inputs.gold, effectiveGoldReturnPct]
+    () => runGoldSimulation({ currentAge: effectiveCurrentAge, deathAge: inputs.deathAge, gold: { ...inputs.gold, priceGrowthPct: effectiveGoldReturnPct, asOfAge: goldAsOfAge } }),
+    [effectiveCurrentAge, inputs.deathAge, inputs.gold, effectiveGoldReturnPct, goldAsOfAge]
   );
   const bankSim = useMemo(
     () => runBankSimulation({
@@ -2991,6 +3012,27 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
           <SectionTitle index="07" title="金（ゴールド）資産形成" icon={Coins} />
           <Field label="現在の保有量" unit="g" step={1} value={inputs.gold.currentGrams} onChange={(v) => updateGold("currentGrams", v)} />
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 10, color: "#E07A5F", whiteSpace: "nowrap", fontWeight: 700 }}>この保有量時点の基準年齢（必須）</span>
+            <AgeYMInput
+              placeholder="基準年齢" years={inputs.gold.asOfYears} months={inputs.gold.asOfMonths}
+              onYears={(v) => updateGold("asOfYears", v)}
+              onMonths={(v) => updateGold("asOfMonths", v)}
+            />
+          </div>
+          <div className="note" style={{ marginTop: -8 }}>
+            <Info size={13} />
+            <span>基準年齢時点の保有量から、毎月の積立額を加算しながら現在の年齢まで計算した結果、現在の保有量は<span className="mono">{goldSim.currentGrams.toFixed(1)}g</span>、評価額は<span className="mono">{yen(goldSim.currentValue)}</span>になります。</span>
+          </div>
+          <label className="field">
+            <span className="field-label">現在の金の資産金額（自動計算）</span>
+            <div className="field-input-wrap">
+              <div className="mono" style={{ flex: 1, padding: "8px 10px", fontSize: 13 }}>
+                {Math.round(goldSim.currentValue).toLocaleString()}
+              </div>
+              <span className="field-unit">円</span>
+            </div>
+          </label>
           <Field label="現在の金価格（参考）" unit="円/g" step={100} value={inputs.gold.pricePerGram} onChange={(v) => updateGold("pricePerGram", v)} />
           <Field
             label={`想定 年率価格上昇率${inputs.gold.priceGrowthPctAuto ? "（自動仮設定）" : ""}`}
