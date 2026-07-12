@@ -335,6 +335,7 @@ const TRANSLATIONS = {
     "legendNisaAssets": "NISA資産",
     "legendPrivatePension": "民間年金積立",
     "legendStocks": "個別株",
+    "legendUsInvestment": "投資口座（401k/IRA/Roth/Brokerage）",
     "lifeExpectancyLabel": "想定寿命",
     "lifetimeRemainingAfterInvestment": "投資後 生涯枠残り {amount}",
     "lifetimeRemainingAtEnd": "区間終了時 生涯枠残り {amount}",
@@ -520,6 +521,8 @@ const TRANSLATIONS = {
     "unknownShort": "不明",
     "us401kLabel": "401(k)",
     "usAnnualContributionLabel": "年間拠出額",
+    "usBrokerageBalanceLabel": "投資資産：Brokerage（課税口座）",
+    "usBrokerageBalanceSub": "現在のBrokerage評価額",
     "usBrokerageLabel": "Brokerage Account（課税口座）",
     "usBrokerageNoLimitNote": "課税口座のため拠出上限はありません（税制優遇もありません）。",
     "usCapGainsTaxLabel": "キャピタルゲイン税（概算）",
@@ -585,6 +588,8 @@ const TRANSLATIONS = {
     "usStateTaxSub": "入力した実効税率で計算",
     "usSurplusLabel": "収支余剰",
     "usSurplusSub": "年金収入が生活費・医療費を上回る年間額",
+    "usTaxAdvantagedTotalLabel": "投資資産：税制優遇口座（401k+IRA+Roth）",
+    "usTaxAdvantagedTotalSub": "401(k)＋Traditional IRA＋Roth IRAの合計評価額",
     "usTaxSectionLabel": "税制（簡易版）",
     "usTaxSourceNote": "連邦税・キャピタルゲイン税・NIITは2026年のIRS公表値（Revenue Procedure 2025-32）に基づく概算です。州税は州により大きく異なるため、実効税率をご自身で入力してください。",
     "usTaxableIncomeSub": "課税所得：{amount}",
@@ -780,6 +785,7 @@ const TRANSLATIONS = {
     "legendNisaAssets": "Investment Account",
     "legendPrivatePension": "Private Pension",
     "legendStocks": "Individual Stocks",
+    "legendUsInvestment": "Investment Accounts (401k/IRA/Roth/Brokerage)",
     "lifeExpectancyLabel": "Life Expectancy",
     "lifetimeRemainingAfterInvestment": "Lifetime limit remaining after this investment: {amount}",
     "lifetimeRemainingAtEnd": "Lifetime limit remaining at end of range: {amount}",
@@ -965,6 +971,8 @@ const TRANSLATIONS = {
     "unknownShort": "Unknown",
     "us401kLabel": "401(k)",
     "usAnnualContributionLabel": "Annual Contribution",
+    "usBrokerageBalanceLabel": "Investment Assets: Brokerage (Taxable)",
+    "usBrokerageBalanceSub": "Current brokerage account value",
     "usBrokerageLabel": "Brokerage Account (Taxable)",
     "usBrokerageNoLimitNote": "No contribution limit (taxable account with no special tax treatment).",
     "usCapGainsTaxLabel": "Capital Gains Tax (Estimate)",
@@ -1030,6 +1038,8 @@ const TRANSLATIONS = {
     "usStateTaxSub": "Based on the effective rate you entered",
     "usSurplusLabel": "Income Surplus",
     "usSurplusSub": "Annual amount by which income exceeds expenses",
+    "usTaxAdvantagedTotalLabel": "Investment Assets: Tax-Advantaged (401k+IRA+Roth)",
+    "usTaxAdvantagedTotalSub": "Combined value of 401(k), Traditional IRA, and Roth IRA",
     "usTaxSectionLabel": "Tax (Simplified)",
     "usTaxSourceNote": "Federal tax, capital gains tax, and NIIT are estimates based on 2026 IRS figures (Revenue Procedure 2025-32). State tax varies widely by state, so please enter your own estimated effective rate.",
     "usTaxableIncomeSub": "Taxable income: {amount}",
@@ -1292,6 +1302,35 @@ const US_COUNTRY_RULES = {
           : [0, 0]; // 単身などでこのケースは通常発生しない
       }
       return 1 - this._phaseOutRatio(magi, range);
+    },
+    // 401(k)/Traditional IRA/Roth IRA/Brokerageの合計残高を、現在の年齢から死亡想定年齢まで
+    // 年単位で積み上げる（退職年齢までは拠出を継続、退職後は年間取崩し額を差し引く）。
+    // JPのrunSimulation（NISA専用）とは完全に別関数。US_COUNTRY_RULES以外からは呼ばれない。
+    simulateGrowth({ currentAge, retireAge, deathAge, accounts, returnPct, annualWithdrawalNeeded }) {
+      const rate = (Number(returnPct) || 0) / 100;
+      let balance =
+        (Number(accounts.k401.currentValue) || 0) +
+        (Number(accounts.traditionalIra.currentValue) || 0) +
+        (Number(accounts.rothIra.currentValue) || 0) +
+        (Number(accounts.brokerage.currentValue) || 0);
+      const annualContribution =
+        (Number(accounts.k401.annualContribution) || 0) +
+        (Number(accounts.traditionalIra.annualContribution) || 0) +
+        (Number(accounts.rothIra.annualContribution) || 0) +
+        (Number(accounts.brokerage.annualContribution) || 0);
+      const startAge = Math.round(currentAge);
+      const endAge = Math.round(deathAge);
+      const yearly = [{ age: startAge, value: balance }];
+      for (let age = startAge + 1; age <= endAge; age++) {
+        balance = balance * (1 + rate);
+        if (age <= retireAge) {
+          balance += annualContribution;
+        } else {
+          balance = Math.max(0, balance - (Number(annualWithdrawalNeeded) || 0));
+        }
+        yearly.push({ age, value: balance });
+      }
+      return { yearly, finalValue: balance };
     },
   },
   retirement: {
@@ -2738,6 +2777,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       traditionalIra: { currentValue: 0, annualContribution: 0 },
       rothIra: { currentValue: 0, annualContribution: 0 },
       brokerage: { currentValue: 0, annualContribution: 0 },
+      expectedReturnPct: 6, // 資産推移グラフ用の想定年率（JP版のデフォルト想定に準じた参考値）
       // ① Social Security（公的年金）
       socialSecurity: {
         piaMonthly: 0, // Full Retirement Age（67歳）時点の月額見込み（ユーザー入力・SSA statement等を参照）
@@ -3243,6 +3283,23 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     [effectiveCurrentAge, inputs.deathAge, inputs.privatePensionPlans]
   );
 
+  // アメリカ選択時：401(k)/Traditional IRA/Roth IRA/Brokerageの残高推移シミュレーション。
+  // JPのrunSimulation（NISA専用）とは完全に独立しており、US_COUNTRY_RULES.investment.simulateGrowth
+  // のみを使用する。country !== "US" のときは計算自体を行わない（空データを返すだけ）。
+  const usInvestmentSim = useMemo(() => {
+    if (country !== "US" || !rules.investment.implemented) {
+      return { yearly: [], finalValue: 0 };
+    }
+    return rules.investment.simulateGrowth({
+      currentAge: effectiveCurrentAge,
+      retireAge: inputs.retireAge,
+      deathAge: inputs.deathAge,
+      accounts: inputs.usInvestment,
+      returnPct: inputs.usInvestment.expectedReturnPct,
+      annualWithdrawalNeeded: usWithdrawalNeeded,
+    });
+  }, [country, rules, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, inputs.usInvestment, usWithdrawalNeeded]);
+
   // iDeCo 自動計算項目
   const idecoAnnualContribution = (inputs.ideco.monthlyContribution || 0) * 12;
   const idecoRemainingContribYears = Math.max(0, inputs.ideco.endAge - Math.max(inputs.ideco.startAge, effectiveCurrentAge));
@@ -3266,15 +3323,19 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       // 受取開始前および年金受取中に残っている、まだロックされたiDeCo残高。
       // 一時金部分は受取開始月にrunSimulation側へ一度だけ移され、row.totalへ含まれる。
       const idecoLockedValue = idecoRow ? idecoRow.value : idecoSim.finalValue;
-      const spendableNetWorth = row.total + goldValue + bankValue + stockValue + pensionValue - loanValue - insuranceValue;
+      // アメリカ選択時のみ：401(k)/IRA/Roth/Brokerageの残高推移をnetWorthへ合算する
+      // （country!=="US"のときはusInvestmentSim.yearlyが空のため常に0＝JP版の計算結果に一切影響しない）。
+      const usInvestmentValue = usInvestmentSim.yearly[i]?.value ?? usInvestmentSim.finalValue ?? 0;
+      const spendableNetWorth = row.total + goldValue + bankValue + stockValue + pensionValue + usInvestmentValue - loanValue - insuranceValue;
       return {
         ...row, goldValue, bankValue, stockValue, loanValue, insuranceValue, pensionValue,
         idecoLockedValue,
+        usInvestmentValue,
         spendableNetWorth,
         netWorth: spendableNetWorth + idecoLockedValue,
       };
     });
-  }, [sim, goldSim, bankSim, stockSim, loanSim, insuranceSim, pensionSim, idecoSim]);
+  }, [sim, goldSim, bankSim, stockSim, loanSim, insuranceSim, pensionSim, idecoSim, usInvestmentSim]);
   const netWorthFinal = netWorthYearly.length ? netWorthYearly[netWorthYearly.length - 1].netWorth : sim.finalAssets;
   const inheritanceTotal = inputs.inheritancePlans.reduce((s, p) => s + (p.amount || 0), 0);
   const effectiveInheritanceTarget = inputs.inheritancePlans.length > 0 ? inheritanceTotal : inputs.inheritanceTarget;
@@ -5425,8 +5486,25 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         {/* -------- RIGHT: DASHBOARD -------- */}
         <div className="content">
           <div className="stat-grid" style={{ marginBottom: 10 }}>
-            <StatCard label={t("statNisaAssetsLabel")} value={money(effectiveCurrentAssets)} sub={t("statNisaAssetsSub")} />
-            <StatCard label={t("statIdecoAssetsLabel")} value={money(inputs.ideco.currentValue)} sub={t("statIdecoAssetsSub")} />
+            {country === "US" ? (
+              <>
+                <StatCard
+                  label={t("usTaxAdvantagedTotalLabel")}
+                  value={money((Number(inputs.usInvestment.k401.currentValue) || 0) + (Number(inputs.usInvestment.traditionalIra.currentValue) || 0) + (Number(inputs.usInvestment.rothIra.currentValue) || 0))}
+                  sub={t("usTaxAdvantagedTotalSub")}
+                />
+                <StatCard
+                  label={t("usBrokerageBalanceLabel")}
+                  value={money(Number(inputs.usInvestment.brokerage.currentValue) || 0)}
+                  sub={t("usBrokerageBalanceSub")}
+                />
+              </>
+            ) : (
+              <>
+                <StatCard label={t("statNisaAssetsLabel")} value={money(effectiveCurrentAssets)} sub={t("statNisaAssetsSub")} />
+                <StatCard label={t("statIdecoAssetsLabel")} value={money(inputs.ideco.currentValue)} sub={t("statIdecoAssetsSub")} />
+              </>
+            )}
           </div>
           <div className="stat-grid" style={{ marginBottom: 14 }}>
             <StatCard
@@ -5653,12 +5731,19 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 {sim.depletionAge && (
                   <ReferenceLine x={Math.round(sim.depletionAge)} stroke="#C2694F" strokeDasharray="4 4" label={{ value: t("depletionMarkerLabel"), position: "top", fill: "#C2694F", fontSize: 11 }} />
                 )}
-                <Area type="monotone" dataKey="total" name={t("legendNisaAssets")} stackId="net" stroke="#4FA8D8" fill="rgba(79,168,216,0.35)" strokeWidth={1.5} />
+                {country === "JP" && (
+                  <Area type="monotone" dataKey="total" name={t("legendNisaAssets")} stackId="net" stroke="#4FA8D8" fill="rgba(79,168,216,0.35)" strokeWidth={1.5} />
+                )}
+                {country === "US" && (
+                  <Area type="monotone" dataKey="usInvestmentValue" name={t("legendUsInvestment")} stackId="net" stroke="#4FA8D8" fill="rgba(79,168,216,0.35)" strokeWidth={1.5} />
+                )}
                 <Area type="monotone" dataKey="goldValue" name={t("legendGoldAssets")} stackId="net" stroke="#D9A54F" fill="rgba(217,165,79,0.35)" strokeWidth={1.5} />
                 <Area type="monotone" dataKey="bankValue" name={t("legendBankDeposits")} stackId="net" stroke="#8FBF7F" fill="rgba(143,191,127,0.35)" strokeWidth={1.5} />
                 <Area type="monotone" dataKey="stockValue" name={t("legendStocks")} stackId="net" stroke="#B08FD6" fill="rgba(176,143,214,0.35)" strokeWidth={1.5} />
                 <Area type="monotone" dataKey="pensionValue" name={t("legendPrivatePension")} stackId="net" stroke="#6FA88A" fill="rgba(111,168,138,0.35)" strokeWidth={1.5} />
-                <Area type="monotone" dataKey="idecoLockedValue" name={t("legendIdecoAssets")} stackId="net" stroke="#D68FB0" fill="rgba(214,143,176,0.35)" strokeWidth={1.5} />
+                {country === "JP" && (
+                  <Area type="monotone" dataKey="idecoLockedValue" name={t("legendIdecoAssets")} stackId="net" stroke="#D68FB0" fill="rgba(214,143,176,0.35)" strokeWidth={1.5} />
+                )}
                 <Line type="monotone" dataKey="netWorth" name={t("legendNetWorth")} stroke="#F2F5F6" strokeWidth={2} dot={false} />
               </ComposedChart>
             </ResponsiveContainer>
