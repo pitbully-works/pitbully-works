@@ -736,13 +736,24 @@ const PIE_COLORS = ["#4FA8D8", "#D9A54F", "#8FBF7F", "#B08FD6", "#C2694F", "#7BC
 function AllocationCharts({ items, height = 180 }) {
   const total = items.reduce((s, it) => s + (it.amount || 0), 0);
   if (total <= 0) return null;
+  const renderPieLabel = ({ cx, cy, midAngle, outerRadius, percent, name, value }) => {
+    const RADIAN = Math.PI / 180;
+    const radius = outerRadius + 8;
+    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+    return (
+      <text x={x} y={y} fill="#B7C2C7" fontSize={9} textAnchor={x > cx ? "start" : "end"} dominantBaseline="central">
+        {`${name} ${yen(value)}（${(percent * 100).toFixed(0)}%）`}
+      </text>
+    );
+  };
   return (
     <>
       <ResponsiveContainer width="100%" height={height}>
         <PieChart>
           <Pie
             data={items} dataKey="amount" nameKey="name" cx="50%" cy="50%" outerRadius={65}
-            label={({ name, value, percent }) => `${name} ${yen(value)}（${(percent * 100).toFixed(0)}%）`}
+            label={renderPieLabel}
             labelLine={false}
           >
             {items.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
