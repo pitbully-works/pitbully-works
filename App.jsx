@@ -518,6 +518,38 @@ const TRANSLATIONS = {
     "unitYearsShort": "歳",
     "unknownError": "不明なエラー",
     "unknownShort": "不明",
+    "us401kLabel": "401(k)",
+    "usAnnualContributionLabel": "年間拠出額",
+    "usBrokerageLabel": "Brokerage Account（課税口座）",
+    "usBrokerageNoLimitNote": "課税口座のため拠出上限はありません（税制優遇もありません）。",
+    "usCombinedLimitLabel": "従業員＋雇用主 合計上限（2026年）",
+    "usCoveredByPlanLabel": "勤務先の企業年金制度に加入している",
+    "usDeductibleAmountLabel": "所得控除の対象額（概算）",
+    "usEmployeeLimitLabel": "従業員拠出 上限（2026年）",
+    "usFilingHoh": "世帯主（Head of Household）",
+    "usFilingMarriedJoint": "夫婦合算申告（Married Filing Jointly）",
+    "usFilingMarriedSeparate": "夫婦別々申告（Married Filing Separately）",
+    "usFilingSingle": "単身（Single）",
+    "usFilingStatusLabel": "申告区分（Filing Status）",
+    "usInvestmentSourceNote": "掲載している拠出上限は2026年分のIRS（米国内国歳入庁）公表値（Notice 2025-67、2025年11月13日公表）に基づく参考値です。実際の税務判断は専門家にご確認ください。",
+    "usIraCombinedNote": "Traditional IRAとRoth IRAは拠出上限を共有します。合算した残り拠出可能額：{amount}",
+    "usIraSharedLimitLabel": "IRA拠出上限（Traditional + Rothの合算・2026年）",
+    "usIraSharedRemainingSub": "IRA合算上限までの残り拠出可能額",
+    "usModifiedAGILabel": "修正調整後総所得（MAGI・年額）",
+    "usNoDeductionNote": "所得水準により、今回の拠出額は所得控除の対象外です（フェーズアウトにより全額控除不可）。",
+    "usOverLimitLabel": "上限を{amount}超過しています",
+    "usPartialDeductionNote": "所得水準により、控除額の一部のみが対象です（フェーズアウト適用中）。",
+    "usRemainingLabel": "上限まであと{amount}",
+    "usRemainingOfLimitSub": "2026年上限までの残り拠出可能額",
+    "usRothAllowedLabel": "拠出可能額（所得フェーズアウト後）",
+    "usRothIneligibleNote": "所得水準により、Roth IRAへは直接拠出できません（フェーズアウトにより対象外）。",
+    "usRothIraLabel": "Roth IRA",
+    "usRothOverEligibleNote": "入力された拠出額が、所得フェーズアウト後の拠出可能額を超えています。",
+    "usRothPartialNote": "所得水準により、拠出可能額の一部が制限されています（フェーズアウト適用中）。",
+    "usSpouseCoveredByPlanLabel": "配偶者が勤務先の企業年金制度に加入している",
+    "usTotalInvestmentLabel": "投資口座 合計評価額",
+    "usTotalInvestmentSub": "401(k) + Traditional IRA + Roth IRA + Brokerageの合計",
+    "usTraditionalIraLabel": "Traditional IRA",
   },
   en: {
     "advancedMedicalLabel": "Advanced medical care",
@@ -886,6 +918,38 @@ const TRANSLATIONS = {
     "unitYearsShort": "y",
     "unknownError": "Unknown error",
     "unknownShort": "Unknown",
+    "us401kLabel": "401(k)",
+    "usAnnualContributionLabel": "Annual Contribution",
+    "usBrokerageLabel": "Brokerage Account (Taxable)",
+    "usBrokerageNoLimitNote": "No contribution limit (taxable account with no special tax treatment).",
+    "usCombinedLimitLabel": "Combined Employee + Employer Limit (2026)",
+    "usCoveredByPlanLabel": "Covered by a workplace retirement plan",
+    "usDeductibleAmountLabel": "Estimated Tax-Deductible Amount",
+    "usEmployeeLimitLabel": "Employee Contribution Limit (2026)",
+    "usFilingHoh": "Head of Household",
+    "usFilingMarriedJoint": "Married Filing Jointly",
+    "usFilingMarriedSeparate": "Married Filing Separately",
+    "usFilingSingle": "Single",
+    "usFilingStatusLabel": "Filing Status",
+    "usInvestmentSourceNote": "The contribution limits shown are 2026 figures published by the IRS (Notice 2025-67, released Nov 13, 2025). Please consult a tax professional for your actual tax situation.",
+    "usIraCombinedNote": "Traditional and Roth IRA contributions share one annual limit. Combined remaining room: {amount}",
+    "usIraSharedLimitLabel": "IRA Contribution Limit (Traditional + Roth combined, 2026)",
+    "usIraSharedRemainingSub": "Remaining room before the combined IRA limit",
+    "usModifiedAGILabel": "Modified AGI (annual)",
+    "usNoDeductionNote": "Based on your income, this contribution is not tax-deductible (fully phased out).",
+    "usOverLimitLabel": "{amount} over the limit",
+    "usPartialDeductionNote": "Based on your income, only part of this contribution is deductible (phase-out applies).",
+    "usRemainingLabel": "{amount} remaining before the limit",
+    "usRemainingOfLimitSub": "Remaining room before the 2026 limit",
+    "usRothAllowedLabel": "Allowed Contribution (after income phase-out)",
+    "usRothIneligibleNote": "Based on your income, you are not eligible to contribute directly to a Roth IRA (fully phased out).",
+    "usRothIraLabel": "Roth IRA",
+    "usRothOverEligibleNote": "The contribution amount entered exceeds what your income allows after the phase-out.",
+    "usRothPartialNote": "Based on your income, your allowed contribution is reduced (phase-out applies).",
+    "usSpouseCoveredByPlanLabel": "Spouse is covered by a workplace retirement plan",
+    "usTotalInvestmentLabel": "Total Investment Account Value",
+    "usTotalInvestmentSub": "Combined 401(k) + Traditional IRA + Roth IRA + Brokerage",
+    "usTraditionalIraLabel": "Traditional IRA",
   },
 };
 
@@ -1047,13 +1111,98 @@ const JP_COUNTRY_RULES = {
 // React画面側のコードは一切変更不要な設計にしてある。
 const US_COUNTRY_RULES = {
   investment: {
-    implemented: false,
-    // 実装予定の口座種別（根拠のある公式の拠出上限が確定してから数値を入れる）
-    plannedAccountTypes: ["401k", "traditionalIra", "rothIra", "taxableBrokerage"],
-    annualInstallmentLimit: null,
-    annualGrowthLimit: null,
-    growthLifetimeLimit: null,
-    taxFreeInvestmentLimit: null,
+    implemented: true,
+    accountTypes: ["401k", "traditionalIra", "rothIra", "brokerage"],
+    // 出典：IRS Notice 2025-67（2026年分の物価連動調整）。
+    // "401(k) limit increases to $24,500 for 2026, IRA limit increases to $7,500"
+    // https://www.irs.gov/newsroom/401k-limit-increases-to-24500-for-2026-ira-limit-increases-to-7500
+    sourceNote: "IRS Notice 2025-67 (published Nov 13, 2025): 2026 cost-of-living adjustments for retirement plans.",
+    limits2026: {
+      k401: {
+        employeeDeferral: 24500,     // 従業員拠出（elective deferral）上限
+        catchUp50: 8000,             // 50歳以上の追加拠出（catch-up）
+        catchUp60to63: 11250,        // 60〜63歳の特例追加拠出（"super catch-up"）
+        combinedEmployerEmployee: 72000, // 従業員＋雇用主合計（IRC §415(c)）上限
+      },
+      ira: {
+        // Traditional IRAとRoth IRAは拠出上限を共有する（合算で上限まで）
+        contribution: 7500,
+        catchUp50: 1100,
+      },
+    },
+    // Roth IRAへ拠出できるかどうかのMAGI（修正調整後総所得）フェーズアウト範囲（2026年）
+    rothPhaseOut2026: {
+      single: [153000, 168000],
+      headOfHousehold: [153000, 168000],
+      marriedJoint: [242000, 252000],
+      marriedSeparate: [0, 10000],
+    },
+    // Traditional IRAの「掛金控除」が縮小され始めるMAGI範囲（2026年）。
+    // 本人・配偶者どちらも勤務先の企業年金制度に加入していない場合は、
+    // 所得にかかわらず全額控除できる（フェーズアウト適用外）。
+    traditionalIraDeductionPhaseOut2026: {
+      // 本人が企業年金制度に加入している場合
+      coveredSingleOrHoh: [81000, 91000],
+      coveredMarriedJoint: [129000, 149000],
+      coveredMarriedSeparate: [0, 10000],
+      // 本人は非加入だが配偶者が加入している場合（共同申告）
+      notCoveredSpouseCoveredMarriedJoint: [242000, 252000],
+    },
+    brokerage: {
+      contributionLimit: null, // 上限なし（課税口座）
+      taxAdvantaged: false,
+    },
+
+    // ---------- 計算関数（すべて純粋関数。共通エンジンやJPのコードからは呼ばれない） ----------
+
+    // 401(k) の年間拠出上限（従業員拠出分のみ。雇用主分は含まない）
+    get401kEmployeeLimit(age) {
+      const l = this.limits2026.k401;
+      if (age >= 60 && age <= 63) return l.employeeDeferral + l.catchUp60to63;
+      if (age >= 50) return l.employeeDeferral + l.catchUp50;
+      return l.employeeDeferral;
+    },
+    // 401(k) の従業員＋雇用主合計拠出上限（IRC §415(c)）
+    get401kCombinedLimit(age) {
+      const l = this.limits2026.k401;
+      const catchUp = age >= 60 && age <= 63 ? l.catchUp60to63 : (age >= 50 ? l.catchUp50 : 0);
+      return l.combinedEmployerEmployee + catchUp;
+    },
+    // IRA（Traditional + Roth 合算）の年間拠出上限
+    getIraContributionLimit(age) {
+      const l = this.limits2026.ira;
+      return age >= 50 ? l.contribution + l.catchUp50 : l.contribution;
+    },
+    // 直線的なフェーズアウト計算（範囲内で上限から0へ比例的に減少）。
+    // full を超えていれば1、start未満なら0、範囲内ならその比率を返す。
+    _phaseOutRatio(magi, [start, end]) {
+      if (end <= start) return magi >= start ? 1 : 0;
+      if (magi <= start) return 0;
+      if (magi >= end) return 1;
+      return (magi - start) / (end - start);
+    },
+    // Roth IRAへ拠出可能な割合（1=満額拠出可, 0=拠出不可, 間の値=一部のみ）
+    getRothIraEligibleFraction(filingStatus, magi) {
+      const range = this.rothPhaseOut2026[filingStatus] || this.rothPhaseOut2026.single;
+      return 1 - this._phaseOutRatio(magi, range);
+    },
+    // Traditional IRA拠出額のうち、所得控除の対象となる割合
+    // （本人・配偶者とも企業年金制度未加入なら、所得に関係なく常に1＝全額控除）
+    getTraditionalIraDeductibleFraction({ filingStatus, magi, coveredByWorkplacePlan, spouseCoveredByWorkplacePlan }) {
+      if (!coveredByWorkplacePlan && !spouseCoveredByWorkplacePlan) return 1;
+      let range;
+      if (coveredByWorkplacePlan) {
+        if (filingStatus === "marriedJoint") range = this.traditionalIraDeductionPhaseOut2026.coveredMarriedJoint;
+        else if (filingStatus === "marriedSeparate") range = this.traditionalIraDeductionPhaseOut2026.coveredMarriedSeparate;
+        else range = this.traditionalIraDeductionPhaseOut2026.coveredSingleOrHoh;
+      } else {
+        // 本人は非加入・配偶者のみ加入（共同申告のときだけこの優遇レンジが使える）
+        range = filingStatus === "marriedJoint"
+          ? this.traditionalIraDeductionPhaseOut2026.notCoveredSpouseCoveredMarriedJoint
+          : [0, 0]; // 単身などでこのケースは通常発生しない
+      }
+      return 1 - this._phaseOutRatio(magi, range);
+    },
   },
   retirement: {
     implemented: false,
@@ -1999,10 +2148,166 @@ function AllocationBreakdown({ items, newItem, onNewItemChange, onAdd, onRemove,
   );
 }
 
+// ---------- アメリカ選択時：投資口座パネル（401(k) / Traditional IRA / Roth IRA / Brokerage） ----------
+// JP側のNISA関連ステート・計算（tsumitateSchedule, NISA_LIMITS, runSimulation等）とは
+// 完全に独立している。計算ロジックは US_COUNTRY_RULES.investment の純粋関数のみを使用する。
+function USInvestmentAccountsPanel({ usInvestment, onUpdate, onUpdateAccount, age, investmentRules }) {
+  const { t, money } = useContext(LocaleContext);
+  const fs = usInvestment.filingStatus;
+  const magi = Number(usInvestment.modifiedAGI) || 0;
+
+  const k401Limit = investmentRules.get401kEmployeeLimit(age);
+  const k401Combined = investmentRules.get401kCombinedLimit(age);
+  const k401Contribution = Number(usInvestment.k401.annualContribution) || 0;
+  const k401Remaining = k401Limit - k401Contribution;
+
+  const iraLimit = investmentRules.getIraContributionLimit(age);
+  const traditionalContribution = Number(usInvestment.traditionalIra.annualContribution) || 0;
+  const rothContribution = Number(usInvestment.rothIra.annualContribution) || 0;
+  const combinedIraContribution = traditionalContribution + rothContribution;
+  const iraRemaining = iraLimit - combinedIraContribution;
+
+  const deductibleFraction = investmentRules.getTraditionalIraDeductibleFraction({
+    filingStatus: fs,
+    magi,
+    coveredByWorkplacePlan: usInvestment.coveredByWorkplacePlan,
+    spouseCoveredByWorkplacePlan: usInvestment.spouseCoveredByWorkplacePlan,
+  });
+  const traditionalDeductibleAmount = traditionalContribution * deductibleFraction;
+
+  const rothEligibleFraction = investmentRules.getRothIraEligibleFraction(fs, magi);
+  const rothAllowedContribution = iraLimit * rothEligibleFraction;
+  const rothOverEligible = rothContribution > rothAllowedContribution + 0.01;
+
+  const brokerageValue = Number(usInvestment.brokerage.currentValue) || 0;
+  const brokerageContribution = Number(usInvestment.brokerage.annualContribution) || 0;
+
+  return (
+    <div>
+      <div className="note" style={{ marginBottom: 14 }}>
+        <Info size={13} />
+        <span>{t("usInvestmentSourceNote")}</span>
+      </div>
+
+      <div className="field-label" style={{ marginBottom: 6 }}>{t("usFilingStatusLabel")}</div>
+      <div className="add-row" style={{ marginBottom: 10, flexWrap: "wrap" }}>
+        {[
+          { key: "single", label: t("usFilingSingle") },
+          { key: "marriedJoint", label: t("usFilingMarriedJoint") },
+          { key: "marriedSeparate", label: t("usFilingMarriedSeparate") },
+          { key: "headOfHousehold", label: t("usFilingHoh") },
+        ].map((opt) => (
+          <button
+            key={opt.key}
+            onClick={() => onUpdate("filingStatus", opt.key)}
+            style={{
+              flex: "1 1 auto", padding: "8px 8px", borderRadius: 4, fontSize: 12, cursor: "pointer",
+              border: fs === opt.key ? "1px solid #4FA8D8" : "1px solid var(--line)",
+              background: fs === opt.key ? "rgba(79,168,216,0.15)" : "var(--panel)",
+              color: fs === opt.key ? "#4FA8D8" : "var(--text)",
+            }}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
+      <Field
+        label={t("usModifiedAGILabel")} unit="$" step={1000}
+        value={usInvestment.modifiedAGI}
+        onChange={(v) => onUpdate("modifiedAGI", v)}
+      />
+      <label className="field" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+        <input
+          type="checkbox" checked={usInvestment.coveredByWorkplacePlan}
+          onChange={(e) => onUpdate("coveredByWorkplacePlan", e.target.checked)}
+        />
+        <span className="field-label" style={{ margin: 0 }}>{t("usCoveredByPlanLabel")}</span>
+      </label>
+      {fs === "marriedJoint" && (
+        <label className="field" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <input
+            type="checkbox" checked={usInvestment.spouseCoveredByWorkplacePlan}
+            onChange={(e) => onUpdate("spouseCoveredByWorkplacePlan", e.target.checked)}
+          />
+          <span className="field-label" style={{ margin: 0 }}>{t("usSpouseCoveredByPlanLabel")}</span>
+        </label>
+      )}
+
+      <div className="section-block" style={{ borderColor: "#4FA8D8", marginTop: 16 }}>
+        <div className="field-label" style={{ marginBottom: 6 }}>{t("us401kLabel")}</div>
+        <Field label={t("currentBalancePlaceholder")} unit="$" step={1000} value={usInvestment.k401.currentValue} onChange={(v) => onUpdateAccount("k401", "currentValue", v)} />
+        <Field label={t("usAnnualContributionLabel")} unit="$" step={500} value={usInvestment.k401.annualContribution} onChange={(v) => onUpdateAccount("k401", "annualContribution", v)} />
+        <div className="stat-sub">{t("usEmployeeLimitLabel")}：<span className="mono">{money(k401Limit)}</span></div>
+        <div className="stat-sub">{t("usCombinedLimitLabel")}：<span className="mono">{money(k401Combined)}</span></div>
+        <div className="stat-sub" style={{ color: k401Remaining < 0 ? "#C2694F" : "#7C8A90" }}>
+          {k401Remaining >= 0
+            ? t("usRemainingLabel", { amount: money(k401Remaining) })
+            : t("usOverLimitLabel", { amount: money(-k401Remaining) })}
+        </div>
+      </div>
+
+      <div className="section-block" style={{ borderColor: "#D9A54F", marginTop: 12 }}>
+        <div className="field-label" style={{ marginBottom: 6 }}>{t("usTraditionalIraLabel")}</div>
+        <Field label={t("currentBalancePlaceholder")} unit="$" step={500} value={usInvestment.traditionalIra.currentValue} onChange={(v) => onUpdateAccount("traditionalIra", "currentValue", v)} />
+        <Field label={t("usAnnualContributionLabel")} unit="$" step={100} value={usInvestment.traditionalIra.annualContribution} onChange={(v) => onUpdateAccount("traditionalIra", "annualContribution", v)} />
+        <div className="stat-sub">{t("usIraSharedLimitLabel")}：<span className="mono">{money(iraLimit)}</span></div>
+        <div className="stat-sub">{t("usDeductibleAmountLabel")}：<span className="mono">{money(traditionalDeductibleAmount)}</span></div>
+        {deductibleFraction < 1 && deductibleFraction > 0 && (
+          <div className="stat-sub" style={{ color: "#D9A54F" }}>{t("usPartialDeductionNote")}</div>
+        )}
+        {deductibleFraction === 0 && traditionalContribution > 0 && (
+          <div className="stat-sub" style={{ color: "#C2694F" }}>{t("usNoDeductionNote")}</div>
+        )}
+      </div>
+
+      <div className="section-block" style={{ borderColor: "#8FBF7F", marginTop: 12 }}>
+        <div className="field-label" style={{ marginBottom: 6 }}>{t("usRothIraLabel")}</div>
+        <Field label={t("currentBalancePlaceholder")} unit="$" step={500} value={usInvestment.rothIra.currentValue} onChange={(v) => onUpdateAccount("rothIra", "currentValue", v)} />
+        <Field label={t("usAnnualContributionLabel")} unit="$" step={100} value={usInvestment.rothIra.annualContribution} onChange={(v) => onUpdateAccount("rothIra", "annualContribution", v)} />
+        <div className="stat-sub">{t("usIraSharedLimitLabel")}：<span className="mono">{money(iraLimit)}</span></div>
+        <div className="stat-sub">{t("usRothAllowedLabel")}：<span className="mono">{money(rothAllowedContribution)}</span></div>
+        {rothEligibleFraction === 0 && (
+          <div className="stat-sub" style={{ color: "#C2694F" }}>{t("usRothIneligibleNote")}</div>
+        )}
+        {rothEligibleFraction > 0 && rothEligibleFraction < 1 && (
+          <div className="stat-sub" style={{ color: "#D9A54F" }}>{t("usRothPartialNote")}</div>
+        )}
+        {rothOverEligible && (
+          <div className="stat-sub" style={{ color: "#C2694F" }}>{t("usRothOverEligibleNote")}</div>
+        )}
+      </div>
+
+      <div className="note" style={{ marginTop: 12 }}>
+        <Info size={13} />
+        <span>{t("usIraCombinedNote", { amount: money(iraRemaining >= 0 ? iraRemaining : 0) })}</span>
+      </div>
+      {combinedIraContribution > iraLimit && (
+        <div className="note" style={{ borderLeftColor: "#C2694F" }}>
+          <Info size={13} style={{ color: "#C2694F" }} />
+          <span>{t("usOverLimitLabel", { amount: money(combinedIraContribution - iraLimit) })}</span>
+        </div>
+      )}
+
+      <div className="section-block" style={{ borderColor: "#B08FD6", marginTop: 12 }}>
+        <div className="field-label" style={{ marginBottom: 6 }}>{t("usBrokerageLabel")}</div>
+        <Field label={t("currentBalancePlaceholder")} unit="$" step={1000} value={usInvestment.brokerage.currentValue} onChange={(v) => onUpdateAccount("brokerage", "currentValue", v)} />
+        <Field label={t("usAnnualContributionLabel")} unit="$" step={500} value={usInvestment.brokerage.annualContribution} onChange={(v) => onUpdateAccount("brokerage", "annualContribution", v)} />
+        <div className="stat-sub">{t("usBrokerageNoLimitNote")}</div>
+      </div>
+
+      <div className="stat-grid" style={{ marginTop: 16 }}>
+        <StatCard label={t("usTotalInvestmentLabel")} value={money(Number(usInvestment.k401.currentValue || 0) + Number(usInvestment.traditionalIra.currentValue || 0) + Number(usInvestment.rothIra.currentValue || 0) + brokerageValue)} sub={t("usTotalInvestmentSub")} />
+      </div>
+    </div>
+  );
+}
+
 function SectionTitle({ index, title, icon: Icon }) {
   return (
     <div className="section-title">
       <span className="section-index">{index}</span>
+
       <Icon size={15} strokeWidth={1.75} />
       <h2>{title}</h2>
     </div>
@@ -2094,6 +2399,18 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     loans: [],
     insurancePolicies: [],
     privatePensionPlans: [],
+    // アメリカ選択時の投資口座（401(k) / Traditional IRA / Roth IRA / Brokerage）。
+    // JP側のNISA関連フィールド（tsumitateSchedule等）とは完全に独立した専用データ。
+    usInvestment: {
+      filingStatus: "single", // "single" | "marriedJoint" | "marriedSeparate" | "headOfHousehold"
+      modifiedAGI: 0,
+      coveredByWorkplacePlan: false,
+      spouseCoveredByWorkplacePlan: false,
+      k401: { currentValue: 0, annualContribution: 0 },
+      traditionalIra: { currentValue: 0, annualContribution: 0 },
+      rothIra: { currentValue: 0, annualContribution: 0 },
+      brokerage: { currentValue: 0, annualContribution: 0 },
+    },
   });
   const [watchlist, setWatchlist] = useState(DEFAULT_WATCHLIST);
 
@@ -2333,6 +2650,16 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     setInputs((prev) => ({ ...prev, gold: { ...prev.gold, [key]: val } }));
   const updateIdeco = (key, val) =>
     setInputs((prev) => ({ ...prev, ideco: { ...prev.ideco, [key]: val } }));
+  const updateUsInvestment = (key, val) =>
+    setInputs((prev) => ({ ...prev, usInvestment: { ...prev.usInvestment, [key]: val } }));
+  const updateUsInvestmentAccount = (accountKey, field, val) =>
+    setInputs((prev) => ({
+      ...prev,
+      usInvestment: {
+        ...prev.usInvestment,
+        [accountKey]: { ...prev.usInvestment[accountKey], [field]: val },
+      },
+    }));
 
   // 積立・成長投資枠・一括投資の銘柄別内訳、および「つみたて/成長投資枠：実際の残高」に入力された銘柄を集約して、
   // そのままスライダー（自動計算・操作不可）として表示する
@@ -3727,13 +4054,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           <div className="section-block" style={{ borderColor: "#8FBF7F" }}>
           <SectionTitle index="02" title={label("investmentTaxAdvantaged")} icon={TrendingUp} />
 
-          {!rules.investment.implemented && (
-            <div className="note" style={{ borderLeftColor: "#D9A54F", marginBottom: 12 }}>
-              <Info size={13} style={{ color: "#D9A54F" }} />
-              <span>{t(rules.labels.investmentNote, { country: countryDisplayName })}</span>
-            </div>
-          )}
-
+          {country === "JP" ? (
+          <>
           <div className="field-label" style={{ marginBottom: 6 }}>{t("tsumitateHoldingsLabel")}</div>
           {inputs.tsumitateHoldings.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 8 }}>
@@ -4062,6 +4384,21 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <Info size={13} />
             <span>{t("overlapWarningNote")}</span>
           </div>
+          </>
+          ) : country === "US" && rules.investment.implemented ? (
+            <USInvestmentAccountsPanel
+              usInvestment={inputs.usInvestment}
+              onUpdate={updateUsInvestment}
+              onUpdateAccount={updateUsInvestmentAccount}
+              age={effectiveCurrentAge}
+              investmentRules={rules.investment}
+            />
+          ) : (
+            <div className="note" style={{ borderLeftColor: "#D9A54F" }}>
+              <Info size={13} style={{ color: "#D9A54F" }} />
+              <span>{t(rules.labels.investmentNote, { country: countryDisplayName })}</span>
+            </div>
+          )}
 
           </div>
           <div className="section-block" style={{ borderColor: "#B08FD6" }}>
@@ -4674,7 +5011,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               sub={t("statRetirementLockedSub")}
             />
           </div>
-          {rules.investment.implemented ? (
+          {country === "JP" ? (
             <>
               <div className="stat-grid" style={{ marginBottom: 10 }}>
                 <StatCard
@@ -4756,6 +5093,24 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 />
               </div>
             </>
+          ) : country === "US" && rules.investment.implemented ? (
+            <div className="stat-grid" style={{ marginBottom: 22 }}>
+              <StatCard
+                label={t("us401kLabel")}
+                value={money(rules.investment.get401kEmployeeLimit(effectiveCurrentAge) - (Number(inputs.usInvestment.k401.annualContribution) || 0))}
+                sub={t("usRemainingOfLimitSub")}
+              />
+              <StatCard
+                label={`${t("usTraditionalIraLabel")} + ${t("usRothIraLabel")}`}
+                value={money(Math.max(0, rules.investment.getIraContributionLimit(effectiveCurrentAge) - ((Number(inputs.usInvestment.traditionalIra.annualContribution) || 0) + (Number(inputs.usInvestment.rothIra.annualContribution) || 0))))}
+                sub={t("usIraSharedRemainingSub")}
+              />
+              <StatCard
+                label={t("usBrokerageLabel")}
+                value={money(Number(inputs.usInvestment.brokerage.currentValue) || 0)}
+                sub={t("usBrokerageNoLimitNote")}
+              />
+            </div>
           ) : (
             <div className="note" style={{ borderLeftColor: "#D9A54F", marginBottom: 22 }}>
               <Info size={13} style={{ color: "#D9A54F" }} />
@@ -4785,7 +5140,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             />
           </div>
 
-          {rules.investment.implemented && (
+          {country === "JP" && (
             <div className="stat-grid" style={{ marginBottom: 22 }}>
               <StatCard
                 label={t("statTsumitateLifetimeUsageLabel")}
