@@ -2008,7 +2008,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           gap: 12px;
           margin-bottom: 22px;
         }
-        @media (max-width: 880px) { .stat-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 880px) {
+          .stat-grid { grid-template-columns: repeat(2, 1fr); }
+          .stat-grid > *:last-child:nth-child(odd) { grid-column: 1 / -1; }
+        }
         .stat-card {
           border: 1px solid var(--line);
           background: var(--panel);
