@@ -28,12 +28,13 @@ const yen = (n) => {
 
 // 初期対応国（将来ここに追加するだけで選択肢が増える設計）。コードはISO 3166-1 alpha-2に統一
 // （イギリスは "UK" ではなく ISO準拠の "GB" を使用）。
+// enabled: false の国は「Coming Soon」として選択肢に表示されるが選べない（内部コード・設定はそのまま残す）。
 export const SUPPORTED_COUNTRIES = [
-  { code: "JP", flag: "🇯🇵", name: "日本" },
-  { code: "US", flag: "🇺🇸", name: "United States" },
-  { code: "GB", flag: "🇬🇧", name: "United Kingdom" },
-  { code: "CA", flag: "🇨🇦", name: "Canada" },
-  { code: "AU", flag: "🇦🇺", name: "Australia" },
+  { code: "JP", flag: "🇯🇵", name: "日本", enabled: true },
+  { code: "US", flag: "🇺🇸", name: "United States", enabled: true },
+  { code: "GB", flag: "🇬🇧", name: "United Kingdom", enabled: false },
+  { code: "CA", flag: "🇨🇦", name: "Canada", enabled: false },
+  { code: "AU", flag: "🇦🇺", name: "Australia", enabled: false },
 ];
 
 // 通貨（コード・記号・ロケール）。キーは通貨コード（ISO 4217）そのものにし、
@@ -143,6 +144,726 @@ function getCategoryLabel(key, country) {
   return entry[country] || entry.JP;
 }
 
+// ============================================================================
+// ---------- 翻訳辞書（画面文言の一元管理） ----------
+// 画面内の文字列（見出し・ボタン・単位・注意書き・グラフの凡例やツールチップ等）は
+// すべてここに集約し、JSX側では TRANSLATIONS を直接書かず t("キー") 経由で参照する。
+// {name} のようなプレースホルダーは t(key, { name: "..." }) で差し込む。
+// ============================================================================
+const TRANSLATIONS = {
+  ja: {
+    "advancedMedicalLabel": "先進医療（円）",
+    "ageYM": "{years}歳{months}ヶ月",
+    "ageYMD": "{years}歳{months}ヶ月{days}日",
+    "ageYears": "{age}歳",
+    "allocSumNote": "積立・成長投資枠・一括投資の内訳合計（{amount}）から自動計算されています。",
+    "amountPlaceholder": "金額（円）",
+    "annualContributionLabel": "年間掛金",
+    "annualIncomeLabel": "年収（任意）",
+    "annualOverPaceNote": "年間上限120万円を {amount} 超過するペースです（自動的に月10万円に調整されます）",
+    "annualOverPaceNoteGrowth": "年間上限240万円を {amount} 超過するペースです（自動的に月20万円に調整されます）",
+    "annualPayoutAmountLabel": "年間予想受取額（{from}〜{to}歳）",
+    "annualRatePlaceholder": "金利（年率%）",
+    "annualTaxSavingLabel": "年間節税額（概算）",
+    "appSubtitle": "NISA積立 × 老後資産 × 年金 × 健康費用 × 相続 — 統合シミュレーション",
+    "appTitle": "資産形成 総合ライフプラン",
+    "appTitleWithName": "（{name}様）",
+    "asOfAgePlaceholder": "基準年齢",
+    "asOfAgeRequired": "この残高時点の基準年齢（必須）",
+    "autoEstimatedSuffix": "（自動仮設定）",
+    "autoGuessedFromHoldingsSuffix": "（自動：保有銘柄名から仮設定）",
+    "autoGuessedSuffix": "（自動：商品名から仮設定）",
+    "autoHalfWeightedSuffix": "（自動：現役時代の加重平均の半分）",
+    "autoValuationCol": "時価（自動）",
+    "autoValuationLabel": "時価（自動計算：つみたて・成長投資枠のスケジュール分＋一括投資の経過分）",
+    "backupExportLabel": "エクスポート（コピー用）",
+    "backupImportButton": "読み込む",
+    "backupImportLabel": "復元用テキスト（貼り付け）",
+    "backupImportPlaceholder": "ここに以前コピーしたテキストを貼り付けてください",
+    "backupImportSuccess": "読み込みました",
+    "backupInstructions": "下のテキストを全選択してコピーし、メモ帳やメモアプリに保存しておいてください。次回はそれを「復元用テキスト」に貼り付けて「読み込む」を押すと元に戻ります。",
+    "backupToggleClose": "バックアップを閉じる",
+    "backupToggleOpen": "手動バックアップ",
+    "balanceCol": "残高",
+    "bankBreakdownChartTitle": "銀行別 預金残高 — 年齢ごとの見込み（現在 / {retireAge} / {deathAge}）",
+    "bankNameCol": "銀行名",
+    "bankNote": "毎月入金は引退年齢（{age}）まで継続する前提で計算します。金利は普通預金なら0〜0.1%程度が目安です。",
+    "bankTotalNowLabel": "銀行預金 合計（現在）",
+    "benefitAdvancedMedical": "先進医療{amount}",
+    "benefitDaySurgery": "日帰り{amount}",
+    "benefitDeath": "死亡{amount}",
+    "benefitDetailsLabel": "保障内容（項目別の金額）",
+    "benefitHospitalization": "入院{amount}/日（限度{limit}日/回）",
+    "benefitRadiation": "放射線{amount}/回",
+    "benefitSeparator": "・",
+    "benefitSurgery": "手術{amount}",
+    "birthDateLabel": "生年月日",
+    "birthDateNotePrefix": "生年月日から計算した現在の年齢：",
+    "birthDateNoteSuffix": "（本日時点）。この数値がシミュレーション全体の「現在の年齢」として自動的に使われます。",
+    "capDiffExceeded": "月上限を{amount}超過",
+    "capDiffRemaining": "月上限まであと{amount}",
+    "colAge": "年齢",
+    "colAmount": "金額",
+    "colAmountVsCap": "金額 / 枠との差",
+    "colMonthlyVsCap": "月額 / 上限との差",
+    "colName": "銘柄",
+    "colPercent": "割合",
+    "contribLabel": "積立",
+    "contribPayoutCol": "積立 / 受給",
+    "contribPeriodLabel": "積立期間：開始〜終了",
+    "contributionTotalLabel": "積立総額（見込み）",
+    "countrySelectTitle": "国を選択（表示名・通貨が自動で切り替わります。計算は現状すべて日本の制度基準です）",
+    "coveragePlaceholder": "保証",
+    "coverageUntilAgeLabel": "何歳までの保証か",
+    "coverageUntilLabel": "保障 {age}まで",
+    "cumulativeTaxSavingLabel": "積立終了までの累計節税額（概算）",
+    "currencyUnit": "円",
+    "currentAgeAutoNote": "生年月日が入力されているため、この欄は自動計算され編集できません。年齢を手動で調整したい場合は、上の生年月日を空欄にしてください。",
+    "currentAgeFieldLabel": "現在の年齢",
+    "currentAgeLabel": "現在",
+    "currentBalanceAutoPlaceholder": "未入力なら積立実績から自動概算",
+    "currentBalanceManualLabel": "現在の残高（手入力）",
+    "currentBalanceOptionalLabel": "現在の残高（円・任意）",
+    "currentBalancePlaceholder": "現在の残高（円）",
+    "currentLabelShort": "現在",
+    "customBenefitNamePlaceholder": "項目名（例：先進医療給付日数）",
+    "daySurgeryLabel": "日帰り手術（円）",
+    "deathBenefitLabel": "死亡保険金（円）",
+    "depletionMarkerLabel": "枯渇",
+    "endPlaceholder": "終了",
+    "estimatedAssetsAtPayoutLabel": "受取開始時点の予想資産",
+    "expectedAnnualReturnLabel": "想定年間利回り",
+    "expectedReturnAutoNote": "想定年率は、銘柄名から一般的な目安を自動で仮設定しています（実際の市場データではありません）。数値はいつでも手動で書き換えられます。",
+    "expectedReturnLabel": "想定年率",
+    "footerDisclaimer": "※ 本ツールは入力値に基づく概算シミュレーションであり、将来の運用成果・年金額・医療費・税制を保証するものではありません。相続・税務・投資判断は専門家（FP・税理士等）にご確認ください。データは入力のたびにブラウザ上のストレージに自動保存されます。",
+    "fundBreakdownChartTitle": "{age}時点 ファンド別内訳",
+    "goldAccumulateUntilLabel": "積立を続ける年齢（まで）",
+    "goldAsOfNote": "基準年齢時点の保有量から、毎月の積立額を加算しながら現在の年齢まで計算した結果、現在の保有量は{grams}g、評価額は{amount}になります。",
+    "goldCurrentHoldingLabel": "現在の保有量",
+    "goldCurrentValueAutoLabel": "現在の金の資産金額（自動計算）",
+    "goldGrowthRateLabel": "想定 年率価格上昇率",
+    "goldMonthlyContributionLabel": "毎月の積立額",
+    "goldPriceRefLabel": "現在の金価格（参考）",
+    "goldPriceRefNote": "金価格は2026年7月時点の店頭小売価格（1g ≈ 24,000円前後）を参考値としています。実際の価格は日々変動するため、最新の価格に置き換えてご利用ください。",
+    "growthAllocationLabel": "成長投資枠の銘柄別内訳（金額を入れると割合を自動計算）",
+    "growthAsOfNote": "残高時点の基準年齢を基に計算いたします。（現在の実際の残高＋利率　{manual}）＋（スケジュール分＋利率　{catchup}）＝現在のNISA資産合計。",
+    "growthHoldingsLabel": "成長投資枠：実際の残高（銘柄・金額）",
+    "growthOverageDetail": "成長投資枠は上限を{amount}超過。",
+    "growthScheduleExampleNote": "例：「50歳0ヶ月〜55歳11ヶ月・月15万円」「56歳0ヶ月〜65歳0ヶ月・月5万円」のように、歳とヶ月で区間を分けて成長投資枠の毎月投資額を設定できます。区間が重なる場合は合算されます。",
+    "growthScheduleLabel": "成長投資枠：毎月投資額（年齢区間ごとに設定）",
+    "health60sLabel": "60代 年間自己負担",
+    "health70sLabel": "70代 年間自己負担",
+    "health80sLabel": "80代以降 年間自己負担",
+    "healthCostNote": "公的医療保険の高額療養費制度を考慮した後の自己負担額の概算です。実際は所得区分により上限が変わるため目安としてご利用ください。",
+    "historyColBankTotal": "銀行預金合計",
+    "historyColDate": "日付",
+    "historyColGoldGrams": "金保有量",
+    "historyColNisaPrincipal": "NISA元本",
+    "historyEmpty": "まだ記録がありません。入力すると今日の日付で自動記録されます。",
+    "historyRecordNow": "今すぐ記録する",
+    "historyReload": "履歴を再読み込み",
+    "historyRestore": "この記録を復元",
+    "historyToggleClose": "履歴を閉じる",
+    "historyToggleOpen": "入力履歴（{count}件）",
+    "holdingNamePlaceholder": "銘柄名",
+    "holdingValueCol": "保有金額",
+    "hospitalizationDaysLimitLabel": "限度日数（1回何日まで）",
+    "hospitalizationPerDayLabel": "入院1日あたり（円）",
+    "hospitalizationSurgeryLabel": "入院手術（円）",
+    "idecoAsOfNote": "基準年齢時点の評価額から、毎月の掛金を加算しながら現在の年齢まで計算した結果、現在の評価額は{amount}になります。",
+    "idecoContributionEndAgeLabel": "掛金終了年齢",
+    "idecoContributionStartAgeLabel": "掛金開始年齢",
+    "idecoCurrentValueAutoLabel": "現在のiDeCo評価額（自動計算）",
+    "idecoCurrentValueLabel": "現在評価額",
+    "idecoIntroNote": "iDeCoは老後資産形成制度です。原則として受給可能年齢まで引き出せません。運用成果は将来を保証するものではありません。節税額は概算です。",
+    "idecoMonthlyContributionLabel": "毎月掛金",
+    "idecoPrincipalLabel": "投資元本（これまでの掛金累計）",
+    "idecoProductNameLabel": "運用商品名",
+    "inheritanceAmountPlaceholder": "残したい金額（円）",
+    "inheritanceAutoNote": "相続予定を1人以上登録すると、この欄には自動的にその合計金額が反映され、編集できなくなります。手入力に戻したい場合は、登録した相続予定をすべて削除してください。",
+    "inheritanceTargetAutoLabel": "子孫に残したい金額（上の合計が自動反映）",
+    "inheritanceTargetLabel": "子孫に残したい金額",
+    "inheritanceTotalLabel": "相続予定 合計",
+    "insuranceNameCol": "保険名",
+    "insuranceNamePlaceholder": "例：〇〇生命 医療保険",
+    "insuranceNote": "払込中の保険料は将来資産から自動的に控除されます。入院・手術等の給付額は保障内容の記録用で、発生が不確実なため資産予測には自動反映されません（必要に応じて健康費用の想定額をご自身で調整してください）。登録後、各保険の項目下にある欄から項目名を自由に追加できます。",
+    "interestRateCol": "金利",
+    "interestRatePlaceholder": "金利（%・任意）",
+    "investmentGainLabel": "運用益（現時点）",
+    "investmentTimePlaceholder": "投資時",
+    "landingAudience1": "老後資金が足りるか不安な方",
+    "landingAudience2": "NISAを始めたい方",
+    "landingAudience3": "退職後の生活をシミュレーションしたい方",
+    "landingAudience4": "年金と資産をまとめて管理したい方",
+    "landingAudience5": "ライフプランを見える化したい方",
+    "landingAudienceTitle": "こんな方におすすめ",
+    "landingBlogCta": "資産形成コラムを見る",
+    "landingBlogDesc1": "老後資産・NISA・年金・保険・ライフプランに役立つ情報を分かりやすく解説しています。",
+    "landingBlogDesc2": "シミュレーションだけでは伝えきれない考え方や資産形成のポイントも随時更新していきます。",
+    "landingBlogTitle": "資産形成コラム",
+    "landingCatch": "あなたの人生設計を、ひとつの画面で。",
+    "landingCta": "無料でシミュレーションを始める",
+    "landingDisclaimer": "本サービスは入力された条件に基づくシミュレーションです。将来の運用成果や生活を保証するものではありません。特定の金融商品を推奨するサービスではありません。",
+    "landingFeature1Desc": "NISA・預貯金・金・個別株・保険などをまとめて管理",
+    "landingFeature1Title": "資産を一括管理",
+    "landingFeature2Desc": "公的年金・企業年金・生活費・医療費まで考慮してシミュレーション",
+    "landingFeature2Title": "年金・生活費を反映",
+    "landingFeature3Desc": "年齢ごとの資産推移をグラフで確認",
+    "landingFeature3Title": "将来の資産推移を見える化",
+    "landingFeature4Desc": "すぐ利用でき、入力データは端末内へ保存",
+    "landingFeature4Title": "無料・登録不要",
+    "landingFreeBadge": "完全無料・登録不要",
+    "landingFreeNotice": "現在はすべての機能を無料でご利用いただけます。",
+    "landingScreenshotAlt": "資産形成 総合ライフプラン シミュレーション画面",
+    "landingScreenshotDesc": "現在の資産・NISA・年金・預貯金・金・保険などを入力するだけで、将来の資産推移をグラフで分かりやすく確認できます。",
+    "landingScreenshotTitle": "実際のシミュレーション画面",
+    "landingSub1": "入力するだけで、将来のお金の流れを見える化。",
+    "landingSub2": "NISA・年金・預貯金・金・保険をまとめて管理し、将来の資産推移をシミュレーションできます。",
+    "landingTitle": "資産形成 総合ライフプラン",
+    "legendBankDeposits": "銀行預金",
+    "legendGoldAssets": "金資産",
+    "legendIdecoAssets": "iDeCo資産",
+    "legendNetWorth": "純資産（借入金・保険料控除後）",
+    "legendNisaAssets": "NISA資産",
+    "legendPrivatePension": "民間年金積立",
+    "legendStocks": "個別株",
+    "lifeExpectancyLabel": "想定寿命",
+    "lifetimeRemainingAfterInvestment": "投資後 生涯枠残り {amount}",
+    "lifetimeRemainingAtEnd": "区間終了時 生涯枠残り {amount}",
+    "listSeparator": "、",
+    "livingCostLabel": "老後の生活費",
+    "loanBalancePlaceholder": "借入残高（円）",
+    "loanBreakdownChartTitle": "借入金 残高推移 — 年齢ごとの見込み（現在 / {retireAge} / {deathAge}）",
+    "loanNameCol": "名称",
+    "loanNamePlaceholder": "名称（例：住宅ローン）",
+    "loanPrincipalCol": "残元本",
+    "localePreviewWarning": "現在はプレビュー版です。通貨と一部の表示名のみ選択国に対応しています。投資上限、年金、税制、医療費などの計算は、日本の制度を基準にしています。",
+    "lumpAllocationLabel": "一括投資の銘柄別内訳（金額を入れると割合を自動計算）",
+    "lumpPayoutAmountLabel": "一時金として受け取る額（{age}に一度）",
+    "lumpPortionPctLabel": "一時金として受け取る割合",
+    "lumpSumLabel": "一括投資（成長投資枠・年齢と金額を指定）",
+    "lumpSumMarkerLabel": "一括",
+    "lumpTruncationAt": "時点で{amount}",
+    "lumpTruncationIntro": "一部の一括投資は成長投資枠・生涯枠の上限を超えたため、超過分（",
+    "lumpTruncationOutro": "）は非課税枠に反映されていません。",
+    "manualOverrideNote": "手動設定中です。",
+    "monthlyAmountCol": "月額",
+    "monthlyAmountPlaceholder": "毎月投資額（円）",
+    "monthlyContribAmountLabel": "毎月の積立金額（円）",
+    "monthlyDepositCol": "月次入金",
+    "monthlyDepositPlaceholder": "毎月入金額（円）",
+    "monthlyPaceNote": "月{monthly}のペース（年換算 {annual}）",
+    "monthlyPaymentCol": "月返済",
+    "monthlyPaymentPlaceholder": "毎月返済額（円）",
+    "monthlyPayoutAmountLabel": "受給時に毎月もらえる金額（円）",
+    "monthlyPremiumPlaceholder": "毎月の払込金額（円）",
+    "nameCol": "名前",
+    "nameLabel": "お名前（任意）",
+    "netWorthChartNote": "塗りつぶし部分は資産の内訳（総額）、白い線が借入金・生命保険の払込累計額を差し引いた実質的な純資産です。",
+    "netWorthChartTitle": "総資産推移 — NISA + 金 + 銀行預金 + 個別株 + 民間年金積立 + iDeCo − 借入金 − 保険料累計（{currentAge} 〜 {deathAge}）",
+    "nisaAllocationSlidersLabel": "NISA資産の配分（積立・成長投資枠・一括投資の内訳に入れた銘柄がそのままスライダーになります）",
+    "nisaBreakdownChartTitle": "現在のNISA資産の内訳 — つみたて投資枠 × 成長投資枠（現在日付での使用累計ベース）",
+    "nisaCapSummaryNote": "年間上限：つみたて枠120万円（月10万円）／成長投資枠240万円（月20万円）。生涯投資枠は合計1,800万円（うち成長投資枠は1,200万円まで）。上限に達すると自動的にそれ以上の非課税投資は停止する前提で計算します。",
+    "nisaTotalExplanation": "つみたて投資枠の評価額（{tsumitate}） + 成長投資枠の評価額（{growth}） + 一括投資の評価額（{lump}）を合計したものが、この「合計」欄（{total}）に反映され、シミュレーションではこの金額が使われます。「実際の残高」は基準年齢時点で実際にいくらだったかという金額として入力してください。基準年齢を入力すると、そこから現在の年齢まで銘柄ごとの想定利回りで複利運用したものとして評価額を計算します（未入力ならそのままの金額を使用）。それとは別に、つみたて・成長投資枠それぞれの毎月投資額スケジュールで実際に引き落とされてきたはずの金額も、その都度の想定利回りで複利運用したものとして自動計算・加算されます（つみたてスケジュール分：{tsumitateCatchup}／成長投資枠スケジュール分：{growthCatchup}）。一括投資も同様に、それぞれの投資日から現在まで複利運用したものとして自動計算されます。※スケジュール分は自動加算されるため、「実際の残高」にはスケジュールで積み立て済みの分を重複して含めないようご注意ください。ここで入力した銘柄名は、下の「NISA資産の配分」スライダーにもそのまま反映され、想定年率（利回り）はそちらで銘柄ごとに自動設定・調整されます（この欄自体には利回りの入力は不要です）。ご自身で利回りを変更したい場合は、下の「NISA資産の配分」セクションにある、各銘柄の「想定年率」欄を直接書き換えてください。",
+    "nisaTotalLabel": "現在のNISA資産：合計（自動計算）",
+    "noFundsYetNote": "まだ銘柄が入力されていません。上の「積立投資枠」「成長投資枠」「一括投資」いずれかの銘柄別内訳に銘柄名と金額を入力すると、ここにスライダーが自動的に表示されます。",
+    "overageWarningIntro": "入力された「これまでの使用累計」がNISAの上限を超えています。",
+    "overageWarningOutro": "実際の証券口座の使用累計をご確認のうえ、数値を見直してください。",
+    "overlapWarningNote": "同じ系統のファンドを重ねすぎると分散効果が薄れる点にご注意ください（例：全世界株式とS&P500は米国株の比重が重なりやすい組み合わせです）。",
+    "payoffInsufficientNote": "返済額不足のため未完済",
+    "payoffScheduleLabel": "完済予定",
+    "payoutAccountingNote": "受取開始後は、一時金は受取年に「現在使える資産」へ一度だけ加算され、年金は受取期間中「年間収入」へ加算されて生活費との差額の取り崩しに反映されます。受取期間が終わるとiDeCoからの収入加算は終了します。",
+    "payoutLabel": "受給",
+    "payoutMethodBoth": "併用",
+    "payoutMethodLabel": "受取方法",
+    "payoutMethodLump": "一時金",
+    "payoutMethodPension": "年金",
+    "payoutPeriodLabel": "年金受給期間：開始〜終了",
+    "payoutReturnPctLabel": "受取中の想定運用利回り",
+    "payoutStartAgeLabel": "受取開始年齢",
+    "payoutYearsLabel": "年金受取期間",
+    "pensionAutoNote": "年金の種類を1件以上登録すると、この欄には自動的にその合計月額が反映され、編集できなくなります。手入力に戻したい場合は、登録した項目をすべて削除してください。",
+    "pensionEstimateLabel": "年金受給見込み額",
+    "pensionNameCol": "年金名",
+    "pensionNamePlaceholder": "例：国民年金、企業年金基金",
+    "pensionNamePlaceholderPrivate": "例：〇〇個人年金保険",
+    "pensionSourcesLabel": "年金受給見込み額（国民年金・企業年金基金など、いくつでも追加できます）",
+    "pensionTotalAutoLabel": "年金受給見込み額：合計（上のリストから自動反映）",
+    "pensionTypeCol": "年金の種類",
+    "peopleCount": "{count}名",
+    "perMonthSuffix": "/月",
+    "periodMonth": "月",
+    "periodYear": "年間",
+    "postRetireReturnLabel": "退職後の想定運用利回り",
+    "premiumCoverageCol": "払込 / 保障",
+    "premiumPeriodLabel": "掛け金払込：開始〜終了",
+    "premiumRangeLabel": "払込",
+    "printButton": "PDFで保存 / 印刷",
+    "privatePensionNote": "積立期間中は毎月の積立額を貯め、受給期間中はそこから毎月の受給額を取り崩していく残高として、生涯資産グラフに資産の一部として反映されます。さらに受給額は、公的年金と同様に生活費・健康費用の補填としても扱われ、NISA資産の取り崩しペースを緩める効果があります。「現在の残高」を入力すると、証書に記載の実際の解約返戻金額などをそのまま開始残高として使用します（未入力の場合は積立開始年齢〜現在までの積立額の単純合計＝0%運用想定で自動概算します）。",
+    "privatePensionTotalNowLabel": "民間年金積立 合計（現在）",
+    "radiationLabel": "放射線治療1回（円）",
+    "relationCol": "続柄",
+    "relationPlaceholder": "続柄（例：妻・長男）",
+    "retireAgeFieldLabel": "引退（年金開始）年齢",
+    "retireAgeLabel": "引退",
+    "retirementMarkerLabel": "引退",
+    "revertToAutoLink": "自動計算に戻す",
+    "saveError": "保存失敗",
+    "saveMessageFailed": "保存に失敗しました：{error}",
+    "saveMessageLastSaved": "最終保存: {time}",
+    "saveMessageUnavailable": "このブラウザ/表示環境では自動保存が利用できません（Claudeのアーティファクトとして開いてください）",
+    "saveSaved": "保存済み",
+    "saveSaving": "保存中…",
+    "saveUnavailable": "保存不可",
+    "saveWarningHint": "自動保存が使えない環境のため、下の「手動バックアップ」からテキストをコピーして保管してください。",
+    "scheduleBeforeBaseAgeAlert": "スケジュールの開始年齢が、上の「この残高時点の基準年齢」（{age}）より前になっています。\n基準年齢より前の期間は、既に「実際の残高」に反映されているはずのため、開始年齢は基準年齢と同じかそれより後にしてください。",
+    "scheduleExampleNote": "例：「58歳0ヶ月〜61歳11ヶ月・月11万円」「62歳0ヶ月〜65歳0ヶ月・月9万円」のように、歳とヶ月で区間を分けて毎月投資額を設定できます。区間が重なる場合は合算されます。",
+    "sectorCol": "セクター",
+    "sharesCol": "個数",
+    "startPlaceholder": "開始",
+    "statAssetsAtRetireLabel": "{age}時点の資産",
+    "statAssetsAtRetireSub": "積立フェーズ終了時",
+    "statBankAtRetireLabel": "銀行預金 合計 — {age}時点",
+    "statBankAtRetireSub": "毎月入金を継続した場合の見込み",
+    "statBankCountSub": "{count}行に分散",
+    "statBankTotalNowLabel": "銀行預金 合計（現在）",
+    "statDepletionAtAge": "{age}歳で枯渇",
+    "statDepletionSub": "取崩し速度の見直しが必要",
+    "statGoldAtTargetLabel": "金資産 — {age}時点",
+    "statGoldGramsEstimateSub": "{grams}g 想定",
+    "statGrowthAnnualRemainingLabel": "成長投資枠 年間上限 残り（現在のペース基準）",
+    "statGrowthLifetimeUsageLabel": "成長投資枠 生涯累計使用額（予測）",
+    "statGrowthOverageLabel": "成長投資枠 上限オーバー額",
+    "statGrowthRemainingLabel": "成長投資枠 残り",
+    "statGrowthRemainingSub": "上限1,200万円 中 {used} 使用済み",
+    "statIdecoAssetsLabel": "投資資産：iDeCo",
+    "statIdecoAssetsSub": "現在のiDeCo評価額",
+    "statInheritanceGapNegative": "目標に対し {amount}",
+    "statInheritanceGapPositive": "目標に対し +{amount}",
+    "statInsuranceCountSub": "{count}件の保険",
+    "statInsurancePaidLabel": "生命保険 払込累計（生涯）",
+    "statLifetimeRoomSub": "生涯枠に余裕がある見込み",
+    "statLoanBalanceNowLabel": "借入金 残高（現在）",
+    "statLoanCountSub": "{count}件の借入",
+    "statMaxedAtAge": "{age}歳で上限到達見込み",
+    "statMonthlyGapCoveredSub": "年金で生活費を賄える",
+    "statMonthlyGapLabel": "老後の月次収支ギャップ",
+    "statMonthlyGapShortfallSub": "年金だけでは不足（資産取崩し要）",
+    "statNetWorthFinalLabel": "{age}時点の総資産（NISA+金+預金・相続可能額）",
+    "statNeverDepletes": "生涯枯渇なし",
+    "statNisaAssetsLabel": "投資資産：NISA",
+    "statNisaAssetsSub": "現在のNISA評価額",
+    "statNoBankAccountsSub": "銀行口座が未登録です",
+    "statNoInsuranceSub": "保険未登録",
+    "statNoLoansSub": "借入金なし",
+    "statNotRegisteredSub": "未登録",
+    "statNotYetMaxed": "上限未到達の見込み",
+    "statOfLifetimeLimit": "生涯合算枠 {amount} 中",
+    "statOverageOverSub": "上限を超えています",
+    "statOverageWithinSub": "上限内におさまっています",
+    "statPensionPlanCountSub": "{count}件の年金プラン",
+    "statPrivatePensionFinalLabel": "民間年金 積立残高（受給終了時点）",
+    "statRetirementLockedSub": "受取開始年齢までは引き出せません",
+    "statRetirementOnlyAssetsLabel": "老後専用資産（iDeCo）",
+    "statSpendableAssetsLabel": "現在使える資産",
+    "statSpendableAssetsSub": "iDeCoロック分を除く、現時点の資産",
+    "statStockHoldingsCountSub": "{count}銘柄に保有あり",
+    "statStockValueNowLabel": "個別株 保有評価額（現在）",
+    "statSustainabilityLabel": "資産の持続性",
+    "statSustainableSub": "現在の前提では維持可能",
+    "statTotalLifetimeUsageLabel": "NISA総枠 生涯累計使用額（予測）",
+    "statTotalOverageLabel": "生涯投資枠（総枠） 上限オーバー額",
+    "statTotalRemainingLabel": "生涯投資枠（総枠） 残り",
+    "statTotalRemainingSub": "上限1,800万円 中 {used} 使用済み",
+    "statTsumitateAnnualRemainingLabel": "つみたて 年間上限 残り（現在の年齢のペース基準）",
+    "statTsumitateLifetimeUsageLabel": "つみたて投資枠 生涯累計使用額（予測）",
+    "statTsumitateOverageLabel": "つみたて投資枠 上限オーバー額",
+    "statTsumitateRemainingLabel": "つみたて投資枠 残り",
+    "statTsumitateRemainingSub": "総枠（1,800万円）を成長投資枠と共有",
+    "statUsedUpAtAge": "{age}歳で使い切り見込み",
+    "stockAllocationChartLabel": "保有金額に連動した銘柄別割合",
+    "stockCurrentTotalLabel": "個別株 現在の金額（合計）",
+    "stockReturnLabel": "{age}までの想定年率（個別株全体）",
+    "stockWatchlistTitle": "個別株 保有一覧（個数・保有金額を入力）",
+    "taxSavingCaveatNote": "節税額は、年収から推定した税率を使う簡易計算です。実際は給与所得控除、社会保険料、扶養・配偶者控除などを差し引いた課税所得で決まるため、表示額と異なる場合があります。年収未入力時は目安の税率20%で計算します。",
+    "taxSavingSimLabel": "節税シミュレーション（概算）",
+    "todayLabel": "本日",
+    "todayTotalHidden": "現在の日付で算出した総資産",
+    "todayTotalShown": "現在の日付で算出した総資産：{amount}",
+    "totalOverageDetail": "総枠（生涯上限）は{amount}超過。",
+    "tsumitateAllocationLabel": "つみたて投資枠の銘柄別内訳（金額を入れると割合を自動計算）",
+    "tsumitateAsOfNote": "残高時点の基準年齢を基に計算いたします。（現在の実際の残高＋利率　{manual}）＋（スケジュール分＋利率　{catchup}）＝現在のNISA資産合計。",
+    "tsumitateHoldingsLabel": "つみたて投資枠：実際の残高（銘柄・金額）",
+    "tsumitateScheduleLabel": "つみたて投資枠：毎月投資額（年齢区間ごとに設定）",
+    "unitMonths": "ヶ月",
+    "unitYears": "歳",
+    "unitYearsShort": "歳",
+    "unknownError": "不明なエラー",
+  },
+  en: {
+    "advancedMedicalLabel": "Advanced medical care",
+    "ageYM": "{years}y {months}m",
+    "ageYMD": "{years} years {months} months {days} days",
+    "ageYears": "{age} years",
+    "allocSumNote": "Automatically calculated from the combined total of the regular, growth, and lump-sum breakdowns ({amount}).",
+    "amountPlaceholder": "Amount",
+    "annualContributionLabel": "Annual Contribution",
+    "annualIncomeLabel": "Annual Income (optional)",
+    "annualOverPaceNote": "On pace to exceed the $12,000 annual limit by {amount} (automatically adjusted to $1,000/month)",
+    "annualOverPaceNoteGrowth": "On pace to exceed the $24,000 annual limit by {amount} (automatically adjusted to $2,000/month)",
+    "annualPayoutAmountLabel": "Estimated annual payout (ages {from}–{to})",
+    "annualRatePlaceholder": "Interest rate (annual %)",
+    "annualTaxSavingLabel": "Annual Tax Savings (Estimate)",
+    "appSubtitle": "Investment Accounts × Retirement Assets × Pensions × Healthcare Costs × Estate Planning — Integrated Simulation",
+    "appTitle": "Comprehensive Financial Life Planner",
+    "appTitleWithName": "({name})",
+    "asOfAgePlaceholder": "Reference age",
+    "asOfAgeRequired": "Reference age for this balance (required)",
+    "autoEstimatedSuffix": " (auto-estimated)",
+    "autoGuessedFromHoldingsSuffix": " (auto-estimated from holding names)",
+    "autoGuessedSuffix": " (auto-estimated from product name)",
+    "autoHalfWeightedSuffix": " (auto: half of your working-years weighted average)",
+    "autoValuationCol": "Estimated Value (Auto)",
+    "autoValuationLabel": "Estimated value (auto-calculated: regular + growth allocation schedules plus elapsed lump-sum investments)",
+    "backupExportLabel": "Export (copy this)",
+    "backupImportButton": "Load",
+    "backupImportLabel": "Restore text (paste here)",
+    "backupImportPlaceholder": "Paste the text you copied previously here",
+    "backupImportSuccess": "Loaded",
+    "backupInstructions": "Select all the text below and copy it into a notes app to keep it safe. Next time, paste it into the restore text box and press Load to restore it.",
+    "backupToggleClose": "Close Backup",
+    "backupToggleOpen": "Manual Backup",
+    "balanceCol": "Balance",
+    "bankBreakdownChartTitle": "Cash Balance by Bank — Projected by Age (Current / {retireAge} / {deathAge})",
+    "bankNameCol": "Bank Name",
+    "bankNote": "Monthly deposits are assumed to continue until retirement age ({age}). For a typical savings account, an interest rate of 0-0.1% is a reasonable guide.",
+    "bankTotalNowLabel": "Total Cash (Current)",
+    "benefitAdvancedMedical": "Advanced medical care {amount}",
+    "benefitDaySurgery": "Day surgery {amount}",
+    "benefitDeath": "Death benefit {amount}",
+    "benefitDetailsLabel": "Coverage Details (amount per item)",
+    "benefitHospitalization": "Hospitalization {amount}/day (up to {limit} days/stay)",
+    "benefitRadiation": "Radiation {amount}/session",
+    "benefitSeparator": ", ",
+    "benefitSurgery": "Surgery {amount}",
+    "birthDateLabel": "Date of Birth",
+    "birthDateNotePrefix": "Current age calculated from date of birth: ",
+    "birthDateNoteSuffix": " (as of today). This figure is used automatically as the Current Age throughout the simulation.",
+    "capDiffExceeded": "{amount} over the monthly cap",
+    "capDiffRemaining": "{amount} remaining before monthly cap",
+    "colAge": "Age",
+    "colAmount": "Amount",
+    "colAmountVsCap": "Amount / Difference from Cap",
+    "colMonthlyVsCap": "Monthly / Difference from Cap",
+    "colName": "Name",
+    "colPercent": "Percent",
+    "contribLabel": "Contributions",
+    "contribPayoutCol": "Contributions / Payout",
+    "contribPeriodLabel": "Contribution Period: Start–End",
+    "contributionTotalLabel": "Total Contributions (Projected)",
+    "countrySelectTitle": "Select country (labels and currency switch automatically. Calculations currently use Japanese rules regardless of country)",
+    "coveragePlaceholder": "Coverage",
+    "coverageUntilAgeLabel": "Covered Until What Age",
+    "coverageUntilLabel": "Coverage until {age}",
+    "cumulativeTaxSavingLabel": "Cumulative Tax Savings Through End of Contributions (Estimate)",
+    "currencyUnit": "USD",
+    "currentAgeAutoNote": "This field is calculated automatically and cannot be edited because a date of birth has been entered. To adjust the age manually, clear the date of birth above.",
+    "currentAgeFieldLabel": "Current Age",
+    "currentAgeLabel": "Current Age",
+    "currentBalanceAutoPlaceholder": "If left blank, estimated automatically from contributions",
+    "currentBalanceManualLabel": "Current balance (manual)",
+    "currentBalanceOptionalLabel": "Current Balance (optional)",
+    "currentBalancePlaceholder": "Current balance",
+    "currentLabelShort": "Current",
+    "customBenefitNamePlaceholder": "Item name (e.g. advanced medical care days)",
+    "daySurgeryLabel": "Day surgery",
+    "deathBenefitLabel": "Death benefit",
+    "depletionMarkerLabel": "Depleted",
+    "endPlaceholder": "End",
+    "estimatedAssetsAtPayoutLabel": "Estimated Assets at Payout",
+    "expectedAnnualReturnLabel": "Expected Annual Return",
+    "expectedReturnAutoNote": "The expected annual return is a rough default automatically set based on the holding's name (not actual market data). You can edit these values manually at any time.",
+    "expectedReturnLabel": "Expected annual return",
+    "footerDisclaimer": "※ This tool provides an approximate simulation based on the figures you enter. It does not guarantee future investment performance, pension amounts, healthcare costs, or tax treatment. Please consult a professional (financial planner, tax accountant, etc.) for estate, tax, or investment decisions. Data is saved automatically to browser storage each time you make changes.",
+    "fundBreakdownChartTitle": "Breakdown by Fund at {age}",
+    "goldAccumulateUntilLabel": "Continue Contributing Until Age",
+    "goldAsOfNote": "Calculated by compounding the monthly contribution from the reference-age holding up to your current age, current holdings come to {grams}g, valued at {amount}.",
+    "goldCurrentHoldingLabel": "Current Holdings",
+    "goldCurrentValueAutoLabel": "Current Gold Value (Auto-calculated)",
+    "goldGrowthRateLabel": "Expected Annual Price Growth Rate",
+    "goldMonthlyContributionLabel": "Monthly Contribution",
+    "goldPriceRefLabel": "Current Gold Price (Reference)",
+    "goldPriceRefNote": "The gold price uses the retail spot price as of July 2026 (about $155/g) as a reference. Actual prices fluctuate daily, so replace this with the latest price when using the tool.",
+    "growthAllocationLabel": "Breakdown by Holding for Growth Allocation (enter an amount to auto-calculate the percentage)",
+    "growthAsOfNote": "Calculated based on the reference age for this balance. (Actual balance plus growth: {manual}) + (Contribution schedule plus growth: {catchup}) = current investment account total.",
+    "growthHoldingsLabel": "Growth Investment Allocation: Actual Balance (Holding & Amount)",
+    "growthOverageDetail": "Growth allocation exceeds its limit by {amount}.",
+    "growthScheduleExampleNote": "Example: you can split growth allocation contributions into ranges by year and month, such as “50y0m to 55y11m: $1,500/month” and “56y0m to 65y0m: $500/month.” Overlapping ranges are added together.",
+    "growthScheduleLabel": "Growth Investment Allocation: Monthly Contribution (by age range)",
+    "health60sLabel": "Annual Out-of-Pocket (60s)",
+    "health70sLabel": "Annual Out-of-Pocket (70s)",
+    "health80sLabel": "Annual Out-of-Pocket (80s+)",
+    "healthCostNote": "This is an estimate of out-of-pocket costs after accounting for the high-cost medical expense cap under public health insurance. Actual caps vary by income bracket, so use this as a general guide.",
+    "historyColBankTotal": "Total Cash",
+    "historyColDate": "Date",
+    "historyColGoldGrams": "Gold Holdings",
+    "historyColNisaPrincipal": "Investment Principal",
+    "historyEmpty": "No records yet. Records are saved automatically under today's date as you enter data.",
+    "historyRecordNow": "Record Now",
+    "historyReload": "Reload History",
+    "historyRestore": "Restore This Record",
+    "historyToggleClose": "Close History",
+    "historyToggleOpen": "Input History ({count})",
+    "holdingNamePlaceholder": "Holding name",
+    "holdingValueCol": "Holding Value",
+    "hospitalizationDaysLimitLabel": "Day limit per stay",
+    "hospitalizationPerDayLabel": "Hospitalization per day",
+    "hospitalizationSurgeryLabel": "Hospitalization surgery",
+    "idecoAsOfNote": "Calculated by compounding monthly contributions from the reference-age value up to your current age, the current value comes to {amount}.",
+    "idecoContributionEndAgeLabel": "Contribution End Age",
+    "idecoContributionStartAgeLabel": "Contribution Start Age",
+    "idecoCurrentValueAutoLabel": "Current IRA Value (Auto-calculated)",
+    "idecoCurrentValueLabel": "Current Value",
+    "idecoIntroNote": "An IRA is a retirement savings account. In principle, funds cannot be withdrawn before the eligible age. Investment returns are not guaranteed. The tax savings shown are estimates.",
+    "idecoMonthlyContributionLabel": "Monthly Contribution",
+    "idecoPrincipalLabel": "Principal (Total Contributions So Far)",
+    "idecoProductNameLabel": "Investment Product Name",
+    "inheritanceAmountPlaceholder": "Amount to leave",
+    "inheritanceAutoNote": "Once you register one or more heirs, this field is automatically filled with their combined total and can no longer be edited. To go back to manual entry, remove all registered heirs.",
+    "inheritanceTargetAutoLabel": "Amount to Leave to Heirs (auto-filled from the total above)",
+    "inheritanceTargetLabel": "Amount to Leave to Heirs",
+    "inheritanceTotalLabel": "Total Planned Inheritance",
+    "insuranceNameCol": "Policy Name",
+    "insuranceNamePlaceholder": "e.g. XYZ Life Medical Insurance",
+    "insuranceNote": "Premiums paid are automatically deducted from future assets. Benefit amounts for hospitalization, surgery, etc. are for reference only; since their occurrence is uncertain, they are not automatically reflected in the asset projection (adjust your expected healthcare costs manually if needed). After adding a policy, you can freely add custom benefit items in the field below each policy.",
+    "interestRateCol": "Interest Rate",
+    "interestRatePlaceholder": "Interest rate (%, optional)",
+    "investmentGainLabel": "Investment Gain (Current)",
+    "investmentTimePlaceholder": "At investment",
+    "landingAudience1": "Anyone unsure whether they'll have enough for retirement",
+    "landingAudience2": "Anyone getting started with tax-advantaged investing",
+    "landingAudience3": "Anyone who wants to simulate life after retirement",
+    "landingAudience4": "Anyone who wants to manage pensions and assets together",
+    "landingAudience5": "Anyone who wants to visualize their life plan",
+    "landingAudienceTitle": "Who This Is For",
+    "landingBlogCta": "Read the Articles",
+    "landingBlogDesc1": "Clear explanations on retirement savings, tax-advantaged investing, pensions, insurance, and life planning.",
+    "landingBlogDesc2": "Regularly updated with ideas and insights that go beyond what the simulation alone can show.",
+    "landingBlogTitle": "Financial Planning Articles",
+    "landingCatch": "Your entire life plan, on one screen.",
+    "landingCta": "Start Your Free Simulation",
+    "landingDisclaimer": "This service provides simulations based on the figures you enter. It does not guarantee future investment performance or living conditions, and does not recommend any specific financial product.",
+    "landingFeature1Desc": "Investment accounts, savings, gold, individual stocks, insurance, and more in one place",
+    "landingFeature1Title": "Manage All Your Assets",
+    "landingFeature2Desc": "Simulations account for public and corporate pensions, living costs, and healthcare costs",
+    "landingFeature2Title": "Includes Pensions & Living Costs",
+    "landingFeature3Desc": "See how your assets are projected to change at every age on a graph",
+    "landingFeature3Title": "Visualize Your Future",
+    "landingFeature4Desc": "Start right away — your data is saved on your device",
+    "landingFeature4Title": "Free, No Sign-up",
+    "landingFreeBadge": "Completely Free, No Sign-up Required",
+    "landingFreeNotice": "All features are currently free to use.",
+    "landingScreenshotAlt": "Comprehensive Financial Life Planner simulation screen",
+    "landingScreenshotDesc": "Just enter your current assets, investment accounts, pensions, savings, gold, and insurance to see a clear graph of your future assets.",
+    "landingScreenshotTitle": "See It In Action",
+    "landingSub1": "Just enter your numbers to visualize your future cash flow.",
+    "landingSub2": "Manage your investment accounts, pensions, savings, gold, and insurance together, and simulate how your assets will grow over time.",
+    "landingTitle": "Comprehensive Financial Life Planner",
+    "legendBankDeposits": "Cash",
+    "legendGoldAssets": "Gold",
+    "legendIdecoAssets": "Retirement Account",
+    "legendNetWorth": "Net Worth (after loans and premiums)",
+    "legendNisaAssets": "Investment Account",
+    "legendPrivatePension": "Private Pension",
+    "legendStocks": "Individual Stocks",
+    "lifeExpectancyLabel": "Life Expectancy",
+    "lifetimeRemainingAfterInvestment": "Lifetime limit remaining after this investment: {amount}",
+    "lifetimeRemainingAtEnd": "Lifetime limit remaining at end of range: {amount}",
+    "listSeparator": ", ",
+    "livingCostLabel": "Retirement Living Costs",
+    "loanBalancePlaceholder": "Outstanding balance",
+    "loanBreakdownChartTitle": "Loan Balance Over Time — Projected by Age (Current / {retireAge} / {deathAge})",
+    "loanNameCol": "Name",
+    "loanNamePlaceholder": "Name (e.g. mortgage)",
+    "loanPrincipalCol": "Remaining Principal",
+    "localePreviewWarning": "Preview version: Labels and currency are adapted for the United States, but investment limits, retirement rules, taxes, and healthcare calculations currently use Japanese assumptions.",
+    "lumpAllocationLabel": "Breakdown by Holding for Lump-Sum Investments (enter an amount to auto-calculate the percentage)",
+    "lumpPayoutAmountLabel": "Lump-sum payout (once, at {age})",
+    "lumpPortionPctLabel": "Portion Received as Lump Sum",
+    "lumpSumLabel": "Lump-Sum Investments (growth allocation, specify age and amount)",
+    "lumpSumMarkerLabel": "Lump Sum",
+    "lumpTruncationAt": " (shortfall {amount})",
+    "lumpTruncationIntro": "Some lump-sum investments exceeded the growth allocation or lifetime limit. The excess (",
+    "lumpTruncationOutro": ") is not reflected in the tax-advantaged allocation.",
+    "manualOverrideNote": "Manually set.",
+    "monthlyAmountCol": "Monthly Amount",
+    "monthlyAmountPlaceholder": "Monthly contribution",
+    "monthlyContribAmountLabel": "Monthly contribution amount",
+    "monthlyDepositCol": "Monthly Deposit",
+    "monthlyDepositPlaceholder": "Monthly deposit",
+    "monthlyPaceNote": "Pace of {monthly}/month ({annual}/year)",
+    "monthlyPaymentCol": "Monthly Payment",
+    "monthlyPaymentPlaceholder": "Monthly payment",
+    "monthlyPayoutAmountLabel": "Monthly amount received during payout",
+    "monthlyPremiumPlaceholder": "Monthly premium",
+    "nameCol": "Name",
+    "nameLabel": "Name (optional)",
+    "netWorthChartNote": "The filled areas show the breakdown of total assets; the white line shows net worth after subtracting cumulative loan balances and life insurance premiums paid.",
+    "netWorthChartTitle": "Net Worth Over Time — Investments + Gold + Cash + Stocks + Private Pension + Retirement Account − Loans − Cumulative Insurance Premiums ({currentAge} – {deathAge})",
+    "nisaAllocationSlidersLabel": "Investment Allocation (holdings entered in the regular, growth, and lump-sum breakdowns above automatically appear as sliders here)",
+    "nisaBreakdownChartTitle": "Current Investment Account Breakdown — Regular vs. Growth Allocation (based on cumulative usage to date)",
+    "nisaCapSummaryNote": "Annual caps: regular allocation $12,000 ($1,000/month), growth allocation $24,000 ($2,000/month). Lifetime limit is $180,000 total (up to $120,000 of which can be growth allocation). Once the limit is reached, the simulation assumes no further tax-advantaged investment.",
+    "nisaTotalExplanation": "The estimated value of the regular allocation ({tsumitate}) plus the growth allocation ({growth}) plus lump-sum investments ({lump}) makes up this Total field ({total}), and this figure is what the simulation uses. Enter the Actual Balance as the amount you actually held at the reference age. Once you enter a reference age, the estimated value is calculated by compounding from that age to your current age using each holding's expected return (if left blank, the amount entered is used as-is). Separately, the amounts that would have been contributed on the monthly schedule for the regular and growth allocations are also automatically compounded and added (regular allocation schedule: {tsumitateCatchup} / growth allocation schedule: {growthCatchup}). Lump-sum investments are compounded automatically in the same way from their investment date to today. Note: since the schedule amount is added automatically, please make sure the Actual Balance does not double-count amounts already contributed via the schedule. Holding names entered here also appear in the Investment Allocation sliders below, where the expected annual return is set and adjusted automatically per holding (no need to enter a return here). If you want to change the return yourself, edit the Expected Annual Return field for each holding in the Investment Allocation section below.",
+    "nisaTotalLabel": "Current Investment Account Total (Auto-calculated)",
+    "noFundsYetNote": "No holdings entered yet. Enter a holding name and amount in the Regular Allocation, Growth Allocation, or Lump-Sum breakdown above, and sliders will appear here automatically.",
+    "overageWarningIntro": "The cumulative usage you entered exceeds the investment account limits.",
+    "overageWarningOutro": "Please check your actual brokerage account usage and review these figures.",
+    "overlapWarningNote": "Be aware that stacking too many funds from the same category reduces diversification (for example, a Global Equity fund and an S&P 500 fund tend to overlap heavily in US stock exposure).",
+    "payoffInsufficientNote": "not paid off (payment amount insufficient)",
+    "payoffScheduleLabel": "Expected Payoff",
+    "payoutAccountingNote": "After payout begins, a lump-sum payment is added once, in the year received, to Current Spendable Assets. Annuity payments are added to Annual Income during the payout period and offset against the living-cost shortfall. Once the payout period ends, income from the IRA stops.",
+    "payoutLabel": "Payout",
+    "payoutMethodBoth": "Both",
+    "payoutMethodLabel": "Payout Method",
+    "payoutMethodLump": "Lump Sum",
+    "payoutMethodPension": "Annuity",
+    "payoutPeriodLabel": "Payout Period: Start–End",
+    "payoutReturnPctLabel": "Expected Return During Payout",
+    "payoutStartAgeLabel": "Payout Start Age",
+    "payoutYearsLabel": "Annuity Payout Period",
+    "pensionAutoNote": "Once you register one or more pension sources, this field is automatically filled with their combined monthly total and can no longer be edited. To go back to manual entry, remove all registered sources.",
+    "pensionEstimateLabel": "Expected Pension Income",
+    "pensionNameCol": "Pension Name",
+    "pensionNamePlaceholder": "e.g. Social Security, Corporate Pension",
+    "pensionNamePlaceholderPrivate": "e.g. XYZ Individual Annuity",
+    "pensionSourcesLabel": "Expected Pension Income (Social Security, corporate pension, etc. — add as many as you like)",
+    "pensionTotalAutoLabel": "Expected Pension Income: Total (auto-filled from the list above)",
+    "pensionTypeCol": "Pension Type",
+    "peopleCount": "{count} people",
+    "perMonthSuffix": "/month",
+    "periodMonth": "monthly",
+    "periodYear": "annual",
+    "postRetireReturnLabel": "Expected Return After Retirement",
+    "premiumCoverageCol": "Premiums / Coverage",
+    "premiumPeriodLabel": "Premium Payment Period: Start–End",
+    "premiumRangeLabel": "Premiums",
+    "printButton": "Save as PDF / Print",
+    "privatePensionNote": "During the contribution period, monthly contributions accumulate; during the payout period, the monthly payout is drawn down from that balance, and this is reflected as part of your assets in the lifetime asset graph. Payouts are also treated like a public pension, offsetting living and healthcare costs, which slows the drawdown of your investment account. If you enter a Current Balance, the actual surrender value on your policy statement is used as the starting balance (if left blank, it is estimated automatically as the simple sum of contributions from the start age to today, assuming 0% growth).",
+    "privatePensionTotalNowLabel": "Total Private Pension Savings (Current)",
+    "radiationLabel": "Radiation therapy (per session)",
+    "relationCol": "Relationship",
+    "relationPlaceholder": "Relationship (e.g. spouse, eldest son)",
+    "retireAgeFieldLabel": "Retirement (Pension Start) Age",
+    "retireAgeLabel": "Retirement Age",
+    "retirementMarkerLabel": "Retirement",
+    "revertToAutoLink": "Revert to Automatic",
+    "saveError": "Save Failed",
+    "saveMessageFailed": "Save failed: {error}",
+    "saveMessageLastSaved": "Last saved: {time}",
+    "saveMessageUnavailable": "Auto-save isn't available in this browser/environment (please open this as a Claude artifact).",
+    "saveSaved": "Saved",
+    "saveSaving": "Saving…",
+    "saveUnavailable": "Save Unavailable",
+    "saveWarningHint": "Auto-save is not available in this environment. Please copy the text from Manual Backup below to keep it safe.",
+    "scheduleBeforeBaseAgeAlert": "The schedule's start age is earlier than the reference age for this balance above ({age}).\nSince periods before the reference age should already be reflected in the Actual Balance, please set the start age to the reference age or later.",
+    "scheduleExampleNote": "Example: you can split contributions into ranges by year and month, such as “58y0m to 61y11m: $1,100/month” and “62y0m to 65y0m: $900/month.” Overlapping ranges are added together.",
+    "sectorCol": "Sector",
+    "sharesCol": "Shares",
+    "startPlaceholder": "Start",
+    "statAssetsAtRetireLabel": "Assets at {age}",
+    "statAssetsAtRetireSub": "At end of accumulation phase",
+    "statBankAtRetireLabel": "Total Cash — at {age}",
+    "statBankAtRetireSub": "Projected if monthly deposits continue",
+    "statBankCountSub": "Spread across {count} accounts",
+    "statBankTotalNowLabel": "Total Cash (Current)",
+    "statDepletionAtAge": "Depleted at age {age}",
+    "statDepletionSub": "Drawdown pace should be reviewed",
+    "statGoldAtTargetLabel": "Gold Assets — at {age}",
+    "statGoldGramsEstimateSub": "Estimated {grams}g",
+    "statGrowthAnnualRemainingLabel": "Growth Allocation Annual Limit Remaining (based on current pace)",
+    "statGrowthLifetimeUsageLabel": "Growth Allocation Lifetime Usage (Projected)",
+    "statGrowthOverageLabel": "Growth Allocation Amount Over Limit",
+    "statGrowthRemainingLabel": "Growth Allocation Remaining",
+    "statGrowthRemainingSub": "{used} used of $120,000 limit",
+    "statIdecoAssetsLabel": "Investment Assets: Retirement Account",
+    "statIdecoAssetsSub": "Current retirement account value",
+    "statInheritanceGapNegative": "{amount} vs. target",
+    "statInheritanceGapPositive": "+{amount} vs. target",
+    "statInsuranceCountSub": "{count} policies",
+    "statInsurancePaidLabel": "Life Insurance Premiums Paid (Lifetime)",
+    "statLifetimeRoomSub": "Expected to have lifetime room remaining",
+    "statLoanBalanceNowLabel": "Loan Balance (Current)",
+    "statLoanCountSub": "{count} loans",
+    "statMaxedAtAge": "Expected to reach limit at age {age}",
+    "statMonthlyGapCoveredSub": "Pension covers living costs",
+    "statMonthlyGapLabel": "Monthly Retirement Cash Flow Gap",
+    "statMonthlyGapShortfallSub": "Pension alone is insufficient (requires drawing down assets)",
+    "statNetWorthFinalLabel": "Total Assets at {age} (Investments + Gold + Cash, Available to Leave)",
+    "statNeverDepletes": "Never depletes",
+    "statNisaAssetsLabel": "Investment Assets: Tax-Advantaged Account",
+    "statNisaAssetsSub": "Current investment account value",
+    "statNoBankAccountsSub": "No bank accounts registered",
+    "statNoInsuranceSub": "No insurance registered",
+    "statNoLoansSub": "No loans",
+    "statNotRegisteredSub": "Not registered",
+    "statNotYetMaxed": "Not expected to reach the limit",
+    "statOfLifetimeLimit": "of {amount} combined lifetime limit",
+    "statOverageOverSub": "Over the limit",
+    "statOverageWithinSub": "Within the limit",
+    "statPensionPlanCountSub": "{count} pension plans",
+    "statPrivatePensionFinalLabel": "Private Pension Balance (At End of Payout)",
+    "statRetirementLockedSub": "Cannot be withdrawn until the payout start age",
+    "statRetirementOnlyAssetsLabel": "Retirement-Only Assets (Retirement Account)",
+    "statSpendableAssetsLabel": "Currently Spendable Assets",
+    "statSpendableAssetsSub": "Current assets excluding locked retirement account funds",
+    "statStockHoldingsCountSub": "Holdings in {count} stocks",
+    "statStockValueNowLabel": "Individual Stock Holdings (Current)",
+    "statSustainabilityLabel": "Asset Sustainability",
+    "statSustainableSub": "Sustainable under current assumptions",
+    "statTotalLifetimeUsageLabel": "Total Investment Account Lifetime Usage (Projected)",
+    "statTotalOverageLabel": "Lifetime Limit (Total) Amount Over Limit",
+    "statTotalRemainingLabel": "Lifetime Limit (Total) Remaining",
+    "statTotalRemainingSub": "{used} used of $180,000 limit",
+    "statTsumitateAnnualRemainingLabel": "Regular Allocation Annual Limit Remaining (based on current age's pace)",
+    "statTsumitateLifetimeUsageLabel": "Regular Allocation Lifetime Usage (Projected)",
+    "statTsumitateOverageLabel": "Regular Allocation Amount Over Limit",
+    "statTsumitateRemainingLabel": "Regular Allocation Remaining",
+    "statTsumitateRemainingSub": "Shares the $180,000 lifetime limit with growth allocation",
+    "statUsedUpAtAge": "Expected to be used up at age {age}",
+    "stockAllocationChartLabel": "Allocation by Holding (based on holding value)",
+    "stockCurrentTotalLabel": "Individual Stocks Current Value (Total)",
+    "stockReturnLabel": "Expected Annual Return Until {age} (All Individual Stocks)",
+    "stockWatchlistTitle": "Individual Stock Holdings (enter shares and value)",
+    "taxSavingCaveatNote": "Tax savings are a simplified estimate based on a tax rate inferred from annual income. Actual amounts depend on taxable income after deductions for salary income, social insurance, dependents, and spouse, so results may differ from the figure shown. If annual income is left blank, a default rate of 20% is used.",
+    "taxSavingSimLabel": "Tax Savings Simulation (Estimate)",
+    "todayLabel": "Today",
+    "todayTotalHidden": "Total assets as of today",
+    "todayTotalShown": "Total assets as of today: {amount}",
+    "totalOverageDetail": "The lifetime total limit is exceeded by {amount}.",
+    "tsumitateAllocationLabel": "Breakdown by Holding for Regular Allocation (enter an amount to auto-calculate the percentage)",
+    "tsumitateAsOfNote": "Calculated based on the reference age for this balance. (Actual balance plus growth: {manual}) + (Contribution schedule plus growth: {catchup}) = current investment account total.",
+    "tsumitateHoldingsLabel": "Regular Investment Allocation: Actual Balance (Holding & Amount)",
+    "tsumitateScheduleLabel": "Regular Investment Allocation: Monthly Contribution (by age range)",
+    "unitMonths": "months",
+    "unitYears": "years",
+    "unitYearsShort": "y",
+    "unknownError": "Unknown error",
+  },
+};
+
+function translateWith(language, key, vars) {
+  const dict = TRANSLATIONS[language] || TRANSLATIONS.ja;
+  let str = dict[key];
+  if (str === undefined) str = TRANSLATIONS.ja[key];
+  if (str === undefined) return key; // 未登録キーは開発時に気付けるようキー名をそのまま返す
+  if (vars) {
+    Object.keys(vars).forEach((k) => {
+      str = str.split(`{${k}}`).join(vars[k]);
+    });
+  }
+  return str;
+}
+
 // 金額フォーマットは「表示国」ではなく「基準通貨（baseCurrency）」に基づく。
 // 国と通貨は別データとして保持するため、将来は国と無関係に通貨だけを切り替えられる。
 // baseCurrencyがJPY（＝未設定を含む）の場合は、既存のyen()と完全に同一の出力を維持する
@@ -165,6 +886,7 @@ const LocaleContext = createContext({
   language: "ja",
   money: yen,
   label: (key) => getCategoryLabel(key, "JP"),
+  t: (key) => translateWith("ja", key),
 });
 
 function monthlyRate(annualPct) {
@@ -852,14 +1574,11 @@ function Field({ label, unit, value, onChange, step = 1, min = 0, max, mono = tr
   );
 }
 
-const formatAge = (age) => {
-  const y = Math.floor(age + 1e-9);
-  const m = Math.round((age - y) * 12);
-  return m > 0 ? `${y}歳${m}ヶ月` : `${y}歳`;
-};
+// 年齢の「歳＋ヶ月」表示は、言語設定を必要とするためコンポーネント内のformatAge（下記）で行う。
 
 // 年齢を「歳」と「ヶ月」の2つの入力欄に分けて、小数の年齢値として扱う
 function AgeField({ label, value, onChange, disabled }) {
+  const { t } = useContext(LocaleContext);
   const years = Math.floor(value + 1e-9);
   const months = Math.round((value - years) * 12);
   const commit = (y, m) => {
@@ -874,11 +1593,11 @@ function AgeField({ label, value, onChange, disabled }) {
       <div style={{ display: "flex", gap: 6 }}>
         <div className="field-input-wrap" style={{ flex: 1 }}>
           <input type="number" className="mono" value={years} disabled={disabled} onChange={(e) => commit(Number(e.target.value), months)} onFocus={(e) => e.target.select()} />
-          <span className="field-unit">歳</span>
+          <span className="field-unit">{t("unitYears")}</span>
         </div>
         <div className="field-input-wrap" style={{ flex: 1 }}>
           <input type="number" className="mono" min={0} max={11} value={months} disabled={disabled} onChange={(e) => commit(years, Number(e.target.value))} onFocus={(e) => e.target.select()} />
-          <span className="field-unit">ヶ月</span>
+          <span className="field-unit">{t("unitMonths")}</span>
         </div>
       </div>
     </label>
@@ -887,6 +1606,7 @@ function AgeField({ label, value, onChange, disabled }) {
 
 // 追加フォーム用の小型「歳＋ヶ月」入力（2つの数値を親のuseState断片として管理）
 function AgeYMInput({ years, months, onYears, onMonths, placeholder }) {
+  const { t } = useContext(LocaleContext);
   const inputStyle = {
     width: "50%",
     background: "var(--panel-2)",
@@ -900,13 +1620,13 @@ function AgeYMInput({ years, months, onYears, onMonths, placeholder }) {
   return (
     <div style={{ display: "flex", gap: 4, flex: 1 }}>
       <input
-        type="number" placeholder={`${placeholder}歳`} value={years}
+        type="number" placeholder={`${placeholder}${t("unitYearsShort")}`} value={years}
         onChange={(e) => onYears(e.target.value)}
         onFocus={(e) => e.target.select()}
         style={inputStyle}
       />
       <input
-        type="number" placeholder="ヶ月" min={0} max={11} value={months}
+        type="number" placeholder={t("unitMonths")} min={0} max={11} value={months}
         onChange={(e) => onMonths(e.target.value)}
         onFocus={(e) => e.target.select()}
         style={inputStyle}
@@ -928,12 +1648,13 @@ function LabeledMiniInput({ label, value, onChange, type = "number" }) {
 
 // 保険の保障内容に、任意の項目名と金額を自由に追加できる小さな編集フォーム
 function CustomBenefitEditor({ onAdd }) {
+  const { t } = useContext(LocaleContext);
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
   return (
     <div className="add-row" style={{ marginTop: 6 }}>
-      <input placeholder="項目名（例：先進医療給付日数）" value={name} onChange={(e) => setName(e.target.value)} />
-      <input placeholder="金額（円）" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} />
+      <input placeholder={t("customBenefitNamePlaceholder")} value={name} onChange={(e) => setName(e.target.value)} />
+      <input placeholder={t("amountPlaceholder")} type="number" value={amount} onChange={(e) => setAmount(e.target.value)} />
       <button
         className="add-btn"
         onClick={() => {
@@ -954,7 +1675,7 @@ const PIE_COLORS = ["#4FA8D8", "#D9A54F", "#8FBF7F", "#B08FD6", "#C2694F", "#7BC
 // 銘柄別の内訳（金額を入れると割合を自動計算し、円グラフで表示）
 // 円グラフ＋棒グラフ（同じitems/合計から生成するので常に連動する）。編集UIを持たない読み取り専用版。
 function AllocationCharts({ items, height = 180 }) {
-  const { money } = useContext(LocaleContext);
+  const { money, t } = useContext(LocaleContext);
   const total = items.reduce((s, it) => s + (it.amount || 0), 0);
   if (total <= 0) return null;
   const renderPieLabel = ({ cx, cy, midAngle, outerRadius, percent, name, value }) => {
@@ -991,7 +1712,7 @@ function AllocationCharts({ items, height = 180 }) {
           <XAxis type="number" domain={[0, 100]} stroke="#7C8A90" fontSize={10} tickFormatter={(v) => `${v}%`} />
           <YAxis type="category" dataKey="name" stroke="#7C8A90" fontSize={10} width={90} />
           <Tooltip
-            formatter={(v, n, p) => (n === "pct" ? [`${v.toFixed(1)}% (${money(p.payload.amount)})`, "割合"] : [money(v), n])}
+            formatter={(v, n, p) => (n === "pct" ? [`${v.toFixed(1)}% (${money(p.payload.amount)})`, t("colPercent")] : [money(v), n])}
             contentStyle={{ background: "#151C20", border: "1px solid #2A363C", fontSize: 12 }}
           />
           <Bar dataKey="pct" radius={[0, 2, 2, 0]}>
@@ -1010,12 +1731,13 @@ function AllocationCharts({ items, height = 180 }) {
 }
 
 function AllocationBreakdown({ items, newItem, onNewItemChange, onAdd, onRemove, onUpdate }) {
+  const { t } = useContext(LocaleContext);
   const total = items.reduce((s, it) => s + (it.amount || 0), 0);
   return (
     <div>
       {items.length > 0 && (
         <table className="watchlist" style={{ marginBottom: 8 }}>
-          <thead><tr><th>銘柄</th><th>金額</th><th>割合</th><th></th></tr></thead>
+          <thead><tr><th>{t("colName")}</th><th>{t("colAmount")}</th><th>{t("colPercent")}</th><th></th></tr></thead>
           <tbody>
             {items.map((it, i) => (
               <tr key={i}>
@@ -1041,8 +1763,8 @@ function AllocationBreakdown({ items, newItem, onNewItemChange, onAdd, onRemove,
         </table>
       )}
       <div className="add-row" style={{ marginBottom: total > 0 ? 8 : 0 }}>
-        <input placeholder="銘柄名" value={newItem.name} onChange={(e) => onNewItemChange({ ...newItem, name: e.target.value })} />
-        <input placeholder="金額（円）" type="number" value={newItem.amount} onChange={(e) => onNewItemChange({ ...newItem, amount: e.target.value })} />
+        <input placeholder={t("holdingNamePlaceholder")} value={newItem.name} onChange={(e) => onNewItemChange({ ...newItem, name: e.target.value })} />
+        <input placeholder={t("amountPlaceholder")} type="number" value={newItem.amount} onChange={(e) => onNewItemChange({ ...newItem, amount: e.target.value })} />
         <button className="add-btn" onClick={onAdd}><Plus size={15} /></button>
       </div>
       <AllocationCharts items={items} />
@@ -1147,6 +1869,32 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     privatePensionPlans: [],
   });
   const [watchlist, setWatchlist] = useState(DEFAULT_WATCHLIST);
+
+  // ---------- 国際化（i18n）：国が"JP"のままなら、moneyはyenと完全に同じ結果を返す ----------
+  // 重要：このブロックはファイル内で最初期（他のuseMemo/useCallbackより前）に置くこと。
+  // useMemoのファクトリ関数はレンダー中に同期的に即時実行されるため、
+  // t/money/label をこれより後方で定義すると初期化前アクセスのエラーになる。
+  const country = inputs.country || "JP";
+  const baseCurrency = inputs.baseCurrency || "JPY";
+  const language = inputs.language || "ja";
+  const money = useCallback((n) => formatMoneyFor(baseCurrency, n), [baseCurrency]);
+  const label = useCallback((key) => getCategoryLabel(key, country), [country]);
+  const t = useCallback((key, vars) => translateWith(language, key, vars), [language]);
+  const localeValue = useMemo(
+    () => ({ country, baseCurrency, language, money, label, t }),
+    [country, baseCurrency, language, money, label, t]
+  );
+  // Field/表示用の単位文字列（通貨のみ切替、円建て表示のロジック自体は変更しない）
+  const uCurrency = baseCurrency === "JPY" ? "円" : baseCurrency;
+  const uPerMonth = baseCurrency === "JPY" ? "円/月" : `${baseCurrency}/month`;
+  const uPerYear = baseCurrency === "JPY" ? "円/年" : `${baseCurrency}/year`;
+  const uPerGram = baseCurrency === "JPY" ? "円/g" : `${baseCurrency}/g`;
+  const uYears = language === "en" ? "years" : "年";
+  const formatAge = useCallback((age) => {
+    const y = Math.floor(age + 1e-9);
+    const m = Math.round((age - y) * 12);
+    return m > 0 ? t("ageYM", { years: y, months: m }) : t("ageYears", { age: y });
+  }, [t]);
   const [newStock, setNewStock] = useState({ name: "", sector: "" });
   const [newLump, setNewLump] = useState({ years: "", months: "", amount: "" });
   const [newTsumitateRange, setNewTsumitateRange] = useState({
@@ -1195,7 +1943,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     (async () => {
       if (!window.storage) {
         setSaveStatus("unavailable");
-        setSaveMessage("このブラウザ/表示環境では自動保存が利用できません（Claudeのアーティファクトとして開いてください）");
+        setSaveMessage(t("saveMessageUnavailable"));
         setLoaded(true);
         return;
       }
@@ -1277,7 +2025,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const save = useCallback(async (nextInputs, nextWatchlist) => {
     if (!window.storage) {
       setSaveStatus("unavailable");
-      setSaveMessage("このブラウザ/表示環境では自動保存が利用できません（Claudeのアーティファクトとして開いてください）");
+      setSaveMessage(t("saveMessageUnavailable"));
       return;
     }
     setSaveStatus("saving");
@@ -1309,10 +2057,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         return [snapshot, ...others].sort((a, b) => (a.date < b.date ? 1 : -1));
       });
       setSaveStatus("saved");
-      setSaveMessage(`最終保存: ${new Date().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}`);
+      setSaveMessage(t("saveMessageLastSaved", { time: new Date().toLocaleTimeString(language === "en" ? "en-US" : "ja-JP", { hour: "2-digit", minute: "2-digit" }) }));
     } catch (e) {
       setSaveStatus("error");
-      setSaveMessage("保存に失敗しました：" + (e?.message || "不明なエラー"));
+      setSaveMessage(t("saveMessageFailed", { error: e?.message || t("unknownError") }));
     }
   }, []);
 
@@ -1581,9 +2329,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
   const loanBreakdownByAge = useMemo(() => {
     const ages = [
-      { label: "現在", age: effectiveCurrentAge },
-      { label: `${inputs.retireAge}歳`, age: inputs.retireAge },
-      { label: `${inputs.deathAge}歳`, age: inputs.deathAge },
+      { label: t("currentLabelShort"), age: effectiveCurrentAge },
+      { label: t("ageYears", { age: inputs.retireAge }), age: inputs.retireAge },
+      { label: t("ageYears", { age: inputs.deathAge }), age: inputs.deathAge },
     ];
     return inputs.loans.map((l, i) => {
       const row = { name: l.name };
@@ -1593,13 +2341,13 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       });
       return row;
     });
-  }, [inputs.loans, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, loanSim]);
+  }, [inputs.loans, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, loanSim, t]);
 
   const bankBreakdownByAge = useMemo(() => {
     const ages = [
-      { label: "現在", age: effectiveCurrentAge },
-      { label: `${inputs.retireAge}歳`, age: inputs.retireAge },
-      { label: `${inputs.deathAge}歳`, age: inputs.deathAge },
+      { label: t("currentLabelShort"), age: effectiveCurrentAge },
+      { label: t("ageYears", { age: inputs.retireAge }), age: inputs.retireAge },
+      { label: t("ageYears", { age: inputs.deathAge }), age: inputs.deathAge },
     ];
     return inputs.banks.map((b, i) => {
       const row = { name: b.name };
@@ -1609,7 +2357,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       });
       return row;
     });
-  }, [inputs.banks, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, bankSim]);
+  }, [inputs.banks, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, bankSim, t]);
 
   const fundBreakdownAtRetire = useMemo(() => {
     const row = sim.yearly.find((y) => y.age >= inputs.retireAge) || sim.yearly[sim.yearly.length - 1];
@@ -1857,10 +2605,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     const monthlyYen = Number(newTsumitateRange.monthlyYen);
     if (!newTsumitateRange.fromYears || !newTsumitateRange.toYears || toAge < fromAge || !monthlyYen) return;
     if (tsumitateHoldingsAsOfAge !== null && fromAge < tsumitateHoldingsAsOfAge) {
-      window.alert(
-        `スケジュールの開始年齢が、上の「この残高時点の基準年齢」（${formatAge(tsumitateHoldingsAsOfAge)}）より前になっています。\n` +
-        `基準年齢より前の期間は、既に「実際の残高」に反映されているはずのため、開始年齢は基準年齢と同じかそれより後にしてください。`
-      );
+      window.alert(t("scheduleBeforeBaseAgeAlert", { age: formatAge(tsumitateHoldingsAsOfAge) }));
       return;
     }
     setInputs((prev) => ({
@@ -1878,10 +2623,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     const monthlyYen = Number(newGrowthRange.monthlyYen);
     if (!newGrowthRange.fromYears || !newGrowthRange.toYears || toAge < fromAge || !monthlyYen) return;
     if (growthHoldingsAsOfAge !== null && fromAge < growthHoldingsAsOfAge) {
-      window.alert(
-        `スケジュールの開始年齢が、上の「この残高時点の基準年齢」（${formatAge(growthHoldingsAsOfAge)}）より前になっています。\n` +
-        `基準年齢より前の期間は、既に「実際の残高」に反映されているはずのため、開始年齢は基準年齢と同じかそれより後にしてください。`
-      );
+      window.alert(t("scheduleBeforeBaseAgeAlert", { age: formatAge(growthHoldingsAsOfAge) }));
       return;
     }
     setInputs((prev) => ({
@@ -1940,24 +2682,13 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const tsumitateMonthlyCapValue = NISA_LIMITS.tsumitateAnnual / 12;
   const growthMonthlyCapValue = NISA_LIMITS.growthAnnual / 12;
 
-  const formatCapDiff = (diff) => (diff >= 0 ? `月上限まであと${money(diff)}` : `月上限を${money(-diff)}超過`);
+  const formatCapDiff = (diff, periodLabel) => (diff >= 0 ? t("capDiffRemaining", { period: periodLabel, amount: money(diff) }) : t("capDiffExceeded", { period: periodLabel, amount: money(-diff) }));
 
   const lifetimeRemainingAtAge = (age) => {
     const row = sim.yearly.find((y) => y.age >= age) || sim.yearly[sim.yearly.length - 1];
     const cum = row ? row.tsumitateCum + row.growthCum : computedTsumitateUsed + computedGrowthUsed;
     return NISA_LIMITS.totalLifetime - cum;
   };
-
-  // ---------- 国際化（i18n）：国が"JP"のままなら、moneyはyenと完全に同じ結果を返す ----------
-  const country = inputs.country || "JP";
-  const baseCurrency = inputs.baseCurrency || "JPY";
-  const language = inputs.language || "ja";
-  const money = useCallback((n) => formatMoneyFor(baseCurrency, n), [baseCurrency]);
-  const label = useCallback((key) => getCategoryLabel(key, country), [country]);
-  const localeValue = useMemo(
-    () => ({ country, baseCurrency, language, money, label }),
-    [country, baseCurrency, language, money, label]
-  );
 
   return (
     <LocaleContext.Provider value={localeValue}>
@@ -2343,7 +3074,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           .stat-card { break-inside: avoid; }
         }
 
-        /* ---------- 紹介セクション（初めて訪れた人向け） ---------- */
+        /* ---------- Intro section (for first-time visitors) ---------- */
         .landing {
           padding: 40px 24px 36px;
           border-bottom: 1px solid var(--line);
@@ -2455,91 +3186,91 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
       <div className="landing">
         <div className="landing-hero">
-          <h1>資産形成 総合ライフプラン</h1>
+          <h1>{t("landingTitle")}</h1>
           <p className="landing-free-notice">
-            <strong>完全無料・登録不要</strong><br />
-            現在はすべての機能を無料でご利用いただけます。
+            <strong>{t("landingFreeBadge")}</strong><br />
+            {t("landingFreeNotice")}
           </p>
           <p className="landing-catch">
-            あなたの人生設計を、ひとつの画面で。
+            {t("landingCatch")}
           </p>
           <p className="landing-sub">
-            入力するだけで、将来のお金の流れを見える化。<br />
-            NISA・年金・預貯金・金・保険をまとめて管理し、将来の資産推移をシミュレーションできます。
+            {t("landingSub1")}<br />
+            {t("landingSub2")}
           </p>
           <button className="landing-cta" onClick={scrollToSimulator}>
-            無料でシミュレーションを始める
+            {t("landingCta")}
           </button>
         </div>
 
         <div className="landing-screenshot">
-          <h2>実際のシミュレーション画面</h2>
-          <p>現在の資産・NISA・年金・預貯金・金・保険などを入力するだけで、将来の資産推移をグラフで分かりやすく確認できます。</p>
-          <img src="/ogp.png" alt="資産形成 総合ライフプラン シミュレーション画面" loading="lazy" />
+          <h2>{t("landingScreenshotTitle")}</h2>
+          <p>{t("landingScreenshotDesc")}</p>
+          <img src="/ogp.png" alt={t("landingScreenshotAlt")} loading="lazy" />
         </div>
 
         <div className="landing-features">
           <div className="landing-feature-card">
             <span className="landing-feature-num">01</span>
-            <h3>資産を一括管理</h3>
-            <p>NISA・預貯金・金・個別株・保険などをまとめて管理</p>
+            <h3>{t("landingFeature1Title")}</h3>
+            <p>{t("landingFeature1Desc")}</p>
           </div>
           <div className="landing-feature-card">
             <span className="landing-feature-num">02</span>
-            <h3>年金・生活費を反映</h3>
-            <p>公的年金・企業年金・生活費・医療費まで考慮してシミュレーション</p>
+            <h3>{t("landingFeature2Title")}</h3>
+            <p>{t("landingFeature2Desc")}</p>
           </div>
           <div className="landing-feature-card">
             <span className="landing-feature-num">03</span>
-            <h3>将来の資産推移を見える化</h3>
-            <p>年齢ごとの資産推移をグラフで確認</p>
+            <h3>{t("landingFeature3Title")}</h3>
+            <p>{t("landingFeature3Desc")}</p>
           </div>
           <div className="landing-feature-card">
             <span className="landing-feature-num">04</span>
-            <h3>無料・登録不要</h3>
-            <p>すぐ利用でき、入力データは端末内へ保存</p>
+            <h3>{t("landingFeature4Title")}</h3>
+            <p>{t("landingFeature4Desc")}</p>
           </div>
         </div>
 
         <div className="landing-audience">
-          <h4>こんな方におすすめ</h4>
+          <h4>{t("landingAudienceTitle")}</h4>
           <ul>
-            <li>老後資金が足りるか不安な方</li>
-            <li>NISAを始めたい方</li>
-            <li>退職後の生活をシミュレーションしたい方</li>
-            <li>年金と資産をまとめて管理したい方</li>
-            <li>ライフプランを見える化したい方</li>
+            <li>{t("landingAudience1")}</li>
+            <li>{t("landingAudience2")}</li>
+            <li>{t("landingAudience3")}</li>
+            <li>{t("landingAudience4")}</li>
+            <li>{t("landingAudience5")}</li>
           </ul>
         </div>
 
         {onOpenBlog && (
           <div className="landing-blog-section">
-            <h3>資産形成コラム</h3>
+            <h3>{t("landingBlogTitle")}</h3>
             <p>
-              老後資産・NISA・年金・保険・ライフプランに役立つ情報を分かりやすく解説しています。<br />
-              シミュレーションだけでは伝えきれない考え方や資産形成のポイントも随時更新していきます。
+              {t("landingBlogDesc1")}<br />
+              {t("landingBlogDesc2")}
             </p>
             <button className="landing-cta" onClick={onOpenBlog}>
-              資産形成コラムを見る
+              {t("landingBlogCta")}
             </button>
           </div>
         )}
 
         <p className="landing-disclaimer">
-          本サービスは入力された条件に基づくシミュレーションです。将来の運用成果や生活を保証するものではありません。特定の金融商品を推奨するサービスではありません。
+          {t("landingDisclaimer")}
         </p>
       </div>
 
       <div className="titleblock" id="simulator">
         <div>
           <h1>
-            資産形成 総合ライフプラン
-            {inputs.userName && <><br />{`（${inputs.userName}様）`}</>}
+            {t("appTitle")}
+            {inputs.userName && <><br />{t("appTitleWithName", { name: inputs.userName })}</>}
           </h1>
           <div className="sub">
-            NISA積立 × 老後資産 × 年金 × 健康費用 × 相続 — 統合シミュレーション
+            {t("appSubtitle")}
             <br />
-            本日：{new Date().toLocaleDateString("ja-JP", { year: "numeric", month: "long", day: "numeric" })}
+            {t("todayLabel")}：{new Date().toLocaleDateString(language === "en" ? "en-US" : "ja-JP", { year: "numeric", month: "long", day: "numeric" })}
           </div>
         </div>
         <div className="meta" style={{ alignItems: "center" }}>
@@ -2549,74 +3280,77 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               value={country}
               onChange={(e) => {
                 const nextCountry = e.target.value;
+                const meta = SUPPORTED_COUNTRIES.find((c) => c.code === nextCountry);
+                if (!meta || !meta.enabled) return; // Coming Soon の国は選択不可
                 update({
                   country: nextCountry,
                   baseCurrency: DEFAULT_CURRENCY_BY_COUNTRY[nextCountry] || "JPY",
                   language: DEFAULT_LANGUAGE_BY_COUNTRY[nextCountry] || "ja",
                 });
               }}
-              title="国を選択（表示名・通貨が自動で切り替わります。計算は現状すべて日本の制度基準です）"
+              title={t("countrySelectTitle")}
             >
               {SUPPORTED_COUNTRIES.map((c) => (
-                <option key={c.code} value={c.code}>{c.flag} {c.name}</option>
+                <option key={c.code} value={c.code} disabled={!c.enabled}>
+                  {c.flag} {c.name}{!c.enabled ? " (Coming Soon)" : ""}
+                </option>
               ))}
             </select>
           </div>
           <div>
-            現在{" "}
+            {t("currentAgeLabel")}{" "}
             <span>
-              {preciseAge ? `${preciseAge.years}歳${preciseAge.months}ヶ月${preciseAge.days}日` : `${effectiveCurrentAge}歳`}
+              {preciseAge
+                ? t("ageYMD", { years: preciseAge.years, months: preciseAge.months, days: preciseAge.days })
+                : t("ageYears", { age: effectiveCurrentAge })}
             </span>
           </div>
-          <div>引退 <span>{inputs.retireAge}歳</span></div>
-          <div>想定寿命 <span>{inputs.deathAge}歳</span></div>
+          <div>{t("retireAgeLabel")} <span>{t("ageYears", { age: inputs.retireAge })}</span></div>
+          <div>{t("lifeExpectancyLabel")} <span>{t("ageYears", { age: inputs.deathAge })}</span></div>
           <div
             className={`save-badge save-${saveStatus}`}
             title={saveMessage}
           >
-            {saveStatus === "saved" && "● 保存済み"}
-            {saveStatus === "saving" && "○ 保存中…"}
-            {saveStatus === "error" && "⚠ 保存失敗"}
-            {saveStatus === "unavailable" && "⚠ 保存不可"}
+            {saveStatus === "saved" && `● ${t("saveSaved")}`}
+            {saveStatus === "saving" && `○ ${t("saveSaving")}`}
+            {saveStatus === "error" && `⚠ ${t("saveError")}`}
+            {saveStatus === "unavailable" && `⚠ ${t("saveUnavailable")}`}
             {saveStatus === "idle" && "…"}
           </div>
           <button className="history-toggle" onClick={() => setShowHistory((v) => !v)}>
-            {showHistory ? "履歴を閉じる" : `入力履歴（${history.length}件）`}
+            {showHistory ? t("historyToggleClose") : t("historyToggleOpen", { count: history.length })}
           </button>
           <button className="history-toggle" onClick={() => setShowBackup((v) => !v)}>
-            {showBackup ? "バックアップを閉じる" : "手動バックアップ"}
+            {showBackup ? t("backupToggleClose") : t("backupToggleOpen")}
           </button>
           <button className="history-toggle no-print" onClick={() => window.print()}>
-            PDFで保存 / 印刷
+            {t("printButton")}
           </button>
           <button className="history-toggle no-print" onClick={() => setShowTodayTotal((v) => !v)}>
             {showTodayTotal
-              ? `現在の日付で算出した総資産：${money(netWorthYearly[0]?.netWorth ?? netWorthFinal)}`
-              : "現在の日付で算出した総資産"}
+              ? t("todayTotalShown", { amount: money(netWorthYearly[0]?.netWorth ?? netWorthFinal) })
+              : t("todayTotalHidden")}
           </button>
         </div>
       </div>
       {country !== "JP" && (
         <div className="locale-preview-warning no-print">
           <Info size={13} />
-          <span>
-            現在はプレビュー版です。通貨と一部の表示名のみ選択国に対応しています。
-            投資上限、年金、税制、医療費などの計算は、日本の制度を基準にしています。
-          </span>
+          <span>{t("localePreviewWarning")}</span>
         </div>
       )}
       {(saveStatus === "unavailable" || saveStatus === "error") && (
         <div className="save-warning">
           <Info size={13} />
-          <span>{saveMessage}　自動保存が使えない環境のため、下の「手動バックアップ」からテキストをコピーして保管してください。</span>
+          <span>{saveMessage}　{t("saveWarningHint")}</span>
         </div>
       )}
       {showBackup && (
         <div className="history-panel">
           <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8 }}>
-            下のテキストを全選択してコピーし、メモ帳やメモアプリに保存しておいてください。次回はそれを「復元用テキスト」に貼り付けて「読み込む」を押すと元に戻ります。
+            {t("backupInstructions")}
           </div>
-          <div className="field-label" style={{ marginBottom: 4 }}>エクスポート（コピー用）</div>
+          <div className="field-label" style={{ marginBottom: 4 }}>{t("backupExportLabel")}</div>
           <textarea
             readOnly value={backupText}
             onClick={(e) => e.target.select()}
@@ -2626,19 +3360,19 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               fontFamily: "'JetBrains Mono', monospace", padding: 8, marginBottom: 14,
             }}
           />
-          <div className="field-label" style={{ marginBottom: 4 }}>復元用テキスト（貼り付け）</div>
+          <div className="field-label" style={{ marginBottom: 4 }}>{t("backupImportLabel")}</div>
           <textarea
             value={importText}
             onChange={(e) => setImportText(e.target.value)}
-            placeholder="ここに以前コピーしたテキストを貼り付けてください"
+            placeholder={t("backupImportPlaceholder")}
             style={{
               width: "100%", height: 100, background: "var(--panel-2)", color: "var(--text)",
               border: "1px solid var(--line)", borderRadius: 3, fontSize: 10.5,
               fontFamily: "'JetBrains Mono', monospace", padding: 8, marginBottom: 8,
             }}
           />
-          <button className="history-action" onClick={importBackup}>読み込む</button>
-          {importOk && <span style={{ fontSize: 11, color: "var(--green)", marginLeft: 8 }}>読み込みました</span>}
+          <button className="history-action" onClick={importBackup}>{t("backupImportButton")}</button>
+          {importOk && <span style={{ fontSize: 11, color: "var(--green)", marginLeft: 8 }}>{t("backupImportSuccess")}</span>}
           {importError && <div style={{ fontSize: 11, color: "var(--danger)", marginTop: 6 }}>{importError}</div>}
         </div>
       )}
@@ -2646,20 +3380,20 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       {showHistory && (
         <div className="history-panel">
           <div style={{ display: "flex", gap: 8, marginBottom: 10, alignItems: "center", flexWrap: "wrap" }}>
-            <button className="history-action" onClick={() => save(inputs, watchlist)}>今すぐ記録する</button>
-            <button className="history-action" onClick={refreshHistory}>履歴を再読み込み</button>
+            <button className="history-action" onClick={() => save(inputs, watchlist)}>{t("historyRecordNow")}</button>
+            <button className="history-action" onClick={refreshHistory}>{t("historyReload")}</button>
             {historyDebug && <span style={{ fontSize: 10.5, color: "var(--muted)" }}>{historyDebug}</span>}
           </div>
           {history.length === 0 ? (
-            <div className="history-empty">まだ記録がありません。入力すると今日の日付で自動記録されます。</div>
+            <div className="history-empty">{t("historyEmpty")}</div>
           ) : (
             <table className="watchlist">
               <thead>
                 <tr>
-                  <th>日付</th>
-                  <th>NISA元本</th>
-                  <th>金保有量</th>
-                  <th>銀行預金合計</th>
+                  <th>{t("historyColDate")}</th>
+                  <th>{t("historyColNisaPrincipal")}</th>
+                  <th>{t("historyColGoldGrams")}</th>
+                  <th>{t("historyColBankTotal")}</th>
                   <th></th>
                 </tr>
               </thead>
@@ -2671,7 +3405,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                     <td className="mono">{(h.goldGrams || 0).toFixed(1)}g</td>
                     <td className="mono">{money(h.bankTotal)}</td>
                     <td style={{ display: "flex", gap: 6 }}>
-                      <button className="history-action" onClick={() => restoreSnapshot(h)}>この記録を復元</button>
+                      <button className="history-action" onClick={() => restoreSnapshot(h)}>{t("historyRestore")}</button>
                       <button className="del-btn" onClick={() => deleteSnapshot(h.date)}><Trash2 size={13} /></button>
                     </td>
                   </tr>
@@ -2688,7 +3422,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           <div className="section-block" style={{ borderColor: "#4FA8D8" }}>
           <SectionTitle index="00" title={label("personalInfo")} icon={Users} />
           <label className="field">
-            <span className="field-label">お名前（任意）</span>
+            <span className="field-label">{t("nameLabel")}</span>
             <div className="field-input-wrap">
               <input
                 type="text"
@@ -2699,7 +3433,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             </div>
           </label>
           <label className="field">
-            <span className="field-label">生年月日</span>
+            <span className="field-label">{t("birthDateLabel")}</span>
             <div className="field-input-wrap">
               <input
                 type="date" className="mono"
@@ -2713,8 +3447,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <div className="note">
               <Info size={13} />
               <span>
-                生年月日から計算した現在の年齢：<strong>{preciseAge.years}歳{preciseAge.months}ヶ月{preciseAge.days}日</strong>
-                （本日時点）。この数値がシミュレーション全体の「現在の年齢」として自動的に使われます。
+                {t("birthDateNotePrefix")}<strong>{t("ageYMD", { years: preciseAge.years, months: preciseAge.months, days: preciseAge.days })}</strong>
+                {t("birthDateNoteSuffix")}
               </span>
             </div>
           )}
@@ -2722,24 +3456,24 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           </div>
           <div className="section-block" style={{ borderColor: "#D9A54F" }}>
           <SectionTitle index="01" title={label("basicInfo")} icon={Ruler} />
-          <AgeField label="現在の年齢" value={effectiveCurrentAge} disabled={!!preciseAge} onChange={(v) => update({ currentAge: v })} />
+          <AgeField label={t("currentAgeFieldLabel")} value={effectiveCurrentAge} disabled={!!preciseAge} onChange={(v) => update({ currentAge: v })} />
           {preciseAge && (
             <div className="note" style={{ marginTop: -8 }}>
               <Info size={13} />
-              <span>生年月日が入力されているため、この欄は自動計算され編集できません。年齢を手動で調整したい場合は、上の生年月日を空欄にしてください。</span>
+              <span>{t("currentAgeAutoNote")}</span>
             </div>
           )}
-          <AgeField label="引退（年金開始）年齢" value={inputs.retireAge} onChange={(v) => update({ retireAge: v })} />
-          <AgeField label="想定寿命" value={inputs.deathAge} onChange={(v) => update({ deathAge: v })} />
+          <AgeField label={t("retireAgeFieldLabel")} value={inputs.retireAge} onChange={(v) => update({ retireAge: v })} />
+          <AgeField label={t("lifeExpectancyLabel")} value={inputs.deathAge} onChange={(v) => update({ deathAge: v })} />
 
           </div>
           <div className="section-block" style={{ borderColor: "#8FBF7F" }}>
           <SectionTitle index="02" title={label("investmentTaxAdvantaged")} icon={TrendingUp} />
 
-          <div className="field-label" style={{ marginBottom: 6 }}>つみたて投資枠：実際の残高（銘柄・金額）</div>
+          <div className="field-label" style={{ marginBottom: 6 }}>{t("tsumitateHoldingsLabel")}</div>
           {inputs.tsumitateHoldings.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 8 }}>
-              <thead><tr><th>銘柄</th><th>金額</th><th></th></tr></thead>
+              <thead><tr><th>{t("colName")}</th><th>{t("colAmount")}</th><th></th></tr></thead>
               <tbody>
                 {inputs.tsumitateHoldings.map((h, i) => (
                   <tr key={i}>
@@ -2754,27 +3488,27 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             </table>
           )}
           <div className="add-row" style={{ marginBottom: 8 }}>
-            <input placeholder="銘柄名" value={newTsumitateHolding.name} onChange={(e) => setNewTsumitateHolding((p) => ({ ...p, name: e.target.value }))} />
-            <input placeholder="金額（円）" type="number" value={newTsumitateHolding.value} onChange={(e) => setNewTsumitateHolding((p) => ({ ...p, value: e.target.value }))} />
+            <input placeholder={t("holdingNamePlaceholder")} value={newTsumitateHolding.name} onChange={(e) => setNewTsumitateHolding((p) => ({ ...p, name: e.target.value }))} />
+            <input placeholder={t("amountPlaceholder")} type="number" value={newTsumitateHolding.value} onChange={(e) => setNewTsumitateHolding((p) => ({ ...p, value: e.target.value }))} />
             <button className="add-btn" onClick={addTsumitateHolding}><Plus size={15} /></button>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
-            <span style={{ fontSize: 10, color: "#E07A5F", whiteSpace: "nowrap", fontWeight: 700 }}>この残高時点の基準年齢（必須）</span>
+            <span style={{ fontSize: 10, color: "#E07A5F", whiteSpace: "nowrap", fontWeight: 700 }}>{t("asOfAgeRequired")}</span>
             <AgeYMInput
-              placeholder="基準年齢" years={inputs.tsumitateHoldingsAsOfYears} months={inputs.tsumitateHoldingsAsOfMonths}
+              placeholder={t("asOfAgePlaceholder")} years={inputs.tsumitateHoldingsAsOfYears} months={inputs.tsumitateHoldingsAsOfMonths}
               onYears={(v) => update({ tsumitateHoldingsAsOfYears: v })}
               onMonths={(v) => update({ tsumitateHoldingsAsOfMonths: v })}
             />
           </div>
           <div className="note" style={{ marginBottom: 12 }}>
             <Info size={13} />
-            <span>残高時点の基準年齢を基に計算いたします。（現在の実際の残高＋利率　<span className="mono">{money(tsumitateHoldingsManualTotal)}</span>）＋（スケジュール分＋利率　<span className="mono">{money(tsumitateCatchUp)}</span>）＝現在のNISA資産合計。</span>
+            <span>{t("tsumitateAsOfNote", { manual: money(tsumitateHoldingsManualTotal), catchup: money(tsumitateCatchUp) })}</span>
           </div>
 
-          <div className="field-label" style={{ marginBottom: 6 }}>成長投資枠：実際の残高（銘柄・金額）</div>
+          <div className="field-label" style={{ marginBottom: 6 }}>{t("growthHoldingsLabel")}</div>
           {inputs.growthHoldings.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 8 }}>
-              <thead><tr><th>銘柄</th><th>金額</th><th></th></tr></thead>
+              <thead><tr><th>{t("colName")}</th><th>{t("colAmount")}</th><th></th></tr></thead>
               <tbody>
                 {inputs.growthHoldings.map((h, i) => (
                   <tr key={i}>
@@ -2789,30 +3523,30 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             </table>
           )}
           <div className="add-row" style={{ marginBottom: 8 }}>
-            <input placeholder="銘柄名" value={newGrowthHolding.name} onChange={(e) => setNewGrowthHolding((p) => ({ ...p, name: e.target.value }))} />
-            <input placeholder="金額（円）" type="number" value={newGrowthHolding.value} onChange={(e) => setNewGrowthHolding((p) => ({ ...p, value: e.target.value }))} />
+            <input placeholder={t("holdingNamePlaceholder")} value={newGrowthHolding.name} onChange={(e) => setNewGrowthHolding((p) => ({ ...p, name: e.target.value }))} />
+            <input placeholder={t("amountPlaceholder")} type="number" value={newGrowthHolding.value} onChange={(e) => setNewGrowthHolding((p) => ({ ...p, value: e.target.value }))} />
             <button className="add-btn" onClick={addGrowthHolding}><Plus size={15} /></button>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
-            <span style={{ fontSize: 10, color: "#E07A5F", whiteSpace: "nowrap", fontWeight: 700 }}>この残高時点の基準年齢（必須）</span>
+            <span style={{ fontSize: 10, color: "#E07A5F", whiteSpace: "nowrap", fontWeight: 700 }}>{t("asOfAgeRequired")}</span>
             <AgeYMInput
-              placeholder="基準年齢" years={inputs.growthHoldingsAsOfYears} months={inputs.growthHoldingsAsOfMonths}
+              placeholder={t("asOfAgePlaceholder")} years={inputs.growthHoldingsAsOfYears} months={inputs.growthHoldingsAsOfMonths}
               onYears={(v) => update({ growthHoldingsAsOfYears: v })}
               onMonths={(v) => update({ growthHoldingsAsOfMonths: v })}
             />
           </div>
           <div className="note" style={{ marginBottom: 12 }}>
             <Info size={13} />
-            <span>残高時点の基準年齢を基に計算いたします。（現在の実際の残高＋利率　<span className="mono">{money(growthHoldingsManualTotal)}</span>）＋（スケジュール分＋利率　<span className="mono">{money(growthCatchUp)}</span>）＝現在のNISA資産合計。</span>
+            <span>{t("growthAsOfNote", { manual: money(growthHoldingsManualTotal), catchup: money(growthCatchUp) })}</span>
           </div>
 
           {autoHoldingRows.length > 0 && (
             <>
               <div className="field-label" style={{ marginBottom: 6 }}>
-                時価（自動計算：つみたて・成長投資枠のスケジュール分＋一括投資の経過分）
+                {t("autoValuationLabel")}
               </div>
               <table className="watchlist" style={{ marginBottom: 8 }}>
-                <thead><tr><th>銘柄</th><th>時価（自動）</th></tr></thead>
+                <thead><tr><th>{t("colName")}</th><th>{t("autoValuationCol")}</th></tr></thead>
                 <tbody>
                   {autoHoldingRows.map((r, i) => (
                     <tr key={i}>
@@ -2826,36 +3560,43 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           )}
 
           <label className="field">
-            <span className="field-label">現在のNISA資産：合計（自動計算）</span>
+            <span className="field-label">{t("nisaTotalLabel")}</span>
             <div className="field-input-wrap">
               <div className="mono" style={{ flex: 1, padding: "8px 10px", fontSize: 13 }}>
                 {Math.round(effectiveCurrentAssets).toLocaleString()}
               </div>
-              <span className="field-unit">円</span>
+              <span className="field-unit">{baseCurrency === "JPY" ? "円" : baseCurrency}</span>
             </div>
           </label>
           <div className="note" style={{ marginTop: -8 }}>
             <Info size={13} />
             <span>
-              つみたて投資枠の評価額（{money(tsumitateHoldingsTotal)}） + 成長投資枠の評価額（{money(growthHoldingsTotal)}） + 一括投資の評価額（{money(autoHoldingsTotal)}）を合計したものが、この「合計」欄（{money(effectiveCurrentAssets)}）に反映され、シミュレーションではこの金額が使われます。「実際の残高」は基準年齢時点で実際にいくらだったかという金額として入力してください。基準年齢を入力すると、そこから現在の年齢まで銘柄ごとの想定利回りで複利運用したものとして評価額を計算します（未入力ならそのままの金額を使用）。それとは別に、つみたて・成長投資枠それぞれの毎月投資額スケジュールで実際に引き落とされてきたはずの金額も、その都度の想定利回りで複利運用したものとして自動計算・加算されます（つみたてスケジュール分：{money(tsumitateCatchUp)}／成長投資枠スケジュール分：{money(growthCatchUp)}）。一括投資も同様に、それぞれの投資日から現在まで複利運用したものとして自動計算されます。※スケジュール分は自動加算されるため、「実際の残高」にはスケジュールで積み立て済みの分を重複して含めないようご注意ください。ここで入力した銘柄名は、下の「NISA資産の配分」スライダーにもそのまま反映され、想定年率（利回り）はそちらで銘柄ごとに自動設定・調整されます（この欄自体には利回りの入力は不要です）。ご自身で利回りを変更したい場合は、下の「NISA資産の配分」セクションにある、各銘柄の「想定年率」欄を直接書き換えてください。
+              {t("nisaTotalExplanation", {
+                tsumitate: money(tsumitateHoldingsTotal),
+                growth: money(growthHoldingsTotal),
+                lump: money(autoHoldingsTotal),
+                total: money(effectiveCurrentAssets),
+                tsumitateCatchup: money(tsumitateCatchUp),
+                growthCatchup: money(growthCatchUp),
+              })}
             </span>
           </div>
 
-          <div className="field-label" style={{ marginBottom: 6 }}>つみたて投資枠：毎月投資額（年齢区間ごとに設定）</div>
+          <div className="field-label" style={{ marginBottom: 6 }}>{t("tsumitateScheduleLabel")}</div>
           {inputs.tsumitateSchedule.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 8 }}>
-              <thead><tr><th>年齢</th><th>月額 / 上限との差</th><th></th></tr></thead>
+              <thead><tr><th>{t("colAge")}</th><th>{t("colMonthlyVsCap")}</th><th></th></tr></thead>
               <tbody>
                 {inputs.tsumitateSchedule.map((r, i) => (
                   <tr key={i}>
                     <td>{formatAge(r.fromAge)}〜{formatAge(r.toAge)}</td>
                     <td className="mono">
-                      <div>{money(r.monthlyYen)}/月</div>
+                      <div>{money(r.monthlyYen)}{t("perMonthSuffix")}</div>
                       <div style={{ fontSize: 10, color: r.monthlyYen > tsumitateMonthlyCapValue ? "#C2694F" : "#7C8A90" }}>
-                        {formatCapDiff(tsumitateMonthlyCapValue - r.monthlyYen)}
+                        {formatCapDiff(tsumitateMonthlyCapValue - r.monthlyYen, t("periodMonth"))}
                       </div>
                       <div style={{ fontSize: 10, color: "#7C8A90" }}>
-                        区間終了時 生涯枠残り {money(lifetimeRemainingAtAge(r.toAge))}
+                        {t("lifetimeRemainingAtEnd", { amount: money(lifetimeRemainingAtAge(r.toAge)) })}
                       </div>
                     </td>
                     <td style={{ width: 24 }}>
@@ -2868,26 +3609,26 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           )}
           <div className="add-row">
             <AgeYMInput
-              placeholder="開始" years={newTsumitateRange.fromYears} months={newTsumitateRange.fromMonths}
+              placeholder={t("startPlaceholder")} years={newTsumitateRange.fromYears} months={newTsumitateRange.fromMonths}
               onYears={(v) => setNewTsumitateRange((p) => ({ ...p, fromYears: v }))}
               onMonths={(v) => setNewTsumitateRange((p) => ({ ...p, fromMonths: v }))}
             />
             <AgeYMInput
-              placeholder="終了" years={newTsumitateRange.toYears} months={newTsumitateRange.toMonths}
+              placeholder={t("endPlaceholder")} years={newTsumitateRange.toYears} months={newTsumitateRange.toMonths}
               onYears={(v) => setNewTsumitateRange((p) => ({ ...p, toYears: v }))}
               onMonths={(v) => setNewTsumitateRange((p) => ({ ...p, toMonths: v }))}
             />
           </div>
           <div className="add-row" style={{ marginBottom: 14 }}>
-            <input placeholder="毎月投資額（円）" type="number" value={newTsumitateRange.monthlyYen} onChange={(e) => setNewTsumitateRange((p) => ({ ...p, monthlyYen: e.target.value }))} />
+            <input placeholder={t("monthlyAmountPlaceholder")} type="number" value={newTsumitateRange.monthlyYen} onChange={(e) => setNewTsumitateRange((p) => ({ ...p, monthlyYen: e.target.value }))} />
             <button className="add-btn" onClick={addTsumitateRange}><Plus size={15} /></button>
           </div>
           <div className="note">
             <Info size={13} />
-            <span>例：「58歳0ヶ月〜61歳11ヶ月・月11万円」「62歳0ヶ月〜65歳0ヶ月・月9万円」のように、歳とヶ月で区間を分けて毎月投資額を設定できます。区間が重なる場合は合算されます。</span>
+            <span>{t("scheduleExampleNote")}</span>
           </div>
 
-          <div className="field-label" style={{ marginBottom: 6 }}>つみたて投資枠の銘柄別内訳（金額を入れると割合を自動計算）</div>
+          <div className="field-label" style={{ marginBottom: 6 }}>{t("tsumitateAllocationLabel")}</div>
           <AllocationBreakdown
             items={inputs.tsumitateAllocation}
             newItem={newTsumitateAllocItem}
@@ -2898,21 +3639,21 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           />
           <div style={{ marginBottom: 18 }} />
 
-          <div className="field-label" style={{ marginBottom: 6 }}>成長投資枠：毎月投資額（年齢区間ごとに設定）</div>
+          <div className="field-label" style={{ marginBottom: 6 }}>{t("growthScheduleLabel")}</div>
           {inputs.growthSchedule.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 8 }}>
-              <thead><tr><th>年齢</th><th>月額 / 上限との差</th><th></th></tr></thead>
+              <thead><tr><th>{t("colAge")}</th><th>{t("colMonthlyVsCap")}</th><th></th></tr></thead>
               <tbody>
                 {inputs.growthSchedule.map((r, i) => (
                   <tr key={i}>
                     <td>{formatAge(r.fromAge)}〜{formatAge(r.toAge)}</td>
                     <td className="mono">
-                      <div>{money(r.monthlyYen)}/月</div>
+                      <div>{money(r.monthlyYen)}{t("perMonthSuffix")}</div>
                       <div style={{ fontSize: 10, color: r.monthlyYen > growthMonthlyCapValue ? "#C2694F" : "#7C8A90" }}>
-                        {formatCapDiff(growthMonthlyCapValue - r.monthlyYen)}
+                        {formatCapDiff(growthMonthlyCapValue - r.monthlyYen, t("periodMonth"))}
                       </div>
                       <div style={{ fontSize: 10, color: "#7C8A90" }}>
-                        区間終了時 生涯枠残り {money(lifetimeRemainingAtAge(r.toAge))}
+                        {t("lifetimeRemainingAtEnd", { amount: money(lifetimeRemainingAtAge(r.toAge)) })}
                       </div>
                     </td>
                     <td style={{ width: 24 }}>
@@ -2925,26 +3666,26 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           )}
           <div className="add-row">
             <AgeYMInput
-              placeholder="開始" years={newGrowthRange.fromYears} months={newGrowthRange.fromMonths}
+              placeholder={t("startPlaceholder")} years={newGrowthRange.fromYears} months={newGrowthRange.fromMonths}
               onYears={(v) => setNewGrowthRange((p) => ({ ...p, fromYears: v }))}
               onMonths={(v) => setNewGrowthRange((p) => ({ ...p, fromMonths: v }))}
             />
             <AgeYMInput
-              placeholder="終了" years={newGrowthRange.toYears} months={newGrowthRange.toMonths}
+              placeholder={t("endPlaceholder")} years={newGrowthRange.toYears} months={newGrowthRange.toMonths}
               onYears={(v) => setNewGrowthRange((p) => ({ ...p, toYears: v }))}
               onMonths={(v) => setNewGrowthRange((p) => ({ ...p, toMonths: v }))}
             />
           </div>
           <div className="add-row" style={{ marginBottom: 14 }}>
-            <input placeholder="毎月投資額（円）" type="number" value={newGrowthRange.monthlyYen} onChange={(e) => setNewGrowthRange((p) => ({ ...p, monthlyYen: e.target.value }))} />
+            <input placeholder={t("monthlyAmountPlaceholder")} type="number" value={newGrowthRange.monthlyYen} onChange={(e) => setNewGrowthRange((p) => ({ ...p, monthlyYen: e.target.value }))} />
             <button className="add-btn" onClick={addGrowthRange}><Plus size={15} /></button>
           </div>
           <div className="note">
             <Info size={13} />
-            <span>例：「50歳0ヶ月〜55歳11ヶ月・月15万円」「56歳0ヶ月〜65歳0ヶ月・月5万円」のように、歳とヶ月で区間を分けて成長投資枠の毎月投資額を設定できます。区間が重なる場合は合算されます。</span>
+            <span>{t("growthScheduleExampleNote")}</span>
           </div>
 
-          <div className="field-label" style={{ marginBottom: 6 }}>成長投資枠の銘柄別内訳（金額を入れると割合を自動計算）</div>
+          <div className="field-label" style={{ marginBottom: 6 }}>{t("growthAllocationLabel")}</div>
           <AllocationBreakdown
             items={inputs.growthAllocation}
             newItem={newGrowthAllocItem}
@@ -2958,14 +3699,14 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           <div className="note">
             <Info size={13} />
             <span>
-              年間上限：つみたて枠120万円（月10万円）／成長投資枠240万円（月20万円）。生涯投資枠は合計1,800万円（うち成長投資枠は1,200万円まで）。上限に達すると自動的にそれ以上の非課税投資は停止する前提で計算します。
+              {t("nisaCapSummaryNote")}
             </span>
           </div>
 
-          <div className="field-label" style={{ marginBottom: 6 }}>一括投資（成長投資枠・年齢と金額を指定）</div>
+          <div className="field-label" style={{ marginBottom: 6 }}>{t("lumpSumLabel")}</div>
           {inputs.lumpSums.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 8 }}>
-              <thead><tr><th>年齢</th><th>金額 / 枠との差</th><th></th></tr></thead>
+              <thead><tr><th>{t("colAge")}</th><th>{t("colAmountVsCap")}</th><th></th></tr></thead>
               <tbody>
                 {inputs.lumpSums.map((entry, i) => {
                   const annualHeadroom = NISA_LIMITS.growthAnnual - (scheduledAmount(inputs.growthSchedule, entry.age) * 12 + entry.amount);
@@ -2975,10 +3716,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                       <td className="mono">
                         <div>{money(entry.amount)}</div>
                         <div style={{ fontSize: 10, color: annualHeadroom < 0 ? "#C2694F" : "#7C8A90" }}>
-                          {formatCapDiff(annualHeadroom).replace("月上限", "年間上限")}
+                          {formatCapDiff(annualHeadroom, t("periodYear"))}
                         </div>
                         <div style={{ fontSize: 10, color: "#7C8A90" }}>
-                          投資後 生涯枠残り {money(lifetimeRemainingAtAge(entry.age))}
+                          {t("lifetimeRemainingAfterInvestment", { amount: money(lifetimeRemainingAtAge(entry.age)) })}
                         </div>
                       </td>
                       <td style={{ width: 24 }}>
@@ -2992,15 +3733,15 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           )}
           <div className="add-row" style={{ marginBottom: 14 }}>
             <AgeYMInput
-              placeholder="投資時" years={newLump.years} months={newLump.months}
+              placeholder={t("investmentTimePlaceholder")} years={newLump.years} months={newLump.months}
               onYears={(v) => setNewLump((p) => ({ ...p, years: v }))}
               onMonths={(v) => setNewLump((p) => ({ ...p, months: v }))}
             />
-            <input placeholder="金額（円）" type="number" value={newLump.amount} onChange={(e) => setNewLump((p) => ({ ...p, amount: e.target.value }))} />
+            <input placeholder={t("amountPlaceholder")} type="number" value={newLump.amount} onChange={(e) => setNewLump((p) => ({ ...p, amount: e.target.value }))} />
             <button className="add-btn" onClick={addLump}><Plus size={15} /></button>
           </div>
 
-          <div className="field-label" style={{ marginBottom: 6 }}>一括投資の銘柄別内訳（金額を入れると割合を自動計算）</div>
+          <div className="field-label" style={{ marginBottom: 6 }}>{t("lumpAllocationLabel")}</div>
           <AllocationBreakdown
             items={inputs.lumpAllocation}
             newItem={newLumpAllocItem}
@@ -3011,7 +3752,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           />
 
           <div className="field-label" style={{ marginTop: 16, marginBottom: 6 }}>
-            NISA資産の配分（積立・成長投資枠・一括投資の内訳に入れた銘柄がそのままスライダーになります）
+            {t("nisaAllocationSlidersLabel")}
           </div>
           {dynamicFunds.length > 0 ? (
             <>
@@ -3026,7 +3767,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                     <span className="alloc-val">{f.pct.toFixed(1)}%</span>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: -4, marginBottom: 10, paddingLeft: 24 }}>
-                    <span style={{ fontSize: 10, color: "#7C8A90" }}>想定年率</span>
+                    <span style={{ fontSize: 10, color: "#7C8A90" }}>{t("expectedReturnLabel")}</span>
                     <input
                       type="number" step={0.5} className="inline-num" style={{ width: 60 }}
                       value={inputs.extraFundReturns[f.id] !== undefined ? inputs.extraFundReturns[f.id] : guessDefaultReturn(f.id)}
@@ -3037,23 +3778,23 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 </div>
               ))}
               <div className="alloc-sum">
-                積立・成長投資枠・一括投資の内訳合計（{money(combinedGrandTotal)}）から自動計算されています。
+                {t("allocSumNote", { amount: money(combinedGrandTotal) })}
               </div>
               <div className="note" style={{ marginTop: 8 }}>
                 <Info size={13} />
-                <span>想定年率は、銘柄名から一般的な目安を自動で仮設定しています（実際の市場データではありません）。数値はいつでも手動で書き換えられます。</span>
+                <span>{t("expectedReturnAutoNote")}</span>
               </div>
             </>
           ) : (
             <div className="note">
               <Info size={13} />
-              <span>まだ銘柄が入力されていません。上の「積立投資枠」「成長投資枠」「一括投資」いずれかの銘柄別内訳に銘柄名と金額を入力すると、ここにスライダーが自動的に表示されます。</span>
+              <span>{t("noFundsYetNote")}</span>
             </div>
           )}
 
           <div className="note">
             <Info size={13} />
-            <span>同じ系統のファンドを重ねすぎると分散効果が薄れる点にご注意ください（例：全世界株式とS&P500は米国株の比重が重なりやすい組み合わせです）。</span>
+            <span>{t("overlapWarningNote")}</span>
           </div>
 
           </div>
@@ -3063,39 +3804,39 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           <div className="note">
             <Info size={13} />
             <span>
-              iDeCoは老後資産形成制度です。原則として受給可能年齢まで引き出せません。運用成果は将来を保証するものではありません。節税額は概算です。
+              {t("idecoIntroNote")}
             </span>
           </div>
 
-          <Field label="現在評価額" unit="円" step={10000} value={inputs.ideco.currentValue} onChange={(v) => updateIdeco("currentValue", v)} />
+          <Field label={t("idecoCurrentValueLabel")} unit={uCurrency} step={10000} value={inputs.ideco.currentValue} onChange={(v) => updateIdeco("currentValue", v)} />
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
-            <span style={{ fontSize: 10, color: "#E07A5F", whiteSpace: "nowrap", fontWeight: 700 }}>この評価額時点の基準年齢（必須）</span>
+            <span style={{ fontSize: 10, color: "#E07A5F", whiteSpace: "nowrap", fontWeight: 700 }}>{t("asOfAgeRequired")}</span>
             <AgeYMInput
-              placeholder="基準年齢" years={inputs.ideco.asOfYears} months={inputs.ideco.asOfMonths}
+              placeholder={t("asOfAgePlaceholder")} years={inputs.ideco.asOfYears} months={inputs.ideco.asOfMonths}
               onYears={(v) => updateIdeco("asOfYears", v)}
               onMonths={(v) => updateIdeco("asOfMonths", v)}
             />
           </div>
           <div className="note" style={{ marginTop: -8 }}>
             <Info size={13} />
-            <span>基準年齢時点の評価額から、毎月の掛金を加算しながら現在の年齢まで計算した結果、現在の評価額は<span className="mono">{money(idecoSim.currentValueAdjusted)}</span>になります。</span>
+            <span>{t("idecoAsOfNote", { amount: money(idecoSim.currentValueAdjusted) })}</span>
           </div>
           <label className="field">
-            <span className="field-label">現在のiDeCo評価額（自動計算）</span>
+            <span className="field-label">{t("idecoCurrentValueAutoLabel")}</span>
             <div className="field-input-wrap">
               <div className="mono" style={{ flex: 1, padding: "8px 10px", fontSize: 13 }}>
                 {Math.round(idecoSim.currentValueAdjusted).toLocaleString()}
               </div>
-              <span className="field-unit">円</span>
+              <span className="field-unit">{baseCurrency === "JPY" ? "円" : baseCurrency}</span>
             </div>
           </label>
-          <Field label="投資元本（これまでの掛金累計）" unit="円" step={10000} value={inputs.ideco.principalTotal} onChange={(v) => updateIdeco("principalTotal", v)} />
-          <Field label="毎月掛金" unit="円" step={1000} value={inputs.ideco.monthlyContribution} onChange={(v) => updateIdeco("monthlyContribution", v)} />
-          <AgeField label="掛金開始年齢" value={inputs.ideco.startAge} onChange={(v) => updateIdeco("startAge", v)} />
-          <AgeField label="掛金終了年齢" value={inputs.ideco.endAge} onChange={(v) => updateIdeco("endAge", v)} />
+          <Field label={t("idecoPrincipalLabel")} unit={uCurrency} step={10000} value={inputs.ideco.principalTotal} onChange={(v) => updateIdeco("principalTotal", v)} />
+          <Field label={t("idecoMonthlyContributionLabel")} unit={uCurrency} step={1000} value={inputs.ideco.monthlyContribution} onChange={(v) => updateIdeco("monthlyContribution", v)} />
+          <AgeField label={t("idecoContributionStartAgeLabel")} value={inputs.ideco.startAge} onChange={(v) => updateIdeco("startAge", v)} />
+          <AgeField label={t("idecoContributionEndAgeLabel")} value={inputs.ideco.endAge} onChange={(v) => updateIdeco("endAge", v)} />
 
           <label className="field">
-            <span className="field-label">運用商品名</span>
+            <span className="field-label">{t("idecoProductNameLabel")}</span>
             <div className="field-input-wrap">
               <input
                 type="text" value={inputs.ideco.productName}
@@ -3106,7 +3847,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           </label>
 
           <Field
-            label={`想定年間利回り${inputs.ideco.returnPctAuto ? "（自動：商品名から仮設定）" : ""}`}
+            label={`${t("expectedAnnualReturnLabel")}${inputs.ideco.returnPctAuto ? t("autoGuessedSuffix") : ""}`}
             unit="%" step={0.5}
             value={effectiveIdecoReturn}
             onChange={(v) => { updateIdeco("returnPct", v); updateIdeco("returnPctAuto", false); }}
@@ -3115,25 +3856,25 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <div className="note" style={{ marginTop: -8 }}>
               <Info size={13} />
               <span>
-                手動設定中です。
+                {t("manualOverrideNote")}
                 <span
                   style={{ color: "#4FA8D8", textDecoration: "underline", cursor: "pointer", marginLeft: 4 }}
                   onClick={() => updateIdeco("returnPctAuto", true)}
                 >
-                  自動計算に戻す
+                  {t("revertToAutoLink")}
                 </span>
               </span>
             </div>
           )}
 
-          <AgeField label="受取開始年齢" value={inputs.ideco.payoutStartAge} onChange={(v) => updateIdeco("payoutStartAge", v)} />
+          <AgeField label={t("payoutStartAgeLabel")} value={inputs.ideco.payoutStartAge} onChange={(v) => updateIdeco("payoutStartAge", v)} />
 
-          <div className="field-label" style={{ marginBottom: 6 }}>受取方法</div>
+          <div className="field-label" style={{ marginBottom: 6 }}>{t("payoutMethodLabel")}</div>
           <div className="add-row" style={{ marginBottom: 14 }}>
             {[
-              { key: "lump", label: "一時金" },
-              { key: "pension", label: "年金" },
-              { key: "both", label: "併用" },
+              { key: "lump", label: t("payoutMethodLump") },
+              { key: "pension", label: t("payoutMethodPension") },
+              { key: "both", label: t("payoutMethodBoth") },
             ].map((opt) => (
               <button
                 key={opt.key}
@@ -3152,51 +3893,51 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
           {(inputs.ideco.payoutMethod === "pension" || inputs.ideco.payoutMethod === "both") && (
             <>
-              <Field label="年金受取期間" unit="年" step={1} value={inputs.ideco.payoutYears} onChange={(v) => updateIdeco("payoutYears", v)} />
-              <Field label="受取中の想定運用利回り" unit="%" step={0.5} value={inputs.ideco.payoutReturnPct} onChange={(v) => updateIdeco("payoutReturnPct", v)} />
+              <Field label={t("payoutYearsLabel")} unit={uYears} step={1} value={inputs.ideco.payoutYears} onChange={(v) => updateIdeco("payoutYears", v)} />
+              <Field label={t("payoutReturnPctLabel")} unit="%" step={0.5} value={inputs.ideco.payoutReturnPct} onChange={(v) => updateIdeco("payoutReturnPct", v)} />
             </>
           )}
           {inputs.ideco.payoutMethod === "both" && (
-            <Field label="一時金として受け取る割合" unit="%" step={5} min={0} max={100} value={inputs.ideco.lumpPortionPct} onChange={(v) => updateIdeco("lumpPortionPct", v)} />
+            <Field label={t("lumpPortionPctLabel")} unit="%" step={5} min={0} max={100} value={inputs.ideco.lumpPortionPct} onChange={(v) => updateIdeco("lumpPortionPct", v)} />
           )}
 
-          <div className="stat-sub" style={{ marginBottom: 4 }}>年間掛金：<span className="mono">{money(idecoAnnualContribution)}</span></div>
-          <div className="stat-sub" style={{ marginBottom: 4 }}>積立総額（見込み）：<span className="mono">{money(idecoContributionTotal)}</span></div>
-          <div className="stat-sub" style={{ marginBottom: 4 }}>運用益（現時点）：<span className="mono">{money(idecoInvestmentGain)}</span></div>
+          <div className="stat-sub" style={{ marginBottom: 4 }}>{t("annualContributionLabel")}：<span className="mono">{money(idecoAnnualContribution)}</span></div>
+          <div className="stat-sub" style={{ marginBottom: 4 }}>{t("contributionTotalLabel")}：<span className="mono">{money(idecoContributionTotal)}</span></div>
+          <div className="stat-sub" style={{ marginBottom: 4 }}>{t("investmentGainLabel")}：<span className="mono">{money(idecoInvestmentGain)}</span></div>
           <div className="stat-sub" style={{ marginBottom: 4 }}>
-            受取開始時点の予想資産：<span className="mono">{idecoSim.valueAtPayout !== null ? money(idecoSim.valueAtPayout) : "—"}</span>
+            {t("estimatedAssetsAtPayoutLabel")}：<span className="mono">{idecoSim.valueAtPayout !== null ? money(idecoSim.valueAtPayout) : "—"}</span>
           </div>
           {(inputs.ideco.payoutMethod === "lump" || inputs.ideco.payoutMethod === "both") && (
             <div className="stat-sub" style={{ marginBottom: 4 }}>
-              一時金として受け取る額（{inputs.ideco.payoutStartAge}歳に一度）：<span className="mono">{money(idecoSim.lumpAmount)}</span>
+              {t("lumpPayoutAmountLabel", { age: t("ageYears", { age: inputs.ideco.payoutStartAge }) })}：<span className="mono">{money(idecoSim.lumpAmount)}</span>
             </div>
           )}
           {(inputs.ideco.payoutMethod === "pension" || inputs.ideco.payoutMethod === "both") && (
             <div className="stat-sub" style={{ marginBottom: 14 }}>
-              年間予想受取額（{inputs.ideco.payoutStartAge}〜{idecoSim.payoutEndAge - 1}歳）：<span className="mono">{money(idecoSim.annualPayout)}</span>
+              {t("annualPayoutAmountLabel", { from: inputs.ideco.payoutStartAge, to: idecoSim.payoutEndAge - 1 })}：<span className="mono">{money(idecoSim.annualPayout)}</span>
             </div>
           )}
 
-          <div className="field-label" style={{ marginBottom: 6 }}>節税シミュレーション（概算）</div>
-          <Field label="年収（任意）" unit="円" step={100000} value={inputs.ideco.annualIncome} onChange={(v) => updateIdeco("annualIncome", v)} />
-          <div className="stat-sub" style={{ marginBottom: 4 }}>年間節税額（概算）：<span className="mono">{money(idecoAnnualTaxSaving)}</span></div>
-          <div className="stat-sub" style={{ marginBottom: 8 }}>積立終了までの累計節税額（概算）：<span className="mono">{money(idecoCumulativeTaxSaving)}</span></div>
+          <div className="field-label" style={{ marginBottom: 6 }}>{t("taxSavingSimLabel")}</div>
+          <Field label={t("annualIncomeLabel")} unit={uCurrency} step={100000} value={inputs.ideco.annualIncome} onChange={(v) => updateIdeco("annualIncome", v)} />
+          <div className="stat-sub" style={{ marginBottom: 4 }}>{t("annualTaxSavingLabel")}：<span className="mono">{money(idecoAnnualTaxSaving)}</span></div>
+          <div className="stat-sub" style={{ marginBottom: 8 }}>{t("cumulativeTaxSavingLabel")}：<span className="mono">{money(idecoCumulativeTaxSaving)}</span></div>
           <div className="note" style={{ marginTop: -4 }}>
             <Info size={13} />
-            <span>節税額は、年収から推定した税率を使う簡易計算です。実際は給与所得控除、社会保険料、扶養・配偶者控除などを差し引いた課税所得で決まるため、表示額と異なる場合があります。年収未入力時は目安の税率20%で計算します。</span>
+            <span>{t("taxSavingCaveatNote")}</span>
           </div>
           <div className="note">
             <Info size={13} />
-            <span>受取開始後は、一時金は受取年に「現在使える資産」へ一度だけ加算され、年金は受取期間中「年間収入」へ加算されて生活費との差額の取り崩しに反映されます。受取期間が終わるとiDeCoからの収入加算は終了します。</span>
+            <span>{t("payoutAccountingNote")}</span>
           </div>
 
           </div>
           <div className="section-block" style={{ borderColor: "#C2694F" }}>
           <SectionTitle index="04" title={label("pensionRetirement")} icon={Landmark} />
-          <div className="field-label" style={{ marginBottom: 6 }}>年金受給見込み額（国民年金・企業年金基金など、いくつでも追加できます）</div>
+          <div className="field-label" style={{ marginBottom: 6 }}>{t("pensionSourcesLabel")}</div>
           {inputs.pensionSources.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 8 }}>
-              <thead><tr><th>年金の種類</th><th>月額</th><th></th></tr></thead>
+              <thead><tr><th>{t("pensionTypeCol")}</th><th>{t("monthlyAmountCol")}</th><th></th></tr></thead>
               <tbody>
                 {inputs.pensionSources.map((p, i) => (
                   <tr key={i}>
@@ -3211,13 +3952,13 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             </table>
           )}
           <div className="add-row" style={{ marginBottom: 8 }}>
-            <input placeholder="例：国民年金、企業年金基金" value={newPensionSource.name} onChange={(e) => setNewPensionSource((p) => ({ ...p, name: e.target.value }))} />
-            <input placeholder="月額（円）" type="number" value={newPensionSource.monthlyAmount} onChange={(e) => setNewPensionSource((p) => ({ ...p, monthlyAmount: e.target.value }))} />
+            <input placeholder={t("pensionNamePlaceholder")} value={newPensionSource.name} onChange={(e) => setNewPensionSource((p) => ({ ...p, name: e.target.value }))} />
+            <input placeholder={t("monthlyAmountPlaceholder")} type="number" value={newPensionSource.monthlyAmount} onChange={(e) => setNewPensionSource((p) => ({ ...p, monthlyAmount: e.target.value }))} />
             <button className="add-btn" onClick={addPensionSource}><Plus size={15} /></button>
           </div>
           <Field
-            label={inputs.pensionSources.length > 0 ? "年金受給見込み額：合計（上のリストから自動反映）" : "年金受給見込み額"}
-            unit="円/月"
+            label={inputs.pensionSources.length > 0 ? t("pensionTotalAutoLabel") : t("pensionEstimateLabel")}
+            unit={uPerMonth}
             value={effectivePensionMonthly}
             disabled={inputs.pensionSources.length > 0}
             step={5000}
@@ -3226,12 +3967,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           {inputs.pensionSources.length > 0 && (
             <div className="note" style={{ marginTop: -8 }}>
               <Info size={13} />
-              <span>年金の種類を1件以上登録すると、この欄には自動的にその合計月額が反映され、編集できなくなります。手入力に戻したい場合は、登録した項目をすべて削除してください。</span>
+              <span>{t("pensionAutoNote")}</span>
             </div>
           )}
-          <Field label="老後の生活費" unit="円/月" value={inputs.livingCostMonthly} step={5000} onChange={(v) => update({ livingCostMonthly: v })} />
+          <Field label={t("livingCostLabel")} unit={uPerMonth} value={inputs.livingCostMonthly} step={5000} onChange={(v) => update({ livingCostMonthly: v })} />
           <Field
-            label={`退職後の想定運用利回り${inputs.postRetireReturnAuto && dynamicFunds.length > 0 ? "（自動：現役時代の加重平均の半分）" : ""}`}
+            label={`${t("postRetireReturnLabel")}${inputs.postRetireReturnAuto && dynamicFunds.length > 0 ? t("autoHalfWeightedSuffix") : ""}`}
             unit="%" step={0.5}
             value={effectivePostRetireReturn}
             onChange={(v) => update({ postRetireReturn: v, postRetireReturnAuto: false })}
@@ -3240,12 +3981,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <div className="note" style={{ marginTop: -8 }}>
               <Info size={13} />
               <span>
-                手動設定中です。
+                {t("manualOverrideNote")}
                 <span
                   style={{ color: "#4FA8D8", textDecoration: "underline", cursor: "pointer", marginLeft: 4 }}
                   onClick={() => update({ postRetireReturnAuto: true })}
                 >
-                  自動計算に戻す
+                  {t("revertToAutoLink")}
                 </span>
               </span>
             </div>
@@ -3254,12 +3995,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           </div>
           <div className="section-block" style={{ borderColor: "#7BC9E0" }}>
           <SectionTitle index="05" title={label("healthCost")} icon={HeartPulse} />
-          <Field label="60代 年間自己負担" unit="円/年" step={10000} value={inputs.healthBrackets.b60} onChange={(v) => updateHealth("b60", v)} />
-          <Field label="70代 年間自己負担" unit="円/年" step={10000} value={inputs.healthBrackets.b70} onChange={(v) => updateHealth("b70", v)} />
-          <Field label="80代以降 年間自己負担" unit="円/年" step={10000} value={inputs.healthBrackets.b80} onChange={(v) => updateHealth("b80", v)} />
+          <Field label={t("health60sLabel")} unit={uPerYear} step={10000} value={inputs.healthBrackets.b60} onChange={(v) => updateHealth("b60", v)} />
+          <Field label={t("health70sLabel")} unit={uPerYear} step={10000} value={inputs.healthBrackets.b70} onChange={(v) => updateHealth("b70", v)} />
+          <Field label={t("health80sLabel")} unit={uPerYear} step={10000} value={inputs.healthBrackets.b80} onChange={(v) => updateHealth("b80", v)} />
           <div className="note">
             <Info size={13} />
-            <span>公的医療保険の高額療養費制度を考慮した後の自己負担額の概算です。実際は所得区分により上限が変わるため目安としてご利用ください。</span>
+            <span>{t("healthCostNote")}</span>
           </div>
 
           </div>
@@ -3267,7 +4008,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           <SectionTitle index="06" title={label("inheritance")} icon={Users} />
           {inputs.inheritancePlans.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 8 }}>
-              <thead><tr><th>名前</th><th>続柄</th><th>金額</th><th></th></tr></thead>
+              <thead><tr><th>{t("nameCol")}</th><th>{t("relationCol")}</th><th>{t("colAmount")}</th><th></th></tr></thead>
               <tbody>
                 {inputs.inheritancePlans.map((p, i) => (
                   <tr key={i}>
@@ -3283,21 +4024,21 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             </table>
           )}
           <div className="add-row" style={{ flexWrap: "wrap" }}>
-            <input placeholder="名前" value={newInheritance.name} onChange={(e) => setNewInheritance((p) => ({ ...p, name: e.target.value }))} />
-            <input placeholder="続柄（例：妻・長男）" value={newInheritance.relation} onChange={(e) => setNewInheritance((p) => ({ ...p, relation: e.target.value }))} />
+            <input placeholder={t("nameCol")} value={newInheritance.name} onChange={(e) => setNewInheritance((p) => ({ ...p, name: e.target.value }))} />
+            <input placeholder={t("relationPlaceholder")} value={newInheritance.relation} onChange={(e) => setNewInheritance((p) => ({ ...p, relation: e.target.value }))} />
           </div>
           <div className="add-row" style={{ marginBottom: 10 }}>
-            <input placeholder="残したい金額（円）" type="number" value={newInheritance.amount} onChange={(e) => setNewInheritance((p) => ({ ...p, amount: e.target.value }))} />
+            <input placeholder={t("inheritanceAmountPlaceholder")} type="number" value={newInheritance.amount} onChange={(e) => setNewInheritance((p) => ({ ...p, amount: e.target.value }))} />
             <button className="add-btn" onClick={addInheritancePlan}><Plus size={15} /></button>
           </div>
           {inputs.inheritancePlans.length > 0 && (
             <div className="stat-sub" style={{ marginBottom: 10 }}>
-              相続予定 合計：<span className="mono">{money(inheritanceTotal)}</span>（{inputs.inheritancePlans.length}名）
+              {t("inheritanceTotalLabel")}：<span className="mono">{money(inheritanceTotal)}</span>（{t("peopleCount", { count: inputs.inheritancePlans.length })}）
             </div>
           )}
           <Field
-            label={inputs.inheritancePlans.length > 0 ? "子孫に残したい金額（上の合計が自動反映）" : "子孫に残したい金額"}
-            unit="円" step={100000}
+            label={inputs.inheritancePlans.length > 0 ? t("inheritanceTargetAutoLabel") : t("inheritanceTargetLabel")}
+            unit={uCurrency} step={100000}
             value={effectiveInheritanceTarget}
             disabled={inputs.inheritancePlans.length > 0}
             onChange={(v) => update({ inheritanceTarget: v })}
@@ -3305,38 +4046,38 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           {inputs.inheritancePlans.length > 0 && (
             <div className="note" style={{ marginTop: -8 }}>
               <Info size={13} />
-              <span>相続予定を1人以上登録すると、この欄には自動的にその合計金額が反映され、編集できなくなります。手入力に戻したい場合は、登録した相続予定をすべて削除してください。</span>
+              <span>{t("inheritanceAutoNote")}</span>
             </div>
           )}
 
           </div>
           <div className="section-block" style={{ borderColor: "#6FA88A" }}>
           <SectionTitle index="07" title={label("gold")} icon={Coins} />
-          <Field label="現在の保有量" unit="g" step={1} value={inputs.gold.currentGrams} onChange={(v) => updateGold("currentGrams", v)} />
+          <Field label={t("goldCurrentHoldingLabel")} unit="g" step={1} value={inputs.gold.currentGrams} onChange={(v) => updateGold("currentGrams", v)} />
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
-            <span style={{ fontSize: 10, color: "#E07A5F", whiteSpace: "nowrap", fontWeight: 700 }}>この保有量時点の基準年齢（必須）</span>
+            <span style={{ fontSize: 10, color: "#E07A5F", whiteSpace: "nowrap", fontWeight: 700 }}>{t("asOfAgeRequired")}</span>
             <AgeYMInput
-              placeholder="基準年齢" years={inputs.gold.asOfYears} months={inputs.gold.asOfMonths}
+              placeholder={t("asOfAgePlaceholder")} years={inputs.gold.asOfYears} months={inputs.gold.asOfMonths}
               onYears={(v) => updateGold("asOfYears", v)}
               onMonths={(v) => updateGold("asOfMonths", v)}
             />
           </div>
           <div className="note" style={{ marginTop: -8 }}>
             <Info size={13} />
-            <span>基準年齢時点の保有量から、毎月の積立額を加算しながら現在の年齢まで計算した結果、現在の保有量は<span className="mono">{goldSim.currentGrams.toFixed(1)}g</span>、評価額は<span className="mono">{money(goldSim.currentValue)}</span>になります。</span>
+            <span>{t("goldAsOfNote", { grams: goldSim.currentGrams.toFixed(1), amount: money(goldSim.currentValue) })}</span>
           </div>
           <label className="field">
-            <span className="field-label">現在の金の資産金額（自動計算）</span>
+            <span className="field-label">{t("goldCurrentValueAutoLabel")}</span>
             <div className="field-input-wrap">
               <div className="mono" style={{ flex: 1, padding: "8px 10px", fontSize: 13 }}>
                 {Math.round(goldSim.currentValue).toLocaleString()}
               </div>
-              <span className="field-unit">円</span>
+              <span className="field-unit">{baseCurrency === "JPY" ? "円" : baseCurrency}</span>
             </div>
           </label>
-          <Field label="現在の金価格（参考）" unit="円/g" step={100} value={inputs.gold.pricePerGram} onChange={(v) => updateGold("pricePerGram", v)} />
+          <Field label={t("goldPriceRefLabel")} unit={uPerGram} step={100} value={inputs.gold.pricePerGram} onChange={(v) => updateGold("pricePerGram", v)} />
           <Field
-            label={`想定 年率価格上昇率${inputs.gold.priceGrowthPctAuto ? "（自動仮設定）" : ""}`}
+            label={`${t("goldGrowthRateLabel")}${inputs.gold.priceGrowthPctAuto ? t("autoEstimatedSuffix") : ""}`}
             unit="%" step={0.5}
             value={effectiveGoldReturnPct}
             onChange={(v) => { updateGold("priceGrowthPct", v); updateGold("priceGrowthPctAuto", false); }}
@@ -3345,21 +4086,21 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <div className="note" style={{ marginTop: -8 }}>
               <Info size={13} />
               <span>
-                手動設定中です。
+                {t("manualOverrideNote")}
                 <span
                   style={{ color: "#4FA8D8", textDecoration: "underline", cursor: "pointer", marginLeft: 4 }}
                   onClick={() => updateGold("priceGrowthPctAuto", true)}
                 >
-                  自動計算に戻す
+                  {t("revertToAutoLink")}
                 </span>
               </span>
             </div>
           )}
-          <Field label="毎月の積立額" unit="円/月" step={1000} value={inputs.gold.monthlyYen} onChange={(v) => updateGold("monthlyYen", v)} />
-          <AgeField label="積立を続ける年齢（まで）" value={inputs.gold.accumulateUntilAge} onChange={(v) => updateGold("accumulateUntilAge", v)} />
+          <Field label={t("goldMonthlyContributionLabel")} unit={uPerMonth} step={1000} value={inputs.gold.monthlyYen} onChange={(v) => updateGold("monthlyYen", v)} />
+          <AgeField label={t("goldAccumulateUntilLabel")} value={inputs.gold.accumulateUntilAge} onChange={(v) => updateGold("accumulateUntilAge", v)} />
           <div className="note">
             <Info size={13} />
-            <span>金価格は2026年7月時点の店頭小売価格（1g ≈ 24,000円前後）を参考値としています。実際の価格は日々変動するため、最新の価格に置き換えてご利用ください。</span>
+            <span>{t("goldPriceRefNote")}</span>
           </div>
 
           </div>
@@ -3367,13 +4108,13 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           <SectionTitle index="08" title={label("cash")} icon={PiggyBank} />
           {inputs.banks.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 8 }}>
-              <thead><tr><th>銀行名</th><th>残高</th><th>月次入金</th><th></th></tr></thead>
+              <thead><tr><th>{t("bankNameCol")}</th><th>{t("balanceCol")}</th><th>{t("monthlyDepositCol")}</th><th></th></tr></thead>
               <tbody>
                 {inputs.banks.map((b, i) => (
                   <tr key={i}>
                     <td>{b.name}</td>
                     <td className="mono">{money(b.balance)}</td>
-                    <td className="mono">{money(b.monthlyDeposit)}/月</td>
+                    <td className="mono">{money(b.monthlyDeposit)}{t("perMonthSuffix")}</td>
                     <td style={{ width: 24 }}>
                       <button className="del-btn" onClick={() => removeBank(i)}><Trash2 size={13} /></button>
                     </td>
@@ -3384,21 +4125,21 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           )}
           {inputs.banks.length > 0 && (
             <div className="stat-sub" style={{ marginBottom: 10 }}>
-              銀行預金 合計（現在）：<span className="mono">{money(bankSim.totalNow)}</span>
+              {t("bankTotalNowLabel")}：<span className="mono">{money(bankSim.totalNow)}</span>
             </div>
           )}
           <div className="add-row" style={{ flexWrap: "wrap" }}>
-            <input placeholder="銀行名" value={newBank.name} onChange={(e) => setNewBank((p) => ({ ...p, name: e.target.value }))} />
-            <input placeholder="現在の残高（円）" type="number" value={newBank.balance} onChange={(e) => setNewBank((p) => ({ ...p, balance: e.target.value }))} />
+            <input placeholder={t("bankNameCol")} value={newBank.name} onChange={(e) => setNewBank((p) => ({ ...p, name: e.target.value }))} />
+            <input placeholder={t("currentBalancePlaceholder")} type="number" value={newBank.balance} onChange={(e) => setNewBank((p) => ({ ...p, balance: e.target.value }))} />
           </div>
           <div className="add-row">
-            <input placeholder="毎月入金額（円）" type="number" value={newBank.monthlyDeposit} onChange={(e) => setNewBank((p) => ({ ...p, monthlyDeposit: e.target.value }))} />
-            <input placeholder="金利（%・任意）" type="number" value={newBank.interestPct} onChange={(e) => setNewBank((p) => ({ ...p, interestPct: e.target.value }))} />
+            <input placeholder={t("monthlyDepositPlaceholder")} type="number" value={newBank.monthlyDeposit} onChange={(e) => setNewBank((p) => ({ ...p, monthlyDeposit: e.target.value }))} />
+            <input placeholder={t("interestRatePlaceholder")} type="number" value={newBank.interestPct} onChange={(e) => setNewBank((p) => ({ ...p, interestPct: e.target.value }))} />
             <button className="add-btn" onClick={addBank}><Plus size={15} /></button>
           </div>
           <div className="note">
             <Info size={13} />
-            <span>毎月入金は引退年齢（{inputs.retireAge}歳）まで継続する前提で計算します。金利は普通預金なら0〜0.1%程度が目安です。</span>
+            <span>{t("bankNote", { age: t("ageYears", { age: inputs.retireAge }) })}</span>
           </div>
 
           </div>
@@ -3406,14 +4147,14 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           <SectionTitle index="09" title={label("loan")} icon={Landmark} />
           {inputs.loans.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 8 }}>
-              <thead><tr><th>名称</th><th>残元本</th><th>金利</th><th>月返済</th><th></th></tr></thead>
+              <thead><tr><th>{t("loanNameCol")}</th><th>{t("loanPrincipalCol")}</th><th>{t("interestRateCol")}</th><th>{t("monthlyPaymentCol")}</th><th></th></tr></thead>
               <tbody>
                 {inputs.loans.map((l, i) => (
                   <tr key={i}>
                     <td>{l.name}</td>
                     <td className="mono">{money(l.principal)}</td>
                     <td className="mono">{l.annualRatePct}%</td>
-                    <td className="mono">{money(l.monthlyPayment)}/月</td>
+                    <td className="mono">{money(l.monthlyPayment)}{t("perMonthSuffix")}</td>
                     <td style={{ width: 24 }}>
                       <button className="del-btn" onClick={() => removeLoan(i)}><Trash2 size={13} /></button>
                     </td>
@@ -3423,20 +4164,20 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             </table>
           )}
           <div className="add-row" style={{ flexWrap: "wrap" }}>
-            <input placeholder="名称（例：住宅ローン）" value={newLoan.name} onChange={(e) => setNewLoan((p) => ({ ...p, name: e.target.value }))} />
-            <input placeholder="借入残高（円）" type="number" value={newLoan.principal} onChange={(e) => setNewLoan((p) => ({ ...p, principal: e.target.value }))} />
+            <input placeholder={t("loanNamePlaceholder")} value={newLoan.name} onChange={(e) => setNewLoan((p) => ({ ...p, name: e.target.value }))} />
+            <input placeholder={t("loanBalancePlaceholder")} type="number" value={newLoan.principal} onChange={(e) => setNewLoan((p) => ({ ...p, principal: e.target.value }))} />
           </div>
           <div className="add-row">
-            <input placeholder="金利（年率%）" type="number" value={newLoan.annualRatePct} onChange={(e) => setNewLoan((p) => ({ ...p, annualRatePct: e.target.value }))} />
-            <input placeholder="毎月返済額（円）" type="number" value={newLoan.monthlyPayment} onChange={(e) => setNewLoan((p) => ({ ...p, monthlyPayment: e.target.value }))} />
+            <input placeholder={t("annualRatePlaceholder")} type="number" value={newLoan.annualRatePct} onChange={(e) => setNewLoan((p) => ({ ...p, annualRatePct: e.target.value }))} />
+            <input placeholder={t("monthlyPaymentPlaceholder")} type="number" value={newLoan.monthlyPayment} onChange={(e) => setNewLoan((p) => ({ ...p, monthlyPayment: e.target.value }))} />
             <button className="add-btn" onClick={addLoan}><Plus size={15} /></button>
           </div>
           {loanSim.payoffAges.some((a) => a !== null) && (
             <div className="note">
               <Info size={13} />
               <span>
-                完済予定：{inputs.loans.map((l, i) => (
-                  <span key={i}>{i > 0 && "、"}{l.name} {loanSim.payoffAges[i] ? `${Math.round(loanSim.payoffAges[i])}歳` : "返済額不足のため未完済"}</span>
+                {t("payoffScheduleLabel")}：{inputs.loans.map((l, i) => (
+                  <span key={i}>{i > 0 && t("listSeparator")}{l.name} {loanSim.payoffAges[i] ? t("ageYears", { age: Math.round(loanSim.payoffAges[i]) }) : t("payoffInsufficientNote")}</span>
                 ))}
               </span>
             </div>
@@ -3447,19 +4188,19 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           <SectionTitle index="10" title={label("insurance")} icon={HeartPulse} />
           {inputs.insurancePolicies.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 10 }}>
-              <thead><tr><th style={{ width: "26%" }}>保険名</th><th style={{ width: "62%" }}>払込 / 保障</th><th style={{ width: "24px" }}></th></tr></thead>
+              <thead><tr><th style={{ width: "26%" }}>{t("insuranceNameCol")}</th><th style={{ width: "62%" }}>{t("premiumCoverageCol")}</th><th style={{ width: "24px" }}></th></tr></thead>
               <tbody>
                 {inputs.insurancePolicies.map((p, i) => (
                   <tr key={i}>
                     <td>{p.name}</td>
                     <td className="mono" style={{ fontSize: 10.5 }}>
-                      <div>払込 {formatAge(p.premiumFromAge)}〜{formatAge(p.premiumToAge)}：{money(p.monthlyPremium)}/月</div>
-                      <div style={{ color: "#7C8A90" }}>保障 {formatAge(p.coverageUntilAge)}まで</div>
+                      <div>{t("premiumRangeLabel")} {formatAge(p.premiumFromAge)}〜{formatAge(p.premiumToAge)}：{money(p.monthlyPremium)}{t("perMonthSuffix")}</div>
+                      <div style={{ color: "#7C8A90" }}>{t("coverageUntilLabel", { age: formatAge(p.coverageUntilAge) })}</div>
                       <div style={{ color: "#7C8A90" }}>
-                        入院{money(p.benefits.hospitalizationPerDay)}/日（限度{p.benefits.hospitalizationDaysLimit || 0}日/回）・
-                        手術{money(p.benefits.hospitalizationSurgery)}・
-                        日帰り{money(p.benefits.daySurgery)}・放射線{money(p.benefits.radiationPerSession)}/回・
-                        先進医療{money(p.benefits.advancedMedical)}・死亡{money(p.benefits.death)}
+                        {t("benefitHospitalization", { amount: money(p.benefits.hospitalizationPerDay), limit: p.benefits.hospitalizationDaysLimit || 0 })}{t("benefitSeparator")}
+                        {t("benefitSurgery", { amount: money(p.benefits.hospitalizationSurgery) })}{t("benefitSeparator")}
+                        {t("benefitDaySurgery", { amount: money(p.benefits.daySurgery) })}{t("benefitSeparator")}{t("benefitRadiation", { amount: money(p.benefits.radiationPerSession) })}{t("benefitSeparator")}
+                        {t("benefitAdvancedMedical", { amount: money(p.benefits.advancedMedical) })}{t("benefitSeparator")}{t("benefitDeath", { amount: money(p.benefits.death) })}
                       </div>
                       {(p.customBenefits || []).length > 0 && (
                         <div style={{ color: "#7C8A90", marginTop: 4 }}>
@@ -3482,59 +4223,59 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             </table>
           )}
 
-          <div className="field-label" style={{ marginBottom: 4 }}>保険名</div>
+          <div className="field-label" style={{ marginBottom: 4 }}>{t("insuranceNameCol")}</div>
           <div className="add-row" style={{ marginBottom: 8 }}>
-            <input placeholder="例：〇〇生命 医療保険" value={newInsurance.name} onChange={(e) => setNewInsurance((p) => ({ ...p, name: e.target.value }))} />
+            <input placeholder={t("insuranceNamePlaceholder")} value={newInsurance.name} onChange={(e) => setNewInsurance((p) => ({ ...p, name: e.target.value }))} />
           </div>
 
-          <div className="field-label" style={{ marginBottom: 4 }}>掛け金払込：開始〜終了</div>
+          <div className="field-label" style={{ marginBottom: 4 }}>{t("premiumPeriodLabel")}</div>
           <div className="add-row" style={{ marginBottom: 8 }}>
             <AgeYMInput
-              placeholder="開始" years={newInsurance.premiumFromYears} months={newInsurance.premiumFromMonths}
+              placeholder={t("startPlaceholder")} years={newInsurance.premiumFromYears} months={newInsurance.premiumFromMonths}
               onYears={(v) => setNewInsurance((p) => ({ ...p, premiumFromYears: v }))}
               onMonths={(v) => setNewInsurance((p) => ({ ...p, premiumFromMonths: v }))}
             />
             <AgeYMInput
-              placeholder="終了" years={newInsurance.premiumToYears} months={newInsurance.premiumToMonths}
+              placeholder={t("endPlaceholder")} years={newInsurance.premiumToYears} months={newInsurance.premiumToMonths}
               onYears={(v) => setNewInsurance((p) => ({ ...p, premiumToYears: v }))}
               onMonths={(v) => setNewInsurance((p) => ({ ...p, premiumToMonths: v }))}
             />
           </div>
           <div className="add-row" style={{ marginBottom: 8 }}>
-            <input placeholder="毎月の払込金額（円）" type="number" value={newInsurance.monthlyPremium} onChange={(e) => setNewInsurance((p) => ({ ...p, monthlyPremium: e.target.value }))} />
+            <input placeholder={t("monthlyPremiumPlaceholder")} type="number" value={newInsurance.monthlyPremium} onChange={(e) => setNewInsurance((p) => ({ ...p, monthlyPremium: e.target.value }))} />
           </div>
 
-          <div className="field-label" style={{ marginBottom: 4 }}>何歳までの保証か</div>
+          <div className="field-label" style={{ marginBottom: 4 }}>{t("coverageUntilAgeLabel")}</div>
           <div className="add-row" style={{ marginBottom: 8 }}>
             <AgeYMInput
-              placeholder="保証" years={newInsurance.coverageUntilYears} months={newInsurance.coverageUntilMonths}
+              placeholder={t("coveragePlaceholder")} years={newInsurance.coverageUntilYears} months={newInsurance.coverageUntilMonths}
               onYears={(v) => setNewInsurance((p) => ({ ...p, coverageUntilYears: v }))}
               onMonths={(v) => setNewInsurance((p) => ({ ...p, coverageUntilMonths: v }))}
             />
           </div>
 
-          <div className="field-label" style={{ marginBottom: 4 }}>保障内容（項目別の金額）</div>
+          <div className="field-label" style={{ marginBottom: 4 }}>{t("benefitDetailsLabel")}</div>
           <div className="add-row" style={{ marginBottom: 6 }}>
-            <LabeledMiniInput label="入院1日あたり（円）" value={newInsurance.hospitalizationPerDay} onChange={(e) => setNewInsurance((p) => ({ ...p, hospitalizationPerDay: e.target.value }))} />
-            <LabeledMiniInput label="限度日数（1回何日まで）" value={newInsurance.hospitalizationDaysLimit} onChange={(e) => setNewInsurance((p) => ({ ...p, hospitalizationDaysLimit: e.target.value }))} />
+            <LabeledMiniInput label={t("hospitalizationPerDayLabel")} value={newInsurance.hospitalizationPerDay} onChange={(e) => setNewInsurance((p) => ({ ...p, hospitalizationPerDay: e.target.value }))} />
+            <LabeledMiniInput label={t("hospitalizationDaysLimitLabel")} value={newInsurance.hospitalizationDaysLimit} onChange={(e) => setNewInsurance((p) => ({ ...p, hospitalizationDaysLimit: e.target.value }))} />
           </div>
           <div className="add-row" style={{ marginBottom: 6 }}>
-            <LabeledMiniInput label="入院手術（円）" value={newInsurance.hospitalizationSurgery} onChange={(e) => setNewInsurance((p) => ({ ...p, hospitalizationSurgery: e.target.value }))} />
-            <LabeledMiniInput label="日帰り手術（円）" value={newInsurance.daySurgery} onChange={(e) => setNewInsurance((p) => ({ ...p, daySurgery: e.target.value }))} />
+            <LabeledMiniInput label={t("hospitalizationSurgeryLabel")} value={newInsurance.hospitalizationSurgery} onChange={(e) => setNewInsurance((p) => ({ ...p, hospitalizationSurgery: e.target.value }))} />
+            <LabeledMiniInput label={t("daySurgeryLabel")} value={newInsurance.daySurgery} onChange={(e) => setNewInsurance((p) => ({ ...p, daySurgery: e.target.value }))} />
           </div>
           <div className="add-row" style={{ marginBottom: 6 }}>
-            <LabeledMiniInput label="放射線治療1回（円）" value={newInsurance.radiationPerSession} onChange={(e) => setNewInsurance((p) => ({ ...p, radiationPerSession: e.target.value }))} />
-            <LabeledMiniInput label="先進医療（円）" value={newInsurance.advancedMedical} onChange={(e) => setNewInsurance((p) => ({ ...p, advancedMedical: e.target.value }))} />
+            <LabeledMiniInput label={t("radiationLabel")} value={newInsurance.radiationPerSession} onChange={(e) => setNewInsurance((p) => ({ ...p, radiationPerSession: e.target.value }))} />
+            <LabeledMiniInput label={t("advancedMedicalLabel")} value={newInsurance.advancedMedical} onChange={(e) => setNewInsurance((p) => ({ ...p, advancedMedical: e.target.value }))} />
           </div>
           <div className="add-row" style={{ marginBottom: 10 }}>
-            <LabeledMiniInput label="死亡保険金（円）" value={newInsurance.death} onChange={(e) => setNewInsurance((p) => ({ ...p, death: e.target.value }))} />
+            <LabeledMiniInput label={t("deathBenefitLabel")} value={newInsurance.death} onChange={(e) => setNewInsurance((p) => ({ ...p, death: e.target.value }))} />
           </div>
           <div className="add-row" style={{ marginBottom: 14 }}>
             <button className="add-btn" onClick={addInsurance} style={{ width: "100%" }}><Plus size={15} /></button>
           </div>
           <div className="note">
             <Info size={13} />
-            <span>払込中の保険料は将来資産から自動的に控除されます。入院・手術等の給付額は保障内容の記録用で、発生が不確実なため資産予測には自動反映されません（必要に応じて健康費用の想定額をご自身で調整してください）。登録後、各保険の項目下にある欄から項目名を自由に追加できます。</span>
+            <span>{t("insuranceNote")}</span>
           </div>
 
           </div>
@@ -3542,16 +4283,16 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           <SectionTitle index="11" title={label("privatePension")} icon={PiggyBank} />
           {inputs.privatePensionPlans.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 10 }}>
-              <thead><tr><th style={{ width: "26%" }}>年金名</th><th style={{ width: "62%" }}>積立 / 受給</th><th style={{ width: "24px" }}></th></tr></thead>
+              <thead><tr><th style={{ width: "26%" }}>{t("pensionNameCol")}</th><th style={{ width: "62%" }}>{t("contribPayoutCol")}</th><th style={{ width: "24px" }}></th></tr></thead>
               <tbody>
                 {inputs.privatePensionPlans.map((pl, i) => (
                   <tr key={i}>
                     <td>{pl.name}</td>
                     <td className="mono" style={{ fontSize: 10.5 }}>
-                      <div>積立 {formatAge(pl.contribFromAge)}〜{formatAge(pl.contribToAge)}：{money(pl.monthlyContribution)}/月</div>
-                      <div style={{ color: "#7C8A90" }}>受給 {formatAge(pl.payoutFromAge)}〜{formatAge(pl.payoutToAge)}：{money(pl.monthlyPayout)}/月</div>
+                      <div>{t("contribLabel")} {formatAge(pl.contribFromAge)}〜{formatAge(pl.contribToAge)}：{money(pl.monthlyContribution)}{t("perMonthSuffix")}</div>
+                      <div style={{ color: "#7C8A90" }}>{t("payoutLabel")} {formatAge(pl.payoutFromAge)}〜{formatAge(pl.payoutToAge)}：{money(pl.monthlyPayout)}{t("perMonthSuffix")}</div>
                       {pl.currentBalance !== null && pl.currentBalance !== undefined && (
-                        <div style={{ color: "#6FA88A" }}>現在の残高（手入力）：{money(pl.currentBalance)}</div>
+                        <div style={{ color: "#6FA88A" }}>{t("currentBalanceManualLabel")}：{money(pl.currentBalance)}</div>
                       )}
                     </td>
                     <td style={{ width: 24 }}>
@@ -3564,53 +4305,53 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           )}
           {inputs.privatePensionPlans.length > 0 && (
             <div className="stat-sub" style={{ marginBottom: 10 }}>
-              民間年金積立 合計（現在）：<span className="mono">{money(pensionSim.totalNow)}</span>
+              {t("privatePensionTotalNowLabel")}：<span className="mono">{money(pensionSim.totalNow)}</span>
             </div>
           )}
 
-          <div className="field-label" style={{ marginBottom: 4 }}>年金名</div>
+          <div className="field-label" style={{ marginBottom: 4 }}>{t("pensionNameCol")}</div>
           <div className="add-row" style={{ marginBottom: 8 }}>
-            <input placeholder="例：〇〇個人年金保険" value={newPension.name} onChange={(e) => setNewPension((p) => ({ ...p, name: e.target.value }))} />
+            <input placeholder={t("pensionNamePlaceholderPrivate")} value={newPension.name} onChange={(e) => setNewPension((p) => ({ ...p, name: e.target.value }))} />
           </div>
 
-          <div className="field-label" style={{ marginBottom: 4 }}>積立期間：開始〜終了</div>
+          <div className="field-label" style={{ marginBottom: 4 }}>{t("contribPeriodLabel")}</div>
           <div className="add-row" style={{ marginBottom: 8 }}>
             <AgeYMInput
-              placeholder="開始" years={newPension.contribFromYears} months={newPension.contribFromMonths}
+              placeholder={t("startPlaceholder")} years={newPension.contribFromYears} months={newPension.contribFromMonths}
               onYears={(v) => setNewPension((p) => ({ ...p, contribFromYears: v }))}
               onMonths={(v) => setNewPension((p) => ({ ...p, contribFromMonths: v }))}
             />
             <AgeYMInput
-              placeholder="終了" years={newPension.contribToYears} months={newPension.contribToMonths}
+              placeholder={t("endPlaceholder")} years={newPension.contribToYears} months={newPension.contribToMonths}
               onYears={(v) => setNewPension((p) => ({ ...p, contribToYears: v }))}
               onMonths={(v) => setNewPension((p) => ({ ...p, contribToMonths: v }))}
             />
           </div>
           <div className="add-row" style={{ marginBottom: 8 }}>
-            <LabeledMiniInput label="毎月の積立金額（円）" value={newPension.monthlyContribution} onChange={(e) => setNewPension((p) => ({ ...p, monthlyContribution: e.target.value }))} />
+            <LabeledMiniInput label={t("monthlyContribAmountLabel")} value={newPension.monthlyContribution} onChange={(e) => setNewPension((p) => ({ ...p, monthlyContribution: e.target.value }))} />
           </div>
 
-          <div className="field-label" style={{ marginBottom: 4 }}>年金受給期間：開始〜終了</div>
+          <div className="field-label" style={{ marginBottom: 4 }}>{t("payoutPeriodLabel")}</div>
           <div className="add-row" style={{ marginBottom: 8 }}>
             <AgeYMInput
-              placeholder="開始" years={newPension.payoutFromYears} months={newPension.payoutFromMonths}
+              placeholder={t("startPlaceholder")} years={newPension.payoutFromYears} months={newPension.payoutFromMonths}
               onYears={(v) => setNewPension((p) => ({ ...p, payoutFromYears: v }))}
               onMonths={(v) => setNewPension((p) => ({ ...p, payoutFromMonths: v }))}
             />
             <AgeYMInput
-              placeholder="終了" years={newPension.payoutToYears} months={newPension.payoutToMonths}
+              placeholder={t("endPlaceholder")} years={newPension.payoutToYears} months={newPension.payoutToMonths}
               onYears={(v) => setNewPension((p) => ({ ...p, payoutToYears: v }))}
               onMonths={(v) => setNewPension((p) => ({ ...p, payoutToMonths: v }))}
             />
           </div>
           <div className="add-row" style={{ marginBottom: 10 }}>
-            <LabeledMiniInput label="受給時に毎月もらえる金額（円）" value={newPension.monthlyPayout} onChange={(e) => setNewPension((p) => ({ ...p, monthlyPayout: e.target.value }))} />
+            <LabeledMiniInput label={t("monthlyPayoutAmountLabel")} value={newPension.monthlyPayout} onChange={(e) => setNewPension((p) => ({ ...p, monthlyPayout: e.target.value }))} />
           </div>
-          <div className="field-label" style={{ marginBottom: 4 }}>現在の残高（円・任意）</div>
+          <div className="field-label" style={{ marginBottom: 4 }}>{t("currentBalanceOptionalLabel")}</div>
           <div className="add-row" style={{ marginBottom: 10 }}>
             <input
               type="number"
-              placeholder="未入力なら積立実績から自動概算"
+              placeholder={t("currentBalanceAutoPlaceholder")}
               value={newPension.currentBalance}
               onChange={(e) => setNewPension((p) => ({ ...p, currentBalance: e.target.value }))}
             />
@@ -3620,7 +4361,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           </div>
           <div className="note">
             <Info size={13} />
-            <span>積立期間中は毎月の積立額を貯め、受給期間中はそこから毎月の受給額を取り崩していく残高として、生涯資産グラフに資産の一部として反映されます。さらに受給額は、公的年金と同様に生活費・健康費用の補填としても扱われ、NISA資産の取り崩しペースを緩める効果があります。「現在の残高」を入力すると、証書に記載の実際の解約返戻金額などをそのまま開始残高として使用します（未入力の場合は積立開始年齢〜現在までの積立額の単純合計＝0%運用想定で自動概算します）。</span>
+            <span>{t("privatePensionNote")}</span>
           </div>
           </div>
         </div>
@@ -3628,59 +4369,59 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         {/* -------- RIGHT: DASHBOARD -------- */}
         <div className="content">
           <div className="stat-grid" style={{ marginBottom: 10 }}>
-            <StatCard label="投資資産：NISA" value={money(effectiveCurrentAssets)} sub="現在のNISA評価額" />
-            <StatCard label="投資資産：iDeCo" value={money(inputs.ideco.currentValue)} sub="現在のiDeCo評価額" />
+            <StatCard label={t("statNisaAssetsLabel")} value={money(effectiveCurrentAssets)} sub={t("statNisaAssetsSub")} />
+            <StatCard label={t("statIdecoAssetsLabel")} value={money(inputs.ideco.currentValue)} sub={t("statIdecoAssetsSub")} />
           </div>
           <div className="stat-grid" style={{ marginBottom: 14 }}>
             <StatCard
-              label="現在使える資産"
+              label={t("statSpendableAssetsLabel")}
               value={money((netWorthYearly[0]?.spendableNetWorth) ?? (netWorthFinal - idecoSim.finalValue))}
-              sub="iDeCoロック分を除く、現時点の資産"
+              sub={t("statSpendableAssetsSub")}
               tone="good"
             />
             <StatCard
-              label="老後専用資産（iDeCo）"
+              label={t("statRetirementOnlyAssetsLabel")}
               value={money((netWorthYearly[0]?.idecoLockedValue) ?? idecoSim.finalValue)}
-              sub="受取開始年齢までは引き出せません"
+              sub={t("statRetirementLockedSub")}
             />
           </div>
           <div className="stat-grid" style={{ marginBottom: 10 }}>
             <StatCard
-              label="つみたて投資枠 残り"
+              label={t("statTsumitateRemainingLabel")}
               value={money(remainingTsumitate)}
-              sub="総枠（1,800万円）を成長投資枠と共有"
+              sub={t("statTsumitateRemainingSub")}
               tone={remainingTsumitate <= 0 ? "danger" : "good"}
             />
             <StatCard
-              label="成長投資枠 残り"
+              label={t("statGrowthRemainingLabel")}
               value={money(remainingGrowth)}
-              sub={`上限1,200万円 中 ${money(computedGrowthUsed)} 使用済み`}
+              sub={t("statGrowthRemainingSub", { used: money(computedGrowthUsed) })}
               tone={remainingGrowth <= 0 ? "danger" : "good"}
             />
             <StatCard
-              label="生涯投資枠（総枠） 残り"
+              label={t("statTotalRemainingLabel")}
               value={money(remainingTotal)}
-              sub={`上限1,800万円 中 ${money(computedTsumitateUsed + computedGrowthUsed)} 使用済み`}
+              sub={t("statTotalRemainingSub", { used: money(computedTsumitateUsed + computedGrowthUsed) })}
               tone={remainingTotal <= 0 ? "danger" : "good"}
             />
           </div>
           <div className="stat-grid" style={{ marginBottom: 14 }}>
             <StatCard
-              label="つみたて投資枠 上限オーバー額"
+              label={t("statTsumitateOverageLabel")}
               value={money(tsumitateOverage)}
-              sub={tsumitateOverage > 0 ? "総枠1,800万円を単独で超えています" : "上限内におさまっています"}
+              sub={tsumitateOverage > 0 ? t("statOverageOverSub") : t("statOverageWithinSub")}
               tone={tsumitateOverage > 0 ? "danger" : "good"}
             />
             <StatCard
-              label="成長投資枠 上限オーバー額"
+              label={t("statGrowthOverageLabel")}
               value={money(growthOverage)}
-              sub={growthOverage > 0 ? "上限1,200万円を超えています" : "上限内におさまっています"}
+              sub={growthOverage > 0 ? t("statOverageOverSub") : t("statOverageWithinSub")}
               tone={growthOverage > 0 ? "danger" : "good"}
             />
             <StatCard
-              label="生涯投資枠（総枠） 上限オーバー額"
+              label={t("statTotalOverageLabel")}
               value={money(totalOverage)}
-              sub={totalOverage > 0 ? "上限1,800万円を超えています" : "上限内におさまっています"}
+              sub={totalOverage > 0 ? t("statOverageOverSub") : t("statOverageWithinSub")}
               tone={totalOverage > 0 ? "danger" : "good"}
             />
           </div>
@@ -3688,127 +4429,127 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <div className="note" style={{ borderLeftColor: "#C2694F", marginBottom: 22 }}>
               <Info size={13} style={{ color: "#C2694F" }} />
               <span>
-                入力された「これまでの使用累計」がNISAの上限を超えています。
-                {growthOverage > 0 && ` 成長投資枠は上限を${money(growthOverage)}超過。`}
-                {totalOverage > 0 && ` 総枠（生涯上限）は${money(totalOverage)}超過。`}
-                実際の証券口座の使用累計をご確認のうえ、数値を見直してください。
+                {t("overageWarningIntro")}
+                {growthOverage > 0 && ` ${t("growthOverageDetail", { amount: money(growthOverage) })}`}
+                {totalOverage > 0 && ` ${t("totalOverageDetail", { amount: money(totalOverage) })}`}
+                {t("overageWarningOutro")}
               </span>
             </div>
           )}
 
           <div className="chart-frame" style={{ marginBottom: 22 }}>
-            <div className="chart-label">現在のNISA資産の内訳 — つみたて投資枠 × 成長投資枠（現在日付での使用累計ベース）</div>
+            <div className="chart-label">{t("nisaBreakdownChartTitle")}</div>
             <AllocationCharts items={nisaFrameAllocationItems} height={160} />
           </div>
 
           <div className="stat-grid" style={{ marginBottom: 14 }}>
             <StatCard
-              label="つみたて 年間上限 残り（現在の年齢のペース基準）"
+              label={t("statTsumitateAnnualRemainingLabel")}
               value={money(tsumitateAnnualRemaining)}
               sub={
                 tsumitateAnnualOverage > 0
-                  ? `年間上限120万円を ${money(tsumitateAnnualOverage)} 超過するペースです（自動的に月10万円に調整されます）`
-                  : `月${money(currentTsumitateMonthly)}のペース（年換算 ${money(tsumitateAnnualPace)}）`
+                  ? t("annualOverPaceNote", { amount: money(tsumitateAnnualOverage) })
+                  : t("monthlyPaceNote", { monthly: money(currentTsumitateMonthly), annual: money(tsumitateAnnualPace) })
               }
               tone={tsumitateAnnualOverage > 0 ? "danger" : "good"}
             />
             <StatCard
-              label="成長投資枠 年間上限 残り（現在のペース基準）"
+              label={t("statGrowthAnnualRemainingLabel")}
               value={money(growthAnnualRemaining)}
               sub={
                 growthAnnualOverage > 0
-                  ? `年間上限240万円を ${money(growthAnnualOverage)} 超過するペースです（自動的に月20万円に調整されます）`
-                  : `月${money(currentGrowthMonthly)}のペース（年換算 ${money(growthAnnualPace)}）`
+                  ? t("annualOverPaceNoteGrowth", { amount: money(growthAnnualOverage) })
+                  : t("monthlyPaceNote", { monthly: money(currentGrowthMonthly), annual: money(growthAnnualPace) })
               }
               tone={growthAnnualOverage > 0 ? "danger" : "good"}
             />
           </div>
 
           <div className="stat-grid">
-            <StatCard label={`${inputs.retireAge}歳時点の資産`} value={money(sim.assetsAtRetire)} sub="積立フェーズ終了時" />
+            <StatCard label={t("statAssetsAtRetireLabel", { age: t("ageYears", { age: inputs.retireAge }) })} value={money(sim.assetsAtRetire)} sub={t("statAssetsAtRetireSub")} />
             <StatCard
-              label={`${inputs.deathAge}歳時点の総資産（NISA+金+預金・相続可能額）`}
+              label={t("statNetWorthFinalLabel", { age: t("ageYears", { age: inputs.deathAge }) })}
               value={money(netWorthFinal)}
-              sub={netInheritanceGap >= 0 ? `目標に対し +${money(netInheritanceGap)}` : `目標に対し ${money(netInheritanceGap)}`}
+              sub={netInheritanceGap >= 0 ? t("statInheritanceGapPositive", { amount: money(netInheritanceGap) }) : t("statInheritanceGapNegative", { amount: money(netInheritanceGap) })}
               tone={netInheritanceGap >= 0 ? "good" : "danger"}
             />
             <StatCard
-              label="老後の月次収支ギャップ"
+              label={t("statMonthlyGapLabel")}
               value={`${netMonthlyGap >= 0 ? "" : "+"}${money(-netMonthlyGap)}`}
-              sub={netMonthlyGap >= 0 ? "年金だけでは不足（資産取崩し要）" : "年金で生活費を賄える"}
+              sub={netMonthlyGap >= 0 ? t("statMonthlyGapShortfallSub") : t("statMonthlyGapCoveredSub")}
               tone={netMonthlyGap > 0 ? "danger" : "good"}
             />
             <StatCard
-              label="資産の持続性"
-              value={sim.depletionAge ? `${Math.round(sim.depletionAge)}歳で枯渇` : "生涯枯渇なし"}
-              sub={sim.depletionAge ? "取崩し速度の見直しが必要" : "現在の前提では維持可能"}
+              label={t("statSustainabilityLabel")}
+              value={sim.depletionAge ? t("statDepletionAtAge", { age: Math.round(sim.depletionAge) }) : t("statNeverDepletes")}
+              sub={sim.depletionAge ? t("statDepletionSub") : t("statSustainableSub")}
               tone={sim.depletionAge ? "danger" : "good"}
             />
           </div>
 
           <div className="stat-grid" style={{ marginBottom: 22 }}>
             <StatCard
-              label="つみたて投資枠 生涯累計使用額（予測）"
+              label={t("statTsumitateLifetimeUsageLabel")}
               value={money(sim.tsumitateCum)}
-              sub={`生涯合算枠 ${money(NISA_LIMITS.totalLifetime)} 中`}
+              sub={t("statOfLifetimeLimit", { amount: money(NISA_LIMITS.totalLifetime) })}
             />
             <StatCard
-              label="成長投資枠 生涯累計使用額（予測）"
+              label={t("statGrowthLifetimeUsageLabel")}
               value={`${money(sim.growthCum)} / ${money(NISA_LIMITS.growthLifetime)}`}
-              sub={sim.growthMaxedAge ? `${Math.round(sim.growthMaxedAge)}歳で上限到達見込み` : "上限未到達の見込み"}
+              sub={sim.growthMaxedAge ? t("statMaxedAtAge", { age: Math.round(sim.growthMaxedAge) }) : t("statNotYetMaxed")}
               tone={sim.growthMaxedAge ? "danger" : "good"}
             />
             <StatCard
-              label="NISA総枠 生涯累計使用額（予測）"
+              label={t("statTotalLifetimeUsageLabel")}
               value={`${money(sim.tsumitateCum + sim.growthCum)} / ${money(NISA_LIMITS.totalLifetime)}`}
-              sub={sim.totalMaxedAge ? `${Math.round(sim.totalMaxedAge)}歳で使い切り見込み` : "生涯枠に余裕がある見込み"}
+              sub={sim.totalMaxedAge ? t("statUsedUpAtAge", { age: Math.round(sim.totalMaxedAge) }) : t("statLifetimeRoomSub")}
               tone={sim.totalMaxedAge ? "danger" : "good"}
             />
           </div>
 
           <div className="stat-grid" style={{ marginBottom: 22 }}>
             <StatCard
-              label={`金資産 — ${formatAge(inputs.gold.accumulateUntilAge)}時点`}
+              label={t("statGoldAtTargetLabel", { age: formatAge(inputs.gold.accumulateUntilAge) })}
               value={money(goldSim.valueAtTarget)}
-              sub={`${goldSim.yearly.find((y) => y.age >= inputs.gold.accumulateUntilAge)?.grams.toFixed(1) ?? goldSim.finalGrams.toFixed(1)}g 想定`}
+              sub={t("statGoldGramsEstimateSub", { grams: goldSim.yearly.find((y) => y.age >= inputs.gold.accumulateUntilAge)?.grams.toFixed(1) ?? goldSim.finalGrams.toFixed(1) })}
             />
             <StatCard
-              label="銀行預金 合計（現在）"
+              label={t("statBankTotalNowLabel")}
               value={money(bankSim.totalNow)}
-              sub={inputs.banks.length ? `${inputs.banks.length}行に分散` : "銀行口座が未登録です"}
+              sub={inputs.banks.length ? t("statBankCountSub", { count: inputs.banks.length }) : t("statNoBankAccountsSub")}
             />
             <StatCard
-              label={`銀行預金 合計 — ${inputs.retireAge}歳時点`}
+              label={t("statBankAtRetireLabel", { age: t("ageYears", { age: inputs.retireAge }) })}
               value={money(bankSim.totalAtRetire)}
-              sub="毎月入金を継続した場合の見込み"
+              sub={t("statBankAtRetireSub")}
             />
             <StatCard
-              label="個別株 保有評価額（現在）"
+              label={t("statStockValueNowLabel")}
               value={money(stockTotalNow)}
-              sub={`${watchlist.filter((w) => w.value > 0).length}銘柄に保有あり`}
+              sub={t("statStockHoldingsCountSub", { count: watchlist.filter((w) => w.value > 0).length })}
             />
             <StatCard
-              label="借入金 残高（現在）"
+              label={t("statLoanBalanceNowLabel")}
               value={money(loanSim.totalNow)}
-              sub={inputs.loans.length ? `${inputs.loans.length}件の借入` : "借入金なし"}
+              sub={inputs.loans.length ? t("statLoanCountSub", { count: inputs.loans.length }) : t("statNoLoansSub")}
               tone={loanSim.totalNow > 0 ? "danger" : "good"}
             />
             <StatCard
-              label="生命保険 払込累計（生涯）"
+              label={t("statInsurancePaidLabel")}
               value={money(insuranceSim.totalFinal)}
-              sub={inputs.insurancePolicies.length ? `${inputs.insurancePolicies.length}件の保険` : "保険未登録"}
+              sub={inputs.insurancePolicies.length ? t("statInsuranceCountSub", { count: inputs.insurancePolicies.length }) : t("statNoInsuranceSub")}
               tone={insuranceSim.totalFinal > 0 ? "danger" : "good"}
             />
             <StatCard
-              label="民間年金 積立残高（受給終了時点）"
+              label={t("statPrivatePensionFinalLabel")}
               value={money(pensionSim.totalFinal)}
-              sub={inputs.privatePensionPlans.length ? `${inputs.privatePensionPlans.length}件の年金プラン` : "未登録"}
+              sub={inputs.privatePensionPlans.length ? t("statPensionPlanCountSub", { count: inputs.privatePensionPlans.length }) : t("statNotRegisteredSub")}
               tone="good"
             />
           </div>
 
           <div className="chart-frame">
-            <div className="chart-label">総資産推移 — NISA + 金 + 銀行預金 + 個別株 + 民間年金積立 + iDeCo − 借入金 − 保険料累計（{effectiveCurrentAge}歳 〜 {inputs.deathAge}歳）</div>
+            <div className="chart-label">{t("netWorthChartTitle", { currentAge: t("ageYears", { age: effectiveCurrentAge }), deathAge: t("ageYears", { age: inputs.deathAge }) })}</div>
             <ResponsiveContainer width="100%" height={340}>
               <ComposedChart data={netWorthYearly} margin={{ top: 10, right: 24, left: 8, bottom: 4 }}>
                 <CartesianGrid stroke="#2A363C" strokeDasharray="3 3" />
@@ -3816,48 +4557,48 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 <YAxis stroke="#7C8A90" fontSize={11} tickFormatter={(v) => money(v)} width={64} />
                 <Tooltip
                   contentStyle={{ background: "#151C20", border: "1px solid #2A363C", fontSize: 12 }}
-                  labelFormatter={(a) => `${a}歳`}
+                  labelFormatter={(a) => t("ageYears", { age: a })}
                   formatter={(v, n) => [money(v), n]}
                 />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
-                <ReferenceLine x={inputs.retireAge} stroke="#D9A54F" strokeDasharray="4 4" label={{ value: "引退", position: "top", fill: "#D9A54F", fontSize: 11 }} />
+                <ReferenceLine x={inputs.retireAge} stroke="#D9A54F" strokeDasharray="4 4" label={{ value: t("retirementMarkerLabel"), position: "top", fill: "#D9A54F", fontSize: 11 }} />
                 {inputs.lumpSums.map((entry, i) => (
-                  <ReferenceLine key={i} x={entry.age} stroke="#8FBF7F" strokeDasharray="2 3" label={{ value: "一括", position: "insideTop", fill: "#8FBF7F", fontSize: 10 }} />
+                  <ReferenceLine key={i} x={entry.age} stroke="#8FBF7F" strokeDasharray="2 3" label={{ value: t("lumpSumMarkerLabel"), position: "insideTop", fill: "#8FBF7F", fontSize: 10 }} />
                 ))}
                 {sim.depletionAge && (
-                  <ReferenceLine x={Math.round(sim.depletionAge)} stroke="#C2694F" strokeDasharray="4 4" label={{ value: "枯渇", position: "top", fill: "#C2694F", fontSize: 11 }} />
+                  <ReferenceLine x={Math.round(sim.depletionAge)} stroke="#C2694F" strokeDasharray="4 4" label={{ value: t("depletionMarkerLabel"), position: "top", fill: "#C2694F", fontSize: 11 }} />
                 )}
-                <Area type="monotone" dataKey="total" name="NISA資産" stackId="net" stroke="#4FA8D8" fill="rgba(79,168,216,0.35)" strokeWidth={1.5} />
-                <Area type="monotone" dataKey="goldValue" name="金資産" stackId="net" stroke="#D9A54F" fill="rgba(217,165,79,0.35)" strokeWidth={1.5} />
-                <Area type="monotone" dataKey="bankValue" name="銀行預金" stackId="net" stroke="#8FBF7F" fill="rgba(143,191,127,0.35)" strokeWidth={1.5} />
-                <Area type="monotone" dataKey="stockValue" name="個別株" stackId="net" stroke="#B08FD6" fill="rgba(176,143,214,0.35)" strokeWidth={1.5} />
-                <Area type="monotone" dataKey="pensionValue" name="民間年金積立" stackId="net" stroke="#6FA88A" fill="rgba(111,168,138,0.35)" strokeWidth={1.5} />
-                <Area type="monotone" dataKey="idecoLockedValue" name="iDeCo資産" stackId="net" stroke="#D68FB0" fill="rgba(214,143,176,0.35)" strokeWidth={1.5} />
-                <Line type="monotone" dataKey="netWorth" name="純資産（借入金・保険料控除後）" stroke="#F2F5F6" strokeWidth={2} dot={false} />
+                <Area type="monotone" dataKey="total" name={t("legendNisaAssets")} stackId="net" stroke="#4FA8D8" fill="rgba(79,168,216,0.35)" strokeWidth={1.5} />
+                <Area type="monotone" dataKey="goldValue" name={t("legendGoldAssets")} stackId="net" stroke="#D9A54F" fill="rgba(217,165,79,0.35)" strokeWidth={1.5} />
+                <Area type="monotone" dataKey="bankValue" name={t("legendBankDeposits")} stackId="net" stroke="#8FBF7F" fill="rgba(143,191,127,0.35)" strokeWidth={1.5} />
+                <Area type="monotone" dataKey="stockValue" name={t("legendStocks")} stackId="net" stroke="#B08FD6" fill="rgba(176,143,214,0.35)" strokeWidth={1.5} />
+                <Area type="monotone" dataKey="pensionValue" name={t("legendPrivatePension")} stackId="net" stroke="#6FA88A" fill="rgba(111,168,138,0.35)" strokeWidth={1.5} />
+                <Area type="monotone" dataKey="idecoLockedValue" name={t("legendIdecoAssets")} stackId="net" stroke="#D68FB0" fill="rgba(214,143,176,0.35)" strokeWidth={1.5} />
+                <Line type="monotone" dataKey="netWorth" name={t("legendNetWorth")} stroke="#F2F5F6" strokeWidth={2} dot={false} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
           <div className="note" style={{ marginBottom: 22 }}>
             <Info size={13} />
-            <span>塗りつぶし部分は資産の内訳（総額）、白い線が借入金・生命保険の払込累計額を差し引いた実質的な純資産です。</span>
+            <span>{t("netWorthChartNote")}</span>
           </div>
 
           {sim.lumpTruncations.length > 0 && (
             <div className="note" style={{ borderLeftColor: "#C2694F", marginBottom: 22 }}>
               <Info size={13} style={{ color: "#C2694F" }} />
               <span>
-                一部の一括投資は成長投資枠・生涯枠の上限を超えたため、超過分（
-                {sim.lumpTruncations.map((t, i) => (
-                  <span key={i}>{i > 0 && "、"}{t.age}歳時点で{money(t.shortfall)}</span>
+                {t("lumpTruncationIntro")}
+                {sim.lumpTruncations.map((trunc, i) => (
+                  <span key={i}>{i > 0 && t("listSeparator")}{t("ageYears", { age: trunc.age })}{t("lumpTruncationAt", { amount: money(trunc.shortfall) })}</span>
                 ))}
-                ）は非課税枠に反映されていません。
+                {t("lumpTruncationOutro")}
               </span>
             </div>
           )}
 
           <div className="two-col">
             <div className="chart-frame">
-              <div className="chart-label">{inputs.retireAge}歳時点 ファンド別内訳</div>
+              <div className="chart-label">{t("fundBreakdownChartTitle", { age: t("ageYears", { age: inputs.retireAge }) })}</div>
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={fundBreakdownAtRetire} layout="vertical" margin={{ left: 8, right: 16 }}>
                   <CartesianGrid stroke="#2A363C" strokeDasharray="3 3" horizontal={false} />
@@ -3874,10 +4615,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             </div>
 
             <div className="chart-frame" style={{ padding: "16px 16px 18px" }}>
-              <div className="chart-label" style={{ padding: 0, marginBottom: 10 }}>個別株 保有一覧（個数・保有金額を入力）</div>
+              <div className="chart-label" style={{ padding: 0, marginBottom: 10 }}>{t("stockWatchlistTitle")}</div>
               <table className="watchlist">
                 <thead>
-                  <tr><th>銘柄</th><th>セクター</th><th>個数</th><th>保有金額</th><th></th></tr>
+                  <tr><th>{t("colName")}</th><th>{t("sectorCol")}</th><th>{t("sharesCol")}</th><th>{t("holdingValueCol")}</th><th></th></tr>
                 </thead>
                 <tbody>
                   {watchlist.map((s, i) => (
@@ -3904,32 +4645,32 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 </tbody>
               </table>
               <div className="add-row">
-                <input placeholder="銘柄名" value={newStock.name} onChange={(e) => setNewStock((p) => ({ ...p, name: e.target.value }))} />
-                <input placeholder="セクター" value={newStock.sector} onChange={(e) => setNewStock((p) => ({ ...p, sector: e.target.value }))} />
+                <input placeholder={t("holdingNamePlaceholder")} value={newStock.name} onChange={(e) => setNewStock((p) => ({ ...p, name: e.target.value }))} />
+                <input placeholder={t("sectorCol")} value={newStock.sector} onChange={(e) => setNewStock((p) => ({ ...p, sector: e.target.value }))} />
                 <button className="add-btn" onClick={addStock}><Plus size={15} /></button>
               </div>
-              <div className="stat-sub" style={{ marginTop: 10 }}>個別株 現在の金額（合計）：<span className="mono">{money(stockTotalNow)}</span></div>
+              <div className="stat-sub" style={{ marginTop: 10 }}>{t("stockCurrentTotalLabel")}：<span className="mono">{money(stockTotalNow)}</span></div>
               <Field
-                label={`${inputs.deathAge}歳までの想定年率（個別株全体）${inputs.stockReturnPctAuto ? "（自動：保有銘柄名から仮設定）" : ""}`} unit="%" step={0.5}
+                label={`${t("stockReturnLabel", { age: t("ageYears", { age: inputs.deathAge }) })}${inputs.stockReturnPctAuto ? t("autoGuessedFromHoldingsSuffix") : ""}`} unit="%" step={0.5}
                 value={effectiveStockReturnPct} onChange={(v) => update({ stockReturnPct: v, stockReturnPctAuto: false })}
               />
               {!inputs.stockReturnPctAuto && (
                 <div className="note" style={{ marginTop: -8 }}>
                   <Info size={13} />
                   <span>
-                    手動設定中です。
+                    {t("manualOverrideNote")}
                     <span
                       style={{ color: "#4FA8D8", textDecoration: "underline", cursor: "pointer", marginLeft: 4 }}
                       onClick={() => update({ stockReturnPctAuto: true })}
                     >
-                      自動計算に戻す
+                      {t("revertToAutoLink")}
                     </span>
                   </span>
                 </div>
               )}
               {stockAllocationItems.length > 0 && (
                 <>
-                  <div className="chart-label" style={{ padding: 0, margin: "12px 0 4px" }}>保有金額に連動した銘柄別割合</div>
+                  <div className="chart-label" style={{ padding: 0, margin: "12px 0 4px" }}>{t("stockAllocationChartLabel")}</div>
                   <AllocationCharts items={stockAllocationItems} height={160} />
                 </>
               )}
@@ -3938,7 +4679,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
           {inputs.loans.length > 0 && (
             <div className="chart-frame" style={{ marginTop: 16 }}>
-              <div className="chart-label">借入金 残高推移 — 年齢ごとの見込み（現在 / {inputs.retireAge}歳 / {inputs.deathAge}歳）</div>
+              <div className="chart-label">{t("loanBreakdownChartTitle", { retireAge: t("ageYears", { age: inputs.retireAge }), deathAge: t("ageYears", { age: inputs.deathAge }) })}</div>
               <ResponsiveContainer width="100%" height={Math.max(180, inputs.loans.length * 46)}>
                 <BarChart data={loanBreakdownByAge} layout="vertical" margin={{ left: 8, right: 16 }}>
                   <CartesianGrid stroke="#2A363C" strokeDasharray="3 3" horizontal={false} />
@@ -3946,9 +4687,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                   <YAxis type="category" dataKey="name" stroke="#7C8A90" fontSize={11} width={90} />
                   <Tooltip contentStyle={{ background: "#151C20", border: "1px solid #2A363C", fontSize: 12 }} formatter={(v) => money(v)} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Bar dataKey="現在" fill="#C2694F" radius={[0, 2, 2, 0]} />
-                  <Bar dataKey={`${inputs.retireAge}歳`} fill="#D9877A" radius={[0, 2, 2, 0]} />
-                  <Bar dataKey={`${inputs.deathAge}歳`} fill="#E6B0A6" radius={[0, 2, 2, 0]} />
+                  <Bar dataKey={t("currentLabelShort")} fill="#C2694F" radius={[0, 2, 2, 0]} />
+                  <Bar dataKey={t("ageYears", { age: inputs.retireAge })} fill="#D9877A" radius={[0, 2, 2, 0]} />
+                  <Bar dataKey={t("ageYears", { age: inputs.deathAge })} fill="#E6B0A6" radius={[0, 2, 2, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -3956,7 +4697,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
           {inputs.banks.length > 0 && (
             <div className="chart-frame" style={{ marginTop: 16 }}>
-              <div className="chart-label">銀行別 預金残高 — 年齢ごとの見込み（現在 / {inputs.retireAge}歳 / {inputs.deathAge}歳）</div>
+              <div className="chart-label">{t("bankBreakdownChartTitle", { retireAge: t("ageYears", { age: inputs.retireAge }), deathAge: t("ageYears", { age: inputs.deathAge }) })}</div>
               <ResponsiveContainer width="100%" height={Math.max(180, inputs.banks.length * 46)}>
                 <BarChart data={bankBreakdownByAge} layout="vertical" margin={{ left: 8, right: 16 }}>
                   <CartesianGrid stroke="#2A363C" strokeDasharray="3 3" horizontal={false} />
@@ -3964,9 +4705,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                   <YAxis type="category" dataKey="name" stroke="#7C8A90" fontSize={11} width={90} />
                   <Tooltip contentStyle={{ background: "#151C20", border: "1px solid #2A363C", fontSize: 12 }} formatter={(v) => money(v)} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Bar dataKey="現在" fill="#4FA8D8" radius={[0, 2, 2, 0]} />
-                  <Bar dataKey={`${inputs.retireAge}歳`} fill="#D9A54F" radius={[0, 2, 2, 0]} />
-                  <Bar dataKey={`${inputs.deathAge}歳`} fill="#8FBF7F" radius={[0, 2, 2, 0]} />
+                  <Bar dataKey={t("currentLabelShort")} fill="#4FA8D8" radius={[0, 2, 2, 0]} />
+                  <Bar dataKey={t("ageYears", { age: inputs.retireAge })} fill="#D9A54F" radius={[0, 2, 2, 0]} />
+                  <Bar dataKey={t("ageYears", { age: inputs.deathAge })} fill="#8FBF7F" radius={[0, 2, 2, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -3975,7 +4716,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       </div>
 
       <div className="footer-note">
-        ※ 本ツールは入力値に基づく概算シミュレーションであり、将来の運用成果・年金額・医療費・税制を保証するものではありません。相続・税務・投資判断は専門家（FP・税理士等）にご確認ください。データは入力のたびにブラウザ上のストレージに自動保存されます。
+        {t("footerDisclaimer")}
       </div>
     </div>
     </LocaleContext.Provider>
