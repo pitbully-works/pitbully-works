@@ -239,6 +239,7 @@ const TRANSLATIONS = {
     "gbWithdrawalLabel": "取崩し必要額（口座から）",
     "gbWithdrawalSub": "年金収入で賄えない年間の不足額",
     "gbWorkplacePensionLabel": "Workplace Pension",
+    "disclaimerBanner": "【免責事項】本アプリは情報提供とシミュレーションを目的としたものであり、税務・投資・法務上の助言ではありません。制度・税率は変更される場合があり、計算結果は一定の前提に基づく概算です。実際のご判断は、税理士・ファイナンシャルプランナー等の専門家にご確認ください。",
     "advancedMedicalLabel": "先進医療（円）",
     "ageYM": "{years}歳{months}ヶ月",
     "ageYMD": "{years}歳{months}ヶ月{days}日",
@@ -784,6 +785,7 @@ const TRANSLATIONS = {
     "gbWithdrawalLabel": "Withdrawal Needed from Your Accounts",
     "gbWithdrawalSub": "Annual shortfall not covered by pension income",
     "gbWorkplacePensionLabel": "Workplace Pension",
+    "disclaimerBanner": "Disclaimer: This app is provided for information and simulation purposes only. It does not constitute tax, investment, or legal advice. Rules and tax rates can change, and all figures are estimates based on the assumptions you enter. Please consult a qualified professional before acting on any result.",
     "advancedMedicalLabel": "Advanced medical care",
     "ageYM": "{years}y {months}m",
     "ageYMD": "{years} years {months} months {days} days",
@@ -1252,6 +1254,7 @@ const TRANSLATIONS = {
 //     Individual Stocks → Stocks & Shares、Bank Deposits → Cash Savings。
 // ============================================================================
 const EN_GB_OVERRIDES = {
+  disclaimerBanner: "Disclaimer: This app is provided for information and simulation purposes only. It does not constitute tax, investment, or legal advice. Allowances and tax rates can change, and all figures are estimates based on the assumptions you enter. Please consult a qualified professional \u2014 such as an FCA-regulated financial adviser or an accountant \u2014 before acting on any result.",
   localePreviewWarning: "UK edition: ISA and pension allowances, State Pension, Income Tax, Dividend Tax and Capital Gains Tax use GOV.UK figures for the 2026/27 tax year (England, Wales & Northern Ireland). Scottish Income Tax, National Insurance and Inheritance Tax are not implemented. This is a planning tool, not financial advice.",
   appSubtitle: "Investment Accounts × Retirement Assets × Pensions × Healthcare Costs × Inheritance Planning — Integrated Simulation",
   idecoCurrentValueAutoLabel: "Current Pension Value (Auto-calculated)",
@@ -1359,7 +1362,7 @@ function monthlyRate(annualPct) {
 
 // ---------- countryRules/JP.js 相当 ----------
 // 現行の新NISA制度（2024年〜）・iDeCo・医療費モデル。既存の計算結果と完全に同一。
-const JP_COUNTRY_RULES = {
+export const JP_COUNTRY_RULES = {
   investment: {
     implemented: true,
     // つみたて投資枠 年間上限 / 成長投資枠 年間上限 / 成長投資枠 生涯（簿価）上限 / 総枠 生涯（簿価）上限
@@ -1399,7 +1402,7 @@ const JP_COUNTRY_RULES = {
 // ---------- countryRules/US.js 相当（仮実装：未実装のプレースホルダーのみ） ----------
 // 実装時にはこのオブジェクトの中身だけを差し替えればよく、JP.js・GB.js・共通エンジン・
 // React画面側のコードは一切変更不要な設計にしてある。
-const US_COUNTRY_RULES = {
+export const US_COUNTRY_RULES = {
   investment: {
     implemented: true,
     accountTypes: ["401k", "traditionalIra", "rothIra", "brokerage"],
@@ -1734,7 +1737,7 @@ const US_COUNTRY_RULES = {
 // 根拠が確認できない数値は推測で入れず、未確認・未対応の項目は notImplemented に明示する。
 // 【重要】このオブジェクトは JP_COUNTRY_RULES / US_COUNTRY_RULES を一切参照せず、
 // 逆に JP/US 側からも参照されない。英国版の変更はこのオブジェクト内で完結する。
-const GB_COUNTRY_RULES = {
+export const GB_COUNTRY_RULES = {
   investment: {
     implemented: true,
     effectiveTaxYear: "2026/27",
@@ -2171,7 +2174,7 @@ function getCountryRules(country) {
 // ここでは既存コード互換のための別名として参照するのみ。
 // （NISA_LIMITS.xxx という参照は既存コード全体にそのまま残しているため、ここを書き換えても
 //   計算結果・呼び出し側のコードには一切影響しない。）
-const NISA_LIMITS = {
+export const NISA_LIMITS = {
   tsumitateAnnual: JP_COUNTRY_RULES.investment.annualInstallmentLimit,
   growthAnnual: JP_COUNTRY_RULES.investment.annualGrowthLimit,
   growthLifetime: JP_COUNTRY_RULES.investment.growthLifetimeLimit,
@@ -2206,7 +2209,7 @@ function guessDefaultReturn(name) {
 
 // iDeCoの節税額（概算）用：所得税＋住民税をまとめた大まかな実効税率の目安
 // ※実際の税額は控除の状況等により異なります。あくまで概算です。
-function estimateMarginalTaxRate(annualIncome) {
+export function estimateMarginalTaxRate(annualIncome) {
   if (!annualIncome || annualIncome <= 0) return 0.2; // 年収未入力時の目安
   if (annualIncome <= 1950000) return 0.15;
   if (annualIncome <= 3300000) return 0.2;
@@ -2216,7 +2219,7 @@ function estimateMarginalTaxRate(annualIncome) {
   return 0.5;
 }
 
-function computeAgeFromBirthDate(birthDateStr, asOfDate) {
+export function computeAgeFromBirthDate(birthDateStr, asOfDate) {
   if (!birthDateStr) return null;
   const birth = new Date(birthDateStr + "T00:00:00");
   const now = asOfDate || new Date();
@@ -2241,7 +2244,7 @@ function computeAgeFromBirthDate(birthDateStr, asOfDate) {
   return { years, months, days, decimal };
 }
 
-function healthAnnualCost(age, brackets) {
+export function healthAnnualCost(age, brackets) {
   if (age < 60) return 0;
   if (age < 70) return brackets.b60;
   if (age < 80) return brackets.b70;
@@ -2311,7 +2314,7 @@ function compoundedLumpSumValue(lumpSums, currentAge, annualReturnPct) {
   }, 0);
 }
 
-function runSimulation(inputs, uncategorizedLabel, phaseAccumLabel, phaseDrawdownLabel) {
+export function runSimulation(inputs, uncategorizedLabel, phaseAccumLabel, phaseDrawdownLabel) {
   const {
     currentAge, retireAge, deathAge,
     currentAssets, tsumitateSchedule, growthSchedule, lumpSums,
@@ -2490,7 +2493,7 @@ function runSimulation(inputs, uncategorizedLabel, phaseAccumLabel, phaseDrawdow
 }
 
 // ---------- gold (純金積立) simulation ----------
-function runGoldSimulation({ currentAge, deathAge, gold }) {
+export function runGoldSimulation({ currentAge, deathAge, gold }) {
   const { currentGrams, pricePerGram, priceGrowthPct, monthlyYen, accumulateUntilAge, asOfAge } = gold;
   const r = monthlyRate(priceGrowthPct);
 
@@ -2516,16 +2519,19 @@ function runGoldSimulation({ currentAge, deathAge, gold }) {
 
   for (let m = 1; m <= totalMonths; m++) {
     const age = currentAge + m / 12;
+    // その月の積立は「月初の価格」で購入する
     if (age < accumulateUntilAge && monthlyYen > 0 && price > 0) {
       grams += monthlyYen / price;
     }
+    // 【修正】その月の価格上昇を反映してから年次データへ記録・評価する。
+    // （記録が先だと、各年の評価額が1ヶ月分古い価格で計算されていた）
+    price = price * (1 + r);
     if (m % 12 === 0) {
       yearly.push({ age: Math.round(age), grams, price, value: grams * price });
     }
     if (valueAtTarget === null && age >= accumulateUntilAge) {
       valueAtTarget = grams * price;
     }
-    price = price * (1 + r);
   }
   const finalValue = yearly.length ? yearly[yearly.length - 1].value : grams * price;
   if (valueAtTarget === null) valueAtTarget = finalValue;
@@ -2534,7 +2540,7 @@ function runGoldSimulation({ currentAge, deathAge, gold }) {
 }
 
 // ---------- bank savings (銀行別) simulation ----------
-function runBankSimulation({ currentAge, retireAge, deathAge, banks }) {
+export function runBankSimulation({ currentAge, retireAge, deathAge, banks }) {
   const totalMonths = Math.max(1, Math.round((deathAge - currentAge) * 12));
   const balances = banks.map((b) => b.balance);
   const initialBankRow = { age: Math.round(currentAge), total: balances.reduce((sum, value) => sum + value, 0) };
@@ -2562,15 +2568,17 @@ function runBankSimulation({ currentAge, retireAge, deathAge, banks }) {
 }
 
 // ---------- individual stock portfolio (保有中の個別株) ----------
-function runStockSim({ currentAge, deathAge, totalValue, returnPct }) {
+export function runStockSim({ currentAge, deathAge, totalValue, returnPct }) {
   const totalMonths = Math.max(1, Math.round((deathAge - currentAge) * 12));
   const r = monthlyRate(returnPct);
   let value = totalValue;
   const yearly = [{ age: Math.round(currentAge), value }];
   for (let m = 1; m <= totalMonths; m++) {
     const age = currentAge + m / 12;
-    if (m % 12 === 0) yearly.push({ age: Math.round(age), value });
+    // 【修正】その月の運用益を反映してから年次データへ記録する。
+    // （記録が先だと、各年のデータが1ヶ月分だけ古い値になり、最終評価額も1ヶ月分少なくなっていた）
     value = value * (1 + r);
+    if (m % 12 === 0) yearly.push({ age: Math.round(age), value });
   }
   return { yearly, finalValue: yearly.length ? yearly[yearly.length - 1].value : totalValue };
 }
@@ -2579,7 +2587,7 @@ function runStockSim({ currentAge, deathAge, totalValue, returnPct }) {
 function simpleMonthlyRate(annualPct) {
   return (annualPct || 0) / 1200;
 }
-function runLoanSimulation({ currentAge, deathAge, loans }) {
+export function runLoanSimulation({ currentAge, deathAge, loans }) {
   const totalMonths = Math.max(1, Math.round((deathAge - currentAge) * 12));
   const balances = loans.map((l) => l.principal);
   const payoffAges = loans.map(() => null);
@@ -2612,7 +2620,7 @@ function runLoanSimulation({ currentAge, deathAge, loans }) {
 }
 
 // ---------- 生命保険：払込期間中の保険料を累計（将来資産から控除するため） ----------
-function runInsuranceSimulation({ currentAge, deathAge, policies }) {
+export function runInsuranceSimulation({ currentAge, deathAge, policies }) {
   const totalMonths = Math.max(1, Math.round((deathAge - currentAge) * 12));
   let cumulative = 0;
   const yearly = [{ age: Math.round(currentAge), total: 0 }];
@@ -2632,7 +2640,7 @@ function runInsuranceSimulation({ currentAge, deathAge, policies }) {
 }
 
 // ---------- 民間年金積立：積立期間で貯め、受給期間で取り崩す個人年金のシミュレーション ----------
-function runPrivatePensionSimulation({ currentAge, deathAge, plans }) {
+export function runPrivatePensionSimulation({ currentAge, deathAge, plans }) {
   const totalMonths = Math.max(1, Math.round((deathAge - currentAge) * 12));
   // 現在の年齢より前（例：35歳〜現在）にすでに積み立ててきた分を遡って開始残高に反映する。
   // ただし、証書などで実際の現在残高が手入力されている場合はそちらを優先する。
@@ -2681,7 +2689,7 @@ function levelMonthlyPayment(principal, annualRatePct, years) {
   return (safePrincipal * r) / (1 - Math.pow(1 + r, -months));
 }
 
-function runIdecoSimulation({ currentAge, deathAge, ideco }) {
+export function runIdecoSimulation({ currentAge, deathAge, ideco }) {
   const {
     currentValue, monthlyContribution, startAge, endAge, returnPct,
     payoutStartAge, payoutMethod, payoutYears, lumpPortionPct, payoutReturnPct, asOfAge,
@@ -3644,6 +3652,26 @@ function StatCard({ label, value, sub, tone }) {
   );
 }
 
+// 保存データを既定値へ深くマージする。
+// 【修正】従来は { ...prev, ...parsed.inputs } の浅いマージだったため、旧バージョンで保存された
+// 入れ子オブジェクト（ideco / usInvestment / gbInvestment / gold / healthBrackets 等）が
+// 既定値をまるごと置き換えてしまい、後から追加したフィールドが undefined になっていた。
+// undefined が Field の value に入ると React が非制御コンポーネント警告を出し、計算もNaNになりうる。
+// 配列（銘柄リスト等）は「保存された内容そのもの」が正しいため、マージせず置き換える。
+export function mergeSavedInputs(defaults, saved) {
+  if (!saved || typeof saved !== "object") return defaults;
+  const out = { ...defaults };
+  Object.keys(saved).forEach((key) => {
+    const savedValue = saved[key];
+    const defaultValue = defaults[key];
+    const bothPlainObjects =
+      savedValue && typeof savedValue === "object" && !Array.isArray(savedValue) &&
+      defaultValue && typeof defaultValue === "object" && !Array.isArray(defaultValue);
+    out[key] = bothPlainObjects ? mergeSavedInputs(defaultValue, savedValue) : savedValue;
+  });
+  return out;
+}
+
 const STORAGE_KEY = "nisa-lifeplan-inputs-v1";
 const SNAPSHOT_PREFIX = "snapshot:";
 const todayKey = () => new Date().toISOString().slice(0, 10);
@@ -3974,7 +4002,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         const res = await window.storage.get(STORAGE_KEY, false);
         if (res?.value) {
           const parsed = JSON.parse(res.value);
-          if (parsed.inputs) setInputs((prev) => ({ ...prev, ...parsed.inputs }));
+          if (parsed.inputs) setInputs((prev) => mergeSavedInputs(prev, parsed.inputs));
           if (parsed.watchlist) setWatchlist(parsed.watchlist);
         }
       } catch (e) {
@@ -4006,7 +4034,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     try {
       const parsed = JSON.parse(importText);
       if (!parsed.inputs) throw new Error(t("importInputsNotFoundError"));
-      setInputs((prev) => ({ ...prev, ...parsed.inputs }));
+      setInputs((prev) => mergeSavedInputs(prev, parsed.inputs));
       if (parsed.watchlist) setWatchlist(parsed.watchlist);
       setImportOk(true);
     } catch (e) {
@@ -4096,7 +4124,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   }, [loaded, refreshHistory]);
 
   const restoreSnapshot = (entry) => {
-    if (entry.inputs) setInputs((prev) => ({ ...prev, ...entry.inputs }));
+    if (entry.inputs) setInputs((prev) => mergeSavedInputs(prev, entry.inputs));
     if (entry.watchlist) setWatchlist(entry.watchlist);
   };
   const scrollToSimulator = () => {
@@ -5188,6 +5216,13 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           font-size: 12px; color: var(--amber); background: rgba(217,165,79,0.10);
           border-bottom: 1px solid var(--line); padding: 10px 28px; line-height: 1.6;
         }
+        /* 免責表示：全ての国で常時表示し、印刷・PDFにも必ず残す（no-printを付けない） */
+        .disclaimer-banner {
+          display: flex; gap: 8px; align-items: flex-start;
+          font-size: 12px; color: var(--muted); background: rgba(124,138,144,0.08);
+          border-bottom: 1px solid var(--line); padding: 10px 28px; line-height: 1.6;
+        }
+        @media (max-width: 640px) { .disclaimer-banner { padding: 10px 16px; font-size: 11px; } }
         .history-panel {
           padding: 14px 28px; border-bottom: 1px solid var(--line);
           background: var(--panel);
@@ -5502,6 +5537,11 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               : t("todayTotalHidden")}
           </button>
         </div>
+      </div>
+      {/* 免責表示：国・言語を問わず常時表示する（印刷・PDFにも残す） */}
+      <div className="disclaimer-banner">
+        <Info size={13} />
+        <span>{t("disclaimerBanner")}</span>
       </div>
       {country !== "JP" && (
         <div className="locale-preview-warning no-print">
