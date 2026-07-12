@@ -522,34 +522,79 @@ const TRANSLATIONS = {
     "usAnnualContributionLabel": "年間拠出額",
     "usBrokerageLabel": "Brokerage Account（課税口座）",
     "usBrokerageNoLimitNote": "課税口座のため拠出上限はありません（税制優遇もありません）。",
+    "usCapGainsTaxLabel": "キャピタルゲイン税（概算）",
+    "usCapGainsTaxSub": "長期譲渡益（0/15/20%）想定",
+    "usCapitalGainLabel": "年間のキャピタルゲイン実現見込み額",
+    "usClaimAgeLabel": "受給開始年齢（62〜70歳で選択）",
     "usCombinedLimitLabel": "従業員＋雇用主 合計上限（2026年）",
     "usCoveredByPlanLabel": "勤務先の企業年金制度に加入している",
     "usDeductibleAmountLabel": "所得控除の対象額（概算）",
     "usEmployeeLimitLabel": "従業員拠出 上限（2026年）",
+    "usExpensesLabel": "退職後の生活費（Expenses）",
+    "usExpensesMonthlyLabel": "毎月の生活費見込み",
+    "usExpensesTotalLabel": "Expenses（生活費＋医療費）",
+    "usExpensesTotalSub": "年間の生活費＋医療費合計",
+    "usFederalTaxLabel": "連邦所得税（概算）",
     "usFilingHoh": "世帯主（Head of Household）",
     "usFilingMarriedJoint": "夫婦合算申告（Married Filing Jointly）",
     "usFilingMarriedSeparate": "夫婦別々申告（Married Filing Separately）",
     "usFilingSingle": "単身（Single）",
     "usFilingStatusLabel": "申告区分（Filing Status）",
+    "usFraNote": "満額支給開始年齢（Full Retirement Age）：{age}歳",
+    "usHealthInsuranceLabel": "民間医療保険料（月額・Medicare以外）",
+    "usHealthInsuranceSub": "入力した月額 × 12",
+    "usHealthInsuranceTotalLabel": "民間医療保険料（年額）",
+    "usHealthcareSourceNote": "Medicare Part B保険料は2026年のCMS公表値（標準保険料および所得に応じたIRMAA区分）に基づき自動計算しています。民間保険料・自己負担額はご自身の見込みを入力してください。",
+    "usHealthcareTotalLabel": "医療費合計（年額）",
+    "usHealthcareTotalSub": "Medicare＋民間保険料＋自己負担の合計",
     "usInvestmentSourceNote": "掲載している拠出上限は2026年分のIRS（米国内国歳入庁）公表値（Notice 2025-67、2025年11月13日公表）に基づく参考値です。実際の税務判断は専門家にご確認ください。",
     "usIraCombinedNote": "Traditional IRAとRoth IRAは拠出上限を共有します。合算した残り拠出可能額：{amount}",
     "usIraSharedLimitLabel": "IRA拠出上限（Traditional + Rothの合算・2026年）",
     "usIraSharedRemainingSub": "IRA合算上限までの残り拠出可能額",
+    "usMedicareAutoLabel": "Medicare Part B（自動計算・年額）",
+    "usMedicareAutoNote": "上のセクションで入力した申告区分・MAGIに基づき、IRMAA（所得連動追加保険料）を含めて自動計算しています。",
+    "usMedicareLabel": "Medicare Part B（年額）",
+    "usMedicareSub": "IRMAA込みの自動計算値",
     "usModifiedAGILabel": "修正調整後総所得（MAGI・年額）",
+    "usNiitLabel": "NIIT（純投資所得税）",
+    "usNiitSub": "所得が閾値超過分の3.8%",
     "usNoDeductionNote": "所得水準により、今回の拠出額は所得控除の対象外です（フェーズアウトにより全額控除不可）。",
+    "usOutOfPocketLabel": "自己負担額の年間見込み（Out of Pocket）",
+    "usOutOfPocketSub": "入力した見込み額",
+    "usOutOfPocketTotalLabel": "自己負担額（年額）",
     "usOverLimitLabel": "上限を{amount}超過しています",
     "usPartialDeductionNote": "所得水準により、控除額の一部のみが対象です（フェーズアウト適用中）。",
+    "usPiaLabel": "満額支給開始年齢（67歳）時点の月額見込み（PIA）",
     "usRemainingLabel": "上限まであと{amount}",
     "usRemainingOfLimitSub": "2026年上限までの残り拠出可能額",
+    "usRetirementIncomeLabel": "Retirement Income（年金収入）",
+    "usRetirementIncomeSub": "Social Security年間受給額",
     "usRothAllowedLabel": "拠出可能額（所得フェーズアウト後）",
     "usRothIneligibleNote": "所得水準により、Roth IRAへは直接拠出できません（フェーズアウトにより対象外）。",
     "usRothIraLabel": "Roth IRA",
     "usRothOverEligibleNote": "入力された拠出額が、所得フェーズアウト後の拠出可能額を超えています。",
     "usRothPartialNote": "所得水準により、拠出可能額の一部が制限されています（フェーズアウト適用中）。",
     "usSpouseCoveredByPlanLabel": "配偶者が勤務先の企業年金制度に加入している",
+    "usSsAnnualLabel": "年間受給額",
+    "usSsAnnualSub": "生涯にわたり継続（インフレ調整は含まず）",
+    "usSsMonthlyLabel": "受給開始年齢での月額",
+    "usSsMonthlySub": "{age}歳で受給開始した場合",
+    "usSsSourceNote": "受給開始年齢による増減率はSSA（社会保障庁）の公式ルールに基づき正確に計算しています。ただし月額見込み（PIA）はご自身の「my Social Security」アカウント等で確認した金額を入力してください（生涯収入からの自動計算は未対応です）。",
+    "usStateTaxLabel": "州税（概算）",
+    "usStateTaxRateLabel": "州税：概算の実効税率",
+    "usStateTaxSub": "入力した実効税率で計算",
+    "usSurplusLabel": "収支余剰",
+    "usSurplusSub": "年金収入が生活費・医療費を上回る年間額",
+    "usTaxSectionLabel": "税制（簡易版）",
+    "usTaxSourceNote": "連邦税・キャピタルゲイン税・NIITは2026年のIRS公表値（Revenue Procedure 2025-32）に基づく概算です。州税は州により大きく異なるため、実効税率をご自身で入力してください。",
+    "usTaxableIncomeSub": "課税所得：{amount}",
     "usTotalInvestmentLabel": "投資口座 合計評価額",
     "usTotalInvestmentSub": "401(k) + Traditional IRA + Roth IRA + Brokerageの合計",
+    "usTotalTaxLabel": "税金合計（概算）",
+    "usTotalTaxSub": "連邦税＋キャピタルゲイン税＋NIIT＋州税",
     "usTraditionalIraLabel": "Traditional IRA",
+    "usWithdrawalLabel": "Withdrawal（投資口座からの取崩し必要額）",
+    "usWithdrawalSub": "年金収入だけでは不足する年間額",
   },
   en: {
     "advancedMedicalLabel": "Advanced medical care",
@@ -922,34 +967,79 @@ const TRANSLATIONS = {
     "usAnnualContributionLabel": "Annual Contribution",
     "usBrokerageLabel": "Brokerage Account (Taxable)",
     "usBrokerageNoLimitNote": "No contribution limit (taxable account with no special tax treatment).",
+    "usCapGainsTaxLabel": "Capital Gains Tax (Estimate)",
+    "usCapGainsTaxSub": "Assumes long-term gains (0/15/20%)",
+    "usCapitalGainLabel": "Estimated Annual Capital Gains Realized",
+    "usClaimAgeLabel": "Claiming Age (choose between 62 and 70)",
     "usCombinedLimitLabel": "Combined Employee + Employer Limit (2026)",
     "usCoveredByPlanLabel": "Covered by a workplace retirement plan",
     "usDeductibleAmountLabel": "Estimated Tax-Deductible Amount",
     "usEmployeeLimitLabel": "Employee Contribution Limit (2026)",
+    "usExpensesLabel": "Retirement Expenses",
+    "usExpensesMonthlyLabel": "Estimated Monthly Living Expenses",
+    "usExpensesTotalLabel": "Expenses (Living + Healthcare)",
+    "usExpensesTotalSub": "Annual living costs plus healthcare costs",
+    "usFederalTaxLabel": "Federal Income Tax (Estimate)",
     "usFilingHoh": "Head of Household",
     "usFilingMarriedJoint": "Married Filing Jointly",
     "usFilingMarriedSeparate": "Married Filing Separately",
     "usFilingSingle": "Single",
     "usFilingStatusLabel": "Filing Status",
+    "usFraNote": "Full Retirement Age: {age}",
+    "usHealthInsuranceLabel": "Private Health Insurance Premium (Monthly, excl. Medicare)",
+    "usHealthInsuranceSub": "Monthly amount entered × 12",
+    "usHealthInsuranceTotalLabel": "Private Health Insurance (Annual)",
+    "usHealthcareSourceNote": "Medicare Part B premiums are calculated automatically using 2026 CMS figures (standard premium plus income-based IRMAA tiers). Please enter your own estimates for private insurance and out-of-pocket costs.",
+    "usHealthcareTotalLabel": "Total Healthcare Costs (Annual)",
+    "usHealthcareTotalSub": "Medicare + private insurance + out-of-pocket combined",
     "usInvestmentSourceNote": "The contribution limits shown are 2026 figures published by the IRS (Notice 2025-67, released Nov 13, 2025). Please consult a tax professional for your actual tax situation.",
     "usIraCombinedNote": "Traditional and Roth IRA contributions share one annual limit. Combined remaining room: {amount}",
     "usIraSharedLimitLabel": "IRA Contribution Limit (Traditional + Roth combined, 2026)",
     "usIraSharedRemainingSub": "Remaining room before the combined IRA limit",
+    "usMedicareAutoLabel": "Medicare Part B (Auto-calculated, Annual)",
+    "usMedicareAutoNote": "Calculated automatically, including IRMAA (income-based surcharge), using the filing status and MAGI entered in the Investment section above.",
+    "usMedicareLabel": "Medicare Part B (Annual)",
+    "usMedicareSub": "Auto-calculated, includes IRMAA",
     "usModifiedAGILabel": "Modified AGI (annual)",
+    "usNiitLabel": "NIIT (Net Investment Income Tax)",
+    "usNiitSub": "3.8% of income over the threshold",
     "usNoDeductionNote": "Based on your income, this contribution is not tax-deductible (fully phased out).",
+    "usOutOfPocketLabel": "Estimated Annual Out-of-Pocket Costs",
+    "usOutOfPocketSub": "As estimated",
+    "usOutOfPocketTotalLabel": "Out-of-Pocket Costs (Annual)",
     "usOverLimitLabel": "{amount} over the limit",
     "usPartialDeductionNote": "Based on your income, only part of this contribution is deductible (phase-out applies).",
+    "usPiaLabel": "Estimated Monthly Benefit at Full Retirement Age (67, PIA)",
     "usRemainingLabel": "{amount} remaining before the limit",
     "usRemainingOfLimitSub": "Remaining room before the 2026 limit",
+    "usRetirementIncomeLabel": "Retirement Income",
+    "usRetirementIncomeSub": "Annual Social Security benefit",
     "usRothAllowedLabel": "Allowed Contribution (after income phase-out)",
     "usRothIneligibleNote": "Based on your income, you are not eligible to contribute directly to a Roth IRA (fully phased out).",
     "usRothIraLabel": "Roth IRA",
     "usRothOverEligibleNote": "The contribution amount entered exceeds what your income allows after the phase-out.",
     "usRothPartialNote": "Based on your income, your allowed contribution is reduced (phase-out applies).",
     "usSpouseCoveredByPlanLabel": "Spouse is covered by a workplace retirement plan",
+    "usSsAnnualLabel": "Annual Benefit",
+    "usSsAnnualSub": "Continues for life (excludes future COLA adjustments)",
+    "usSsMonthlyLabel": "Monthly Benefit at Claiming Age",
+    "usSsMonthlySub": "If claimed at age {age}",
+    "usSsSourceNote": "The claiming-age adjustment factors are calculated exactly per SSA (Social Security Administration) rules. However, please enter your estimated monthly benefit (PIA) from your own my Social Security account statement — automatic calculation from lifetime earnings is not supported.",
+    "usStateTaxLabel": "State Tax (Estimate)",
+    "usStateTaxRateLabel": "State Tax: Estimated Effective Rate",
+    "usStateTaxSub": "Based on the effective rate you entered",
+    "usSurplusLabel": "Income Surplus",
+    "usSurplusSub": "Annual amount by which income exceeds expenses",
+    "usTaxSectionLabel": "Tax (Simplified)",
+    "usTaxSourceNote": "Federal tax, capital gains tax, and NIIT are estimates based on 2026 IRS figures (Revenue Procedure 2025-32). State tax varies widely by state, so please enter your own estimated effective rate.",
+    "usTaxableIncomeSub": "Taxable income: {amount}",
     "usTotalInvestmentLabel": "Total Investment Account Value",
     "usTotalInvestmentSub": "Combined 401(k) + Traditional IRA + Roth IRA + Brokerage",
+    "usTotalTaxLabel": "Total Tax (Estimate)",
+    "usTotalTaxSub": "Federal + Capital Gains + NIIT + State",
     "usTraditionalIraLabel": "Traditional IRA",
+    "usWithdrawalLabel": "Withdrawal (Needed from Investment Accounts)",
+    "usWithdrawalSub": "Annual shortfall not covered by Social Security",
   },
 };
 
@@ -1205,19 +1295,172 @@ const US_COUNTRY_RULES = {
     },
   },
   retirement: {
-    implemented: false,
-    plannedAccountTypes: ["socialSecurity", "medicare"],
-    hasFixedContributionLimit: null,
+    implemented: true,
+    accountTypes: ["socialSecurity"],
+    // 出典：SSA "Retirement Age and Benefit Reduction" / "Delayed Retirement Credits"（ssa.gov）。
+    // 1960年以降生まれの満額支給開始年齢（Full Retirement Age）は67歳で固定。
+    sourceNote: "SSA rules (ssa.gov): full retirement age 67 for anyone born 1960 or later. Early claiming reduces benefits; delayed claiming increases them.",
+    socialSecurity: {
+      fullRetirementAge: 67,
+      earliestClaimAge: 62,
+      latestClaimAge: 70,
+      // 早期受給：FRAより前の最初の36ヶ月は月あたり5/9%減額、それ以前（36ヶ月超）は月あたり5/12%減額
+      earlyReductionPerMonthFirst36: 5 / 9 / 100,
+      earlyReductionPerMonthBeyond36: 5 / 12 / 100,
+      // 繰下げ受給：FRAより後は月あたり2/3%増額（年8%）、70歳で頭打ち
+      delayedCreditPerMonth: (2 / 3) / 100,
+    },
+    // 満額（FRA）受給額に対する倍率を、実際に受給を開始する年齢から計算する（月単位で正確に計算）。
+    getClaimingFactor(claimAgeInYears) {
+      const ss = this.socialSecurity;
+      const fraMonths = ss.fullRetirementAge * 12;
+      const claimMonths = Math.round(claimAgeInYears * 12);
+      const diffMonths = claimMonths - fraMonths;
+      if (diffMonths >= 0) {
+        // 繰下げ受給（70歳＝FRA+36ヶ月で頭打ち）
+        const cappedMonths = Math.min(diffMonths, (ss.latestClaimAge - ss.fullRetirementAge) * 12);
+        return 1 + cappedMonths * ss.delayedCreditPerMonth;
+      }
+      // 早期受給
+      const monthsEarly = Math.min(-diffMonths, (ss.fullRetirementAge - ss.earliestClaimAge) * 12);
+      const first36 = Math.min(monthsEarly, 36);
+      const beyond36 = Math.max(0, monthsEarly - 36);
+      const reduction = first36 * ss.earlyReductionPerMonthFirst36 + beyond36 * ss.earlyReductionPerMonthBeyond36;
+      return 1 - reduction;
+    },
+    // 月額の実受給額 = FRA時点の月額（PIA、ユーザー入力） × 受給開始年齢に応じた倍率
+    getMonthlyBenefit(piaMonthly, claimAgeInYears) {
+      return piaMonthly * this.getClaimingFactor(claimAgeInYears);
+    },
   },
   healthcare: {
-    implemented: false,
-    // 米国は公的医療保険制度が日本と大きく異なるため、専用モデル（Medicare／民間保険控除後の
-    // 自己負担想定など）の設計が別途必要。
-    model: null,
+    implemented: true,
+    model: "medicarePartBWithIrmaa",
+    // 出典：CMS "2026 Medicare Parts A & B Premiums and Deductibles"（cms.gov、2025年11月14日発表）。
+    sourceNote: "CMS 2026 Medicare Part B premium and IRMAA brackets (announced Nov 14, 2025).",
+    medicare2026: {
+      standardPartB: 202.90,
+      // IRMAA（所得に応じた追加保険料）区分。しきい値はMAGI（修正調整後総所得）。
+      irmaaSingleOrHoh: [
+        { upTo: 109000, premium: 202.90 },
+        { upTo: 137000, premium: 284.10 },
+        { upTo: 171000, premium: 405.80 },
+        { upTo: 205000, premium: 527.50 },
+        { upTo: 499999, premium: 649.20 },
+        { upTo: Infinity, premium: 689.90 },
+      ],
+      irmaaMarriedJoint: [
+        { upTo: 218000, premium: 202.90 },
+        { upTo: 274000, premium: 284.10 },
+        { upTo: 342000, premium: 405.80 },
+        { upTo: 410000, premium: 527.50 },
+        { upTo: 749999, premium: 649.20 },
+        { upTo: Infinity, premium: 689.90 },
+      ],
+      // 別居していない夫婦の個別申告（Married Filing Separately）は中間区分がなく急に跳ね上がる
+      irmaaMarriedSeparate: [
+        { upTo: 109000, premium: 202.90 },
+        { upTo: 390999, premium: 649.20 },
+        { upTo: Infinity, premium: 689.90 },
+      ],
+    },
+    // 年間のMedicare Part B保険料（IRMAA込み）を試算する
+    getAnnualMedicarePartB(filingStatus, magi) {
+      const table = filingStatus === "marriedJoint"
+        ? this.medicare2026.irmaaMarriedJoint
+        : filingStatus === "marriedSeparate"
+          ? this.medicare2026.irmaaMarriedSeparate
+          : this.medicare2026.irmaaSingleOrHoh;
+      const bracket = table.find((b) => magi <= b.upTo) || table[table.length - 1];
+      return bracket.premium * 12;
+    },
   },
   tax: {
-    implemented: false,
-    model: null,
+    implemented: true,
+    model: "federalBracketsPlusLtcgPlusNiit",
+    // 出典：IRS "2026 tax inflation adjustments"（Revenue Procedure 2025-32）。州税は州により大きく異なるため、
+    // このアプリでは固定税率を推測せず、ユーザー自身が概算の実効税率を入力する方式にしている。
+    sourceNote: "IRS Revenue Procedure 2025-32 (2026 federal brackets, standard deduction, LTCG brackets, NIIT threshold). State tax is user-entered since it varies by state.",
+    federalBrackets2026: {
+      single: [
+        { upTo: 12400, rate: 0.10 },
+        { upTo: 50400, rate: 0.12 },
+        { upTo: 105700, rate: 0.22 },
+        { upTo: 201775, rate: 0.24 },
+        { upTo: 256225, rate: 0.32 },
+        { upTo: 640600, rate: 0.35 },
+        { upTo: Infinity, rate: 0.37 },
+      ],
+      marriedJoint: [
+        { upTo: 24800, rate: 0.10 },
+        { upTo: 100800, rate: 0.12 },
+        { upTo: 211400, rate: 0.22 },
+        { upTo: 403550, rate: 0.24 },
+        { upTo: 512450, rate: 0.32 },
+        { upTo: 768700, rate: 0.35 },
+        { upTo: Infinity, rate: 0.37 },
+      ],
+    },
+    standardDeduction2026: {
+      single: 16100,
+      marriedJoint: 32200,
+      marriedSeparate: 16100,
+      headOfHousehold: 24150,
+    },
+    // 長期キャピタルゲイン税率（0/15/20%）の所得区分（課税所得ベース）
+    ltcgBrackets2026: {
+      single: [{ upTo: 49450, rate: 0 }, { upTo: 545500, rate: 0.15 }, { upTo: Infinity, rate: 0.20 }],
+      marriedJoint: [{ upTo: 98900, rate: 0 }, { upTo: 613700, rate: 0.15 }, { upTo: Infinity, rate: 0.20 }],
+      marriedSeparate: [{ upTo: 49450, rate: 0 }, { upTo: 306850, rate: 0.15 }, { upTo: Infinity, rate: 0.20 }],
+      headOfHousehold: [{ upTo: 66200, rate: 0 }, { upTo: 579600, rate: 0.15 }, { upTo: Infinity, rate: 0.20 }],
+    },
+    // Net Investment Income Tax：3.8%が投資所得にかかる追加税（MAGIが閾値を超えた分にのみ適用）
+    niitRate: 0.038,
+    niitThreshold: { single: 200000, marriedJoint: 250000, marriedSeparate: 125000, headOfHousehold: 200000 },
+    // 累進課税：課税所得（gross - standard deduction）に区分ごとの税率を順番に適用する
+    calculateFederalTax(grossIncome, filingStatus) {
+      const fs = this.federalBrackets2026[filingStatus] ? filingStatus : "single";
+      const deduction = this.standardDeduction2026[fs] || this.standardDeduction2026.single;
+      const taxableIncome = Math.max(0, grossIncome - deduction);
+      const brackets = this.federalBrackets2026[fs === "marriedSeparate" || fs === "headOfHousehold" ? "single" : fs] || this.federalBrackets2026.single;
+      let tax = 0;
+      let lower = 0;
+      for (const b of brackets) {
+        if (taxableIncome > lower) {
+          const taxableAtThisRate = Math.min(taxableIncome, b.upTo) - lower;
+          tax += taxableAtThisRate * b.rate;
+          lower = b.upTo;
+        } else break;
+      }
+      return { taxableIncome, tax };
+    },
+    // 長期キャピタルゲイン税額（他の所得の上に積み上がるものとして概算）
+    calculateLtcgTax(ordinaryTaxableIncome, gain, filingStatus) {
+      const fs = this.ltcgBrackets2026[filingStatus] ? filingStatus : "single";
+      const brackets = this.ltcgBrackets2026[fs];
+      let tax = 0;
+      let stackStart = ordinaryTaxableIncome;
+      let remainingGain = gain;
+      let lower = 0;
+      for (const b of brackets) {
+        if (remainingGain <= 0) break;
+        const bandTop = b.upTo;
+        const bandRemaining = Math.max(0, bandTop - Math.max(lower, stackStart));
+        const amountInBand = Math.min(remainingGain, bandRemaining);
+        if (stackStart < bandTop && amountInBand > 0) {
+          tax += amountInBand * b.rate;
+          remainingGain -= amountInBand;
+          stackStart += amountInBand;
+        }
+        lower = bandTop;
+      }
+      return tax;
+    },
+    calculateNiit(magi, netInvestmentIncome, filingStatus) {
+      const threshold = this.niitThreshold[filingStatus] || this.niitThreshold.single;
+      const excess = Math.max(0, magi - threshold);
+      return Math.min(excess, Math.max(0, netInvestmentIncome)) * this.niitRate;
+    },
   },
   labels: {
     investmentNote: "investmentLimitsNotImplementedNote",
@@ -2151,7 +2394,7 @@ function AllocationBreakdown({ items, newItem, onNewItemChange, onAdd, onRemove,
 // ---------- アメリカ選択時：投資口座パネル（401(k) / Traditional IRA / Roth IRA / Brokerage） ----------
 // JP側のNISA関連ステート・計算（tsumitateSchedule, NISA_LIMITS, runSimulation等）とは
 // 完全に独立している。計算ロジックは US_COUNTRY_RULES.investment の純粋関数のみを使用する。
-function USInvestmentAccountsPanel({ usInvestment, onUpdate, onUpdateAccount, age, investmentRules }) {
+function USInvestmentAccountsPanel({ usInvestment, onUpdate, onUpdateAccount, age, investmentRules, taxRules, taxResult }) {
   const { t, money } = useContext(LocaleContext);
   const fs = usInvestment.filingStatus;
   const magi = Number(usInvestment.modifiedAGI) || 0;
@@ -2299,6 +2542,91 @@ function USInvestmentAccountsPanel({ usInvestment, onUpdate, onUpdateAccount, ag
       <div className="stat-grid" style={{ marginTop: 16 }}>
         <StatCard label={t("usTotalInvestmentLabel")} value={money(Number(usInvestment.k401.currentValue || 0) + Number(usInvestment.traditionalIra.currentValue || 0) + Number(usInvestment.rothIra.currentValue || 0) + brokerageValue)} sub={t("usTotalInvestmentSub")} />
       </div>
+
+      <div className="section-block" style={{ borderColor: "#5FB0A0", marginTop: 16 }}>
+        <div className="field-label" style={{ marginBottom: 6 }}>{t("usTaxSectionLabel")}</div>
+        <div className="note" style={{ marginBottom: 12 }}>
+          <Info size={13} />
+          <span>{t("usTaxSourceNote")}</span>
+        </div>
+        <Field label={t("usStateTaxRateLabel")} unit="%" step={0.5} value={usInvestment.stateTaxRatePct} onChange={(v) => onUpdate("stateTaxRatePct", v)} />
+        <Field label={t("usCapitalGainLabel")} unit="$" step={1000} value={usInvestment.estimatedCapitalGainAnnual} onChange={(v) => onUpdate("estimatedCapitalGainAnnual", v)} />
+        <div className="stat-grid" style={{ marginTop: 10 }}>
+          <StatCard label={t("usFederalTaxLabel")} value={money(taxResult.federalTax)} sub={t("usTaxableIncomeSub", { amount: money(taxResult.taxableIncome) })} />
+          <StatCard label={t("usCapGainsTaxLabel")} value={money(taxResult.ltcgTax)} sub={t("usCapGainsTaxSub")} />
+          <StatCard label={t("usNiitLabel")} value={money(taxResult.niit)} sub={t("usNiitSub")} />
+          <StatCard label={t("usStateTaxLabel")} value={money(taxResult.stateTax)} sub={t("usStateTaxSub")} />
+        </div>
+        <div className="stat-grid" style={{ marginTop: 10 }}>
+          <StatCard label={t("usTotalTaxLabel")} value={money(taxResult.totalTax)} sub={t("usTotalTaxSub")} tone="danger" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------- アメリカ選択時：退職後パネル（Social Security → Expenses → Withdrawal） ----------
+function USRetirementPanel({ usInvestment, onUpdateSS, onUpdate, retirementRules, claimAge, ssMonthly, ssAnnual, expensesAnnual, healthcareAnnual, withdrawalNeeded, incomeSurplus }) {
+  const { t, money } = useContext(LocaleContext);
+  const ss = retirementRules.socialSecurity;
+  return (
+    <div>
+      <div className="note" style={{ marginBottom: 12 }}>
+        <Info size={13} />
+        <span>{t("usSsSourceNote")}</span>
+      </div>
+      <Field label={t("usPiaLabel")} unit="$" step={50} value={usInvestment.socialSecurity.piaMonthly} onChange={(v) => onUpdateSS("piaMonthly", v)} />
+      <AgeField
+        label={t("usClaimAgeLabel")}
+        value={claimAge}
+        onChange={(v) => onUpdateSS("claimAge", Math.min(ss.latestClaimAge, Math.max(ss.earliestClaimAge, Math.round(v))))}
+      />
+      <div className="stat-sub">{t("usFraNote", { age: ss.fullRetirementAge })}</div>
+      <div className="stat-grid" style={{ marginTop: 10, marginBottom: 14 }}>
+        <StatCard label={t("usSsMonthlyLabel")} value={money(ssMonthly)} sub={t("usSsMonthlySub", { age: claimAge })} />
+        <StatCard label={t("usSsAnnualLabel")} value={money(ssAnnual)} sub={t("usSsAnnualSub")} />
+      </div>
+
+      <div className="field-label" style={{ marginBottom: 6 }}>{t("usExpensesLabel")}</div>
+      <Field label={t("usExpensesMonthlyLabel")} unit="$" step={100} value={usInvestment.expensesMonthly} onChange={(v) => onUpdate("expensesMonthly", v)} />
+
+      <div className="stat-grid" style={{ marginTop: 10 }}>
+        <StatCard label={t("usRetirementIncomeLabel")} value={money(ssAnnual)} sub={t("usRetirementIncomeSub")} tone="good" />
+        <StatCard label={t("usExpensesTotalLabel")} value={money(expensesAnnual + healthcareAnnual)} sub={t("usExpensesTotalSub")} />
+        {withdrawalNeeded > 0 ? (
+          <StatCard label={t("usWithdrawalLabel")} value={money(withdrawalNeeded)} sub={t("usWithdrawalSub")} tone="danger" />
+        ) : (
+          <StatCard label={t("usSurplusLabel")} value={money(incomeSurplus)} sub={t("usSurplusSub")} tone="good" />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---------- アメリカ選択時：医療費パネル（Medicare / Health Insurance / Out of Pocket） ----------
+function USHealthcarePanel({ usInvestment, onUpdate, medicareAnnual, healthInsuranceAnnual, outOfPocketAnnual, totalAnnual }) {
+  const { t, money } = useContext(LocaleContext);
+  return (
+    <div>
+      <div className="note" style={{ marginBottom: 12 }}>
+        <Info size={13} />
+        <span>{t("usHealthcareSourceNote")}</span>
+      </div>
+      <div className="stat-sub">{t("usMedicareAutoLabel")}：<span className="mono">{money(medicareAnnual)}</span></div>
+      <div className="note" style={{ marginTop: -4, marginBottom: 12 }}>
+        <Info size={13} />
+        <span>{t("usMedicareAutoNote")}</span>
+      </div>
+      <Field label={t("usHealthInsuranceLabel")} unit="$" step={50} value={usInvestment.healthcare.healthInsuranceMonthly} onChange={(v) => onUpdate("healthInsuranceMonthly", v)} />
+      <Field label={t("usOutOfPocketLabel")} unit="$" step={100} value={usInvestment.healthcare.outOfPocketAnnual} onChange={(v) => onUpdate("outOfPocketAnnual", v)} />
+      <div className="stat-grid" style={{ marginTop: 10 }}>
+        <StatCard label={t("usMedicareLabel")} value={money(medicareAnnual)} sub={t("usMedicareSub")} />
+        <StatCard label={t("usHealthInsuranceTotalLabel")} value={money(healthInsuranceAnnual)} sub={t("usHealthInsuranceSub")} />
+        <StatCard label={t("usOutOfPocketTotalLabel")} value={money(outOfPocketAnnual)} sub={t("usOutOfPocketSub")} />
+      </div>
+      <div className="stat-grid" style={{ marginTop: 10 }}>
+        <StatCard label={t("usHealthcareTotalLabel")} value={money(totalAnnual)} sub={t("usHealthcareTotalSub")} tone="danger" />
+      </div>
     </div>
   );
 }
@@ -2410,6 +2738,21 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       traditionalIra: { currentValue: 0, annualContribution: 0 },
       rothIra: { currentValue: 0, annualContribution: 0 },
       brokerage: { currentValue: 0, annualContribution: 0 },
+      // ① Social Security（公的年金）
+      socialSecurity: {
+        piaMonthly: 0, // Full Retirement Age（67歳）時点の月額見込み（ユーザー入力・SSA statement等を参照）
+        claimAge: 67, // 62〜70の範囲で選択（早期受給／通常受給／繰下げ受給）
+      },
+      // ③ Healthcare（米国向け）
+      healthcare: {
+        healthInsuranceMonthly: 0, // Medicare以外の民間医療保険料（該当する場合）
+        outOfPocketAnnual: 0, // 自己負担分の年間見込み額
+      },
+      // ④ Tax（簡易版）
+      stateTaxRatePct: 0, // 州税は州により大きく異なるため、概算の実効税率をユーザーが入力する
+      estimatedCapitalGainAnnual: 0, // 年間のキャピタルゲイン実現見込み額（Brokerage口座想定）
+      // ⑤ 退職後の生活費（Expenses）。JPのlivingCostMonthlyとは別データ
+      expensesMonthly: 0,
     },
   });
   const [watchlist, setWatchlist] = useState(DEFAULT_WATCHLIST);
@@ -2428,6 +2771,48 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     () => SUPPORTED_COUNTRIES.find((c) => c.code === country)?.name || country,
     [country]
   );
+
+  // ---------- アメリカ選択時の派生計算（すべて US_COUNTRY_RULES の関数のみを使用） ----------
+  // country !== "US" のときは呼び出さない（JP_COUNTRY_RULES 等には同名メソッドが存在しないため）。
+  const usFilingStatus = inputs.usInvestment.filingStatus;
+  const usMagi = Number(inputs.usInvestment.modifiedAGI) || 0;
+  const usFederalTaxResult = (country === "US" && rules.tax.implemented)
+    ? rules.tax.calculateFederalTax(usMagi, usFilingStatus)
+    : { taxableIncome: 0, tax: 0 };
+  const usCapitalGain = Number(inputs.usInvestment.estimatedCapitalGainAnnual) || 0;
+  const usLtcgTax = (country === "US" && rules.tax.implemented)
+    ? rules.tax.calculateLtcgTax(usFederalTaxResult.taxableIncome, usCapitalGain, usFilingStatus)
+    : 0;
+  const usNiit = (country === "US" && rules.tax.implemented)
+    ? rules.tax.calculateNiit(usMagi, usCapitalGain, usFilingStatus)
+    : 0;
+  const usStateTax = country === "US" ? usMagi * ((Number(inputs.usInvestment.stateTaxRatePct) || 0) / 100) : 0;
+  const usTotalTax = usFederalTaxResult.tax + usLtcgTax + usNiit + usStateTax;
+
+  const usMedicareAnnual = (country === "US" && rules.healthcare.implemented)
+    ? rules.healthcare.getAnnualMedicarePartB(usFilingStatus, usMagi)
+    : 0;
+  const usHealthInsuranceAnnual = (Number(inputs.usInvestment.healthcare.healthInsuranceMonthly) || 0) * 12;
+  const usOutOfPocketAnnual = Number(inputs.usInvestment.healthcare.outOfPocketAnnual) || 0;
+  const usTotalHealthcareAnnual = usMedicareAnnual + usHealthInsuranceAnnual + usOutOfPocketAnnual;
+
+  const usClaimAge = Number(inputs.usInvestment.socialSecurity.claimAge) || 67;
+  const usPiaMonthly = Number(inputs.usInvestment.socialSecurity.piaMonthly) || 0;
+  const usSSMonthlyBenefit = (country === "US" && rules.retirement.implemented)
+    ? rules.retirement.getMonthlyBenefit(usPiaMonthly, usClaimAge)
+    : 0;
+  const usSSAnnualBenefit = usSSMonthlyBenefit * 12;
+
+  const usExpensesAnnual = (Number(inputs.usInvestment.expensesMonthly) || 0) * 12;
+  const usRetirementIncomeAnnual = usSSAnnualBenefit;
+  const usWithdrawalNeeded = Math.max(0, usExpensesAnnual + usTotalHealthcareAnnual - usRetirementIncomeAnnual);
+  const usIncomeSurplus = Math.max(0, usRetirementIncomeAnnual - (usExpensesAnnual + usTotalHealthcareAnnual));
+  const usTotalInvestmentBalance =
+    (Number(inputs.usInvestment.k401.currentValue) || 0) +
+    (Number(inputs.usInvestment.traditionalIra.currentValue) || 0) +
+    (Number(inputs.usInvestment.rothIra.currentValue) || 0) +
+    (Number(inputs.usInvestment.brokerage.currentValue) || 0);
+
   const money = useCallback((n) => formatMoneyFor(baseCurrency, n), [baseCurrency]);
   const label = useCallback((key) => getCategoryLabel(key, country), [country]);
   const t = useCallback((key, vars) => translateWith(language, key, vars), [language]);
@@ -2660,6 +3045,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         [accountKey]: { ...prev.usInvestment[accountKey], [field]: val },
       },
     }));
+  // socialSecurity / healthcare も同じ入れ子構造なので同じ更新関数を流用できる
+  const updateUsInvestmentNested = updateUsInvestmentAccount;
 
   // 積立・成長投資枠・一括投資の銘柄別内訳、および「つみたて/成長投資枠：実際の残高」に入力された銘柄を集約して、
   // そのままスライダー（自動計算・操作不可）として表示する
@@ -4392,6 +4779,15 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               onUpdateAccount={updateUsInvestmentAccount}
               age={effectiveCurrentAge}
               investmentRules={rules.investment}
+              taxRules={rules.tax}
+              taxResult={{
+                federalTax: usFederalTaxResult.tax,
+                taxableIncome: usFederalTaxResult.taxableIncome,
+                ltcgTax: usLtcgTax,
+                niit: usNiit,
+                stateTax: usStateTax,
+                totalTax: usTotalTax,
+              }}
             />
           ) : (
             <div className="note" style={{ borderLeftColor: "#D9A54F" }}>
@@ -4553,6 +4949,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           </div>
           <div className="section-block" style={{ borderColor: "#C2694F" }}>
           <SectionTitle index="04" title={label("pensionRetirement")} icon={Landmark} />
+          {country === "JP" ? (
+          <>
           <div className="field-label" style={{ marginBottom: 6 }}>{t("pensionSourcesLabel")}</div>
           {inputs.pensionSources.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 8 }}>
@@ -4610,18 +5008,50 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               </span>
             </div>
           )}
+          </>
+          ) : country === "US" && rules.retirement.implemented ? (
+            <USRetirementPanel
+              usInvestment={inputs.usInvestment}
+              onUpdateSS={(field, val) => updateUsInvestmentNested("socialSecurity", field, val)}
+              onUpdate={updateUsInvestment}
+              retirementRules={rules.retirement}
+              claimAge={usClaimAge}
+              ssMonthly={usSSMonthlyBenefit}
+              ssAnnual={usSSAnnualBenefit}
+              expensesAnnual={usExpensesAnnual}
+              healthcareAnnual={usTotalHealthcareAnnual}
+              withdrawalNeeded={usWithdrawalNeeded}
+              incomeSurplus={usIncomeSurplus}
+            />
+          ) : (
+            <div className="note" style={{ borderLeftColor: "#D9A54F" }}>
+              <Info size={13} style={{ color: "#D9A54F" }} />
+              <span>{t(rules.labels.retirementNote, { country: countryDisplayName })}</span>
+            </div>
+          )}
 
           </div>
           <div className="section-block" style={{ borderColor: "#7BC9E0" }}>
           <SectionTitle index="05" title={label("healthCost")} icon={HeartPulse} />
+          {country === "JP" ? (
+          <>
           <Field label={t("health60sLabel")} unit={uPerYear} step={10000} value={inputs.healthBrackets.b60} onChange={(v) => updateHealth("b60", v)} />
           <Field label={t("health70sLabel")} unit={uPerYear} step={10000} value={inputs.healthBrackets.b70} onChange={(v) => updateHealth("b70", v)} />
           <Field label={t("health80sLabel")} unit={uPerYear} step={10000} value={inputs.healthBrackets.b80} onChange={(v) => updateHealth("b80", v)} />
-          {rules.healthcare.implemented ? (
-            <div className="note">
-              <Info size={13} />
-              <span>{t("healthCostNote")}</span>
-            </div>
+          <div className="note">
+            <Info size={13} />
+            <span>{t("healthCostNote")}</span>
+          </div>
+          </>
+          ) : country === "US" && rules.healthcare.implemented ? (
+            <USHealthcarePanel
+              usInvestment={inputs.usInvestment}
+              onUpdate={(field, val) => updateUsInvestmentNested("healthcare", field, val)}
+              medicareAnnual={usMedicareAnnual}
+              healthInsuranceAnnual={usHealthInsuranceAnnual}
+              outOfPocketAnnual={usOutOfPocketAnnual}
+              totalAnnual={usTotalHealthcareAnnual}
+            />
           ) : (
             <div className="note" style={{ borderLeftColor: "#D9A54F" }}>
               <Info size={13} style={{ color: "#D9A54F" }} />
