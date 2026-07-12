@@ -738,11 +738,11 @@ function AllocationCharts({ items, height = 180 }) {
   if (total <= 0) return null;
   const renderPieLabel = ({ cx, cy, midAngle, outerRadius, percent, name, value }) => {
     const RADIAN = Math.PI / 180;
-    const radius = outerRadius + 8;
+    const radius = outerRadius + 4;
     const x = cx + radius * Math.cos(-midAngle * RADIAN);
     const y = cy + radius * Math.sin(-midAngle * RADIAN);
     return (
-      <text x={x} y={y} fill="#B7C2C7" fontSize={9} textAnchor={x > cx ? "start" : "end"} dominantBaseline="central">
+      <text x={x} y={y} fill="#B7C2C7" fontSize={7.5} textAnchor={x > cx ? "start" : "end"} dominantBaseline="central">
         {`${name} ${yen(value)}（${(percent * 100).toFixed(0)}%）`}
       </text>
     );
