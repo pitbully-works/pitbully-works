@@ -998,6 +998,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
   const [historyDebug, setHistoryDebug] = useState("");
   const [showBackup, setShowBackup] = useState(false);
+  const [showTodayTotal, setShowTodayTotal] = useState(false);
   const [importText, setImportText] = useState("");
   const [importError, setImportError] = useState("");
   const [importOk, setImportOk] = useState(false);
@@ -2310,6 +2311,11 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           </button>
           <button className="history-toggle no-print" onClick={() => window.print()}>
             PDFで保存 / 印刷
+          </button>
+          <button className="history-toggle no-print" onClick={() => setShowTodayTotal((v) => !v)}>
+            {showTodayTotal
+              ? `現在の日付で算出した総資産：${yen(netWorthYearly[0]?.netWorth ?? netWorthFinal)}`
+              : "現在の日付で算出した総資産"}
           </button>
         </div>
       </div>
