@@ -26,7 +26,8 @@ const yen = (n) => {
 // 多言語・多通貨対応のみを行い、計算ロジックは日本の現行ルールのまま。
 // ============================================================================
 
-// 初期対応国（将来ここに追加するだけで選択肢が増える設計）
+// 初期対応国（将来ここに追加するだけで選択肢が増える設計）。コードはISO 3166-1 alpha-2に統一
+// （イギリスは "UK" ではなく ISO準拠の "GB" を使用）。
 export const SUPPORTED_COUNTRIES = [
   { code: "JP", flag: "🇯🇵", name: "日本" },
   { code: "US", flag: "🇺🇸", name: "United States" },
@@ -35,14 +36,22 @@ export const SUPPORTED_COUNTRIES = [
   { code: "AU", flag: "🇦🇺", name: "Australia" },
 ];
 
-// 国 → 通貨（コード・記号・ロケール）。将来通貨を追加する場合もここに1行追加するだけ。
-const CURRENCY_CONFIG = {
-  JP: { code: "JPY", symbol: "¥", locale: "ja-JP" },
-  US: { code: "USD", symbol: "$", locale: "en-US" },
-  GB: { code: "GBP", symbol: "£", locale: "en-GB" },
-  CA: { code: "CAD", symbol: "$", locale: "en-CA" },
-  AU: { code: "AUD", symbol: "$", locale: "en-AU" },
+// 通貨（コード・記号・ロケール）。キーは通貨コード（ISO 4217）そのものにし、
+// 「表示国」からは独立したデータとして管理する（例：日本在住でもUSD表示、海外在住の日本人でもJPY表示、が将来可能）。
+// 将来通貨を追加する場合もここに1行追加するだけでよい。
+const CURRENCY_BY_CODE = {
+  JPY: { symbol: "¥", locale: "ja-JP" },
+  USD: { symbol: "$", locale: "en-US" },
+  GBP: { symbol: "£", locale: "en-GB" },
+  CAD: { symbol: "$", locale: "en-CA" },
+  AUD: { symbol: "$", locale: "en-AU" },
 };
+
+// 国を選んだ際に「初期値として」自動設定する基準通貨・表示言語。
+// あくまで初期値であり、保存データ上は country / baseCurrency / language は別項目として保持される
+// （将来、この自動連動を切り離して個別に変更できるUIを追加しても、データ構造の変更は不要）。
+const DEFAULT_CURRENCY_BY_COUNTRY = { JP: "JPY", US: "USD", GB: "GBP", CA: "CAD", AU: "AUD" };
+const DEFAULT_LANGUAGE_BY_COUNTRY = { JP: "ja", US: "en", GB: "en", CA: "en", AU: "en" };
 
 // 世界共通の内部カテゴリ・キー → 国別の「表示名」だけを切り替えるテーブル。
 // データ構造・計算ロジックはこのキー（例："investmentTaxAdvantaged"）を使い、
@@ -134,22 +143,26 @@ function getCategoryLabel(key, country) {
   return entry[country] || entry.JP;
 }
 
-// 国に応じた金額フォーマット。JPは既存のyen()と完全に同一の出力を維持する
-// （＝国を選択しない/日本のままなら、見た目は1文字も変わらない）。
-function formatMoneyFor(country, n) {
-  if (!country || country === "JP") return yen(n);
+// 金額フォーマットは「表示国」ではなく「基準通貨（baseCurrency）」に基づく。
+// 国と通貨は別データとして保持するため、将来は国と無関係に通貨だけを切り替えられる。
+// baseCurrencyがJPY（＝未設定を含む）の場合は、既存のyen()と完全に同一の出力を維持する
+// （＝国・通貨を選択しない/日本のままなら、見た目は1文字も変わらない）。
+function formatMoneyFor(baseCurrency, n) {
+  if (!baseCurrency || baseCurrency === "JPY") return yen(n);
   if (n === null || n === undefined || isNaN(n)) n = 0;
-  const cfg = CURRENCY_CONFIG[country] || CURRENCY_CONFIG.JP;
+  const cfg = CURRENCY_BY_CODE[baseCurrency] || CURRENCY_BY_CODE.JPY;
   const sign = n < 0 ? "-" : "";
   const abs = Math.abs(Math.round(n));
   return `${sign}${cfg.symbol}${abs.toLocaleString(cfg.locale)}`;
 }
 
-// 表示層（見出し・金額フォーマット）だけを配布するための軽量Context。
+// 表示層（見出し・金額フォーマット・現在の国/通貨/言語設定）だけを配布するための軽量Context。
 // AllocationCharts等、メインコンポーネントの外側にある小コンポーネントからも
-// props経由でバケツリレーせずに現在の国設定へアクセスできるようにする。
+// props経由でバケツリレーせずに現在の設定へアクセスできるようにする。
 const LocaleContext = createContext({
   country: "JP",
+  baseCurrency: "JPY",
+  language: "ja",
   money: yen,
   label: (key) => getCategoryLabel(key, "JP"),
 });
@@ -158,12 +171,41 @@ function monthlyRate(annualPct) {
   return Math.pow(1 + annualPct / 100, 1 / 12) - 1;
 }
 
+// ============================================================================
+// ---------- 国別計算ルール（countryRules/ 相当）----------
+// 目的：投資枠・税制上限などの「数値」を画面コード内に直書きし続けるのではなく、
+// 国ごとの設定オブジェクトへ集約する。
+// 将来的にファイルを分割する場合は、この COUNTRY_RULES オブジェクトの中身をそのまま
+//   countryRules/JP.js, countryRules/US.js, countryRules/GB.js, countryRules/CA.js, countryRules/AU.js
+// へ切り出し、ここで import してマージする形を想定（1ファイル運用の制約上、現時点ではこのファイル内にまとめている）。
+// 今回のスコープでは日本（JP）の計算式・数値は一切変更していない。US/GB/CA/AU は
+// 将来の実装のためのプレースホルダーのみで、実際の計算はまだ日本のルールを代用している。
+// ============================================================================
+const COUNTRY_RULES = {
+  JP: {
+    // 現行の新NISA制度（2024年〜）の枠。既存のNISA_LIMITSと完全に同じ値。
+    annualInstallmentLimit: 1200000,  // つみたて投資枠 年間上限
+    annualGrowthLimit: 2400000,       // 成長投資枠 年間上限
+    growthLifetimeLimit: 12000000,    // 成長投資枠 生涯（簿価）上限
+    taxFreeInvestmentLimit: 18000000, // 総枠 生涯（簿価）上限（つみたて＋成長）
+  },
+  // US / GB / CA / AU: 将来、401(k)拠出上限・ISA拠出上限・TFSA拠出上限等をここへ追加する。
+  // 未実装の間は、下記 getCountryRules() が JP の値へフォールバックする。
+};
+
+function getCountryRules(country) {
+  return COUNTRY_RULES[country] || COUNTRY_RULES.JP;
+}
+
 // ---------- NISA quota rules (2024- new NISA system) ----------
+// 数値そのものは COUNTRY_RULES.JP に集約し、ここでは既存コード互換のための別名として参照するのみ。
+// （NISA_LIMITS.xxx という参照は既存コード全体にそのまま残しているため、ここを書き換えても
+//   計算結果・呼び出し側のコードには一切影響しない。）
 const NISA_LIMITS = {
-  tsumitateAnnual: 1200000,   // つみたて投資枠 年間上限
-  growthAnnual: 2400000,      // 成長投資枠 年間上限
-  growthLifetime: 12000000,   // 成長投資枠 生涯（簿価）上限
-  totalLifetime: 18000000,    // 総枠 生涯（簿価）上限（つみたて+成長）
+  tsumitateAnnual: COUNTRY_RULES.JP.annualInstallmentLimit,
+  growthAnnual: COUNTRY_RULES.JP.annualGrowthLimit,
+  growthLifetime: COUNTRY_RULES.JP.growthLifetimeLimit,
+  totalLifetime: COUNTRY_RULES.JP.taxFreeInvestmentLimit,
 };
 
 // 生年月日から、今日時点での正確な年齢（年・月・日・小数の年齢）を計算する
@@ -1038,7 +1080,9 @@ const formatDateLabel = (d) => {
 
 export default function NisaLifePlan({ onOpenBlog } = {}) {
   const [inputs, setInputs] = useState({
-    country: "JP", // 表示・通貨切替のみに使用。計算ロジックは現状すべて日本のルールのまま
+    country: "JP", // 表示名の切替に使用。計算ロジックは現状すべて日本のルールのまま
+    baseCurrency: "JPY", // 金額表示に使用。countryとは別データ（将来、国と通貨の組み合わせを自由に変更可能にするため）
+    language: "ja", // 将来のUI言語切替用（現時点ではlabel()は country ベースの表示名切替のみ）
     userName: "",
     birthDate: "",
     currentAge: 35,
@@ -1629,6 +1673,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       currentAssetHoldings: [...prev.currentAssetHoldings, {
         name: newAssetHolding.name.trim(),
         value: Number(newAssetHolding.value) || 0,
+        currency: baseCurrency, // 将来の複数通貨管理用（今回は為替換算は未実装）
       }],
     }));
     setNewAssetHolding({ name: "", value: "" });
@@ -1643,6 +1688,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       tsumitateHoldings: [...prev.tsumitateHoldings, {
         name: newTsumitateHolding.name.trim(),
         value: Number(newTsumitateHolding.value) || 0,
+        currency: baseCurrency, // 将来の複数通貨管理用（今回は為替換算は未実装）
       }],
     }));
     setNewTsumitateHolding({ name: "", value: "" });
@@ -1657,6 +1703,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       growthHoldings: [...prev.growthHoldings, {
         name: newGrowthHolding.name.trim(),
         value: Number(newGrowthHolding.value) || 0,
+        currency: baseCurrency, // 将来の複数通貨管理用（今回は為替換算は未実装）
       }],
     }));
     setNewGrowthHolding({ name: "", value: "" });
@@ -1784,7 +1831,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
   const addStock = () => {
     if (!newStock.name.trim()) return;
-    setWatchlist((prev) => [...prev, { name: newStock.name.trim(), sector: newStock.sector.trim() || "未分類", shares: 0, value: 0 }]);
+    setWatchlist((prev) => [...prev, { name: newStock.name.trim(), sector: newStock.sector.trim() || "未分類", shares: 0, value: 0, currency: baseCurrency }]);
     setNewStock({ name: "", sector: "" });
   };
   const removeStock = (idx) => setWatchlist((prev) => prev.filter((_, i) => i !== idx));
@@ -1903,9 +1950,14 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
   // ---------- 国際化（i18n）：国が"JP"のままなら、moneyはyenと完全に同じ結果を返す ----------
   const country = inputs.country || "JP";
-  const money = useCallback((n) => formatMoneyFor(country, n), [country]);
+  const baseCurrency = inputs.baseCurrency || "JPY";
+  const language = inputs.language || "ja";
+  const money = useCallback((n) => formatMoneyFor(baseCurrency, n), [baseCurrency]);
   const label = useCallback((key) => getCategoryLabel(key, country), [country]);
-  const localeValue = useMemo(() => ({ country, money, label }), [country, money, label]);
+  const localeValue = useMemo(
+    () => ({ country, baseCurrency, language, money, label }),
+    [country, baseCurrency, language, money, label]
+  );
 
   return (
     <LocaleContext.Provider value={localeValue}>
@@ -2249,6 +2301,11 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           font-size: 12px; color: var(--danger); background: rgba(194,105,79,0.08);
           border-bottom: 1px solid var(--line); padding: 10px 28px;
         }
+        .locale-preview-warning {
+          display: flex; gap: 8px; align-items: flex-start;
+          font-size: 12px; color: var(--amber); background: rgba(217,165,79,0.10);
+          border-bottom: 1px solid var(--line); padding: 10px 28px; line-height: 1.6;
+        }
         .history-panel {
           padding: 14px 28px; border-bottom: 1px solid var(--line);
           background: var(--panel);
@@ -2490,8 +2547,15 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <select
               className="country-select"
               value={country}
-              onChange={(e) => update({ country: e.target.value })}
-              title="国を選択（表示名・通貨のみ切り替わります）"
+              onChange={(e) => {
+                const nextCountry = e.target.value;
+                update({
+                  country: nextCountry,
+                  baseCurrency: DEFAULT_CURRENCY_BY_COUNTRY[nextCountry] || "JPY",
+                  language: DEFAULT_LANGUAGE_BY_COUNTRY[nextCountry] || "ja",
+                });
+              }}
+              title="国を選択（表示名・通貨が自動で切り替わります。計算は現状すべて日本の制度基準です）"
             >
               {SUPPORTED_COUNTRIES.map((c) => (
                 <option key={c.code} value={c.code}>{c.flag} {c.name}</option>
@@ -2532,6 +2596,15 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           </button>
         </div>
       </div>
+      {country !== "JP" && (
+        <div className="locale-preview-warning no-print">
+          <Info size={13} />
+          <span>
+            現在はプレビュー版です。通貨と一部の表示名のみ選択国に対応しています。
+            投資上限、年金、税制、医療費などの計算は、日本の制度を基準にしています。
+          </span>
+        </div>
+      )}
       {(saveStatus === "unavailable" || saveStatus === "error") && (
         <div className="save-warning">
           <Info size={13} />
