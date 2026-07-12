@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from "react";
+import React, { useState, useMemo, useEffect, useCallback, useContext, createContext } from "react";
 import {
   ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ReferenceLine, ResponsiveContainer, BarChart, Bar, Legend, Cell, PieChart, Pie, LabelList
@@ -15,6 +15,144 @@ const yen = (n) => {
   if (n >= 10000) return `${sign}¥${(n / 10000).toFixed(1)}万`;
   return `${sign}¥${n.toLocaleString()}`;
 };
+
+// ============================================================================
+// ---------- 国際化（i18n）基盤 ----------
+// 目的：既存の日本版の挙動・計算ロジック・見た目は一切変更せず、
+// 「国を選択すると表示ラベル・通貨表記だけが切り替わる」土台を追加する。
+// 将来的に国が増えても、下記のテーブルに1行追加するだけで拡張できる設計。
+// 注意：各国固有の制度計算（NISA枠・iDeCoの拠出上限・401(k)拠出上限・
+// 健康保険の自己負担ルール等）は今回のスコープ外。今回は「表示層」の
+// 多言語・多通貨対応のみを行い、計算ロジックは日本の現行ルールのまま。
+// ============================================================================
+
+// 初期対応国（将来ここに追加するだけで選択肢が増える設計）
+export const SUPPORTED_COUNTRIES = [
+  { code: "JP", flag: "🇯🇵", name: "日本" },
+  { code: "US", flag: "🇺🇸", name: "United States" },
+  { code: "GB", flag: "🇬🇧", name: "United Kingdom" },
+  { code: "CA", flag: "🇨🇦", name: "Canada" },
+  { code: "AU", flag: "🇦🇺", name: "Australia" },
+];
+
+// 国 → 通貨（コード・記号・ロケール）。将来通貨を追加する場合もここに1行追加するだけ。
+const CURRENCY_CONFIG = {
+  JP: { code: "JPY", symbol: "¥", locale: "ja-JP" },
+  US: { code: "USD", symbol: "$", locale: "en-US" },
+  GB: { code: "GBP", symbol: "£", locale: "en-GB" },
+  CA: { code: "CAD", symbol: "$", locale: "en-CA" },
+  AU: { code: "AUD", symbol: "$", locale: "en-AU" },
+};
+
+// 世界共通の内部カテゴリ・キー → 国別の「表示名」だけを切り替えるテーブル。
+// データ構造・計算ロジックはこのキー（例："investmentTaxAdvantaged"）を使い、
+// NISAやiDeCoといった日本固有の名称はここでの「表示専用マッピング」としてのみ登場する。
+const CATEGORY_LABELS = {
+  personalInfo: {
+    JP: "ご本人情報", US: "Personal Info", GB: "Personal Info", CA: "Personal Info", AU: "Personal Info",
+  },
+  basicInfo: {
+    JP: "基本情報", US: "Basic Info", GB: "Basic Info", CA: "Basic Info", AU: "Basic Info",
+  },
+  // NISA（日本）→ 他国では税制優遇のある投資口座全般
+  investmentTaxAdvantaged: {
+    JP: "NISA積立（つみたて枠 + 成長投資枠）",
+    US: "Investment Account (401(k) + Brokerage)",
+    GB: "ISA (Stocks & Shares)",
+    CA: "TFSA (Tax-Free Savings Account)",
+    AU: "Investment Account (Super + Brokerage)",
+  },
+  // iDeCo（日本）→ 他国では個人年金口座全般
+  retirementAccount: {
+    JP: "iDeCo積立（個人型確定拠出年金）",
+    US: "Retirement Account (IRA)",
+    GB: "SIPP (Self-Invested Personal Pension)",
+    CA: "RRSP (Registered Retirement Savings Plan)",
+    AU: "Superannuation Contributions",
+  },
+  pensionRetirement: {
+    JP: "老後・年金",
+    US: "Retirement & Social Security",
+    GB: "Retirement & State Pension",
+    CA: "Retirement & CPP",
+    AU: "Retirement & Age Pension",
+  },
+  healthCost: {
+    JP: "健康リスク費用（自己負担目安）",
+    US: "Healthcare Costs (Out-of-Pocket Estimate)",
+    GB: "Healthcare Costs (Out-of-Pocket Estimate)",
+    CA: "Healthcare Costs (Out-of-Pocket Estimate)",
+    AU: "Healthcare Costs (Out-of-Pocket Estimate)",
+  },
+  inheritance: {
+    JP: "相続プラン",
+    US: "Estate & Inheritance Plan",
+    GB: "Estate & Inheritance Plan",
+    CA: "Estate & Inheritance Plan",
+    AU: "Estate & Inheritance Plan",
+  },
+  gold: {
+    JP: "金（ゴールド）資産形成",
+    US: "Gold Holdings",
+    GB: "Gold Holdings",
+    CA: "Gold Holdings",
+    AU: "Gold Holdings",
+  },
+  cash: {
+    JP: "銀行預金（銀行別）",
+    US: "Cash & Bank Accounts",
+    GB: "Cash & Bank Accounts",
+    CA: "Cash & Bank Accounts",
+    AU: "Cash & Bank Accounts",
+  },
+  loan: {
+    JP: "借入金（返済シミュレーション）",
+    US: "Loans (Repayment Simulation)",
+    GB: "Loans (Repayment Simulation)",
+    CA: "Loans (Repayment Simulation)",
+    AU: "Loans (Repayment Simulation)",
+  },
+  insurance: {
+    JP: "生命保険",
+    US: "Insurance (Life)",
+    GB: "Insurance (Life)",
+    CA: "Insurance (Life)",
+    AU: "Insurance (Life)",
+  },
+  privatePension: {
+    JP: "民間年金積立",
+    US: "Private Pension / Annuity",
+    GB: "Private Pension / Annuity",
+    CA: "Private Pension / Annuity",
+    AU: "Private Pension / Annuity",
+  },
+};
+
+function getCategoryLabel(key, country) {
+  const entry = CATEGORY_LABELS[key];
+  if (!entry) return key;
+  return entry[country] || entry.JP;
+}
+
+// 国に応じた金額フォーマット。JPは既存のyen()と完全に同一の出力を維持する
+// （＝国を選択しない/日本のままなら、見た目は1文字も変わらない）。
+function formatMoneyFor(country, n) {
+  if (!country || country === "JP") return yen(n);
+  if (n === null || n === undefined || isNaN(n)) n = 0;
+  const cfg = CURRENCY_CONFIG[country] || CURRENCY_CONFIG.JP;
+  const sign = n < 0 ? "-" : "";
+  const abs = Math.abs(Math.round(n));
+  return `${sign}${cfg.symbol}${abs.toLocaleString(cfg.locale)}`;
+}
+
+// 表示層（見出し・金額フォーマット）だけを配布するための軽量Context。
+// AllocationCharts等、メインコンポーネントの外側にある小コンポーネントからも
+// props経由でバケツリレーせずに現在の国設定へアクセスできるようにする。
+const LocaleContext = createContext({
+  country: "JP",
+  money: yen,
+  label: (key) => getCategoryLabel(key, "JP"),
+});
 
 function monthlyRate(annualPct) {
   return Math.pow(1 + annualPct / 100, 1 / 12) - 1;
@@ -774,6 +912,7 @@ const PIE_COLORS = ["#4FA8D8", "#D9A54F", "#8FBF7F", "#B08FD6", "#C2694F", "#7BC
 // 銘柄別の内訳（金額を入れると割合を自動計算し、円グラフで表示）
 // 円グラフ＋棒グラフ（同じitems/合計から生成するので常に連動する）。編集UIを持たない読み取り専用版。
 function AllocationCharts({ items, height = 180 }) {
+  const { money } = useContext(LocaleContext);
   const total = items.reduce((s, it) => s + (it.amount || 0), 0);
   if (total <= 0) return null;
   const renderPieLabel = ({ cx, cy, midAngle, outerRadius, percent, name, value }) => {
@@ -783,7 +922,7 @@ function AllocationCharts({ items, height = 180 }) {
     const y = cy + radius * Math.sin(-midAngle * RADIAN);
     return (
       <text x={x} y={y} fill="#B7C2C7" fontSize={7.5} textAnchor={x > cx ? "start" : "end"} dominantBaseline="central">
-        {`${name} ${yen(value)}（${(percent * 100).toFixed(0)}%）`}
+        {`${name} ${money(value)}（${(percent * 100).toFixed(0)}%）`}
       </text>
     );
   };
@@ -798,7 +937,7 @@ function AllocationCharts({ items, height = 180 }) {
           >
             {items.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
           </Pie>
-          <Tooltip formatter={(v) => yen(v)} contentStyle={{ background: "#151C20", border: "1px solid #2A363C", fontSize: 12 }} />
+          <Tooltip formatter={(v) => money(v)} contentStyle={{ background: "#151C20", border: "1px solid #2A363C", fontSize: 12 }} />
         </PieChart>
       </ResponsiveContainer>
       <ResponsiveContainer width="100%" height={Math.max(90, items.length * 32)}>
@@ -810,7 +949,7 @@ function AllocationCharts({ items, height = 180 }) {
           <XAxis type="number" domain={[0, 100]} stroke="#7C8A90" fontSize={10} tickFormatter={(v) => `${v}%`} />
           <YAxis type="category" dataKey="name" stroke="#7C8A90" fontSize={10} width={90} />
           <Tooltip
-            formatter={(v, n, p) => (n === "pct" ? [`${v.toFixed(1)}% (${yen(p.payload.amount)})`, "割合"] : [yen(v), n])}
+            formatter={(v, n, p) => (n === "pct" ? [`${v.toFixed(1)}% (${money(p.payload.amount)})`, "割合"] : [money(v), n])}
             contentStyle={{ background: "#151C20", border: "1px solid #2A363C", fontSize: 12 }}
           />
           <Bar dataKey="pct" radius={[0, 2, 2, 0]}>
@@ -818,7 +957,7 @@ function AllocationCharts({ items, height = 180 }) {
             <LabelList
               dataKey="amount"
               position="right"
-              formatter={(v) => yen(v)}
+              formatter={(v) => money(v)}
               style={{ fill: "#E7ECEE", fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }}
             />
           </Bar>
@@ -899,6 +1038,7 @@ const formatDateLabel = (d) => {
 
 export default function NisaLifePlan({ onOpenBlog } = {}) {
   const [inputs, setInputs] = useState({
+    country: "JP", // 表示・通貨切替のみに使用。計算ロジックは現状すべて日本のルールのまま
     userName: "",
     birthDate: "",
     currentAge: 35,
@@ -1753,7 +1893,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const tsumitateMonthlyCapValue = NISA_LIMITS.tsumitateAnnual / 12;
   const growthMonthlyCapValue = NISA_LIMITS.growthAnnual / 12;
 
-  const formatCapDiff = (diff) => (diff >= 0 ? `月上限まであと${yen(diff)}` : `月上限を${yen(-diff)}超過`);
+  const formatCapDiff = (diff) => (diff >= 0 ? `月上限まであと${money(diff)}` : `月上限を${money(-diff)}超過`);
 
   const lifetimeRemainingAtAge = (age) => {
     const row = sim.yearly.find((y) => y.age >= age) || sim.yearly[sim.yearly.length - 1];
@@ -1761,7 +1901,14 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     return NISA_LIMITS.totalLifetime - cum;
   };
 
+  // ---------- 国際化（i18n）：国が"JP"のままなら、moneyはyenと完全に同じ結果を返す ----------
+  const country = inputs.country || "JP";
+  const money = useCallback((n) => formatMoneyFor(country, n), [country]);
+  const label = useCallback((key) => getCategoryLabel(key, country), [country]);
+  const localeValue = useMemo(() => ({ country, money, label }), [country, money, label]);
+
   return (
+    <LocaleContext.Provider value={localeValue}>
     <div className="app">
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Noto+Sans+JP:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap');
@@ -2082,6 +2229,13 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         }
         .history-toggle:hover { border-color: var(--blue-dim); }
 
+        .country-select {
+          background: var(--panel-2); border: 1px solid var(--line);
+          color: var(--text); font-size: 11px; font-family: 'JetBrains Mono', monospace;
+          padding: 5px 8px; border-radius: 3px; cursor: pointer; white-space: nowrap;
+        }
+        .country-select:hover { border-color: var(--blue-dim); }
+
         .save-badge {
           font-size: 10.5px; font-family: 'JetBrains Mono', monospace;
           padding: 4px 8px; border-radius: 3px; border: 1px solid var(--line);
@@ -2119,7 +2273,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
         @media print {
           .app { background: #fff !important; color: #111 !important; background-image: none !important; }
-          button, .add-row, .history-panel, .save-warning, .history-toggle { display: none !important; }
+          button, .add-row, .history-panel, .save-warning, .history-toggle, .country-select, .no-print { display: none !important; }
           .grid-main { grid-template-columns: 1fr !important; }
           .panel { border-right: none !important; border-bottom: 2px solid #ccc; }
           .stat-card, .chart-frame, .panel, .content { background: #fff !important; border-color: #ccc !important; color: #111 !important; }
@@ -2332,6 +2486,18 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           </div>
         </div>
         <div className="meta" style={{ alignItems: "center" }}>
+          <div className="no-print">
+            <select
+              className="country-select"
+              value={country}
+              onChange={(e) => update({ country: e.target.value })}
+              title="国を選択（表示名・通貨のみ切り替わります）"
+            >
+              {SUPPORTED_COUNTRIES.map((c) => (
+                <option key={c.code} value={c.code}>{c.flag} {c.name}</option>
+              ))}
+            </select>
+          </div>
           <div>
             現在{" "}
             <span>
@@ -2361,7 +2527,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           </button>
           <button className="history-toggle no-print" onClick={() => setShowTodayTotal((v) => !v)}>
             {showTodayTotal
-              ? `現在の日付で算出した総資産：${yen(netWorthYearly[0]?.netWorth ?? netWorthFinal)}`
+              ? `現在の日付で算出した総資産：${money(netWorthYearly[0]?.netWorth ?? netWorthFinal)}`
               : "現在の日付で算出した総資産"}
           </button>
         </div>
@@ -2428,9 +2594,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 {history.map((h) => (
                   <tr key={h.date}>
                     <td className="mono">{formatDateLabel(h.date)}</td>
-                    <td className="mono">{yen(h.currentAssets)}</td>
+                    <td className="mono">{money(h.currentAssets)}</td>
                     <td className="mono">{(h.goldGrams || 0).toFixed(1)}g</td>
-                    <td className="mono">{yen(h.bankTotal)}</td>
+                    <td className="mono">{money(h.bankTotal)}</td>
                     <td style={{ display: "flex", gap: 6 }}>
                       <button className="history-action" onClick={() => restoreSnapshot(h)}>この記録を復元</button>
                       <button className="del-btn" onClick={() => deleteSnapshot(h.date)}><Trash2 size={13} /></button>
@@ -2447,7 +2613,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         {/* -------- LEFT: INPUT PANEL -------- */}
         <div className="panel">
           <div className="section-block" style={{ borderColor: "#4FA8D8" }}>
-          <SectionTitle index="00" title="ご本人情報" icon={Users} />
+          <SectionTitle index="00" title={label("personalInfo")} icon={Users} />
           <label className="field">
             <span className="field-label">お名前（任意）</span>
             <div className="field-input-wrap">
@@ -2482,7 +2648,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
           </div>
           <div className="section-block" style={{ borderColor: "#D9A54F" }}>
-          <SectionTitle index="01" title="基本情報" icon={Ruler} />
+          <SectionTitle index="01" title={label("basicInfo")} icon={Ruler} />
           <AgeField label="現在の年齢" value={effectiveCurrentAge} disabled={!!preciseAge} onChange={(v) => update({ currentAge: v })} />
           {preciseAge && (
             <div className="note" style={{ marginTop: -8 }}>
@@ -2495,7 +2661,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
           </div>
           <div className="section-block" style={{ borderColor: "#8FBF7F" }}>
-          <SectionTitle index="02" title="NISA積立（つみたて枠 + 成長投資枠）" icon={TrendingUp} />
+          <SectionTitle index="02" title={label("investmentTaxAdvantaged")} icon={TrendingUp} />
 
           <div className="field-label" style={{ marginBottom: 6 }}>つみたて投資枠：実際の残高（銘柄・金額）</div>
           {inputs.tsumitateHoldings.length > 0 && (
@@ -2505,7 +2671,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 {inputs.tsumitateHoldings.map((h, i) => (
                   <tr key={i}>
                     <td>{h.name}</td>
-                    <td className="mono">{yen(h.value)}</td>
+                    <td className="mono">{money(h.value)}</td>
                     <td style={{ width: 24 }}>
                       <button className="del-btn" onClick={() => removeTsumitateHolding(i)}><Trash2 size={13} /></button>
                     </td>
@@ -2529,7 +2695,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           </div>
           <div className="note" style={{ marginBottom: 12 }}>
             <Info size={13} />
-            <span>残高時点の基準年齢を基に計算いたします。（現在の実際の残高＋利率　<span className="mono">{yen(tsumitateHoldingsManualTotal)}</span>）＋（スケジュール分＋利率　<span className="mono">{yen(tsumitateCatchUp)}</span>）＝現在のNISA資産合計。</span>
+            <span>残高時点の基準年齢を基に計算いたします。（現在の実際の残高＋利率　<span className="mono">{money(tsumitateHoldingsManualTotal)}</span>）＋（スケジュール分＋利率　<span className="mono">{money(tsumitateCatchUp)}</span>）＝現在のNISA資産合計。</span>
           </div>
 
           <div className="field-label" style={{ marginBottom: 6 }}>成長投資枠：実際の残高（銘柄・金額）</div>
@@ -2540,7 +2706,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 {inputs.growthHoldings.map((h, i) => (
                   <tr key={i}>
                     <td>{h.name}</td>
-                    <td className="mono">{yen(h.value)}</td>
+                    <td className="mono">{money(h.value)}</td>
                     <td style={{ width: 24 }}>
                       <button className="del-btn" onClick={() => removeGrowthHolding(i)}><Trash2 size={13} /></button>
                     </td>
@@ -2564,7 +2730,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           </div>
           <div className="note" style={{ marginBottom: 12 }}>
             <Info size={13} />
-            <span>残高時点の基準年齢を基に計算いたします。（現在の実際の残高＋利率　<span className="mono">{yen(growthHoldingsManualTotal)}</span>）＋（スケジュール分＋利率　<span className="mono">{yen(growthCatchUp)}</span>）＝現在のNISA資産合計。</span>
+            <span>残高時点の基準年齢を基に計算いたします。（現在の実際の残高＋利率　<span className="mono">{money(growthHoldingsManualTotal)}</span>）＋（スケジュール分＋利率　<span className="mono">{money(growthCatchUp)}</span>）＝現在のNISA資産合計。</span>
           </div>
 
           {autoHoldingRows.length > 0 && (
@@ -2578,7 +2744,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                   {autoHoldingRows.map((r, i) => (
                     <tr key={i}>
                       <td>{r.name}</td>
-                      <td className="mono">{yen(r.value)}</td>
+                      <td className="mono">{money(r.value)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -2598,7 +2764,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           <div className="note" style={{ marginTop: -8 }}>
             <Info size={13} />
             <span>
-              つみたて投資枠の評価額（{yen(tsumitateHoldingsTotal)}） + 成長投資枠の評価額（{yen(growthHoldingsTotal)}） + 一括投資の評価額（{yen(autoHoldingsTotal)}）を合計したものが、この「合計」欄（{yen(effectiveCurrentAssets)}）に反映され、シミュレーションではこの金額が使われます。「実際の残高」は基準年齢時点で実際にいくらだったかという金額として入力してください。基準年齢を入力すると、そこから現在の年齢まで銘柄ごとの想定利回りで複利運用したものとして評価額を計算します（未入力ならそのままの金額を使用）。それとは別に、つみたて・成長投資枠それぞれの毎月投資額スケジュールで実際に引き落とされてきたはずの金額も、その都度の想定利回りで複利運用したものとして自動計算・加算されます（つみたてスケジュール分：{yen(tsumitateCatchUp)}／成長投資枠スケジュール分：{yen(growthCatchUp)}）。一括投資も同様に、それぞれの投資日から現在まで複利運用したものとして自動計算されます。※スケジュール分は自動加算されるため、「実際の残高」にはスケジュールで積み立て済みの分を重複して含めないようご注意ください。ここで入力した銘柄名は、下の「NISA資産の配分」スライダーにもそのまま反映され、想定年率（利回り）はそちらで銘柄ごとに自動設定・調整されます（この欄自体には利回りの入力は不要です）。ご自身で利回りを変更したい場合は、下の「NISA資産の配分」セクションにある、各銘柄の「想定年率」欄を直接書き換えてください。
+              つみたて投資枠の評価額（{money(tsumitateHoldingsTotal)}） + 成長投資枠の評価額（{money(growthHoldingsTotal)}） + 一括投資の評価額（{money(autoHoldingsTotal)}）を合計したものが、この「合計」欄（{money(effectiveCurrentAssets)}）に反映され、シミュレーションではこの金額が使われます。「実際の残高」は基準年齢時点で実際にいくらだったかという金額として入力してください。基準年齢を入力すると、そこから現在の年齢まで銘柄ごとの想定利回りで複利運用したものとして評価額を計算します（未入力ならそのままの金額を使用）。それとは別に、つみたて・成長投資枠それぞれの毎月投資額スケジュールで実際に引き落とされてきたはずの金額も、その都度の想定利回りで複利運用したものとして自動計算・加算されます（つみたてスケジュール分：{money(tsumitateCatchUp)}／成長投資枠スケジュール分：{money(growthCatchUp)}）。一括投資も同様に、それぞれの投資日から現在まで複利運用したものとして自動計算されます。※スケジュール分は自動加算されるため、「実際の残高」にはスケジュールで積み立て済みの分を重複して含めないようご注意ください。ここで入力した銘柄名は、下の「NISA資産の配分」スライダーにもそのまま反映され、想定年率（利回り）はそちらで銘柄ごとに自動設定・調整されます（この欄自体には利回りの入力は不要です）。ご自身で利回りを変更したい場合は、下の「NISA資産の配分」セクションにある、各銘柄の「想定年率」欄を直接書き換えてください。
             </span>
           </div>
 
@@ -2611,12 +2777,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                   <tr key={i}>
                     <td>{formatAge(r.fromAge)}〜{formatAge(r.toAge)}</td>
                     <td className="mono">
-                      <div>{yen(r.monthlyYen)}/月</div>
+                      <div>{money(r.monthlyYen)}/月</div>
                       <div style={{ fontSize: 10, color: r.monthlyYen > tsumitateMonthlyCapValue ? "#C2694F" : "#7C8A90" }}>
                         {formatCapDiff(tsumitateMonthlyCapValue - r.monthlyYen)}
                       </div>
                       <div style={{ fontSize: 10, color: "#7C8A90" }}>
-                        区間終了時 生涯枠残り {yen(lifetimeRemainingAtAge(r.toAge))}
+                        区間終了時 生涯枠残り {money(lifetimeRemainingAtAge(r.toAge))}
                       </div>
                     </td>
                     <td style={{ width: 24 }}>
@@ -2668,12 +2834,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                   <tr key={i}>
                     <td>{formatAge(r.fromAge)}〜{formatAge(r.toAge)}</td>
                     <td className="mono">
-                      <div>{yen(r.monthlyYen)}/月</div>
+                      <div>{money(r.monthlyYen)}/月</div>
                       <div style={{ fontSize: 10, color: r.monthlyYen > growthMonthlyCapValue ? "#C2694F" : "#7C8A90" }}>
                         {formatCapDiff(growthMonthlyCapValue - r.monthlyYen)}
                       </div>
                       <div style={{ fontSize: 10, color: "#7C8A90" }}>
-                        区間終了時 生涯枠残り {yen(lifetimeRemainingAtAge(r.toAge))}
+                        区間終了時 生涯枠残り {money(lifetimeRemainingAtAge(r.toAge))}
                       </div>
                     </td>
                     <td style={{ width: 24 }}>
@@ -2734,12 +2900,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                     <tr key={i}>
                       <td>{formatAge(entry.age)}</td>
                       <td className="mono">
-                        <div>{yen(entry.amount)}</div>
+                        <div>{money(entry.amount)}</div>
                         <div style={{ fontSize: 10, color: annualHeadroom < 0 ? "#C2694F" : "#7C8A90" }}>
                           {formatCapDiff(annualHeadroom).replace("月上限", "年間上限")}
                         </div>
                         <div style={{ fontSize: 10, color: "#7C8A90" }}>
-                          投資後 生涯枠残り {yen(lifetimeRemainingAtAge(entry.age))}
+                          投資後 生涯枠残り {money(lifetimeRemainingAtAge(entry.age))}
                         </div>
                       </td>
                       <td style={{ width: 24 }}>
@@ -2798,7 +2964,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 </div>
               ))}
               <div className="alloc-sum">
-                積立・成長投資枠・一括投資の内訳合計（{yen(combinedGrandTotal)}）から自動計算されています。
+                積立・成長投資枠・一括投資の内訳合計（{money(combinedGrandTotal)}）から自動計算されています。
               </div>
               <div className="note" style={{ marginTop: 8 }}>
                 <Info size={13} />
@@ -2819,7 +2985,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
           </div>
           <div className="section-block" style={{ borderColor: "#B08FD6" }}>
-          <SectionTitle index="03" title="iDeCo積立（個人型確定拠出年金）" icon={Landmark} />
+          <SectionTitle index="03" title={label("retirementAccount")} icon={Landmark} />
 
           <div className="note">
             <Info size={13} />
@@ -2839,7 +3005,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           </div>
           <div className="note" style={{ marginTop: -8 }}>
             <Info size={13} />
-            <span>基準年齢時点の評価額から、毎月の掛金を加算しながら現在の年齢まで計算した結果、現在の評価額は<span className="mono">{yen(idecoSim.currentValueAdjusted)}</span>になります。</span>
+            <span>基準年齢時点の評価額から、毎月の掛金を加算しながら現在の年齢まで計算した結果、現在の評価額は<span className="mono">{money(idecoSim.currentValueAdjusted)}</span>になります。</span>
           </div>
           <label className="field">
             <span className="field-label">現在のiDeCo評価額（自動計算）</span>
@@ -2921,27 +3087,27 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <Field label="一時金として受け取る割合" unit="%" step={5} min={0} max={100} value={inputs.ideco.lumpPortionPct} onChange={(v) => updateIdeco("lumpPortionPct", v)} />
           )}
 
-          <div className="stat-sub" style={{ marginBottom: 4 }}>年間掛金：<span className="mono">{yen(idecoAnnualContribution)}</span></div>
-          <div className="stat-sub" style={{ marginBottom: 4 }}>積立総額（見込み）：<span className="mono">{yen(idecoContributionTotal)}</span></div>
-          <div className="stat-sub" style={{ marginBottom: 4 }}>運用益（現時点）：<span className="mono">{yen(idecoInvestmentGain)}</span></div>
+          <div className="stat-sub" style={{ marginBottom: 4 }}>年間掛金：<span className="mono">{money(idecoAnnualContribution)}</span></div>
+          <div className="stat-sub" style={{ marginBottom: 4 }}>積立総額（見込み）：<span className="mono">{money(idecoContributionTotal)}</span></div>
+          <div className="stat-sub" style={{ marginBottom: 4 }}>運用益（現時点）：<span className="mono">{money(idecoInvestmentGain)}</span></div>
           <div className="stat-sub" style={{ marginBottom: 4 }}>
-            受取開始時点の予想資産：<span className="mono">{idecoSim.valueAtPayout !== null ? yen(idecoSim.valueAtPayout) : "—"}</span>
+            受取開始時点の予想資産：<span className="mono">{idecoSim.valueAtPayout !== null ? money(idecoSim.valueAtPayout) : "—"}</span>
           </div>
           {(inputs.ideco.payoutMethod === "lump" || inputs.ideco.payoutMethod === "both") && (
             <div className="stat-sub" style={{ marginBottom: 4 }}>
-              一時金として受け取る額（{inputs.ideco.payoutStartAge}歳に一度）：<span className="mono">{yen(idecoSim.lumpAmount)}</span>
+              一時金として受け取る額（{inputs.ideco.payoutStartAge}歳に一度）：<span className="mono">{money(idecoSim.lumpAmount)}</span>
             </div>
           )}
           {(inputs.ideco.payoutMethod === "pension" || inputs.ideco.payoutMethod === "both") && (
             <div className="stat-sub" style={{ marginBottom: 14 }}>
-              年間予想受取額（{inputs.ideco.payoutStartAge}〜{idecoSim.payoutEndAge - 1}歳）：<span className="mono">{yen(idecoSim.annualPayout)}</span>
+              年間予想受取額（{inputs.ideco.payoutStartAge}〜{idecoSim.payoutEndAge - 1}歳）：<span className="mono">{money(idecoSim.annualPayout)}</span>
             </div>
           )}
 
           <div className="field-label" style={{ marginBottom: 6 }}>節税シミュレーション（概算）</div>
           <Field label="年収（任意）" unit="円" step={100000} value={inputs.ideco.annualIncome} onChange={(v) => updateIdeco("annualIncome", v)} />
-          <div className="stat-sub" style={{ marginBottom: 4 }}>年間節税額（概算）：<span className="mono">{yen(idecoAnnualTaxSaving)}</span></div>
-          <div className="stat-sub" style={{ marginBottom: 8 }}>積立終了までの累計節税額（概算）：<span className="mono">{yen(idecoCumulativeTaxSaving)}</span></div>
+          <div className="stat-sub" style={{ marginBottom: 4 }}>年間節税額（概算）：<span className="mono">{money(idecoAnnualTaxSaving)}</span></div>
+          <div className="stat-sub" style={{ marginBottom: 8 }}>積立終了までの累計節税額（概算）：<span className="mono">{money(idecoCumulativeTaxSaving)}</span></div>
           <div className="note" style={{ marginTop: -4 }}>
             <Info size={13} />
             <span>節税額は、年収から推定した税率を使う簡易計算です。実際は給与所得控除、社会保険料、扶養・配偶者控除などを差し引いた課税所得で決まるため、表示額と異なる場合があります。年収未入力時は目安の税率20%で計算します。</span>
@@ -2953,7 +3119,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
           </div>
           <div className="section-block" style={{ borderColor: "#C2694F" }}>
-          <SectionTitle index="04" title="老後・年金" icon={Landmark} />
+          <SectionTitle index="04" title={label("pensionRetirement")} icon={Landmark} />
           <div className="field-label" style={{ marginBottom: 6 }}>年金受給見込み額（国民年金・企業年金基金など、いくつでも追加できます）</div>
           {inputs.pensionSources.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 8 }}>
@@ -2962,7 +3128,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 {inputs.pensionSources.map((p, i) => (
                   <tr key={i}>
                     <td>{p.name}</td>
-                    <td className="mono">{yen(p.monthlyAmount)}</td>
+                    <td className="mono">{money(p.monthlyAmount)}</td>
                     <td style={{ width: 24 }}>
                       <button className="del-btn" onClick={() => removePensionSource(i)}><Trash2 size={13} /></button>
                     </td>
@@ -3014,7 +3180,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
           </div>
           <div className="section-block" style={{ borderColor: "#7BC9E0" }}>
-          <SectionTitle index="05" title="健康リスク費用（自己負担目安）" icon={HeartPulse} />
+          <SectionTitle index="05" title={label("healthCost")} icon={HeartPulse} />
           <Field label="60代 年間自己負担" unit="円/年" step={10000} value={inputs.healthBrackets.b60} onChange={(v) => updateHealth("b60", v)} />
           <Field label="70代 年間自己負担" unit="円/年" step={10000} value={inputs.healthBrackets.b70} onChange={(v) => updateHealth("b70", v)} />
           <Field label="80代以降 年間自己負担" unit="円/年" step={10000} value={inputs.healthBrackets.b80} onChange={(v) => updateHealth("b80", v)} />
@@ -3025,7 +3191,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
           </div>
           <div className="section-block" style={{ borderColor: "#E6B0A6" }}>
-          <SectionTitle index="06" title="相続プラン" icon={Users} />
+          <SectionTitle index="06" title={label("inheritance")} icon={Users} />
           {inputs.inheritancePlans.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 8 }}>
               <thead><tr><th>名前</th><th>続柄</th><th>金額</th><th></th></tr></thead>
@@ -3034,7 +3200,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                   <tr key={i}>
                     <td>{p.name}</td>
                     <td style={{ color: "#7C8A90" }}>{p.relation || "—"}</td>
-                    <td className="mono">{yen(p.amount)}</td>
+                    <td className="mono">{money(p.amount)}</td>
                     <td style={{ width: 24 }}>
                       <button className="del-btn" onClick={() => removeInheritancePlan(i)}><Trash2 size={13} /></button>
                     </td>
@@ -3053,7 +3219,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           </div>
           {inputs.inheritancePlans.length > 0 && (
             <div className="stat-sub" style={{ marginBottom: 10 }}>
-              相続予定 合計：<span className="mono">{yen(inheritanceTotal)}</span>（{inputs.inheritancePlans.length}名）
+              相続予定 合計：<span className="mono">{money(inheritanceTotal)}</span>（{inputs.inheritancePlans.length}名）
             </div>
           )}
           <Field
@@ -3072,7 +3238,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
           </div>
           <div className="section-block" style={{ borderColor: "#6FA88A" }}>
-          <SectionTitle index="07" title="金（ゴールド）資産形成" icon={Coins} />
+          <SectionTitle index="07" title={label("gold")} icon={Coins} />
           <Field label="現在の保有量" unit="g" step={1} value={inputs.gold.currentGrams} onChange={(v) => updateGold("currentGrams", v)} />
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
             <span style={{ fontSize: 10, color: "#E07A5F", whiteSpace: "nowrap", fontWeight: 700 }}>この保有量時点の基準年齢（必須）</span>
@@ -3084,7 +3250,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           </div>
           <div className="note" style={{ marginTop: -8 }}>
             <Info size={13} />
-            <span>基準年齢時点の保有量から、毎月の積立額を加算しながら現在の年齢まで計算した結果、現在の保有量は<span className="mono">{goldSim.currentGrams.toFixed(1)}g</span>、評価額は<span className="mono">{yen(goldSim.currentValue)}</span>になります。</span>
+            <span>基準年齢時点の保有量から、毎月の積立額を加算しながら現在の年齢まで計算した結果、現在の保有量は<span className="mono">{goldSim.currentGrams.toFixed(1)}g</span>、評価額は<span className="mono">{money(goldSim.currentValue)}</span>になります。</span>
           </div>
           <label className="field">
             <span className="field-label">現在の金の資産金額（自動計算）</span>
@@ -3125,7 +3291,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
           </div>
           <div className="section-block" style={{ borderColor: "#E0C34F" }}>
-          <SectionTitle index="08" title="銀行預金（銀行別）" icon={PiggyBank} />
+          <SectionTitle index="08" title={label("cash")} icon={PiggyBank} />
           {inputs.banks.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 8 }}>
               <thead><tr><th>銀行名</th><th>残高</th><th>月次入金</th><th></th></tr></thead>
@@ -3133,8 +3299,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 {inputs.banks.map((b, i) => (
                   <tr key={i}>
                     <td>{b.name}</td>
-                    <td className="mono">{yen(b.balance)}</td>
-                    <td className="mono">{yen(b.monthlyDeposit)}/月</td>
+                    <td className="mono">{money(b.balance)}</td>
+                    <td className="mono">{money(b.monthlyDeposit)}/月</td>
                     <td style={{ width: 24 }}>
                       <button className="del-btn" onClick={() => removeBank(i)}><Trash2 size={13} /></button>
                     </td>
@@ -3145,7 +3311,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           )}
           {inputs.banks.length > 0 && (
             <div className="stat-sub" style={{ marginBottom: 10 }}>
-              銀行預金 合計（現在）：<span className="mono">{yen(bankSim.totalNow)}</span>
+              銀行預金 合計（現在）：<span className="mono">{money(bankSim.totalNow)}</span>
             </div>
           )}
           <div className="add-row" style={{ flexWrap: "wrap" }}>
@@ -3164,7 +3330,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
           </div>
           <div className="section-block" style={{ borderColor: "#9D8FD6" }}>
-          <SectionTitle index="09" title="借入金（返済シミュレーション）" icon={Landmark} />
+          <SectionTitle index="09" title={label("loan")} icon={Landmark} />
           {inputs.loans.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 8 }}>
               <thead><tr><th>名称</th><th>残元本</th><th>金利</th><th>月返済</th><th></th></tr></thead>
@@ -3172,9 +3338,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 {inputs.loans.map((l, i) => (
                   <tr key={i}>
                     <td>{l.name}</td>
-                    <td className="mono">{yen(l.principal)}</td>
+                    <td className="mono">{money(l.principal)}</td>
                     <td className="mono">{l.annualRatePct}%</td>
-                    <td className="mono">{yen(l.monthlyPayment)}/月</td>
+                    <td className="mono">{money(l.monthlyPayment)}/月</td>
                     <td style={{ width: 24 }}>
                       <button className="del-btn" onClick={() => removeLoan(i)}><Trash2 size={13} /></button>
                     </td>
@@ -3205,7 +3371,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
           </div>
           <div className="section-block" style={{ borderColor: "#5FB0A0" }}>
-          <SectionTitle index="10" title="生命保険" icon={HeartPulse} />
+          <SectionTitle index="10" title={label("insurance")} icon={HeartPulse} />
           {inputs.insurancePolicies.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 10 }}>
               <thead><tr><th style={{ width: "26%" }}>保険名</th><th style={{ width: "62%" }}>払込 / 保障</th><th style={{ width: "24px" }}></th></tr></thead>
@@ -3214,19 +3380,19 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                   <tr key={i}>
                     <td>{p.name}</td>
                     <td className="mono" style={{ fontSize: 10.5 }}>
-                      <div>払込 {formatAge(p.premiumFromAge)}〜{formatAge(p.premiumToAge)}：{yen(p.monthlyPremium)}/月</div>
+                      <div>払込 {formatAge(p.premiumFromAge)}〜{formatAge(p.premiumToAge)}：{money(p.monthlyPremium)}/月</div>
                       <div style={{ color: "#7C8A90" }}>保障 {formatAge(p.coverageUntilAge)}まで</div>
                       <div style={{ color: "#7C8A90" }}>
-                        入院{yen(p.benefits.hospitalizationPerDay)}/日（限度{p.benefits.hospitalizationDaysLimit || 0}日/回）・
-                        手術{yen(p.benefits.hospitalizationSurgery)}・
-                        日帰り{yen(p.benefits.daySurgery)}・放射線{yen(p.benefits.radiationPerSession)}/回・
-                        先進医療{yen(p.benefits.advancedMedical)}・死亡{yen(p.benefits.death)}
+                        入院{money(p.benefits.hospitalizationPerDay)}/日（限度{p.benefits.hospitalizationDaysLimit || 0}日/回）・
+                        手術{money(p.benefits.hospitalizationSurgery)}・
+                        日帰り{money(p.benefits.daySurgery)}・放射線{money(p.benefits.radiationPerSession)}/回・
+                        先進医療{money(p.benefits.advancedMedical)}・死亡{money(p.benefits.death)}
                       </div>
                       {(p.customBenefits || []).length > 0 && (
                         <div style={{ color: "#7C8A90", marginTop: 4 }}>
                           {p.customBenefits.map((cb, j) => (
                             <div key={j} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                              <span>{cb.name}：{yen(cb.amount)}</span>
+                              <span>{cb.name}：{money(cb.amount)}</span>
                               <button className="del-btn" onClick={() => removeCustomBenefit(i, j)}><Trash2 size={11} /></button>
                             </div>
                           ))}
@@ -3300,7 +3466,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
           </div>
           <div className="section-block" style={{ borderColor: "#D67F9E" }}>
-          <SectionTitle index="11" title="民間年金積立" icon={PiggyBank} />
+          <SectionTitle index="11" title={label("privatePension")} icon={PiggyBank} />
           {inputs.privatePensionPlans.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 10 }}>
               <thead><tr><th style={{ width: "26%" }}>年金名</th><th style={{ width: "62%" }}>積立 / 受給</th><th style={{ width: "24px" }}></th></tr></thead>
@@ -3309,10 +3475,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                   <tr key={i}>
                     <td>{pl.name}</td>
                     <td className="mono" style={{ fontSize: 10.5 }}>
-                      <div>積立 {formatAge(pl.contribFromAge)}〜{formatAge(pl.contribToAge)}：{yen(pl.monthlyContribution)}/月</div>
-                      <div style={{ color: "#7C8A90" }}>受給 {formatAge(pl.payoutFromAge)}〜{formatAge(pl.payoutToAge)}：{yen(pl.monthlyPayout)}/月</div>
+                      <div>積立 {formatAge(pl.contribFromAge)}〜{formatAge(pl.contribToAge)}：{money(pl.monthlyContribution)}/月</div>
+                      <div style={{ color: "#7C8A90" }}>受給 {formatAge(pl.payoutFromAge)}〜{formatAge(pl.payoutToAge)}：{money(pl.monthlyPayout)}/月</div>
                       {pl.currentBalance !== null && pl.currentBalance !== undefined && (
-                        <div style={{ color: "#6FA88A" }}>現在の残高（手入力）：{yen(pl.currentBalance)}</div>
+                        <div style={{ color: "#6FA88A" }}>現在の残高（手入力）：{money(pl.currentBalance)}</div>
                       )}
                     </td>
                     <td style={{ width: 24 }}>
@@ -3325,7 +3491,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           )}
           {inputs.privatePensionPlans.length > 0 && (
             <div className="stat-sub" style={{ marginBottom: 10 }}>
-              民間年金積立 合計（現在）：<span className="mono">{yen(pensionSim.totalNow)}</span>
+              民間年金積立 合計（現在）：<span className="mono">{money(pensionSim.totalNow)}</span>
             </div>
           )}
 
@@ -3389,58 +3555,58 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         {/* -------- RIGHT: DASHBOARD -------- */}
         <div className="content">
           <div className="stat-grid" style={{ marginBottom: 10 }}>
-            <StatCard label="投資資産：NISA" value={yen(effectiveCurrentAssets)} sub="現在のNISA評価額" />
-            <StatCard label="投資資産：iDeCo" value={yen(inputs.ideco.currentValue)} sub="現在のiDeCo評価額" />
+            <StatCard label="投資資産：NISA" value={money(effectiveCurrentAssets)} sub="現在のNISA評価額" />
+            <StatCard label="投資資産：iDeCo" value={money(inputs.ideco.currentValue)} sub="現在のiDeCo評価額" />
           </div>
           <div className="stat-grid" style={{ marginBottom: 14 }}>
             <StatCard
               label="現在使える資産"
-              value={yen((netWorthYearly[0]?.spendableNetWorth) ?? (netWorthFinal - idecoSim.finalValue))}
+              value={money((netWorthYearly[0]?.spendableNetWorth) ?? (netWorthFinal - idecoSim.finalValue))}
               sub="iDeCoロック分を除く、現時点の資産"
               tone="good"
             />
             <StatCard
               label="老後専用資産（iDeCo）"
-              value={yen((netWorthYearly[0]?.idecoLockedValue) ?? idecoSim.finalValue)}
+              value={money((netWorthYearly[0]?.idecoLockedValue) ?? idecoSim.finalValue)}
               sub="受取開始年齢までは引き出せません"
             />
           </div>
           <div className="stat-grid" style={{ marginBottom: 10 }}>
             <StatCard
               label="つみたて投資枠 残り"
-              value={yen(remainingTsumitate)}
+              value={money(remainingTsumitate)}
               sub="総枠（1,800万円）を成長投資枠と共有"
               tone={remainingTsumitate <= 0 ? "danger" : "good"}
             />
             <StatCard
               label="成長投資枠 残り"
-              value={yen(remainingGrowth)}
-              sub={`上限1,200万円 中 ${yen(computedGrowthUsed)} 使用済み`}
+              value={money(remainingGrowth)}
+              sub={`上限1,200万円 中 ${money(computedGrowthUsed)} 使用済み`}
               tone={remainingGrowth <= 0 ? "danger" : "good"}
             />
             <StatCard
               label="生涯投資枠（総枠） 残り"
-              value={yen(remainingTotal)}
-              sub={`上限1,800万円 中 ${yen(computedTsumitateUsed + computedGrowthUsed)} 使用済み`}
+              value={money(remainingTotal)}
+              sub={`上限1,800万円 中 ${money(computedTsumitateUsed + computedGrowthUsed)} 使用済み`}
               tone={remainingTotal <= 0 ? "danger" : "good"}
             />
           </div>
           <div className="stat-grid" style={{ marginBottom: 14 }}>
             <StatCard
               label="つみたて投資枠 上限オーバー額"
-              value={yen(tsumitateOverage)}
+              value={money(tsumitateOverage)}
               sub={tsumitateOverage > 0 ? "総枠1,800万円を単独で超えています" : "上限内におさまっています"}
               tone={tsumitateOverage > 0 ? "danger" : "good"}
             />
             <StatCard
               label="成長投資枠 上限オーバー額"
-              value={yen(growthOverage)}
+              value={money(growthOverage)}
               sub={growthOverage > 0 ? "上限1,200万円を超えています" : "上限内におさまっています"}
               tone={growthOverage > 0 ? "danger" : "good"}
             />
             <StatCard
               label="生涯投資枠（総枠） 上限オーバー額"
-              value={yen(totalOverage)}
+              value={money(totalOverage)}
               sub={totalOverage > 0 ? "上限1,800万円を超えています" : "上限内におさまっています"}
               tone={totalOverage > 0 ? "danger" : "good"}
             />
@@ -3450,8 +3616,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               <Info size={13} style={{ color: "#C2694F" }} />
               <span>
                 入力された「これまでの使用累計」がNISAの上限を超えています。
-                {growthOverage > 0 && ` 成長投資枠は上限を${yen(growthOverage)}超過。`}
-                {totalOverage > 0 && ` 総枠（生涯上限）は${yen(totalOverage)}超過。`}
+                {growthOverage > 0 && ` 成長投資枠は上限を${money(growthOverage)}超過。`}
+                {totalOverage > 0 && ` 総枠（生涯上限）は${money(totalOverage)}超過。`}
                 実際の証券口座の使用累計をご確認のうえ、数値を見直してください。
               </span>
             </div>
@@ -3465,37 +3631,37 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           <div className="stat-grid" style={{ marginBottom: 14 }}>
             <StatCard
               label="つみたて 年間上限 残り（現在の年齢のペース基準）"
-              value={yen(tsumitateAnnualRemaining)}
+              value={money(tsumitateAnnualRemaining)}
               sub={
                 tsumitateAnnualOverage > 0
-                  ? `年間上限120万円を ${yen(tsumitateAnnualOverage)} 超過するペースです（自動的に月10万円に調整されます）`
-                  : `月${yen(currentTsumitateMonthly)}のペース（年換算 ${yen(tsumitateAnnualPace)}）`
+                  ? `年間上限120万円を ${money(tsumitateAnnualOverage)} 超過するペースです（自動的に月10万円に調整されます）`
+                  : `月${money(currentTsumitateMonthly)}のペース（年換算 ${money(tsumitateAnnualPace)}）`
               }
               tone={tsumitateAnnualOverage > 0 ? "danger" : "good"}
             />
             <StatCard
               label="成長投資枠 年間上限 残り（現在のペース基準）"
-              value={yen(growthAnnualRemaining)}
+              value={money(growthAnnualRemaining)}
               sub={
                 growthAnnualOverage > 0
-                  ? `年間上限240万円を ${yen(growthAnnualOverage)} 超過するペースです（自動的に月20万円に調整されます）`
-                  : `月${yen(currentGrowthMonthly)}のペース（年換算 ${yen(growthAnnualPace)}）`
+                  ? `年間上限240万円を ${money(growthAnnualOverage)} 超過するペースです（自動的に月20万円に調整されます）`
+                  : `月${money(currentGrowthMonthly)}のペース（年換算 ${money(growthAnnualPace)}）`
               }
               tone={growthAnnualOverage > 0 ? "danger" : "good"}
             />
           </div>
 
           <div className="stat-grid">
-            <StatCard label={`${inputs.retireAge}歳時点の資産`} value={yen(sim.assetsAtRetire)} sub="積立フェーズ終了時" />
+            <StatCard label={`${inputs.retireAge}歳時点の資産`} value={money(sim.assetsAtRetire)} sub="積立フェーズ終了時" />
             <StatCard
               label={`${inputs.deathAge}歳時点の総資産（NISA+金+預金・相続可能額）`}
-              value={yen(netWorthFinal)}
-              sub={netInheritanceGap >= 0 ? `目標に対し +${yen(netInheritanceGap)}` : `目標に対し ${yen(netInheritanceGap)}`}
+              value={money(netWorthFinal)}
+              sub={netInheritanceGap >= 0 ? `目標に対し +${money(netInheritanceGap)}` : `目標に対し ${money(netInheritanceGap)}`}
               tone={netInheritanceGap >= 0 ? "good" : "danger"}
             />
             <StatCard
               label="老後の月次収支ギャップ"
-              value={`${netMonthlyGap >= 0 ? "" : "+"}${yen(-netMonthlyGap)}`}
+              value={`${netMonthlyGap >= 0 ? "" : "+"}${money(-netMonthlyGap)}`}
               sub={netMonthlyGap >= 0 ? "年金だけでは不足（資産取崩し要）" : "年金で生活費を賄える"}
               tone={netMonthlyGap > 0 ? "danger" : "good"}
             />
@@ -3510,18 +3676,18 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           <div className="stat-grid" style={{ marginBottom: 22 }}>
             <StatCard
               label="つみたて投資枠 生涯累計使用額（予測）"
-              value={yen(sim.tsumitateCum)}
-              sub={`生涯合算枠 ${yen(NISA_LIMITS.totalLifetime)} 中`}
+              value={money(sim.tsumitateCum)}
+              sub={`生涯合算枠 ${money(NISA_LIMITS.totalLifetime)} 中`}
             />
             <StatCard
               label="成長投資枠 生涯累計使用額（予測）"
-              value={`${yen(sim.growthCum)} / ${yen(NISA_LIMITS.growthLifetime)}`}
+              value={`${money(sim.growthCum)} / ${money(NISA_LIMITS.growthLifetime)}`}
               sub={sim.growthMaxedAge ? `${Math.round(sim.growthMaxedAge)}歳で上限到達見込み` : "上限未到達の見込み"}
               tone={sim.growthMaxedAge ? "danger" : "good"}
             />
             <StatCard
               label="NISA総枠 生涯累計使用額（予測）"
-              value={`${yen(sim.tsumitateCum + sim.growthCum)} / ${yen(NISA_LIMITS.totalLifetime)}`}
+              value={`${money(sim.tsumitateCum + sim.growthCum)} / ${money(NISA_LIMITS.totalLifetime)}`}
               sub={sim.totalMaxedAge ? `${Math.round(sim.totalMaxedAge)}歳で使い切り見込み` : "生涯枠に余裕がある見込み"}
               tone={sim.totalMaxedAge ? "danger" : "good"}
             />
@@ -3530,39 +3696,39 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           <div className="stat-grid" style={{ marginBottom: 22 }}>
             <StatCard
               label={`金資産 — ${formatAge(inputs.gold.accumulateUntilAge)}時点`}
-              value={yen(goldSim.valueAtTarget)}
+              value={money(goldSim.valueAtTarget)}
               sub={`${goldSim.yearly.find((y) => y.age >= inputs.gold.accumulateUntilAge)?.grams.toFixed(1) ?? goldSim.finalGrams.toFixed(1)}g 想定`}
             />
             <StatCard
               label="銀行預金 合計（現在）"
-              value={yen(bankSim.totalNow)}
+              value={money(bankSim.totalNow)}
               sub={inputs.banks.length ? `${inputs.banks.length}行に分散` : "銀行口座が未登録です"}
             />
             <StatCard
               label={`銀行預金 合計 — ${inputs.retireAge}歳時点`}
-              value={yen(bankSim.totalAtRetire)}
+              value={money(bankSim.totalAtRetire)}
               sub="毎月入金を継続した場合の見込み"
             />
             <StatCard
               label="個別株 保有評価額（現在）"
-              value={yen(stockTotalNow)}
+              value={money(stockTotalNow)}
               sub={`${watchlist.filter((w) => w.value > 0).length}銘柄に保有あり`}
             />
             <StatCard
               label="借入金 残高（現在）"
-              value={yen(loanSim.totalNow)}
+              value={money(loanSim.totalNow)}
               sub={inputs.loans.length ? `${inputs.loans.length}件の借入` : "借入金なし"}
               tone={loanSim.totalNow > 0 ? "danger" : "good"}
             />
             <StatCard
               label="生命保険 払込累計（生涯）"
-              value={yen(insuranceSim.totalFinal)}
+              value={money(insuranceSim.totalFinal)}
               sub={inputs.insurancePolicies.length ? `${inputs.insurancePolicies.length}件の保険` : "保険未登録"}
               tone={insuranceSim.totalFinal > 0 ? "danger" : "good"}
             />
             <StatCard
               label="民間年金 積立残高（受給終了時点）"
-              value={yen(pensionSim.totalFinal)}
+              value={money(pensionSim.totalFinal)}
               sub={inputs.privatePensionPlans.length ? `${inputs.privatePensionPlans.length}件の年金プラン` : "未登録"}
               tone="good"
             />
@@ -3574,11 +3740,11 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               <ComposedChart data={netWorthYearly} margin={{ top: 10, right: 24, left: 8, bottom: 4 }}>
                 <CartesianGrid stroke="#2A363C" strokeDasharray="3 3" />
                 <XAxis dataKey="age" stroke="#7C8A90" fontSize={11} tickFormatter={(a) => `${a}`} />
-                <YAxis stroke="#7C8A90" fontSize={11} tickFormatter={(v) => yen(v)} width={64} />
+                <YAxis stroke="#7C8A90" fontSize={11} tickFormatter={(v) => money(v)} width={64} />
                 <Tooltip
                   contentStyle={{ background: "#151C20", border: "1px solid #2A363C", fontSize: 12 }}
                   labelFormatter={(a) => `${a}歳`}
-                  formatter={(v, n) => [yen(v), n]}
+                  formatter={(v, n) => [money(v), n]}
                 />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
                 <ReferenceLine x={inputs.retireAge} stroke="#D9A54F" strokeDasharray="4 4" label={{ value: "引退", position: "top", fill: "#D9A54F", fontSize: 11 }} />
@@ -3609,7 +3775,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               <span>
                 一部の一括投資は成長投資枠・生涯枠の上限を超えたため、超過分（
                 {sim.lumpTruncations.map((t, i) => (
-                  <span key={i}>{i > 0 && "、"}{t.age}歳時点で{yen(t.shortfall)}</span>
+                  <span key={i}>{i > 0 && "、"}{t.age}歳時点で{money(t.shortfall)}</span>
                 ))}
                 ）は非課税枠に反映されていません。
               </span>
@@ -3622,9 +3788,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={fundBreakdownAtRetire} layout="vertical" margin={{ left: 8, right: 16 }}>
                   <CartesianGrid stroke="#2A363C" strokeDasharray="3 3" horizontal={false} />
-                  <XAxis type="number" stroke="#7C8A90" fontSize={11} tickFormatter={(v) => yen(v)} />
+                  <XAxis type="number" stroke="#7C8A90" fontSize={11} tickFormatter={(v) => money(v)} />
                   <YAxis type="category" dataKey="name" stroke="#7C8A90" fontSize={11} width={90} />
-                  <Tooltip contentStyle={{ background: "#151C20", border: "1px solid #2A363C", fontSize: 12 }} formatter={(v) => yen(v)} />
+                  <Tooltip contentStyle={{ background: "#151C20", border: "1px solid #2A363C", fontSize: 12 }} formatter={(v) => money(v)} />
                   <Bar dataKey="value" radius={[0, 3, 3, 0]}>
                     {fundBreakdownAtRetire.map((f, i) => (
                       <Cell key={i} fill={f.color} />
@@ -3669,7 +3835,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 <input placeholder="セクター" value={newStock.sector} onChange={(e) => setNewStock((p) => ({ ...p, sector: e.target.value }))} />
                 <button className="add-btn" onClick={addStock}><Plus size={15} /></button>
               </div>
-              <div className="stat-sub" style={{ marginTop: 10 }}>個別株 現在の金額（合計）：<span className="mono">{yen(stockTotalNow)}</span></div>
+              <div className="stat-sub" style={{ marginTop: 10 }}>個別株 現在の金額（合計）：<span className="mono">{money(stockTotalNow)}</span></div>
               <Field
                 label={`${inputs.deathAge}歳までの想定年率（個別株全体）${inputs.stockReturnPctAuto ? "（自動：保有銘柄名から仮設定）" : ""}`} unit="%" step={0.5}
                 value={effectiveStockReturnPct} onChange={(v) => update({ stockReturnPct: v, stockReturnPctAuto: false })}
@@ -3703,9 +3869,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               <ResponsiveContainer width="100%" height={Math.max(180, inputs.loans.length * 46)}>
                 <BarChart data={loanBreakdownByAge} layout="vertical" margin={{ left: 8, right: 16 }}>
                   <CartesianGrid stroke="#2A363C" strokeDasharray="3 3" horizontal={false} />
-                  <XAxis type="number" stroke="#7C8A90" fontSize={11} tickFormatter={(v) => yen(v)} />
+                  <XAxis type="number" stroke="#7C8A90" fontSize={11} tickFormatter={(v) => money(v)} />
                   <YAxis type="category" dataKey="name" stroke="#7C8A90" fontSize={11} width={90} />
-                  <Tooltip contentStyle={{ background: "#151C20", border: "1px solid #2A363C", fontSize: 12 }} formatter={(v) => yen(v)} />
+                  <Tooltip contentStyle={{ background: "#151C20", border: "1px solid #2A363C", fontSize: 12 }} formatter={(v) => money(v)} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                   <Bar dataKey="現在" fill="#C2694F" radius={[0, 2, 2, 0]} />
                   <Bar dataKey={`${inputs.retireAge}歳`} fill="#D9877A" radius={[0, 2, 2, 0]} />
@@ -3721,9 +3887,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               <ResponsiveContainer width="100%" height={Math.max(180, inputs.banks.length * 46)}>
                 <BarChart data={bankBreakdownByAge} layout="vertical" margin={{ left: 8, right: 16 }}>
                   <CartesianGrid stroke="#2A363C" strokeDasharray="3 3" horizontal={false} />
-                  <XAxis type="number" stroke="#7C8A90" fontSize={11} tickFormatter={(v) => yen(v)} />
+                  <XAxis type="number" stroke="#7C8A90" fontSize={11} tickFormatter={(v) => money(v)} />
                   <YAxis type="category" dataKey="name" stroke="#7C8A90" fontSize={11} width={90} />
-                  <Tooltip contentStyle={{ background: "#151C20", border: "1px solid #2A363C", fontSize: 12 }} formatter={(v) => yen(v)} />
+                  <Tooltip contentStyle={{ background: "#151C20", border: "1px solid #2A363C", fontSize: 12 }} formatter={(v) => money(v)} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                   <Bar dataKey="現在" fill="#4FA8D8" radius={[0, 2, 2, 0]} />
                   <Bar dataKey={`${inputs.retireAge}歳`} fill="#D9A54F" radius={[0, 2, 2, 0]} />
@@ -3739,5 +3905,6 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         ※ 本ツールは入力値に基づく概算シミュレーションであり、将来の運用成果・年金額・医療費・税制を保証するものではありません。相続・税務・投資判断は専門家（FP・税理士等）にご確認ください。データは入力のたびにブラウザ上のストレージに自動保存されます。
       </div>
     </div>
+    </LocaleContext.Provider>
   );
 }
