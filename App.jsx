@@ -2471,7 +2471,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           </div>
           <div className="note" style={{ marginBottom: 12 }}>
             <Info size={13} />
-            <span>現在の残高を、入力した月を基準に計算いたします。現在の実際の残高（<span className="mono">{yen(tsumitateHoldingsManualTotal)}</span>）＋スケジュール分・自動計算（<span className="mono">{yen(tsumitateCatchUp)}</span>）＝現在のNISA資産合計。</span>
+            <span>残高時点の基準年齢を基に計算いたします。（現在の実際の残高＋利率　<span className="mono">{yen(tsumitateHoldingsManualTotal)}</span>）＋（スケジュール分＋利率　<span className="mono">{yen(tsumitateCatchUp)}</span>）＝現在のNISA資産合計。</span>
           </div>
 
           <div className="field-label" style={{ marginBottom: 6 }}>成長投資枠：実際の残高（銘柄・金額）</div>
@@ -2506,7 +2506,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           </div>
           <div className="note" style={{ marginBottom: 12 }}>
             <Info size={13} />
-            <span>現在の残高を、入力した月を基準に計算いたします。現在の実際の残高（<span className="mono">{yen(growthHoldingsManualTotal)}</span>）＋スケジュール分・自動計算（<span className="mono">{yen(growthCatchUp)}</span>）＝現在のNISA資産合計。</span>
+            <span>残高時点の基準年齢を基に計算いたします。（現在の実際の残高＋利率　<span className="mono">{yen(growthHoldingsManualTotal)}</span>）＋（スケジュール分＋利率　<span className="mono">{yen(growthCatchUp)}</span>）＝現在のNISA資産合計。</span>
           </div>
 
           {autoHoldingRows.length > 0 && (
