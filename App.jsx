@@ -1745,6 +1745,11 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         img, svg, canvas { max-width: 100%; }
         img { height: auto; }
         input, select, textarea, button { max-width: 100%; }
+        input:disabled {
+          color: var(--text) !important;
+          -webkit-text-fill-color: var(--text) !important;
+          opacity: 1 !important;
+        }
         .field-input-wrap, .add-row { min-width: 0; }
         .add-row input { min-width: 0; }
         table.watchlist { table-layout: fixed; }
