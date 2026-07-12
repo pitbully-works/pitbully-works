@@ -3213,7 +3213,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           <SectionTitle index="10" title="生命保険" icon={HeartPulse} />
           {inputs.insurancePolicies.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 10 }}>
-              <thead><tr><th>保険名</th><th>払込 / 保障</th><th></th></tr></thead>
+              <thead><tr><th style={{ width: "26%" }}>保険名</th><th style={{ width: "62%" }}>払込 / 保障</th><th style={{ width: "24px" }}></th></tr></thead>
               <tbody>
                 {inputs.insurancePolicies.map((p, i) => (
                   <tr key={i}>
@@ -3308,7 +3308,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           <SectionTitle index="11" title="民間年金積立" icon={PiggyBank} />
           {inputs.privatePensionPlans.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 10 }}>
-              <thead><tr><th>年金名</th><th>積立 / 受給</th><th></th></tr></thead>
+              <thead><tr><th style={{ width: "26%" }}>年金名</th><th style={{ width: "62%" }}>積立 / 受給</th><th style={{ width: "24px" }}></th></tr></thead>
               <tbody>
                 {inputs.privatePensionPlans.map((pl, i) => (
                   <tr key={i}>
