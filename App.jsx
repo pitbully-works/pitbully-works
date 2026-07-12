@@ -32,7 +32,7 @@ const yen = (n) => {
 export const SUPPORTED_COUNTRIES = [
   { code: "JP", flag: "🇯🇵", name: "日本", enabled: true },
   { code: "US", flag: "🇺🇸", name: "United States", enabled: true },
-  { code: "GB", flag: "🇬🇧", name: "United Kingdom", enabled: false },
+  { code: "GB", flag: "🇬🇧", name: "United Kingdom", enabled: true },
   { code: "CA", flag: "🇨🇦", name: "Canada", enabled: false },
   { code: "AU", flag: "🇦🇺", name: "Australia", enabled: false },
 ];
@@ -52,7 +52,7 @@ const CURRENCY_BY_CODE = {
 // あくまで初期値であり、保存データ上は country / baseCurrency / language は別項目として保持される
 // （将来、この自動連動を切り離して個別に変更できるUIを追加しても、データ構造の変更は不要）。
 const DEFAULT_CURRENCY_BY_COUNTRY = { JP: "JPY", US: "USD", GB: "GBP", CA: "CAD", AU: "AUD" };
-const DEFAULT_LANGUAGE_BY_COUNTRY = { JP: "ja", US: "en", GB: "en", CA: "en", AU: "en" };
+const DEFAULT_LANGUAGE_BY_COUNTRY = { JP: "ja", US: "en", GB: "en-GB", CA: "en", AU: "en" };
 
 // 世界共通の内部カテゴリ・キー → 国別の「表示名」だけを切り替えるテーブル。
 // データ構造・計算ロジックはこのキー（例："investmentTaxAdvantaged"）を使い、
@@ -76,7 +76,7 @@ const CATEGORY_LABELS = {
   retirementAccount: {
     JP: "iDeCo積立（個人型確定拠出年金）",
     US: "Retirement Account (IRA)",
-    GB: "SIPP (Self-Invested Personal Pension)",
+    GB: "SIPP / Personal Pension",
     CA: "RRSP (Registered Retirement Savings Plan)",
     AU: "Superannuation Contributions",
   },
@@ -90,14 +90,14 @@ const CATEGORY_LABELS = {
   healthCost: {
     JP: "健康リスク費用（自己負担目安）",
     US: "Healthcare Costs (Out-of-Pocket Estimate)",
-    GB: "Healthcare Costs (Out-of-Pocket Estimate)",
+    GB: "Healthcare Costs",
     CA: "Healthcare Costs (Out-of-Pocket Estimate)",
     AU: "Healthcare Costs (Out-of-Pocket Estimate)",
   },
   inheritance: {
     JP: "相続プラン",
     US: "Estate & Inheritance Plan",
-    GB: "Estate & Inheritance Plan",
+    GB: "Inheritance",
     CA: "Estate & Inheritance Plan",
     AU: "Estate & Inheritance Plan",
   },
@@ -111,7 +111,7 @@ const CATEGORY_LABELS = {
   cash: {
     JP: "銀行預金（銀行別）",
     US: "Cash & Bank Accounts",
-    GB: "Cash & Bank Accounts",
+    GB: "Cash Savings",
     CA: "Cash & Bank Accounts",
     AU: "Cash & Bank Accounts",
   },
@@ -125,14 +125,14 @@ const CATEGORY_LABELS = {
   insurance: {
     JP: "生命保険",
     US: "Insurance (Life)",
-    GB: "Insurance (Life)",
+    GB: "Life Insurance",
     CA: "Insurance (Life)",
     AU: "Insurance (Life)",
   },
   privatePension: {
     JP: "民間年金積立",
     US: "Private Pension / Annuity",
-    GB: "Private Pension / Annuity",
+    GB: "Private Pension",
     CA: "Private Pension / Annuity",
     AU: "Private Pension / Annuity",
   },
@@ -881,6 +881,47 @@ const TRANSLATIONS = {
   },
 };
 
+// ============================================================================
+// ---------- イギリス向け表示差分（en-GB） ----------
+// アメリカ版の英語辞書（en）をベースに、米国特有の表現だけをイギリス向けに
+// 上書きする差分オブジェクト。ここに列挙していないキーはすべて en の値を
+// そのまま継承するため、二重管理を避けられる。
+// 例：Retirement Account → Pension Account、Social Security → State Pension、
+//     Individual Stocks → Stocks & Shares、Bank Deposits → Cash Savings。
+// ============================================================================
+const EN_GB_OVERRIDES = {
+  localePreviewWarning: "Preview version: Labels and currency are adapted for the United Kingdom, but investment limits, pensions, taxes, and healthcare calculations currently use Japanese assumptions.",
+  appSubtitle: "Investment Accounts × Retirement Assets × Pensions × Healthcare Costs × Inheritance Planning — Integrated Simulation",
+  idecoCurrentValueAutoLabel: "Current Pension Value (Auto-calculated)",
+  idecoIntroNote: "A SIPP or Personal Pension is a retirement savings account. In principle, funds cannot be withdrawn before the eligible age. Investment returns are not guaranteed. The tax savings shown are estimates.",
+  payoutAccountingNote: "After payout begins, a lump-sum payment is added once, in the year received, to Current Spendable Assets. Annuity payments are added to Annual Income during the payout period and offset against the living-cost shortfall. Once the payout period ends, income from the pension stops.",
+  pensionNamePlaceholder: "e.g. State Pension, Workplace Pension",
+  pensionSourcesLabel: "Expected Pension Income (State Pension, workplace pension, etc. — add as many as you like)",
+  legendStocks: "Stocks & Shares",
+  statStockValueNowLabel: "Stocks & Shares Holdings (Current)",
+  stockCurrentTotalLabel: "Stocks & Shares Current Value (Total)",
+  stockReturnLabel: "Expected Annual Return Until {age} (All Stocks & Shares)",
+  stockWatchlistTitle: "Stocks & Shares Holdings (enter shares and value)",
+  statIdecoAssetsLabel: "Investment Assets: Pension Account",
+  statRetirementOnlyAssetsLabel: "Retirement-Only Assets (Pension Account)",
+  legendIdecoAssets: "Pension Account",
+  netWorthChartTitle: "Net Worth Over Time \u2014 Investments + Gold + Cash + Stocks & Shares + Private Pension + Pension Account \u2212 Loans \u2212 Cumulative Insurance Premiums ({currentAge} \u2013 {deathAge})",
+  legendBankDeposits: "Cash Savings",
+  bankTotalNowLabel: "Total Cash Savings (Current)",
+  statBankTotalNowLabel: "Total Cash Savings (Current)",
+  statBankAtRetireLabel: "Total Cash Savings — at {age}",
+  bankBreakdownChartTitle: "Cash Savings Balance by Bank — Projected by Age (Current / {retireAge} / {deathAge})",
+  goldPriceRefNote: "The gold price uses the retail spot price as of July 2026 (about £125/g) as a reference. Actual prices fluctuate daily, so replace this with the latest price when using the tool.",
+  growthScheduleExampleNote: "Example: you can split growth allocation contributions into ranges by year and month, such as \u201c50y0m to 55y11m: \u00a31,500/month\u201d and \u201c56y0m to 65y0m: \u00a3500/month.\u201d Overlapping ranges are added together.",
+  scheduleExampleNote: "Example: you can split contributions into ranges by year and month, such as \u201c58y0m to 61y11m: \u00a31,100/month\u201d and \u201c62y0m to 65y0m: \u00a3900/month.\u201d Overlapping ranges are added together.",
+  nisaCapSummaryNote: "Annual caps: regular allocation \u00a312,000 (\u00a31,000/month), growth allocation \u00a324,000 (\u00a32,000/month). Lifetime limit is \u00a3180,000 total (up to \u00a3120,000 of which can be growth allocation). Once the limit is reached, the simulation assumes no further tax-advantaged investment.",
+  statTsumitateRemainingSub: "Shares the \u00a3180,000 lifetime limit with growth allocation",
+};
+
+// en-GB は「en を完全に継承しつつ、上記の差分だけを上書きした完全な辞書」として
+// モジュール読み込み時に一度だけ組み立てる（実行時に毎回マージし直す必要がない）。
+TRANSLATIONS["en-GB"] = { ...TRANSLATIONS.en, ...EN_GB_OVERRIDES };
+
 function translateWith(language, key, vars) {
   const dict = TRANSLATIONS[language] || TRANSLATIONS.ja;
   let str = dict[key];
@@ -1576,12 +1617,15 @@ function runIdecoSimulation({ currentAge, deathAge, ideco }) {
 //  再度サンプルを表示したい場合は、この配列にオブジェクトを追加すればよい。）
 const DEFAULT_WATCHLIST_JP = [];
 const DEFAULT_WATCHLIST_US = [];
+const DEFAULT_WATCHLIST_GB = [];
 
 // 既存の呼び出し箇所（初期状態の既定値）との後方互換のための別名。
 const DEFAULT_WATCHLIST = DEFAULT_WATCHLIST_JP;
 
 function defaultWatchlistFor(country) {
-  return country === "US" ? DEFAULT_WATCHLIST_US : DEFAULT_WATCHLIST_JP;
+  if (country === "US") return DEFAULT_WATCHLIST_US;
+  if (country === "GB") return DEFAULT_WATCHLIST_GB;
+  return DEFAULT_WATCHLIST_JP;
 }
 
 // ---------- UI atoms ----------
@@ -1923,7 +1967,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const uPerMonth = baseCurrency === "JPY" ? "円/月" : `${currencySymbol}/month`;
   const uPerYear = baseCurrency === "JPY" ? "円/年" : `${currencySymbol}/year`;
   const uPerGram = baseCurrency === "JPY" ? "円/g" : `${currencySymbol}/g`;
-  const uYears = language === "en" ? "years" : "年";
+  const uYears = language === "ja" ? "年" : "years";
+  const dateLocale = language === "ja" ? "ja-JP" : (language === "en-GB" ? "en-GB" : "en-US");
   const formatAge = useCallback((age) => {
     const y = Math.floor(age + 1e-9);
     const m = Math.round((age - y) * 12);
@@ -2091,12 +2136,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         return [snapshot, ...others].sort((a, b) => (a.date < b.date ? 1 : -1));
       });
       setSaveStatus("saved");
-      setSaveMessage(t("saveMessageLastSaved", { time: new Date().toLocaleTimeString(language === "en" ? "en-US" : "ja-JP", { hour: "2-digit", minute: "2-digit" }) }));
+      setSaveMessage(t("saveMessageLastSaved", { time: new Date().toLocaleTimeString(dateLocale, { hour: "2-digit", minute: "2-digit" }) }));
     } catch (e) {
       setSaveStatus("error");
       setSaveMessage(t("saveMessageFailed", { error: e?.message || t("unknownError") }));
     }
-  }, []);
+  }, [t, dateLocale]);
 
   useEffect(() => {
     if (loaded) save(inputs, watchlist);
@@ -3307,7 +3352,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           <div className="sub">
             {t("appSubtitle")}
             <br />
-            {t("todayLabel")}：{new Date().toLocaleDateString(language === "en" ? "en-US" : "ja-JP", { year: "numeric", month: "long", day: "numeric" })}
+            {t("todayLabel")}：{new Date().toLocaleDateString(dateLocale, { year: "numeric", month: "long", day: "numeric" })}
           </div>
         </div>
         <div className="meta" style={{ alignItems: "center" }}>
