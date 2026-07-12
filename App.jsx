@@ -165,47 +165,47 @@ const TRANSLATIONS = {
     "gbCashIsaLabel": "Cash ISA",
     "gbCashSavingsLabel": "Cash Savings",
     "gbCgtLabel": "Capital Gains Tax（概算）",
-    "gbCgtSub": "年間非課税枠 {amount} 控除後・18%／24%",
+    "gbCgtSub": "年間非課税枠 {amount} 控除後・{basic}%／{higher}%",
     "gbCgtTaxFreeNote": "譲渡益が年間非課税枠（{amount}）の範囲内のため、Capital Gains Taxは発生しません。",
     "gbClaimAgeLabel": "受給開始年齢（繰下げ受給可）",
     "gbContributionEndAgeLabel": "積立終了年齢",
     "gbCurrentValueLabel": "現在の残高",
-    "gbDeferralNote": "繰下げ受給により {pct}% 増額（9週ごとに1%）。英国では繰上げ受給はできません。",
+    "gbDeferralNote": "繰下げ受給により {pct}% 増額（{weeks}週ごとに{unitPct}%）。英国では繰上げ受給はできません。",
     "gbDividendIncomeLabel": "年間の配当収入（ISA・年金の外側）",
     "gbDividendTaxLabel": "Dividend Tax（概算）",
-    "gbDividendTaxSub": "配当非課税枠 {amount} 控除後・10.75%／35.75%／39.35%",
+    "gbDividendTaxSub": "配当非課税枠 {amount} 控除後・{basic}%／{higher}%／{additional}%",
     "gbEffectiveClaimAgeNote": "実際の受給開始は {age} です（State Pension ageより前には受給できません）。",
     "gbExpensesMonthlyLabel": "退職後の毎月の生活費見込み",
     "gbExpensesTotalLabel": "支出合計（生活費＋医療費）",
     "gbExpensesTotalSub": "年間の生活費と医療費の合計",
-    "gbFullStatePensionNote": "参考：2026/27年度のState Pension満額は年 {amount}（週£241.30）です。ご自身の見込額はGOV.UKの「Check your State Pension forecast」でご確認ください。",
+    "gbFullStatePensionNote": "参考：{taxYear}年度のState Pension満額は年 {amount}（週 {weekly}）です。実際の受給額はNational Insuranceの加入記録により異なるため、GOV.UKの「Check your State Pension forecast」で確認した金額に必ず書き換えてください。",
     "gbGiaLabel": "General Investment Account",
     "gbHealthcareSourceNote": "基本的な医療はNHSでカバーされる前提のうえ、自己負担が生じうる費目のみ年間費用を入力する簡易モデルです。NHSの処方箋料・歯科料金の自動計算は未実装です（地域により制度が異なるため）。",
     "gbHealthcareTotalLabel": "医療費合計（年額）",
     "gbHealthcareTotalSub": "基本医療費＋民間保険料＋歯科＋処方箋＋介護＋その他の合計",
     "gbIncomeTaxLabel": "Income Tax（概算）",
     "gbIncomeTaxSub": "課税所得：{amount}（Personal Allowance控除後）",
-    "gbInvestmentSourceNote": "掲載している上限額・税率は2026/27年度（2026年4月6日〜2027年4月5日）のGOV.UK公表値です。イングランド・ウェールズ・北アイルランドが対象で、スコットランド税率は未実装です。実際の税務判断は専門家にご確認ください。",
-    "gbIsaAllowanceLabel": "ISA年間拠出上限（2026/27）",
+    "gbInvestmentSourceNote": "掲載している上限額・税率は{taxYear}年度のGOV.UK公表値です。イングランド・ウェールズ・北アイルランドが対象で、スコットランド税率は未実装です。実際の税務判断は専門家にご確認ください。",
+    "gbIsaAllowanceLabel": "ISA年間拠出上限（{taxYear}）",
     "gbIsaOverLabel": "ISA年間上限を {amount} 超過しています",
     "gbIsaRemainingLabel": "ISA年間枠の残り",
     "gbIsaRemainingSub": "Stocks and Shares ISA と Cash ISA の合算で {amount} まで",
     "gbIsaTaxFreeNote": "ISA内の利子・配当・譲渡益はすべて非課税です。上の税額計算はISA・年金の外側にある資産のみを対象としています。",
     "gbLiquidAssetsLabel": "Liquid / Accessible Assets（引き出し可能資産）",
     "gbLiquidAssetsSub": "Cash Savings・Cash ISA・GIA・Stocks and Shares ISA（{age}歳以降は年金資産も含む）",
-    "gbLumpSumNote": "年金資産は原則25%まで非課税で一時金として受け取れます（生涯上限 {amount}）。この一時金課税の自動計算は未実装です。",
+    "gbLumpSumNote": "年金資産は原則{pct}%まで非課税で一時金として受け取れます（生涯上限 {amount}）。この一時金課税の自動計算は未実装です。",
     "gbNotImplementedTitle": "未実装の項目",
     "gbOverlapYearsLabel": "受給開始前の収入との重複期間（年）",
     "gbOverlapYearsSub": "State Pension受給開始後も給与等の収入が続く年数（該当しない場合は0）",
     "gbOverlapYearsUnit": "年",
-    "gbPensionAccessNote": "SIPP・職域年金は原則{age}歳まで引き出せません（2028年4月6日から57歳へ引き上げ予定）。",
-    "gbPensionAllowanceLabel": "年金の年間拠出上限（Annual Allowance・2026/27）",
+    "gbPensionAccessNote": "SIPP・職域年金は原則{age}歳まで引き出せません（{date}から{futureAge}歳へ引き上げ予定）。",
+    "gbPensionAllowanceLabel": "年金の年間拠出上限（Annual Allowance・{taxYear}）",
     "gbPensionOverLabel": "年金の年間拠出上限を {amount} 超過しています",
     "gbPensionRemainingLabel": "年金拠出枠の残り",
     "gbPensionRemainingSub": "SIPP と Workplace Pension の合算で {amount} まで",
     "gbPensionReliefLabel": "年金拠出による税軽減（概算）",
     "gbPensionReliefSub": "拠出額 × 限界税率 {pct}%",
-    "gbPensionTaperNote": "Adjusted Incomeが£260,000を超えるため、拠出上限がテーパリングにより {amount} へ逓減しています（下限£10,000）。",
+    "gbPensionTaperNote": "Adjusted Incomeが {threshold} を超えるため、拠出上限がテーパリングにより {amount} へ逓減しています（下限 {floor}）。",
     "gbPrescriptionLabel": "処方箋費用（年額）",
     "gbPrivateHealthLabel": "民間医療保険料（月額）",
     "gbDentalLabel": "歯科費用（年額）",
@@ -219,19 +219,19 @@ const TRANSLATIONS = {
     "gbRetirementIncomeSub": "State Pension＋追加年金の年間受給額",
     "gbSippLabel": "SIPP",
     "gbStatePensionAgeLabel": "State Pension age（受給資格年齢）",
-    "gbStatePensionAgeNote": "State Pension ageは2026年4月〜2028年4月にかけて66歳から67歳へ段階的に引き上げ中です。ご自身の正確な年齢はGOV.UKの「Check your State Pension age」でご確認ください。",
+    "gbStatePensionAgeNote": "State Pension ageは{from}歳から{to}歳へ段階的に引き上げ中です（生年月日により異なります）。ご自身の正確な年齢はGOV.UKの「Check your State Pension age」でご確認ください。",
     "gbStatePensionAnnualLabel": "State Pension 年間受給見込額",
     "gbStatePensionAnnualSub": "繰下げ増額を反映した年間受給額",
     "gbStatePensionEstimateLabel": "年間受給見込額（GOV.UKの予測値を入力）",
-    "gbStatePensionSourceNote": "受給資格年数（35年）の自動判定は行っていません。GOV.UKの「Check your State Pension forecast」で確認した年間見込額を入力してください。繰下げ受給による増額（9週ごとに1%）はSTATE PENSIONの公式ルールどおり計算しています。",
+    "gbStatePensionSourceNote": "受給資格年数（{years}年）の自動判定は行っていません。GOV.UKの「Check your State Pension forecast」で確認した年間見込額を入力してください。繰下げ受給による増額（{weeks}週ごとに{unitPct}%）はGOV.UKの公式ルールどおり計算しています。",
     "gbStocksSharesIsaLabel": "Stocks and Shares ISA",
     "gbSurplusLabel": "収支余剰",
     "gbSurplusSub": "年金収入が生活費・医療費を上回る年間額",
     "gbTaxAdvantagedLabel": "Tax-Advantaged Investments（税制優遇資産）",
     "gbTaxAdvantagedSub": "ISA＋SIPP＋Workplace Pension（上2区分と重なる横断的な内訳）",
     "gbTaxHandledInInvestmentNote": "英国の税制（Income Tax・Dividend Tax・Capital Gains Tax・年金拠出の税軽減）は、セクション02「ISA（Stocks & Shares）」内でまとめて計算しています。",
-    "gbTaxSectionLabel": "Tax（2026/27年度・England / Wales / Northern Ireland）",
-    "gbTaxSourceNote": "Income Tax・Dividend Tax・Capital Gains Taxは2026/27年度のGOV.UK公表値に基づく概算です。スコットランド税率、National Insurance、貯蓄利子課税、相続税は未実装です。",
+    "gbTaxSectionLabel": "Tax（{taxYear}年度・{region}）",
+    "gbTaxSourceNote": "Income Tax・Dividend Tax・Capital Gains Taxは{taxYear}年度のGOV.UK公表値に基づく概算です（{region}基準）。スコットランド税率、National Insurance、貯蓄利子課税、相続税は未実装です。",
     "gbTotalAssetsLabel": "総資産（6口座の合計）",
     "gbTotalAssetsSub": "ISA＋SIPP＋Workplace Pension＋GIA＋Cash Savingsのすべての合計",
     "gbTotalTaxLabel": "税額合計（概算・年金軽減後）",
@@ -710,47 +710,47 @@ const TRANSLATIONS = {
     "gbCashIsaLabel": "Cash ISA",
     "gbCashSavingsLabel": "Cash Savings",
     "gbCgtLabel": "Capital Gains Tax (Estimate)",
-    "gbCgtSub": "After the {amount} annual exempt amount — 18% / 24%",
+    "gbCgtSub": "After the {amount} annual exempt amount — {basic}% / {higher}%",
     "gbCgtTaxFreeNote": "Your gains are within the annual exempt amount ({amount}), so no Capital Gains Tax is due.",
     "gbClaimAgeLabel": "Age You Start Claiming (deferral allowed)",
     "gbContributionEndAgeLabel": "Contributions End at Age",
     "gbCurrentValueLabel": "Current Balance",
-    "gbDeferralNote": "Deferring increases your State Pension by {pct}% (1% for every 9 weeks). You cannot claim the State Pension early in the UK.",
+    "gbDeferralNote": "Deferring increases your State Pension by {pct}% ({unitPct}% for every {weeks} weeks). You cannot claim the State Pension early in the UK.",
     "gbDividendIncomeLabel": "Annual Dividend Income (outside ISAs and pensions)",
     "gbDividendTaxLabel": "Dividend Tax (Estimate)",
-    "gbDividendTaxSub": "After the {amount} dividend allowance — 10.75% / 35.75% / 39.35%",
+    "gbDividendTaxSub": "After the {amount} dividend allowance — {basic}% / {higher}% / {additional}%",
     "gbEffectiveClaimAgeNote": "Your State Pension will actually start at {age}, as it cannot be claimed before State Pension age.",
     "gbExpensesMonthlyLabel": "Estimated Monthly Living Costs in Retirement",
     "gbExpensesTotalLabel": "Total Outgoings (Living + Healthcare)",
     "gbExpensesTotalSub": "Annual living costs plus healthcare costs",
-    "gbFullStatePensionNote": "For reference, the full new State Pension for 2026/27 is {amount} a year (£241.30 a week). Check your own figure with the GOV.UK State Pension forecast.",
+    "gbFullStatePensionNote": "For reference, the full new State Pension for {taxYear} is {amount} a year ({weekly} a week). What you actually receive depends on your National Insurance record, so please replace this with the figure from your GOV.UK State Pension forecast.",
     "gbGiaLabel": "General Investment Account",
     "gbHealthcareSourceNote": "This assumes core healthcare is covered by the NHS, and asks you to enter only the annual costs you expect to pay yourself. NHS prescription and dental charges are not calculated automatically, as they differ across England, Scotland, Wales and Northern Ireland.",
     "gbHealthcareTotalLabel": "Total Healthcare Costs (Annual)",
     "gbHealthcareTotalSub": "Core costs + private cover + dental + prescriptions + long-term care + other",
     "gbIncomeTaxLabel": "Income Tax (Estimate)",
     "gbIncomeTaxSub": "Taxable income: {amount} (after Personal Allowance)",
-    "gbInvestmentSourceNote": "Allowances and rates shown are the GOV.UK figures for the 2026/27 tax year (6 April 2026 to 5 April 2027), for England, Wales and Northern Ireland. Scottish Income Tax rates are not implemented. Please consult a qualified adviser for your own tax position.",
-    "gbIsaAllowanceLabel": "Annual ISA Allowance (2026/27)",
+    "gbInvestmentSourceNote": "Allowances and rates shown are the GOV.UK figures for the {taxYear} tax year, for {region}. Scottish Income Tax rates are not implemented. Please consult a qualified adviser for your own tax position.",
+    "gbIsaAllowanceLabel": "Annual ISA Allowance ({taxYear})",
     "gbIsaOverLabel": "You are {amount} over the annual ISA allowance",
     "gbIsaRemainingLabel": "Remaining ISA Allowance",
     "gbIsaRemainingSub": "Up to {amount} across your Stocks and Shares ISA and Cash ISA combined",
     "gbIsaTaxFreeNote": "Interest, dividends and gains inside an ISA are entirely tax-free. The tax figures above apply only to holdings outside ISAs and pensions.",
     "gbLiquidAssetsLabel": "Liquid / Accessible Assets",
     "gbLiquidAssetsSub": "Cash Savings, Cash ISA, GIA and Stocks and Shares ISA (plus pensions once you are {age} or older)",
-    "gbLumpSumNote": "You can normally take 25% of your pension as a tax-free lump sum, within the Lump Sum Allowance ({amount}). Tax on lump sums is not calculated here.",
+    "gbLumpSumNote": "You can normally take {pct}% of your pension as a tax-free lump sum, within the Lump Sum Allowance ({amount}). Tax on lump sums is not calculated here.",
     "gbNotImplementedTitle": "Not implemented",
     "gbOverlapYearsLabel": "Years Your Other Income Overlaps the State Pension",
     "gbOverlapYearsSub": "Years you expect to keep earning after your State Pension starts (enter 0 if none)",
     "gbOverlapYearsUnit": "years",
-    "gbPensionAccessNote": "SIPP and Workplace Pension funds cannot normally be accessed before age {age} (rising to 57 from 6 April 2028).",
-    "gbPensionAllowanceLabel": "Pension Annual Allowance (2026/27)",
+    "gbPensionAccessNote": "SIPP and Workplace Pension funds cannot normally be accessed before age {age} (rising to {futureAge} from {date}).",
+    "gbPensionAllowanceLabel": "Pension Annual Allowance ({taxYear})",
     "gbPensionOverLabel": "You are {amount} over the pension annual allowance",
     "gbPensionRemainingLabel": "Remaining Pension Allowance",
     "gbPensionRemainingSub": "Up to {amount} across your SIPP and Workplace Pension combined",
     "gbPensionReliefLabel": "Pension Tax Relief (Estimate)",
     "gbPensionReliefSub": "Contributions × your marginal rate of {pct}%",
-    "gbPensionTaperNote": "Your adjusted income is above £260,000, so your annual allowance is tapered down to {amount} (floor of £10,000).",
+    "gbPensionTaperNote": "Your adjusted income is above {threshold}, so your annual allowance is tapered down to {amount} (floor of {floor}).",
     "gbPrescriptionLabel": "Prescription Costs (Annual)",
     "gbPrivateHealthLabel": "Private Health Insurance (Monthly)",
     "gbDentalLabel": "Dental Costs (Annual)",
@@ -764,19 +764,19 @@ const TRANSLATIONS = {
     "gbRetirementIncomeSub": "Annual State Pension plus any additional pension income",
     "gbSippLabel": "SIPP",
     "gbStatePensionAgeLabel": "Your State Pension Age",
-    "gbStatePensionAgeNote": "State Pension age is rising from 66 to 67 between April 2026 and April 2028. Check your exact age with the GOV.UK State Pension age tool.",
+    "gbStatePensionAgeNote": "State Pension age is rising from {from} to {to}, depending on your date of birth. Check your exact age with the GOV.UK State Pension age tool.",
     "gbStatePensionAnnualLabel": "State Pension (Annual)",
     "gbStatePensionAnnualSub": "Including any uplift from deferring",
     "gbStatePensionEstimateLabel": "Estimated Annual State Pension (from your GOV.UK forecast)",
-    "gbStatePensionSourceNote": "Qualifying years are not assessed automatically. Please enter the annual figure from your GOV.UK State Pension forecast. The uplift for deferring (1% for every 9 weeks) follows the official rules.",
+    "gbStatePensionSourceNote": "Qualifying years ({years} for the full rate) are not assessed automatically. Please enter the annual figure from your GOV.UK State Pension forecast. The uplift for deferring ({unitPct}% for every {weeks} weeks) follows the official GOV.UK rules.",
     "gbStocksSharesIsaLabel": "Stocks and Shares ISA",
     "gbSurplusLabel": "Income Surplus",
     "gbSurplusSub": "Annual amount by which pension income exceeds your outgoings",
     "gbTaxAdvantagedLabel": "Tax-Advantaged Investments",
     "gbTaxAdvantagedSub": "ISAs + SIPP + Workplace Pension (a cross-cutting view that overlaps the two categories above)",
     "gbTaxHandledInInvestmentNote": "UK tax — Income Tax, Dividend Tax, Capital Gains Tax and pension tax relief — is calculated together in section 02 (ISA — Stocks & Shares).",
-    "gbTaxSectionLabel": "Tax (2026/27 — England, Wales & Northern Ireland)",
-    "gbTaxSourceNote": "Income Tax, Dividend Tax and Capital Gains Tax are estimates based on GOV.UK figures for 2026/27. Scottish Income Tax, National Insurance, tax on savings interest and Inheritance Tax are not implemented.",
+    "gbTaxSectionLabel": "Tax ({taxYear} — {region})",
+    "gbTaxSourceNote": "Income Tax, Dividend Tax and Capital Gains Tax are estimates based on GOV.UK figures for {taxYear} ({region}). Scottish Income Tax, National Insurance, tax on savings interest and Inheritance Tax are not implemented.",
     "gbTotalAssetsLabel": "Total Assets (all six accounts)",
     "gbTotalAssetsSub": "ISAs + SIPP + Workplace Pension + GIA + Cash Savings combined",
     "gbTotalTaxLabel": "Total Tax (Estimate, after pension relief)",
@@ -1906,15 +1906,30 @@ const GB_COUNTRY_RULES = {
       ageBefore2026: 66,
       ageAfterTransition: 67,
       defaultAge: 67,
-      // 繰下げ受給：9週ごとに1%増額（年約5.8%）。英国では繰上げ受給はできない。
+      // 繰下げ受給：9週ごとに1%増額（1年＝52週の繰下げで約5.78%増）。英国では繰上げ受給はできない。
+      // GOV.UK "Delay (defer) your State Pension"：最低9週間の繰下げが必要で、それ以降は比例して増額する。
       deferralUpliftPerNineWeeks: 0.01,
+      deferralUnitWeeks: 9,      // 増額の単位（9週間ごとに1%）
+      deferralMinimumWeeks: 9,   // これ未満の繰下げでは増額しない
+      weeksPerYear: 52,
       earlyClaimAllowed: false,
     },
-    // 繰下げ受給による増額率（State Pension age より前は増額なし＝1.0）
+    // 繰下げ受給による増額率（State Pension age より前は増額なし＝1.0）。
+    // 端数を切り捨てず比例計算する（52週 → 52/9 × 1% ≒ 5.78%増）。
+    // ただし最低繰下げ週数（9週）未満の場合は増額しない。
     getDeferralFactor(claimAge, statePensionAge) {
+      const sp = this.statePension;
       const deferredYears = Math.max(0, (Number(claimAge) || 0) - (Number(statePensionAge) || 0));
-      const weeks = deferredYears * 52;
-      return 1 + Math.floor(weeks / 9) * this.statePension.deferralUpliftPerNineWeeks;
+      const weeks = deferredYears * sp.weeksPerYear;
+      if (weeks < sp.deferralMinimumWeeks) return 1;
+      return 1 + (weeks / sp.deferralUnitWeeks) * sp.deferralUpliftPerNineWeeks;
+    },
+    // 繰下げ週数から直接増額率を求める（テスト・表示用）
+    getDeferralFactorFromWeeks(weeks) {
+      const sp = this.statePension;
+      const w = Math.max(0, Number(weeks) || 0);
+      if (w < sp.deferralMinimumWeeks) return 1;
+      return 1 + (w / sp.deferralUnitWeeks) * sp.deferralUpliftPerNineWeeks;
     },
     // 英国では繰上げ受給ができないため、実際の受給開始年齢は State Pension age を下回らない
     getEffectiveClaimAge(claimAge, statePensionAge) {
@@ -3291,6 +3306,10 @@ function GBAccountFields({ accountKey, title, account, onUpdateAccount, borderCo
 function GBInvestmentAccountsPanel({ gbInvestment, onUpdate, onUpdateAccount, age, investmentRules, taxRules, taxResult, pensionAllowance }) {
   const { t, money } = useContext(LocaleContext);
 
+  // 画面に出す数値・年度・税率はすべて GB_COUNTRY_RULES（investmentRules / taxRules）から取り出す。
+  // 表示文にリテラルの数値を書かないことで、制度改正時に計算と説明文が食い違う事故を防ぐ。
+  const pct = (rate) => `${Number((rate * 100).toFixed(2))}`;
+
   const isaAllowance = investmentRules.getIsaAnnualAllowance();
   const isaContributed = investmentRules.getIsaContributed(gbInvestment);
   const isaRemaining = isaAllowance - isaContributed;
@@ -3307,7 +3326,7 @@ function GBInvestmentAccountsPanel({ gbInvestment, onUpdate, onUpdateAccount, ag
     <div>
       <div className="note" style={{ marginBottom: 14 }}>
         <Info size={13} />
-        <span>{t("gbInvestmentSourceNote")}</span>
+        <span>{t("gbInvestmentSourceNote", { taxYear: investmentRules.effectiveTaxYear, region: taxRules.region })}</span>
       </div>
 
       <Field label={t("gbAnnualIncomeLabel")} unit="£" step={1000} value={gbInvestment.annualIncome} onChange={(v) => onUpdate("annualIncome", v)} />
@@ -3324,7 +3343,7 @@ function GBInvestmentAccountsPanel({ gbInvestment, onUpdate, onUpdateAccount, ag
 
       <div className="stat-grid" style={{ marginTop: 12 }}>
         <StatCard
-          label={t("gbIsaAllowanceLabel")}
+          label={t("gbIsaAllowanceLabel", { taxYear: investmentRules.effectiveTaxYear })}
           value={money(isaAllowance)}
           sub={t("gbIsaRemainingSub", { amount: money(isaAllowance) })}
         />
@@ -3353,21 +3372,29 @@ function GBInvestmentAccountsPanel({ gbInvestment, onUpdate, onUpdateAccount, ag
 
       <div className="stat-grid" style={{ marginTop: 12 }}>
         <StatCard
-          label={t("gbPensionAllowanceLabel")}
+          label={t("gbPensionAllowanceLabel", { taxYear: investmentRules.effectiveTaxYear })}
           value={money(pensionAllowance)}
           sub={t("gbPensionRemainingSub", { amount: money(pensionAllowance) })}
         />
         <StatCard
           label={t("gbPensionRemainingLabel")}
           value={money(Math.max(0, pensionRemaining))}
-          sub={t("gbPensionAccessNote", { age: accessAge })}
+          sub={t("gbPensionAccessNote", {
+            age: accessAge,
+            futureAge: investmentRules.scheduled.pensionAccessAgeFrom2028,
+            date: investmentRules.scheduled.pensionAccessAgeEffectiveDate,
+          })}
           tone={pensionRemaining < 0 ? "danger" : "good"}
         />
       </div>
       {isTapered && (
         <div className="note" style={{ borderLeftColor: "#D9A54F", marginTop: 10 }}>
           <Info size={13} style={{ color: "#D9A54F" }} />
-          <span>{t("gbPensionTaperNote", { amount: money(pensionAllowance) })}</span>
+          <span>{t("gbPensionTaperNote", {
+            amount: money(pensionAllowance),
+            threshold: money(investmentRules.limits.pensionTaperAdjustedIncome),
+            floor: money(investmentRules.limits.pensionAnnualAllowanceFloor),
+          })}</span>
         </div>
       )}
       {pensionRemaining < 0 && (
@@ -3378,7 +3405,10 @@ function GBInvestmentAccountsPanel({ gbInvestment, onUpdate, onUpdateAccount, ag
       )}
       <div className="note" style={{ marginTop: 10 }}>
         <Info size={13} />
-        <span>{t("gbLumpSumNote", { amount: money(investmentRules.lumpSumAllowance) })}</span>
+        <span>{t("gbLumpSumNote", {
+          amount: money(investmentRules.lumpSumAllowance),
+          pct: pct(investmentRules.taxFreeLumpSumRate),
+        })}</span>
       </div>
 
       <GBAccountFields
@@ -3415,17 +3445,36 @@ function GBInvestmentAccountsPanel({ gbInvestment, onUpdate, onUpdateAccount, ag
       </div>
 
       <div className="section-block" style={{ borderColor: "#5FB0A0", marginTop: 16 }}>
-        <div className="field-label" style={{ marginBottom: 6 }}>{t("gbTaxSectionLabel")}</div>
+        <div className="field-label" style={{ marginBottom: 6 }}>
+          {t("gbTaxSectionLabel", { taxYear: taxRules.effectiveTaxYear, region: taxRules.region })}
+        </div>
         <div className="note" style={{ marginBottom: 12 }}>
           <Info size={13} />
-          <span>{t("gbTaxSourceNote")}</span>
+          <span>{t("gbTaxSourceNote", { taxYear: taxRules.effectiveTaxYear, region: taxRules.region })}</span>
         </div>
         <Field label={t("gbDividendIncomeLabel")} unit="£" step={100} value={gbInvestment.dividendIncomeAnnual} onChange={(v) => onUpdate("dividendIncomeAnnual", v)} />
         <Field label={t("gbCapitalGainLabel")} unit="£" step={500} value={gbInvestment.estimatedCapitalGainAnnual} onChange={(v) => onUpdate("estimatedCapitalGainAnnual", v)} />
         <div className="stat-grid" style={{ marginTop: 10 }}>
           <StatCard label={t("gbIncomeTaxLabel")} value={money(taxResult.incomeTax)} sub={t("gbIncomeTaxSub", { amount: money(taxResult.taxableIncome) })} />
-          <StatCard label={t("gbDividendTaxLabel")} value={money(taxResult.dividendTax)} sub={t("gbDividendTaxSub", { amount: money(taxRules.dividend.allowance) })} />
-          <StatCard label={t("gbCgtLabel")} value={money(taxResult.capitalGainsTax)} sub={t("gbCgtSub", { amount: money(cgtExempt) })} />
+          <StatCard
+            label={t("gbDividendTaxLabel")}
+            value={money(taxResult.dividendTax)}
+            sub={t("gbDividendTaxSub", {
+              amount: money(taxRules.dividend.allowance),
+              basic: pct(taxRules.dividend.basicRate),
+              higher: pct(taxRules.dividend.higherRate),
+              additional: pct(taxRules.dividend.additionalRate),
+            })}
+          />
+          <StatCard
+            label={t("gbCgtLabel")}
+            value={money(taxResult.capitalGainsTax)}
+            sub={t("gbCgtSub", {
+              amount: money(cgtExempt),
+              basic: pct(taxRules.capitalGains.basicRate),
+              higher: pct(taxRules.capitalGains.higherRate),
+            })}
+          />
           <StatCard
             label={t("gbPensionReliefLabel")}
             value={money(taxResult.pensionTaxRelief)}
@@ -3452,13 +3501,22 @@ function GBRetirementPanel({
   statePensionAnnual, retirementIncomeAnnual, fullStatePensionAnnual,
   expensesAnnual, healthcareAnnual, withdrawalNeeded, incomeSurplus,
 }) {
-  const { t, money } = useContext(LocaleContext);
-  const deferralPct = Math.round((deferralFactor - 1) * 1000) / 10;
+  const { t, money, baseCurrency } = useContext(LocaleContext);
+  // 表示に使う数値はすべて GB_COUNTRY_RULES（retirementRules）から取り出す。
+  const sp = retirementRules.statePension;
+  const symbol = (CURRENCY_BY_CODE[baseCurrency] || CURRENCY_BY_CODE.GBP).symbol;
+  const weeklyFull = `${symbol}${sp.fullWeeklyRate.toFixed(2)}`;
+  // 繰下げ増額率（小数第2位まで。52週の繰下げなら 5.78%）
+  const deferralPct = Number(((deferralFactor - 1) * 100).toFixed(2));
   return (
     <div>
       <div className="note" style={{ marginBottom: 12 }}>
         <Info size={13} />
-        <span>{t("gbStatePensionSourceNote")}</span>
+        <span>{t("gbStatePensionSourceNote", {
+          years: sp.qualifyingYearsForFull,
+          weeks: sp.deferralUnitWeeks,
+          unitPct: Number((sp.deferralUpliftPerNineWeeks * 100).toFixed(2)),
+        })}</span>
       </div>
 
       <AgeField
@@ -3468,7 +3526,7 @@ function GBRetirementPanel({
       />
       <div className="note" style={{ marginTop: -8, marginBottom: 8 }}>
         <Info size={13} />
-        <span>{t("gbStatePensionAgeNote")}</span>
+        <span>{t("gbStatePensionAgeNote", { from: sp.ageBefore2026, to: sp.ageAfterTransition })}</span>
       </div>
 
       <Field
@@ -3477,7 +3535,11 @@ function GBRetirementPanel({
         onChange={(v) => onUpdateStatePension("estimatedAnnual", v)}
       />
       <div className="stat-sub" style={{ marginBottom: 8 }}>
-        {t("gbFullStatePensionNote", { amount: money(fullStatePensionAnnual) })}
+        {t("gbFullStatePensionNote", {
+          amount: money(fullStatePensionAnnual),
+          weekly: weeklyFull,
+          taxYear: retirementRules.effectiveTaxYear,
+        })}
       </div>
 
       <AgeField
@@ -3494,7 +3556,11 @@ function GBRetirementPanel({
       {deferralFactor > 1 && (
         <div className="note" style={{ marginTop: -8 }}>
           <Info size={13} />
-          <span>{t("gbDeferralNote", { pct: deferralPct })}</span>
+          <span>{t("gbDeferralNote", {
+            pct: deferralPct,
+            unitPct: Number((sp.deferralUpliftPerNineWeeks * 100).toFixed(2)),
+            weeks: sp.deferralUnitWeeks,
+          })}</span>
         </div>
       )}
 
