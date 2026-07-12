@@ -1787,10 +1787,6 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           background: var(--bg);
           color: var(--text);
           min-height: 100vh;
-          background-image:
-            linear-gradient(var(--line-faint) 1px, transparent 1px),
-            linear-gradient(90deg, var(--line-faint) 1px, transparent 1px);
-          background-size: 28px 28px;
           padding: 0 0 60px 0;
         }
         .mono { font-family: 'JetBrains Mono', monospace; }
@@ -2140,10 +2136,6 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         .landing {
           padding: 40px 24px 36px;
           border-bottom: 1px solid var(--line);
-          background-image:
-            linear-gradient(var(--line-faint) 1px, transparent 1px),
-            linear-gradient(90deg, var(--line-faint) 1px, transparent 1px);
-          background-size: 28px 28px;
         }
         .landing-hero { max-width: 640px; margin: 0 auto; text-align: center; }
         .landing-hero h1 {
