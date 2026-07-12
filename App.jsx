@@ -257,6 +257,7 @@ const TRANSLATIONS = {
     "health70sLabel": "70代 年間自己負担",
     "health80sLabel": "80代以降 年間自己負担",
     "healthCostNote": "公的医療保険の高額療養費制度を考慮した後の自己負担額の概算です。実際は所得区分により上限が変わるため目安としてご利用ください。",
+    "healthcareNotImplementedNote": "{country}向けの医療費モデルはまだ実装されていません。上の自己負担額はご自身で見積もった金額としてそのまま計算に使われますが、日本の高額療養費制度に基づく説明は{country}には当てはまりません。",
     "historyColBankTotal": "銀行預金合計",
     "historyColDate": "日付",
     "historyColGoldGrams": "金保有量",
@@ -296,6 +297,7 @@ const TRANSLATIONS = {
     "interestRateCol": "金利",
     "interestRatePlaceholder": "金利（%・任意）",
     "investmentGainLabel": "運用益（現時点）",
+    "investmentLimitsNotImplementedNote": "{country}向けの投資制度（拠出上限・非課税枠など）はまだ実装されていません。以下は日本のNISA制度に基づく計算の枠組みを流用した参考表示であり、{country}の実際の制度上限ではありません。",
     "investmentTimePlaceholder": "投資時",
     "landingAudience1": "老後資金が足りるか不安な方",
     "landingAudience2": "NISAを始めたい方",
@@ -416,6 +418,7 @@ const TRANSLATIONS = {
     "retireAgeFieldLabel": "引退（年金開始）年齢",
     "retireAgeLabel": "引退",
     "retirementMarkerLabel": "引退",
+    "retirementNotImplementedNote": "{country}向けの年金・退職口座制度（拠出上限や税制優遇のルール）はまだ実装されていません。以下はiDeCoの計算構造を仮に流用した参考表示です。",
     "revertToAutoLink": "自動計算に戻す",
     "saveError": "保存失敗",
     "saveMessageFailed": "保存に失敗しました：{error}",
@@ -496,6 +499,7 @@ const TRANSLATIONS = {
     "stockWatchlistTitle": "個別株 保有一覧（個数・保有金額を入力）",
     "storageKeyCountDebug": "ストレージ内のキー数: {count}",
     "storageUnavailableDebug": "ストレージ機能が利用できません（window.storage未対応の環境）",
+    "taxNotImplementedNote": "{country}向けの税制計算（節税額シミュレーション）はまだ実装されていません。根拠のない税率を表示しないため、この項目は非表示にしています。",
     "taxSavingCaveatNote": "節税額は、年収から推定した税率を使う簡易計算です。実際は給与所得控除、社会保険料、扶養・配偶者控除などを差し引いた課税所得で決まるため、表示額と異なる場合があります。年収未入力時は目安の税率20%で計算します。",
     "taxSavingSimLabel": "節税シミュレーション（概算）",
     "todayLabel": "本日",
@@ -621,6 +625,7 @@ const TRANSLATIONS = {
     "health70sLabel": "Annual Out-of-Pocket (70s)",
     "health80sLabel": "Annual Out-of-Pocket (80s+)",
     "healthCostNote": "This is an estimate of out-of-pocket costs after accounting for the high-cost medical expense cap under public health insurance. Actual caps vary by income bracket, so use this as a general guide.",
+    "healthcareNotImplementedNote": "A dedicated healthcare cost model for {country} has not been implemented yet. The out-of-pocket amounts above are used as entered, but the explanation of Japan's high-cost medical expense cap does not apply in {country}.",
     "historyColBankTotal": "Total Cash",
     "historyColDate": "Date",
     "historyColGoldGrams": "Gold Holdings",
@@ -660,6 +665,7 @@ const TRANSLATIONS = {
     "interestRateCol": "Interest Rate",
     "interestRatePlaceholder": "Interest rate (%, optional)",
     "investmentGainLabel": "Investment Gain (Current)",
+    "investmentLimitsNotImplementedNote": "Investment rules for {country} (contribution limits, tax-advantaged allowances) have not been implemented yet. The figures below reuse Japan's NISA calculation framework as a structural placeholder only — they are not the actual limits for {country}.",
     "investmentTimePlaceholder": "At investment",
     "landingAudience1": "Anyone unsure whether they'll have enough for retirement",
     "landingAudience2": "Anyone getting started with tax-advantaged investing",
@@ -780,6 +786,7 @@ const TRANSLATIONS = {
     "retireAgeFieldLabel": "Retirement (Pension Start) Age",
     "retireAgeLabel": "Retirement Age",
     "retirementMarkerLabel": "Retirement",
+    "retirementNotImplementedNote": "Retirement account rules for {country} (contribution limits, tax treatment) have not been implemented yet. The figures below reuse the iDeCo calculation structure as a placeholder only.",
     "revertToAutoLink": "Revert to Automatic",
     "saveError": "Save Failed",
     "saveMessageFailed": "Save failed: {error}",
@@ -860,6 +867,7 @@ const TRANSLATIONS = {
     "stockWatchlistTitle": "Individual Stock Holdings (enter shares and value)",
     "storageKeyCountDebug": "Number of keys in storage: {count}",
     "storageUnavailableDebug": "Storage is not available (this environment does not support window.storage)",
+    "taxNotImplementedNote": "Tax calculations for {country} (tax-savings simulation) have not been implemented yet. This section is hidden rather than showing an unsubstantiated tax rate.",
     "taxSavingCaveatNote": "Tax savings are a simplified estimate based on a tax rate inferred from annual income. Actual amounts depend on taxable income after deductions for salary income, social insurance, dependents, and spouse, so results may differ from the figure shown. If annual income is left blank, a default rate of 20% is used.",
     "taxSavingSimLabel": "Tax Savings Simulation (Estimate)",
     "todayLabel": "Today",
@@ -965,40 +973,182 @@ function monthlyRate(annualPct) {
 }
 
 // ============================================================================
-// ---------- 国別計算ルール（countryRules/ 相当）----------
-// 目的：投資枠・税制上限などの「数値」を画面コード内に直書きし続けるのではなく、
-// 国ごとの設定オブジェクトへ集約する。
-// 将来的にファイルを分割する場合は、この COUNTRY_RULES オブジェクトの中身をそのまま
-//   countryRules/JP.js, countryRules/US.js, countryRules/GB.js, countryRules/CA.js, countryRules/AU.js
-// へ切り出し、ここで import してマージする形を想定（1ファイル運用の制約上、現時点ではこのファイル内にまとめている）。
-// 今回のスコープでは日本（JP）の計算式・数値は一切変更していない。US/GB/CA/AU は
-// 将来の実装のためのプレースホルダーのみで、実際の計算はまだ日本のルールを代用している。
+// ---------- 国別計算エンジン（countryRules/ 相当） ----------
+// 目的：投資枠・年金・医療費・税制などの「計算ルール」を、画面コードや共通計算関数に
+// 直接書き込むのではなく、国ごとに独立した設定・実装オブジェクトへ完全に分離する。
+//
+// 各国のオブジェクトは共通インターフェースを持つ：
+//   rules.investment   … NISA / 401(k)・IRA・Roth・Brokerage / ISA・SIPP などの投資制度
+//   rules.retirement   … iDeCo / Social Security・Medicare / State Pension・Workplace Pension
+//   rules.healthcare   … 医療費モデル（自己負担の考え方）
+//   rules.tax          … 税制・所得控除まわり（節税額シミュレーション等）
+//   rules.labels       … その国固有の制度名（画面表示用。CATEGORY_LABELSとは別に、
+//                         計算結果に付随する注記文言などをここにまとめる）
+//   rules.defaults     … その国向けにアプリを開いたときの初期値（現状は空データ方針のため未使用）
+//
+// 各カテゴリは必ず `implemented: boolean` を持つ。true の国だけが実際の計算式を持ち、
+// false の国は「まだ実装されていない」ことを示すプレースホルダーのみを持つ。
+// falseのときにJPの数値へフォールバックすることは絶対にしない
+// （フォールバックすると「日本の制度の数値が、あたかも米国・英国の制度の数値であるかのように」
+//   表示されてしまうため。未実装の場合は呼び出し側が明示的にプレビュー/未対応表示を出す）。
+//
+// 1ファイル運用（GitHub上でApp.jsx単体を差し替える運用）の制約上、実体は現在このファイル内に
+// まとめているが、将来的に複数ファイルへ分割する場合は、この COUNTRY_RULES オブジェクトの
+// 各国キーの中身をそのまま
+//   countryRules/JP.js
+//   countryRules/US.js
+//   countryRules/GB.js
+// へ切り出し、ここで import してマージするだけで移行できる設計にしてある。
+// 次に米国制度を実装する場合は US.js（＝下記 COUNTRY_RULES.US）だけを変更すればよく、
+// 日本版・英国版のコードには一切触れる必要がない。英国も同様に GB.js のみで完結する。
 // ============================================================================
-const COUNTRY_RULES = {
-  JP: {
-    // 現行の新NISA制度（2024年〜）の枠。既存のNISA_LIMITSと完全に同じ値。
-    annualInstallmentLimit: 1200000,  // つみたて投資枠 年間上限
-    annualGrowthLimit: 2400000,       // 成長投資枠 年間上限
-    growthLifetimeLimit: 12000000,    // 成長投資枠 生涯（簿価）上限
-    taxFreeInvestmentLimit: 18000000, // 総枠 生涯（簿価）上限（つみたて＋成長）
+
+// ---------- countryRules/JP.js 相当 ----------
+// 現行の新NISA制度（2024年〜）・iDeCo・医療費モデル。既存の計算結果と完全に同一。
+const JP_COUNTRY_RULES = {
+  investment: {
+    implemented: true,
+    // つみたて投資枠 年間上限 / 成長投資枠 年間上限 / 成長投資枠 生涯（簿価）上限 / 総枠 生涯（簿価）上限
+    annualInstallmentLimit: 1200000,
+    annualGrowthLimit: 2400000,
+    growthLifetimeLimit: 12000000,
+    taxFreeInvestmentLimit: 18000000,
+    accountTypes: ["tsumitate", "growth", "lumpSum"], // つみたて投資枠・成長投資枠・一括投資
   },
-  // US / GB / CA / AU: 将来、401(k)拠出上限・ISA拠出上限・TFSA拠出上限等をここへ追加する。
-  // 未実装の間は、下記 getCountryRules() が JP の値へフォールバックする。
+  retirement: {
+    implemented: true,
+    // iDeCo（個人型確定拠出年金）。拠出上限は加入区分により異なるため、現行仕様では
+    // 画面から自由入力（ユーザーが自身の上限を把握している前提）としており、
+    // アプリ側で固定の上限値は持たない。
+    accountTypes: ["ideco"],
+    hasFixedContributionLimit: false,
+  },
+  healthcare: {
+    implemented: true,
+    // 高額療養費制度を考慮した自己負担額を、年代別にユーザーが直接入力するモデル。
+    model: "selfInputByAgeBracket",
+  },
+  tax: {
+    implemented: true,
+    // iDeCoの節税額（概算）は年収から推定した実効税率で簡易計算する。
+    model: "estimatedMarginalRateFromIncome",
+  },
+  labels: {
+    investmentNote: null, // JPは実際のNISA制度の説明文（TRANSLATIONS側）をそのまま使うため未使用
+    retirementNote: null,
+    healthcareNote: null,
+    taxNote: null,
+  },
+  defaults: {},
 };
 
+// ---------- countryRules/US.js 相当（仮実装：未実装のプレースホルダーのみ） ----------
+// 実装時にはこのオブジェクトの中身だけを差し替えればよく、JP.js・GB.js・共通エンジン・
+// React画面側のコードは一切変更不要な設計にしてある。
+const US_COUNTRY_RULES = {
+  investment: {
+    implemented: false,
+    // 実装予定の口座種別（根拠のある公式の拠出上限が確定してから数値を入れる）
+    plannedAccountTypes: ["401k", "traditionalIra", "rothIra", "taxableBrokerage"],
+    annualInstallmentLimit: null,
+    annualGrowthLimit: null,
+    growthLifetimeLimit: null,
+    taxFreeInvestmentLimit: null,
+  },
+  retirement: {
+    implemented: false,
+    plannedAccountTypes: ["socialSecurity", "medicare"],
+    hasFixedContributionLimit: null,
+  },
+  healthcare: {
+    implemented: false,
+    // 米国は公的医療保険制度が日本と大きく異なるため、専用モデル（Medicare／民間保険控除後の
+    // 自己負担想定など）の設計が別途必要。
+    model: null,
+  },
+  tax: {
+    implemented: false,
+    model: null,
+  },
+  labels: {
+    investmentNote: "investmentLimitsNotImplementedNote",
+    retirementNote: "retirementNotImplementedNote",
+    healthcareNote: "healthcareNotImplementedNote",
+    taxNote: "taxNotImplementedNote",
+  },
+  defaults: {},
+};
+
+// ---------- countryRules/GB.js 相当（仮実装：未実装のプレースホルダーのみ） ----------
+const GB_COUNTRY_RULES = {
+  investment: {
+    implemented: false,
+    plannedAccountTypes: ["isa", "sipp"],
+    annualInstallmentLimit: null,
+    annualGrowthLimit: null,
+    growthLifetimeLimit: null,
+    taxFreeInvestmentLimit: null,
+  },
+  retirement: {
+    implemented: false,
+    plannedAccountTypes: ["workplacePension", "statePension"],
+    hasFixedContributionLimit: null,
+  },
+  healthcare: {
+    implemented: false,
+    // NHS（国民保健サービス）を前提とした自己負担モデルが別途必要。
+    model: null,
+  },
+  tax: {
+    implemented: false,
+    model: null,
+  },
+  labels: {
+    investmentNote: "investmentLimitsNotImplementedNote",
+    retirementNote: "retirementNotImplementedNote",
+    healthcareNote: "healthcareNotImplementedNote",
+    taxNote: "taxNotImplementedNote",
+  },
+  defaults: {},
+};
+
+const COUNTRY_RULES = {
+  JP: JP_COUNTRY_RULES,
+  US: US_COUNTRY_RULES,
+  GB: GB_COUNTRY_RULES,
+  // CA / AU: SUPPORTED_COUNTRIES 側でまだ enabled:false（Coming Soon）のため、
+  // ここに追加しなくても getCountryRules() は自動的に JP へフォールバック値を
+  // 返さず、下記の通り「未定義国は最も安全側の＝未実装として扱う」ようにしてある。
+};
+
+const UNIMPLEMENTED_COUNTRY_RULES = {
+  investment: { implemented: false, plannedAccountTypes: [], annualInstallmentLimit: null, annualGrowthLimit: null, growthLifetimeLimit: null, taxFreeInvestmentLimit: null },
+  retirement: { implemented: false, plannedAccountTypes: [], hasFixedContributionLimit: null },
+  healthcare: { implemented: false, model: null },
+  tax: { implemented: false, model: null },
+  labels: {},
+  defaults: {},
+};
+
+// 共通計算エンジンの入口。`const rules = getCountryRules(country);` の形で呼び出す。
+// 重要：未対応の国であっても JP の数値へフォールバックしない
+// （フォールバックすると日本の制度の数値が、あたかもその国の制度の数値であるかのように
+//   表示されてしまうため）。JPだけが実装済みの計算式を持ち、それ以外は
+// 「未実装であることが明確に分かるプレースホルダー」を返す。
 function getCountryRules(country) {
-  return COUNTRY_RULES[country] || COUNTRY_RULES.JP;
+  return COUNTRY_RULES[country] || UNIMPLEMENTED_COUNTRY_RULES;
 }
 
 // ---------- NISA quota rules (2024- new NISA system) ----------
-// 数値そのものは COUNTRY_RULES.JP に集約し、ここでは既存コード互換のための別名として参照するのみ。
+// 数値そのものは countryRules/JP.js 相当（JP_COUNTRY_RULES.investment）に集約し、
+// ここでは既存コード互換のための別名として参照するのみ。
 // （NISA_LIMITS.xxx という参照は既存コード全体にそのまま残しているため、ここを書き換えても
 //   計算結果・呼び出し側のコードには一切影響しない。）
 const NISA_LIMITS = {
-  tsumitateAnnual: COUNTRY_RULES.JP.annualInstallmentLimit,
-  growthAnnual: COUNTRY_RULES.JP.annualGrowthLimit,
-  growthLifetime: COUNTRY_RULES.JP.growthLifetimeLimit,
-  totalLifetime: COUNTRY_RULES.JP.taxFreeInvestmentLimit,
+  tsumitateAnnual: JP_COUNTRY_RULES.investment.annualInstallmentLimit,
+  growthAnnual: JP_COUNTRY_RULES.investment.annualGrowthLimit,
+  growthLifetime: JP_COUNTRY_RULES.investment.growthLifetimeLimit,
+  totalLifetime: JP_COUNTRY_RULES.investment.taxFreeInvestmentLimit,
 };
 
 // 生年月日から、今日時点での正確な年齢（年・月・日・小数の年齢）を計算する
@@ -1954,12 +2104,19 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const country = inputs.country || "JP";
   const baseCurrency = inputs.baseCurrency || "JPY";
   const language = inputs.language || "ja";
+  // 国別計算エンジンのルールセット。投資/年金/医療費/税制それぞれの implemented フラグを
+  // 見て、未実装の国では日本の数値をそのまま見せないよう画面側で分岐する。
+  const rules = useMemo(() => getCountryRules(country), [country]);
+  const countryDisplayName = useMemo(
+    () => SUPPORTED_COUNTRIES.find((c) => c.code === country)?.name || country,
+    [country]
+  );
   const money = useCallback((n) => formatMoneyFor(baseCurrency, n), [baseCurrency]);
   const label = useCallback((key) => getCategoryLabel(key, country), [country]);
   const t = useCallback((key, vars) => translateWith(language, key, vars), [language]);
   const localeValue = useMemo(
-    () => ({ country, baseCurrency, language, money, label, t }),
-    [country, baseCurrency, language, money, label, t]
+    () => ({ country, baseCurrency, language, money, label, t, rules }),
+    [country, baseCurrency, language, money, label, t, rules]
   );
   // Field/表示用の単位文字列（通貨のみ切替、円建て表示のロジック自体は変更しない）
   const currencySymbol = (CURRENCY_BY_CODE[baseCurrency] || CURRENCY_BY_CODE.JPY).symbol;
@@ -3570,6 +3727,13 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           <div className="section-block" style={{ borderColor: "#8FBF7F" }}>
           <SectionTitle index="02" title={label("investmentTaxAdvantaged")} icon={TrendingUp} />
 
+          {!rules.investment.implemented && (
+            <div className="note" style={{ borderLeftColor: "#D9A54F", marginBottom: 12 }}>
+              <Info size={13} style={{ color: "#D9A54F" }} />
+              <span>{t(rules.labels.investmentNote, { country: countryDisplayName })}</span>
+            </div>
+          )}
+
           <div className="field-label" style={{ marginBottom: 6 }}>{t("tsumitateHoldingsLabel")}</div>
           {inputs.tsumitateHoldings.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 8 }}>
@@ -3796,12 +3960,14 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           />
           <div style={{ marginBottom: 18 }} />
 
-          <div className="note">
-            <Info size={13} />
-            <span>
-              {t("nisaCapSummaryNote")}
-            </span>
-          </div>
+          {rules.investment.implemented && (
+            <div className="note">
+              <Info size={13} />
+              <span>
+                {t("nisaCapSummaryNote")}
+              </span>
+            </div>
+          )}
 
           <div className="field-label" style={{ marginBottom: 6 }}>{t("lumpSumLabel")}</div>
           {inputs.lumpSums.length > 0 && (
@@ -3900,6 +4066,13 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           </div>
           <div className="section-block" style={{ borderColor: "#B08FD6" }}>
           <SectionTitle index="03" title={label("retirementAccount")} icon={Landmark} />
+
+          {!rules.retirement.implemented && (
+            <div className="note" style={{ borderLeftColor: "#D9A54F", marginBottom: 12 }}>
+              <Info size={13} style={{ color: "#D9A54F" }} />
+              <span>{t(rules.labels.retirementNote, { country: countryDisplayName })}</span>
+            </div>
+          )}
 
           <div className="note">
             <Info size={13} />
@@ -4018,14 +4191,23 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             </div>
           )}
 
-          <div className="field-label" style={{ marginBottom: 6 }}>{t("taxSavingSimLabel")}</div>
-          <Field label={t("annualIncomeLabel")} unit={uCurrency} step={100000} value={inputs.ideco.annualIncome} onChange={(v) => updateIdeco("annualIncome", v)} />
-          <div className="stat-sub" style={{ marginBottom: 4 }}>{t("annualTaxSavingLabel")}：<span className="mono">{money(idecoAnnualTaxSaving)}</span></div>
-          <div className="stat-sub" style={{ marginBottom: 8 }}>{t("cumulativeTaxSavingLabel")}：<span className="mono">{money(idecoCumulativeTaxSaving)}</span></div>
-          <div className="note" style={{ marginTop: -4 }}>
-            <Info size={13} />
-            <span>{t("taxSavingCaveatNote")}</span>
-          </div>
+          {rules.tax.implemented ? (
+            <>
+              <div className="field-label" style={{ marginBottom: 6 }}>{t("taxSavingSimLabel")}</div>
+              <Field label={t("annualIncomeLabel")} unit={uCurrency} step={100000} value={inputs.ideco.annualIncome} onChange={(v) => updateIdeco("annualIncome", v)} />
+              <div className="stat-sub" style={{ marginBottom: 4 }}>{t("annualTaxSavingLabel")}：<span className="mono">{money(idecoAnnualTaxSaving)}</span></div>
+              <div className="stat-sub" style={{ marginBottom: 8 }}>{t("cumulativeTaxSavingLabel")}：<span className="mono">{money(idecoCumulativeTaxSaving)}</span></div>
+              <div className="note" style={{ marginTop: -4 }}>
+                <Info size={13} />
+                <span>{t("taxSavingCaveatNote")}</span>
+              </div>
+            </>
+          ) : (
+            <div className="note" style={{ borderLeftColor: "#D9A54F" }}>
+              <Info size={13} style={{ color: "#D9A54F" }} />
+              <span>{t(rules.labels.taxNote, { country: countryDisplayName })}</span>
+            </div>
+          )}
           <div className="note">
             <Info size={13} />
             <span>{t("payoutAccountingNote")}</span>
@@ -4098,10 +4280,17 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           <Field label={t("health60sLabel")} unit={uPerYear} step={10000} value={inputs.healthBrackets.b60} onChange={(v) => updateHealth("b60", v)} />
           <Field label={t("health70sLabel")} unit={uPerYear} step={10000} value={inputs.healthBrackets.b70} onChange={(v) => updateHealth("b70", v)} />
           <Field label={t("health80sLabel")} unit={uPerYear} step={10000} value={inputs.healthBrackets.b80} onChange={(v) => updateHealth("b80", v)} />
-          <div className="note">
-            <Info size={13} />
-            <span>{t("healthCostNote")}</span>
-          </div>
+          {rules.healthcare.implemented ? (
+            <div className="note">
+              <Info size={13} />
+              <span>{t("healthCostNote")}</span>
+            </div>
+          ) : (
+            <div className="note" style={{ borderLeftColor: "#D9A54F" }}>
+              <Info size={13} style={{ color: "#D9A54F" }} />
+              <span>{t(rules.labels.healthcareNote, { country: countryDisplayName })}</span>
+            </div>
+          )}
 
           </div>
           <div className="section-block" style={{ borderColor: "#E6B0A6" }}>
@@ -4485,85 +4674,94 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               sub={t("statRetirementLockedSub")}
             />
           </div>
-          <div className="stat-grid" style={{ marginBottom: 10 }}>
-            <StatCard
-              label={t("statTsumitateRemainingLabel")}
-              value={money(remainingTsumitate)}
-              sub={t("statTsumitateRemainingSub")}
-              tone={remainingTsumitate <= 0 ? "danger" : "good"}
-            />
-            <StatCard
-              label={t("statGrowthRemainingLabel")}
-              value={money(remainingGrowth)}
-              sub={t("statGrowthRemainingSub", { used: money(computedGrowthUsed) })}
-              tone={remainingGrowth <= 0 ? "danger" : "good"}
-            />
-            <StatCard
-              label={t("statTotalRemainingLabel")}
-              value={money(remainingTotal)}
-              sub={t("statTotalRemainingSub", { used: money(computedTsumitateUsed + computedGrowthUsed) })}
-              tone={remainingTotal <= 0 ? "danger" : "good"}
-            />
-          </div>
-          <div className="stat-grid" style={{ marginBottom: 14 }}>
-            <StatCard
-              label={t("statTsumitateOverageLabel")}
-              value={money(tsumitateOverage)}
-              sub={tsumitateOverage > 0 ? t("statOverageOverSub") : t("statOverageWithinSub")}
-              tone={tsumitateOverage > 0 ? "danger" : "good"}
-            />
-            <StatCard
-              label={t("statGrowthOverageLabel")}
-              value={money(growthOverage)}
-              sub={growthOverage > 0 ? t("statOverageOverSub") : t("statOverageWithinSub")}
-              tone={growthOverage > 0 ? "danger" : "good"}
-            />
-            <StatCard
-              label={t("statTotalOverageLabel")}
-              value={money(totalOverage)}
-              sub={totalOverage > 0 ? t("statOverageOverSub") : t("statOverageWithinSub")}
-              tone={totalOverage > 0 ? "danger" : "good"}
-            />
-          </div>
-          {(growthOverage > 0 || totalOverage > 0) && (
-            <div className="note" style={{ borderLeftColor: "#C2694F", marginBottom: 22 }}>
-              <Info size={13} style={{ color: "#C2694F" }} />
-              <span>
-                {t("overageWarningIntro")}
-                {growthOverage > 0 && ` ${t("growthOverageDetail", { amount: money(growthOverage) })}`}
-                {totalOverage > 0 && ` ${t("totalOverageDetail", { amount: money(totalOverage) })}`}
-                {t("overageWarningOutro")}
-              </span>
+          {rules.investment.implemented ? (
+            <>
+              <div className="stat-grid" style={{ marginBottom: 10 }}>
+                <StatCard
+                  label={t("statTsumitateRemainingLabel")}
+                  value={money(remainingTsumitate)}
+                  sub={t("statTsumitateRemainingSub")}
+                  tone={remainingTsumitate <= 0 ? "danger" : "good"}
+                />
+                <StatCard
+                  label={t("statGrowthRemainingLabel")}
+                  value={money(remainingGrowth)}
+                  sub={t("statGrowthRemainingSub", { used: money(computedGrowthUsed) })}
+                  tone={remainingGrowth <= 0 ? "danger" : "good"}
+                />
+                <StatCard
+                  label={t("statTotalRemainingLabel")}
+                  value={money(remainingTotal)}
+                  sub={t("statTotalRemainingSub", { used: money(computedTsumitateUsed + computedGrowthUsed) })}
+                  tone={remainingTotal <= 0 ? "danger" : "good"}
+                />
+              </div>
+              <div className="stat-grid" style={{ marginBottom: 14 }}>
+                <StatCard
+                  label={t("statTsumitateOverageLabel")}
+                  value={money(tsumitateOverage)}
+                  sub={tsumitateOverage > 0 ? t("statOverageOverSub") : t("statOverageWithinSub")}
+                  tone={tsumitateOverage > 0 ? "danger" : "good"}
+                />
+                <StatCard
+                  label={t("statGrowthOverageLabel")}
+                  value={money(growthOverage)}
+                  sub={growthOverage > 0 ? t("statOverageOverSub") : t("statOverageWithinSub")}
+                  tone={growthOverage > 0 ? "danger" : "good"}
+                />
+                <StatCard
+                  label={t("statTotalOverageLabel")}
+                  value={money(totalOverage)}
+                  sub={totalOverage > 0 ? t("statOverageOverSub") : t("statOverageWithinSub")}
+                  tone={totalOverage > 0 ? "danger" : "good"}
+                />
+              </div>
+              {(growthOverage > 0 || totalOverage > 0) && (
+                <div className="note" style={{ borderLeftColor: "#C2694F", marginBottom: 22 }}>
+                  <Info size={13} style={{ color: "#C2694F" }} />
+                  <span>
+                    {t("overageWarningIntro")}
+                    {growthOverage > 0 && ` ${t("growthOverageDetail", { amount: money(growthOverage) })}`}
+                    {totalOverage > 0 && ` ${t("totalOverageDetail", { amount: money(totalOverage) })}`}
+                    {t("overageWarningOutro")}
+                  </span>
+                </div>
+              )}
+
+              <div className="chart-frame" style={{ marginBottom: 22 }}>
+                <div className="chart-label">{t("nisaBreakdownChartTitle")}</div>
+                <AllocationCharts items={nisaFrameAllocationItems} height={160} />
+              </div>
+
+              <div className="stat-grid" style={{ marginBottom: 14 }}>
+                <StatCard
+                  label={t("statTsumitateAnnualRemainingLabel")}
+                  value={money(tsumitateAnnualRemaining)}
+                  sub={
+                    tsumitateAnnualOverage > 0
+                      ? t("annualOverPaceNote", { amount: money(tsumitateAnnualOverage) })
+                      : t("monthlyPaceNote", { monthly: money(currentTsumitateMonthly), annual: money(tsumitateAnnualPace) })
+                  }
+                  tone={tsumitateAnnualOverage > 0 ? "danger" : "good"}
+                />
+                <StatCard
+                  label={t("statGrowthAnnualRemainingLabel")}
+                  value={money(growthAnnualRemaining)}
+                  sub={
+                    growthAnnualOverage > 0
+                      ? t("annualOverPaceNoteGrowth", { amount: money(growthAnnualOverage) })
+                      : t("monthlyPaceNote", { monthly: money(currentGrowthMonthly), annual: money(growthAnnualPace) })
+                  }
+                  tone={growthAnnualOverage > 0 ? "danger" : "good"}
+                />
+              </div>
+            </>
+          ) : (
+            <div className="note" style={{ borderLeftColor: "#D9A54F", marginBottom: 22 }}>
+              <Info size={13} style={{ color: "#D9A54F" }} />
+              <span>{t(rules.labels.investmentNote, { country: countryDisplayName })}</span>
             </div>
           )}
-
-          <div className="chart-frame" style={{ marginBottom: 22 }}>
-            <div className="chart-label">{t("nisaBreakdownChartTitle")}</div>
-            <AllocationCharts items={nisaFrameAllocationItems} height={160} />
-          </div>
-
-          <div className="stat-grid" style={{ marginBottom: 14 }}>
-            <StatCard
-              label={t("statTsumitateAnnualRemainingLabel")}
-              value={money(tsumitateAnnualRemaining)}
-              sub={
-                tsumitateAnnualOverage > 0
-                  ? t("annualOverPaceNote", { amount: money(tsumitateAnnualOverage) })
-                  : t("monthlyPaceNote", { monthly: money(currentTsumitateMonthly), annual: money(tsumitateAnnualPace) })
-              }
-              tone={tsumitateAnnualOverage > 0 ? "danger" : "good"}
-            />
-            <StatCard
-              label={t("statGrowthAnnualRemainingLabel")}
-              value={money(growthAnnualRemaining)}
-              sub={
-                growthAnnualOverage > 0
-                  ? t("annualOverPaceNoteGrowth", { amount: money(growthAnnualOverage) })
-                  : t("monthlyPaceNote", { monthly: money(currentGrowthMonthly), annual: money(growthAnnualPace) })
-              }
-              tone={growthAnnualOverage > 0 ? "danger" : "good"}
-            />
-          </div>
 
           <div className="stat-grid">
             <StatCard label={t("statAssetsAtRetireLabel", { age: t("ageYears", { age: inputs.retireAge }) })} value={money(sim.assetsAtRetire)} sub={t("statAssetsAtRetireSub")} />
@@ -4587,25 +4785,27 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             />
           </div>
 
-          <div className="stat-grid" style={{ marginBottom: 22 }}>
-            <StatCard
-              label={t("statTsumitateLifetimeUsageLabel")}
-              value={money(sim.tsumitateCum)}
-              sub={t("statOfLifetimeLimit", { amount: money(NISA_LIMITS.totalLifetime) })}
-            />
-            <StatCard
-              label={t("statGrowthLifetimeUsageLabel")}
-              value={`${money(sim.growthCum)} / ${money(NISA_LIMITS.growthLifetime)}`}
-              sub={sim.growthMaxedAge ? t("statMaxedAtAge", { age: Math.round(sim.growthMaxedAge) }) : t("statNotYetMaxed")}
-              tone={sim.growthMaxedAge ? "danger" : "good"}
-            />
-            <StatCard
-              label={t("statTotalLifetimeUsageLabel")}
-              value={`${money(sim.tsumitateCum + sim.growthCum)} / ${money(NISA_LIMITS.totalLifetime)}`}
-              sub={sim.totalMaxedAge ? t("statUsedUpAtAge", { age: Math.round(sim.totalMaxedAge) }) : t("statLifetimeRoomSub")}
-              tone={sim.totalMaxedAge ? "danger" : "good"}
-            />
-          </div>
+          {rules.investment.implemented && (
+            <div className="stat-grid" style={{ marginBottom: 22 }}>
+              <StatCard
+                label={t("statTsumitateLifetimeUsageLabel")}
+                value={money(sim.tsumitateCum)}
+                sub={t("statOfLifetimeLimit", { amount: money(NISA_LIMITS.totalLifetime) })}
+              />
+              <StatCard
+                label={t("statGrowthLifetimeUsageLabel")}
+                value={`${money(sim.growthCum)} / ${money(NISA_LIMITS.growthLifetime)}`}
+                sub={sim.growthMaxedAge ? t("statMaxedAtAge", { age: Math.round(sim.growthMaxedAge) }) : t("statNotYetMaxed")}
+                tone={sim.growthMaxedAge ? "danger" : "good"}
+              />
+              <StatCard
+                label={t("statTotalLifetimeUsageLabel")}
+                value={`${money(sim.tsumitateCum + sim.growthCum)} / ${money(NISA_LIMITS.totalLifetime)}`}
+                sub={sim.totalMaxedAge ? t("statUsedUpAtAge", { age: Math.round(sim.totalMaxedAge) }) : t("statLifetimeRoomSub")}
+                tone={sim.totalMaxedAge ? "danger" : "good"}
+              />
+            </div>
+          )}
 
           <div className="stat-grid" style={{ marginBottom: 22 }}>
             <StatCard
