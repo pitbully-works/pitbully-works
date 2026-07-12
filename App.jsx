@@ -152,6 +152,93 @@ function getCategoryLabel(key, country) {
 // ============================================================================
 const TRANSLATIONS = {
   ja: {
+    // ---------- 英国版（GB）専用キー ----------
+    // 英国選択時の表示言語は en-GB のため、実際に画面へ出るのは en 側の英国英語表記。
+    // ここでは辞書の欠落を防ぐためのフォールバック（日本語）として同じキーを保持する。
+    "gbAccountBreakdownChartTitle": "退職時点（{age}）の口座別内訳",
+    "gbAccountBreakdownNote": "退職時点における、ISA・SIPP・職域年金・一般投資口座・現金貯蓄の口座別残高の内訳です。",
+    "gbAdditionalPensionLabel": "任意の追加年金収入（年額）",
+    "gbAdjustedIncomeLabel": "Adjusted Income（年金拠出上限のテーパリング判定用・未入力なら年収と同額）",
+    "gbAnnualContributionLabel": "年間積立額",
+    "gbAnnualIncomeLabel": "年間総所得（給与・年金等）",
+    "gbCapitalGainLabel": "年間の譲渡益見込額（ISA・年金の外側）",
+    "gbCashIsaLabel": "Cash ISA",
+    "gbCashSavingsLabel": "Cash Savings",
+    "gbCgtLabel": "Capital Gains Tax（概算）",
+    "gbCgtSub": "年間非課税枠 {amount} 控除後・18%／24%",
+    "gbCgtTaxFreeNote": "譲渡益が年間非課税枠（{amount}）の範囲内のため、Capital Gains Taxは発生しません。",
+    "gbClaimAgeLabel": "受給開始年齢（繰下げ受給可）",
+    "gbContributionEndAgeLabel": "積立終了年齢",
+    "gbCurrentValueLabel": "現在の残高",
+    "gbDeferralNote": "繰下げ受給により {pct}% 増額（9週ごとに1%）。英国では繰上げ受給はできません。",
+    "gbDividendIncomeLabel": "年間の配当収入（ISA・年金の外側）",
+    "gbDividendTaxLabel": "Dividend Tax（概算）",
+    "gbDividendTaxSub": "配当非課税枠 {amount} 控除後・10.75%／35.75%／39.35%",
+    "gbEffectiveClaimAgeNote": "実際の受給開始は {age} です（State Pension ageより前には受給できません）。",
+    "gbExpensesMonthlyLabel": "退職後の毎月の生活費見込み",
+    "gbExpensesTotalLabel": "支出合計（生活費＋医療費）",
+    "gbExpensesTotalSub": "年間の生活費と医療費の合計",
+    "gbFullStatePensionNote": "参考：2026/27年度のState Pension満額は年 {amount}（週£241.30）です。ご自身の見込額はGOV.UKの「Check your State Pension forecast」でご確認ください。",
+    "gbGiaLabel": "General Investment Account",
+    "gbHealthcareSourceNote": "基本的な医療はNHSでカバーされる前提のうえ、自己負担が生じうる費目のみ年間費用を入力する簡易モデルです。NHSの処方箋料・歯科料金の自動計算は未実装です（地域により制度が異なるため）。",
+    "gbHealthcareTotalLabel": "医療費合計（年額）",
+    "gbHealthcareTotalSub": "基本医療費＋民間保険料＋歯科＋処方箋＋介護＋その他の合計",
+    "gbIncomeTaxLabel": "Income Tax（概算）",
+    "gbIncomeTaxSub": "課税所得：{amount}（Personal Allowance控除後）",
+    "gbInvestmentSourceNote": "掲載している上限額・税率は2026/27年度（2026年4月6日〜2027年4月5日）のGOV.UK公表値です。イングランド・ウェールズ・北アイルランドが対象で、スコットランド税率は未実装です。実際の税務判断は専門家にご確認ください。",
+    "gbIsaAllowanceLabel": "ISA年間拠出上限（2026/27）",
+    "gbIsaOverLabel": "ISA年間上限を {amount} 超過しています",
+    "gbIsaRemainingLabel": "ISA年間枠の残り",
+    "gbIsaRemainingSub": "Stocks and Shares ISA と Cash ISA の合算で {amount} まで",
+    "gbIsaTaxFreeNote": "ISA内の利子・配当・譲渡益はすべて非課税です。上の税額計算はISA・年金の外側にある資産のみを対象としています。",
+    "gbLiquidAssetsLabel": "Liquid / Accessible Assets（引き出し可能資産）",
+    "gbLiquidAssetsSub": "Cash Savings・Cash ISA・GIA・Stocks and Shares ISA（{age}歳以降は年金資産も含む）",
+    "gbLumpSumNote": "年金資産は原則25%まで非課税で一時金として受け取れます（生涯上限 {amount}）。この一時金課税の自動計算は未実装です。",
+    "gbNotImplementedTitle": "未実装の項目",
+    "gbOverlapYearsLabel": "受給開始前の収入との重複期間（年）",
+    "gbOverlapYearsSub": "State Pension受給開始後も給与等の収入が続く年数（該当しない場合は0）",
+    "gbOverlapYearsUnit": "年",
+    "gbPensionAccessNote": "SIPP・職域年金は原則{age}歳まで引き出せません（2028年4月6日から57歳へ引き上げ予定）。",
+    "gbPensionAllowanceLabel": "年金の年間拠出上限（Annual Allowance・2026/27）",
+    "gbPensionOverLabel": "年金の年間拠出上限を {amount} 超過しています",
+    "gbPensionRemainingLabel": "年金拠出枠の残り",
+    "gbPensionRemainingSub": "SIPP と Workplace Pension の合算で {amount} まで",
+    "gbPensionReliefLabel": "年金拠出による税軽減（概算）",
+    "gbPensionReliefSub": "拠出額 × 限界税率 {pct}%",
+    "gbPensionTaperNote": "Adjusted Incomeが£260,000を超えるため、拠出上限がテーパリングにより {amount} へ逓減しています（下限£10,000）。",
+    "gbPrescriptionLabel": "処方箋費用（年額）",
+    "gbPrivateHealthLabel": "民間医療保険料（月額）",
+    "gbDentalLabel": "歯科費用（年額）",
+    "gbLongTermCareLabel": "介護費用（年額）",
+    "gbNhsBasicLabel": "基本医療費（NHSでカバーされる前提の自己負担・年額）",
+    "gbOtherOutOfPocketLabel": "その他の自己負担医療費（年額）",
+    "gbRestrictedAssetsLabel": "Retirement / Restricted Assets（制約付き資産）",
+    "gbRestrictedAssetsSubAccessible": "{age}歳以降のため、年金資産も引き出し可能です",
+    "gbRestrictedAssetsSubLocked": "SIPP＋Workplace Pension（{age}歳まで引き出し不可）",
+    "gbRetirementIncomeLabel": "Retirement Income（年金収入）",
+    "gbRetirementIncomeSub": "State Pension＋追加年金の年間受給額",
+    "gbSippLabel": "SIPP",
+    "gbStatePensionAgeLabel": "State Pension age（受給資格年齢）",
+    "gbStatePensionAgeNote": "State Pension ageは2026年4月〜2028年4月にかけて66歳から67歳へ段階的に引き上げ中です。ご自身の正確な年齢はGOV.UKの「Check your State Pension age」でご確認ください。",
+    "gbStatePensionAnnualLabel": "State Pension 年間受給見込額",
+    "gbStatePensionAnnualSub": "繰下げ増額を反映した年間受給額",
+    "gbStatePensionEstimateLabel": "年間受給見込額（GOV.UKの予測値を入力）",
+    "gbStatePensionSourceNote": "受給資格年数（35年）の自動判定は行っていません。GOV.UKの「Check your State Pension forecast」で確認した年間見込額を入力してください。繰下げ受給による増額（9週ごとに1%）はSTATE PENSIONの公式ルールどおり計算しています。",
+    "gbStocksSharesIsaLabel": "Stocks and Shares ISA",
+    "gbSurplusLabel": "収支余剰",
+    "gbSurplusSub": "年金収入が生活費・医療費を上回る年間額",
+    "gbTaxAdvantagedLabel": "Tax-Advantaged Investments（税制優遇資産）",
+    "gbTaxAdvantagedSub": "ISA＋SIPP＋Workplace Pension（上2区分と重なる横断的な内訳）",
+    "gbTaxHandledInInvestmentNote": "英国の税制（Income Tax・Dividend Tax・Capital Gains Tax・年金拠出の税軽減）は、セクション02「ISA（Stocks & Shares）」内でまとめて計算しています。",
+    "gbTaxSectionLabel": "Tax（2026/27年度・England / Wales / Northern Ireland）",
+    "gbTaxSourceNote": "Income Tax・Dividend Tax・Capital Gains Taxは2026/27年度のGOV.UK公表値に基づく概算です。スコットランド税率、National Insurance、貯蓄利子課税、相続税は未実装です。",
+    "gbTotalAssetsLabel": "総資産（6口座の合計）",
+    "gbTotalAssetsSub": "ISA＋SIPP＋Workplace Pension＋GIA＋Cash Savingsのすべての合計",
+    "gbTotalTaxLabel": "税額合計（概算・年金軽減後）",
+    "gbTotalTaxSub": "Income Tax＋Dividend Tax＋CGT − 年金拠出による軽減",
+    "gbWithdrawalLabel": "取崩し必要額（口座から）",
+    "gbWithdrawalSub": "年金収入で賄えない年間の不足額",
+    "gbWorkplacePensionLabel": "Workplace Pension",
     "advancedMedicalLabel": "先進医療（円）",
     "ageYM": "{years}歳{months}ヶ月",
     "ageYMD": "{years}歳{months}ヶ月{days}日",
@@ -610,6 +697,93 @@ const TRANSLATIONS = {
     "usWithdrawalSub": "年金収入だけでは不足する年間額",
   },
   en: {
+    // ---------- United Kingdom (GB) keys ----------
+    // The GB build runs on the "en-GB" dictionary, which inherits every key below.
+    // Wording here is British English and uses UK product names only (no US terms).
+    "gbAccountBreakdownChartTitle": "Account Breakdown at Retirement ({age})",
+    "gbAccountBreakdownNote": "Projected balance of each account — ISAs, SIPP, Workplace Pension, General Investment Account and Cash Savings — at your retirement age.",
+    "gbAdditionalPensionLabel": "Additional Pension Income (Annual, optional)",
+    "gbAdjustedIncomeLabel": "Adjusted Income (for the pension allowance taper — leave blank to use your total income)",
+    "gbAnnualContributionLabel": "Annual Contribution",
+    "gbAnnualIncomeLabel": "Total Annual Income (salary, pension, etc.)",
+    "gbCapitalGainLabel": "Estimated Annual Capital Gains (outside ISAs and pensions)",
+    "gbCashIsaLabel": "Cash ISA",
+    "gbCashSavingsLabel": "Cash Savings",
+    "gbCgtLabel": "Capital Gains Tax (Estimate)",
+    "gbCgtSub": "After the {amount} annual exempt amount — 18% / 24%",
+    "gbCgtTaxFreeNote": "Your gains are within the annual exempt amount ({amount}), so no Capital Gains Tax is due.",
+    "gbClaimAgeLabel": "Age You Start Claiming (deferral allowed)",
+    "gbContributionEndAgeLabel": "Contributions End at Age",
+    "gbCurrentValueLabel": "Current Balance",
+    "gbDeferralNote": "Deferring increases your State Pension by {pct}% (1% for every 9 weeks). You cannot claim the State Pension early in the UK.",
+    "gbDividendIncomeLabel": "Annual Dividend Income (outside ISAs and pensions)",
+    "gbDividendTaxLabel": "Dividend Tax (Estimate)",
+    "gbDividendTaxSub": "After the {amount} dividend allowance — 10.75% / 35.75% / 39.35%",
+    "gbEffectiveClaimAgeNote": "Your State Pension will actually start at {age}, as it cannot be claimed before State Pension age.",
+    "gbExpensesMonthlyLabel": "Estimated Monthly Living Costs in Retirement",
+    "gbExpensesTotalLabel": "Total Outgoings (Living + Healthcare)",
+    "gbExpensesTotalSub": "Annual living costs plus healthcare costs",
+    "gbFullStatePensionNote": "For reference, the full new State Pension for 2026/27 is {amount} a year (£241.30 a week). Check your own figure with the GOV.UK State Pension forecast.",
+    "gbGiaLabel": "General Investment Account",
+    "gbHealthcareSourceNote": "This assumes core healthcare is covered by the NHS, and asks you to enter only the annual costs you expect to pay yourself. NHS prescription and dental charges are not calculated automatically, as they differ across England, Scotland, Wales and Northern Ireland.",
+    "gbHealthcareTotalLabel": "Total Healthcare Costs (Annual)",
+    "gbHealthcareTotalSub": "Core costs + private cover + dental + prescriptions + long-term care + other",
+    "gbIncomeTaxLabel": "Income Tax (Estimate)",
+    "gbIncomeTaxSub": "Taxable income: {amount} (after Personal Allowance)",
+    "gbInvestmentSourceNote": "Allowances and rates shown are the GOV.UK figures for the 2026/27 tax year (6 April 2026 to 5 April 2027), for England, Wales and Northern Ireland. Scottish Income Tax rates are not implemented. Please consult a qualified adviser for your own tax position.",
+    "gbIsaAllowanceLabel": "Annual ISA Allowance (2026/27)",
+    "gbIsaOverLabel": "You are {amount} over the annual ISA allowance",
+    "gbIsaRemainingLabel": "Remaining ISA Allowance",
+    "gbIsaRemainingSub": "Up to {amount} across your Stocks and Shares ISA and Cash ISA combined",
+    "gbIsaTaxFreeNote": "Interest, dividends and gains inside an ISA are entirely tax-free. The tax figures above apply only to holdings outside ISAs and pensions.",
+    "gbLiquidAssetsLabel": "Liquid / Accessible Assets",
+    "gbLiquidAssetsSub": "Cash Savings, Cash ISA, GIA and Stocks and Shares ISA (plus pensions once you are {age} or older)",
+    "gbLumpSumNote": "You can normally take 25% of your pension as a tax-free lump sum, within the Lump Sum Allowance ({amount}). Tax on lump sums is not calculated here.",
+    "gbNotImplementedTitle": "Not implemented",
+    "gbOverlapYearsLabel": "Years Your Other Income Overlaps the State Pension",
+    "gbOverlapYearsSub": "Years you expect to keep earning after your State Pension starts (enter 0 if none)",
+    "gbOverlapYearsUnit": "years",
+    "gbPensionAccessNote": "SIPP and Workplace Pension funds cannot normally be accessed before age {age} (rising to 57 from 6 April 2028).",
+    "gbPensionAllowanceLabel": "Pension Annual Allowance (2026/27)",
+    "gbPensionOverLabel": "You are {amount} over the pension annual allowance",
+    "gbPensionRemainingLabel": "Remaining Pension Allowance",
+    "gbPensionRemainingSub": "Up to {amount} across your SIPP and Workplace Pension combined",
+    "gbPensionReliefLabel": "Pension Tax Relief (Estimate)",
+    "gbPensionReliefSub": "Contributions × your marginal rate of {pct}%",
+    "gbPensionTaperNote": "Your adjusted income is above £260,000, so your annual allowance is tapered down to {amount} (floor of £10,000).",
+    "gbPrescriptionLabel": "Prescription Costs (Annual)",
+    "gbPrivateHealthLabel": "Private Health Insurance (Monthly)",
+    "gbDentalLabel": "Dental Costs (Annual)",
+    "gbLongTermCareLabel": "Long-term Care Costs (Annual)",
+    "gbNhsBasicLabel": "Core Healthcare Costs (assuming NHS cover, Annual)",
+    "gbOtherOutOfPocketLabel": "Other Out-of-Pocket Healthcare Costs (Annual)",
+    "gbRestrictedAssetsLabel": "Retirement / Restricted Assets",
+    "gbRestrictedAssetsSubAccessible": "You are {age} or older, so your pension funds are accessible",
+    "gbRestrictedAssetsSubLocked": "SIPP + Workplace Pension (locked until age {age})",
+    "gbRetirementIncomeLabel": "Retirement Income",
+    "gbRetirementIncomeSub": "Annual State Pension plus any additional pension income",
+    "gbSippLabel": "SIPP",
+    "gbStatePensionAgeLabel": "Your State Pension Age",
+    "gbStatePensionAgeNote": "State Pension age is rising from 66 to 67 between April 2026 and April 2028. Check your exact age with the GOV.UK State Pension age tool.",
+    "gbStatePensionAnnualLabel": "State Pension (Annual)",
+    "gbStatePensionAnnualSub": "Including any uplift from deferring",
+    "gbStatePensionEstimateLabel": "Estimated Annual State Pension (from your GOV.UK forecast)",
+    "gbStatePensionSourceNote": "Qualifying years are not assessed automatically. Please enter the annual figure from your GOV.UK State Pension forecast. The uplift for deferring (1% for every 9 weeks) follows the official rules.",
+    "gbStocksSharesIsaLabel": "Stocks and Shares ISA",
+    "gbSurplusLabel": "Income Surplus",
+    "gbSurplusSub": "Annual amount by which pension income exceeds your outgoings",
+    "gbTaxAdvantagedLabel": "Tax-Advantaged Investments",
+    "gbTaxAdvantagedSub": "ISAs + SIPP + Workplace Pension (a cross-cutting view that overlaps the two categories above)",
+    "gbTaxHandledInInvestmentNote": "UK tax — Income Tax, Dividend Tax, Capital Gains Tax and pension tax relief — is calculated together in section 02 (ISA — Stocks & Shares).",
+    "gbTaxSectionLabel": "Tax (2026/27 — England, Wales & Northern Ireland)",
+    "gbTaxSourceNote": "Income Tax, Dividend Tax and Capital Gains Tax are estimates based on GOV.UK figures for 2026/27. Scottish Income Tax, National Insurance, tax on savings interest and Inheritance Tax are not implemented.",
+    "gbTotalAssetsLabel": "Total Assets (all six accounts)",
+    "gbTotalAssetsSub": "ISAs + SIPP + Workplace Pension + GIA + Cash Savings combined",
+    "gbTotalTaxLabel": "Total Tax (Estimate, after pension relief)",
+    "gbTotalTaxSub": "Income Tax + Dividend Tax + CGT − pension tax relief",
+    "gbWithdrawalLabel": "Withdrawal Needed from Your Accounts",
+    "gbWithdrawalSub": "Annual shortfall not covered by pension income",
+    "gbWorkplacePensionLabel": "Workplace Pension",
     "advancedMedicalLabel": "Advanced medical care",
     "ageYM": "{years}y {months}m",
     "ageYMD": "{years} years {months} months {days} days",
@@ -1078,7 +1252,7 @@ const TRANSLATIONS = {
 //     Individual Stocks → Stocks & Shares、Bank Deposits → Cash Savings。
 // ============================================================================
 const EN_GB_OVERRIDES = {
-  localePreviewWarning: "Preview version: Labels and currency are adapted for the United Kingdom, but investment limits, pensions, taxes, and healthcare calculations currently use Japanese assumptions.",
+  localePreviewWarning: "UK edition: ISA and pension allowances, State Pension, Income Tax, Dividend Tax and Capital Gains Tax use GOV.UK figures for the 2026/27 tax year (England, Wales & Northern Ireland). Scottish Income Tax, National Insurance and Inheritance Tax are not implemented. This is a planning tool, not financial advice.",
   appSubtitle: "Investment Accounts × Retirement Assets × Pensions × Healthcare Costs × Inheritance Planning — Integrated Simulation",
   idecoCurrentValueAutoLabel: "Current Pension Value (Auto-calculated)",
   idecoIntroNote: "A SIPP or Personal Pension is a retirement savings account. In principle, funds cannot be withdrawn before the eligible age. Investment returns are not guaranteed. The tax savings shown are estimates.",
@@ -1553,35 +1727,399 @@ const US_COUNTRY_RULES = {
   defaults: {},
 };
 
-// ---------- countryRules/GB.js 相当（仮実装：未実装のプレースホルダーのみ） ----------
+// ---------- countryRules/GB.js 相当（英国版：実装済み） ----------
+// 対象年度：2026/27（2026年4月6日〜2027年4月5日）。
+// 制度上限・税率はすべて GB_COUNTRY_RULES 内に集約し、画面や共通計算関数へ直接書かない。
+// 各セクションは effectiveYear / lastUpdated / sourceName / sourceUrl を持つ。
+// 根拠が確認できない数値は推測で入れず、未確認・未対応の項目は notImplemented に明示する。
+// 【重要】このオブジェクトは JP_COUNTRY_RULES / US_COUNTRY_RULES を一切参照せず、
+// 逆に JP/US 側からも参照されない。英国版の変更はこのオブジェクト内で完結する。
 const GB_COUNTRY_RULES = {
   investment: {
-    implemented: false,
-    plannedAccountTypes: ["isa", "sipp"],
-    annualInstallmentLimit: null,
-    annualGrowthLimit: null,
-    growthLifetimeLimit: null,
-    taxFreeInvestmentLimit: null,
+    implemented: true,
+    effectiveTaxYear: "2026/27",
+    lastUpdated: "2026-07-13",
+    sourceName: "GOV.UK — Individual Savings Accounts (ISAs) / Tax on your private pension contributions",
+    sourceUrl: "https://www.gov.uk/individual-savings-accounts",
+    sourceUrls: {
+      isaAllowance: "https://www.gov.uk/individual-savings-accounts",
+      pensionAnnualAllowance: "https://www.gov.uk/tax-on-your-private-pension/annual-allowance",
+      pensionAccessAge: "https://www.gov.uk/personal-pensions-your-rights",
+      taxFreeLumpSum: "https://www.gov.uk/tax-on-pension",
+    },
+    // 英国版で別々に管理・計算する口座
+    accountTypes: ["stocksSharesIsa", "cashIsa", "sipp", "workplacePension", "gia", "cashSavings"],
+    isaAccounts: ["stocksSharesIsa", "cashIsa"],
+    pensionAccounts: ["sipp", "workplacePension"],
+    taxAdvantagedAccounts: ["stocksSharesIsa", "cashIsa", "sipp", "workplacePension"],
+    limits: {
+      // ISA：全ISA合算での年間拠出上限（2026/27）
+      isaAnnualAllowance: 20000,
+      lifetimeIsaAnnual: 4000,
+      juniorIsaAnnual: 9000,
+      // 年金（SIPP＋職域年金の合算）：Annual Allowance（2026/27）
+      pensionAnnualAllowance: 60000,
+      pensionTaperThresholdIncome: 200000,
+      pensionTaperAdjustedIncome: 260000,
+      pensionAnnualAllowanceFloor: 10000,
+      moneyPurchaseAnnualAllowance: 10000,
+    },
+    // 予定されている制度変更（2026/27時点では未適用。計算には反映していない）
+    scheduled: {
+      // 2027年4月6日から、65歳未満のCash ISA年間拠出上限は £12,000 になる予定（65歳以上は £20,000 のまま）
+      cashIsaLimitUnder65From2027: 12000,
+      cashIsaLimitEffectiveDate: "2027-04-06",
+      // 私的年金の受給可能最低年齢は2028年4月6日から57歳へ引き上げ予定
+      pensionAccessAgeFrom2028: 57,
+      pensionAccessAgeEffectiveDate: "2028-04-06",
+    },
+    // 私的年金（SIPP・職域年金）にアクセスできる最低年齢（2026/27時点）
+    pensionAccessAge: 55,
+    // 非課税一時金：年金資産の25%（Lump Sum Allowance の範囲内）
+    taxFreeLumpSumRate: 0.25,
+    lumpSumAllowance: 268275,
+
+    // ---------- 計算関数（すべて純粋関数。JP/USや共通エンジンからは呼ばれない） ----------
+    _num(v) { return Number(v) || 0; },
+    getIsaAnnualAllowance() { return this.limits.isaAnnualAllowance; },
+    // ISA年間拠出額（Stocks and Shares ISA + Cash ISA の合算）
+    getIsaContributed(accounts) {
+      return this._num((accounts.stocksSharesIsa || {}).annualContribution)
+        + this._num((accounts.cashIsa || {}).annualContribution);
+    },
+    getIsaRemaining(accounts) {
+      return this.limits.isaAnnualAllowance - this.getIsaContributed(accounts);
+    },
+    // 年金のAnnual Allowance。高所得者はテーパリングにより最低 £10,000 まで逓減する。
+    // （threshold income が £200,000 以下、または adjusted income が £260,000 以下なら満額）
+    getPensionAnnualAllowance(adjustedIncome, thresholdIncome) {
+      const l = this.limits;
+      const ai = this._num(adjustedIncome);
+      const ti = (thresholdIncome === undefined || thresholdIncome === null) ? ai : this._num(thresholdIncome);
+      if (ti <= l.pensionTaperThresholdIncome || ai <= l.pensionTaperAdjustedIncome) return l.pensionAnnualAllowance;
+      const reduction = (ai - l.pensionTaperAdjustedIncome) / 2;
+      return Math.max(l.pensionAnnualAllowanceFloor, l.pensionAnnualAllowance - reduction);
+    },
+    // 年金年間拠出額（SIPP + 職域年金の合算）
+    getPensionContributed(accounts) {
+      return this._num((accounts.sipp || {}).annualContribution)
+        + this._num((accounts.workplacePension || {}).annualContribution);
+    },
+    getPensionRemaining(accounts, adjustedIncome) {
+      return this.getPensionAnnualAllowance(adjustedIncome) - this.getPensionContributed(accounts);
+    },
+
+    // 6口座の残高を、現在の年齢から死亡想定年齢まで年単位で積み上げる。
+    // 口座ごとに「現在額・年間積立額・想定利回り・積立終了年齢」を個別に持つ点がJP/US版と異なる。
+    // 退職後は、年金収入で賄えない不足額（annualWithdrawalNeeded）を口座から取り崩す。
+    // 取崩し順：General Investment Account → Cash Savings → Cash ISA → Stocks and Shares ISA
+    //           → Workplace Pension → SIPP
+    // （税制優遇の小さい口座から先に取り崩し、年金資産は受給可能年齢に達するまで手を付けない）
+    simulateGrowth({ currentAge, retireAge, deathAge, accounts, annualWithdrawalNeeded, pensionAccessAge }) {
+      const keys = this.accountTypes;
+      const accessAge = (pensionAccessAge === undefined || pensionAccessAge === null)
+        ? this.pensionAccessAge
+        : Number(pensionAccessAge);
+      const balances = {};
+      const contributions = {};
+      const rates = {};
+      const endAges = {};
+      keys.forEach((k) => {
+        const a = accounts[k] || {};
+        balances[k] = Number(a.currentValue) || 0;
+        contributions[k] = Number(a.annualContribution) || 0;
+        rates[k] = (Number(a.expectedReturnPct) || 0) / 100;
+        endAges[k] = Number(a.contributionEndAge) || 0;
+      });
+      const withdrawalOrder = ["gia", "cashSavings", "cashIsa", "stocksSharesIsa", "workplacePension", "sipp"];
+      const totalOf = (b) => keys.reduce((s, k) => s + b[k], 0);
+      const startAge = Math.round(currentAge);
+      const endAge = Math.round(deathAge);
+      const yearly = [{ age: startAge, value: totalOf(balances), accounts: { ...balances } }];
+      for (let age = startAge + 1; age <= endAge; age++) {
+        keys.forEach((k) => { balances[k] = balances[k] * (1 + rates[k]); });
+        // 積立は口座ごとの「積立終了年齢」まで継続する
+        keys.forEach((k) => { if (age <= endAges[k]) balances[k] += contributions[k]; });
+        if (age > retireAge) {
+          let remaining = Number(annualWithdrawalNeeded) || 0;
+          for (const key of withdrawalOrder) {
+            if (remaining <= 0) break;
+            const isPension = (key === "sipp" || key === "workplacePension");
+            if (isPension && age < accessAge) continue; // 受給可能年齢前の年金資産は取り崩せない
+            const take = Math.min(balances[key], remaining);
+            balances[key] -= take;
+            remaining -= take;
+          }
+        }
+        yearly.push({ age, value: totalOf(balances), accounts: { ...balances } });
+      }
+      return { yearly, finalValue: totalOf(balances), finalAccounts: { ...balances } };
+    },
+
+    // 資産区分。
+    // ・Liquid / Accessible：Cash Savings・Cash ISA・GIA・Stocks and Shares ISA（＋受給可能年齢に達していれば年金資産）
+    // ・Retirement / Restricted：SIPP・職域年金（受給可能年齢に達するまで）
+    // ・Tax-Advantaged：ISA（S&S・Cash）＋SIPP＋職域年金 ＝ 上2区分と重なる「横断的な内訳」
+    // 総資産（total）は6口座すべての単純合計であり、Liquid + Restricted と必ず一致する。
+    splitAssets(age, accounts) {
+      const v = {};
+      this.accountTypes.forEach((k) => { v[k] = Number((accounts[k] || {}).currentValue) || 0; });
+      const isAccessibleAge = age >= this.pensionAccessAge;
+      const pensions = v.sipp + v.workplacePension;
+      const liquidBase = v.cashSavings + v.cashIsa + v.gia + v.stocksSharesIsa;
+      const liquid = liquidBase + (isAccessibleAge ? pensions : 0);
+      const restricted = isAccessibleAge ? 0 : pensions;
+      const taxAdvantaged = v.stocksSharesIsa + v.cashIsa + v.sipp + v.workplacePension;
+      return { liquid, restricted, taxAdvantaged, total: liquidBase + pensions, isAccessibleAge, accounts: v };
+    },
+    notImplemented: [
+      "Lifetime ISA（LISA）の政府ボーナス25%および60歳前引出時のペナルティ",
+      "Junior ISA / Junior SIPP",
+      "年金拠出のキャリーフォワード（過去3年分の未使用枠の繰越）",
+      "2027年4月からのCash ISA年間上限£12,000（65歳未満）— 上限額のみ scheduled に保持",
+    ],
   },
+
   retirement: {
-    implemented: false,
-    plannedAccountTypes: ["workplacePension", "statePension"],
-    hasFixedContributionLimit: null,
+    implemented: true,
+    effectiveTaxYear: "2026/27",
+    lastUpdated: "2026-07-13",
+    sourceName: "GOV.UK — The new State Pension",
+    sourceUrl: "https://www.gov.uk/new-state-pension",
+    sourceUrls: {
+      fullRate: "https://www.gov.uk/new-state-pension/what-youll-get",
+      statePensionAge: "https://www.gov.uk/state-pension-age",
+      deferral: "https://www.gov.uk/deferring-state-pension",
+      forecast: "https://www.gov.uk/check-state-pension",
+    },
+    accountTypes: ["statePension"],
+    statePension: {
+      // 2026/27：新State Pension満額 週£241.30（三重ロックにより2026年4月から4.8%増額）
+      fullWeeklyRate: 241.30,
+      fullAnnualRate: 241.30 * 52, // = £12,547.60
+      // 2016年4月より前に受給開始年齢に達した人の基礎年金（Basic State Pension）満額
+      basicFullWeeklyRate: 184.90,
+      qualifyingYearsForFull: 35,
+      minimumQualifyingYears: 10,
+      // State Pension age は2026年4月〜2028年4月にかけて66歳→67歳へ段階的に引き上げ中。
+      // 生年月日により66〜67歳と異なるため、アプリ側では固定せずユーザーが入力する。
+      ageBefore2026: 66,
+      ageAfterTransition: 67,
+      defaultAge: 67,
+      // 繰下げ受給：9週ごとに1%増額（年約5.8%）。英国では繰上げ受給はできない。
+      deferralUpliftPerNineWeeks: 0.01,
+      earlyClaimAllowed: false,
+    },
+    // 繰下げ受給による増額率（State Pension age より前は増額なし＝1.0）
+    getDeferralFactor(claimAge, statePensionAge) {
+      const deferredYears = Math.max(0, (Number(claimAge) || 0) - (Number(statePensionAge) || 0));
+      const weeks = deferredYears * 52;
+      return 1 + Math.floor(weeks / 9) * this.statePension.deferralUpliftPerNineWeeks;
+    },
+    // 英国では繰上げ受給ができないため、実際の受給開始年齢は State Pension age を下回らない
+    getEffectiveClaimAge(claimAge, statePensionAge) {
+      return Math.max(Number(claimAge) || 0, Number(statePensionAge) || 0);
+    },
+    // 年間受給額 ＝ 利用者が入力した年間受給見込額 × 繰下げ増額率
+    getAnnualBenefit(estimatedAnnual, claimAge, statePensionAge) {
+      return (Number(estimatedAnnual) || 0) * this.getDeferralFactor(claimAge, statePensionAge);
+    },
+    getFullAnnualRate() { return this.statePension.fullAnnualRate; },
+    notImplemented: [
+      "National Insurance納付記録からの受給資格年数・受給見込額の自動判定（利用者が見込額を入力する方式）",
+      "Additional State Pension（SERPS / S2P）・Protected Payment",
+      "Pension Credit",
+    ],
   },
+
   healthcare: {
-    implemented: false,
-    // NHS（国民保健サービス）を前提とした自己負担モデルが別途必要。
-    model: null,
+    implemented: true,
+    // NHSでカバーされることを前提に、自己負担が生じうる費目のみ年間費用を入力する簡易モデル。
+    // 日本式（高額療養費を織り込んだ年代別自己負担）の計算式は使用しない。
+    model: "selfInputAnnualCostsWithNhs",
+    effectiveTaxYear: "2026/27",
+    lastUpdated: "2026-07-13",
+    sourceName: "NHS (nhs.uk) — Help with health costs",
+    sourceUrl: "https://www.nhs.uk/nhs-services/help-with-health-costs/",
+    costItems: [
+      "nhsBasicAnnual",
+      "privateHealthInsuranceMonthly",
+      "dentalAnnual",
+      "prescriptionAnnual",
+      "longTermCareAnnual",
+      "otherOutOfPocketAnnual",
+    ],
+    getAnnualTotal(healthcare) {
+      const h = healthcare || {};
+      const n = (v) => Number(v) || 0;
+      return n(h.nhsBasicAnnual)
+        + n(h.privateHealthInsuranceMonthly) * 12
+        + n(h.dentalAnnual)
+        + n(h.prescriptionAnnual)
+        + n(h.longTermCareAnnual)
+        + n(h.otherOutOfPocketAnnual);
+    },
+    notImplemented: [
+      "NHS処方箋料・歯科料金の自動計算（England / Scotland / Wales / Northern Ireland で制度が異なるため、金額は利用者入力）",
+      "自治体によるLong-term care（社会的介護）の資力調査（means test）判定",
+    ],
   },
+
   tax: {
-    implemented: false,
-    model: null,
+    implemented: true,
+    model: "ukIncomeTaxPlusDividendPlusCgt",
+    effectiveTaxYear: "2026/27",
+    lastUpdated: "2026-07-13",
+    sourceName: "GOV.UK / HMRC — Income Tax rates and Personal Allowances, Tax on dividends, Capital Gains Tax",
+    sourceUrl: "https://www.gov.uk/income-tax-rates",
+    sourceUrls: {
+      incomeTax: "https://www.gov.uk/income-tax-rates",
+      personalAllowance: "https://www.gov.uk/income-tax-rates/income-over-100000",
+      dividend: "https://www.gov.uk/tax-on-dividends",
+      capitalGains: "https://www.gov.uk/capital-gains-tax/rates",
+      savings: "https://www.gov.uk/apply-tax-free-interest-on-savings",
+      pensionTaxRelief: "https://www.gov.uk/tax-on-your-private-pension/pension-tax-relief",
+      scotland: "https://www.gov.uk/scottish-income-tax",
+    },
+    // 【重要】本実装は England / Wales / Northern Ireland の税率のみ。
+    // スコットランドは非貯蓄・非配当所得について独自の税率・バンドを持つため未実装。
+    region: "England, Wales & Northern Ireland",
+    regionsImplemented: ["england", "wales", "northernIreland"],
+    // スコットランドの非貯蓄・非配当所得の税率・バンドは未実装（推測値を入れない）
+    scotland: { implemented: false, bands: null, rates: null },
+    incomeTax: {
+      personalAllowance: 12570,
+      personalAllowanceTaperStart: 100000,
+      personalAllowanceTaperEnd: 125140,
+      // 課税所得（総所得 − Personal Allowance）に対する累進バンド
+      bands: [
+        { upTo: 37700, rate: 0.20 },    // Basic rate（総所得 £50,270 まで）
+        { upTo: 112570, rate: 0.40 },   // Higher rate（総所得 £125,140 まで）
+        { upTo: Infinity, rate: 0.45 }, // Additional rate
+      ],
+    },
+    dividend: {
+      allowance: 500,
+      // 2026年4月6日から基本税率・高税率が2ポイント引き上げ（Autumn Budget 2025 / Finance Act 2026）
+      basicRate: 0.1075,
+      higherRate: 0.3575,
+      additionalRate: 0.3935,
+    },
+    capitalGains: {
+      annualExemptAmount: 3000,
+      // 2024年10月30日以降、住宅用不動産もその他資産も同率
+      basicRate: 0.18,
+      higherRate: 0.24,
+    },
+    savings: {
+      personalSavingsAllowanceBasic: 1000,
+      personalSavingsAllowanceHigher: 500,
+      personalSavingsAllowanceAdditional: 0,
+      // 2027年4月から貯蓄利子の税率が 22 / 42 / 47% へ引き上げ予定。2026/27では未適用。
+      scheduledRatesFrom2027: { basic: 0.22, higher: 0.42, additional: 0.47 },
+    },
+    // ISA内の利子・配当・譲渡益はすべて非課税
+    isaTaxFree: true,
+    pensionTaxRelief: {
+      model: "marginalRate",
+      taxFreeLumpSumRate: 0.25,
+      lumpSumAllowance: 268275,
+    },
+
+    // Personal Allowance（£100,000超で£2につき£1ずつ逓減し、£125,140でゼロ）
+    getPersonalAllowance(grossIncome) {
+      const it = this.incomeTax;
+      const g = Number(grossIncome) || 0;
+      if (g <= it.personalAllowanceTaperStart) return it.personalAllowance;
+      return Math.max(0, it.personalAllowance - (g - it.personalAllowanceTaperStart) / 2);
+    },
+    calculateIncomeTax(grossIncome) {
+      const g = Number(grossIncome) || 0;
+      const personalAllowance = this.getPersonalAllowance(g);
+      const taxableIncome = Math.max(0, g - personalAllowance);
+      let tax = 0;
+      let lower = 0;
+      for (const b of this.incomeTax.bands) {
+        if (taxableIncome > lower) {
+          tax += (Math.min(taxableIncome, b.upTo) - lower) * b.rate;
+          lower = b.upTo;
+        } else break;
+      }
+      return { personalAllowance, taxableIncome, tax };
+    },
+    // 限界税率。£100,000〜£125,140 は Personal Allowance の逓減により実効60%となる。
+    getMarginalRate(grossIncome) {
+      const it = this.incomeTax;
+      const g = Number(grossIncome) || 0;
+      if (g > it.personalAllowanceTaperStart && g <= it.personalAllowanceTaperEnd) return 0.60;
+      const { taxableIncome } = this.calculateIncomeTax(g);
+      if (taxableIncome <= 0) return 0;
+      if (taxableIncome <= it.bands[0].upTo) return it.bands[0].rate;
+      if (taxableIncome <= it.bands[1].upTo) return it.bands[1].rate;
+      return it.bands[2].rate;
+    },
+    // 基本税率帯の残り（譲渡益・配当を積み上げる際に使う）
+    getBasicRateBandRemaining(grossIncome) {
+      const { taxableIncome } = this.calculateIncomeTax(grossIncome);
+      return Math.max(0, this.incomeTax.bands[0].upTo - taxableIncome);
+    },
+    // 配当課税：配当は所得の最上位に積み上げて税率帯を判定する
+    calculateDividendTax(dividendIncome, grossIncome) {
+      const taxable = Math.max(0, (Number(dividendIncome) || 0) - this.dividend.allowance);
+      if (taxable <= 0) return 0;
+      const it = this.incomeTax;
+      const bands = [
+        { upTo: it.bands[0].upTo, rate: this.dividend.basicRate },
+        { upTo: it.bands[1].upTo, rate: this.dividend.higherRate },
+        { upTo: Infinity, rate: this.dividend.additionalRate },
+      ];
+      let stack = this.calculateIncomeTax(grossIncome).taxableIncome;
+      let remaining = taxable;
+      let tax = 0;
+      for (const b of bands) {
+        if (remaining <= 0) break;
+        const room = Math.max(0, b.upTo - stack);
+        const amount = Math.min(remaining, room);
+        tax += amount * b.rate;
+        remaining -= amount;
+        stack += amount;
+      }
+      return tax;
+    },
+    // 譲渡益課税：年間非課税枠を控除し、基本税率帯の残りに18%、それを超える分に24%
+    calculateCapitalGainsTax(gain, grossIncome) {
+      const cg = this.capitalGains;
+      const taxableGain = Math.max(0, (Number(gain) || 0) - cg.annualExemptAmount);
+      if (taxableGain <= 0) return 0;
+      const atBasic = Math.min(taxableGain, this.getBasicRateBandRemaining(grossIncome));
+      const atHigher = taxableGain - atBasic;
+      return atBasic * cg.basicRate + atHigher * cg.higherRate;
+    },
+    // 年金拠出による所得税の軽減額（概算）＝ Annual Allowance の範囲内の拠出額 × 限界税率
+    calculatePensionTaxRelief(annualPensionContribution, grossIncome, annualAllowance) {
+      const contribution = Math.max(0, Number(annualPensionContribution) || 0);
+      const cap = (annualAllowance === undefined || annualAllowance === null)
+        ? Infinity
+        : Math.max(0, Number(annualAllowance) || 0);
+      return Math.min(contribution, cap) * this.getMarginalRate(grossIncome);
+    },
+    notImplemented: [
+      "スコットランド税率（Scottish Income Tax）",
+      "National Insurance拠出額（NICs）",
+      "貯蓄利子への課税額計算（Personal Savings Allowanceは保持。2027年4月からの22/42/47%への引上げも未適用）",
+      "2027年4月からの不動産所得税率（22/42/47%）",
+      "Inheritance Tax（相続税）",
+      "Marriage Allowance / Married Couple's Allowance",
+    ],
   },
+
   labels: {
-    investmentNote: "investmentLimitsNotImplementedNote",
-    retirementNote: "retirementNotImplementedNote",
-    healthcareNote: "healthcareNotImplementedNote",
-    taxNote: "taxNotImplementedNote",
+    // 英国版は投資・年金・医療費・税制のすべてを実装済みのため、未実装の注記は使用しない。
+    // ただしiDeCoセクション（JP専用）内の税制表示だけは英国向けの案内文へ差し替える。
+    investmentNote: null,
+    retirementNote: null,
+    healthcareNote: null,
+    taxNote: "gbTaxHandledInInvestmentNote",
   },
   defaults: {},
 };
@@ -2732,6 +3270,293 @@ function USHealthcarePanel({ usInvestment, onUpdate, medicareAnnual, healthInsur
   );
 }
 
+// ---------- イギリス選択時：1口座分の入力欄（現在額・年間積立額・想定利回り・積立終了年齢） ----------
+// 6口座（Stocks and Shares ISA / Cash ISA / SIPP / Workplace Pension / GIA / Cash Savings）で共通利用する。
+function GBAccountFields({ accountKey, title, account, onUpdateAccount, borderColor, note }) {
+  const { t } = useContext(LocaleContext);
+  return (
+    <div className="section-block" style={{ borderColor, marginTop: 12 }}>
+      <div className="field-label" style={{ marginBottom: 6 }}>{title}</div>
+      <Field label={t("gbCurrentValueLabel")} unit="£" step={500} value={account.currentValue} onChange={(v) => onUpdateAccount(accountKey, "currentValue", v)} />
+      <Field label={t("gbAnnualContributionLabel")} unit="£" step={100} value={account.annualContribution} onChange={(v) => onUpdateAccount(accountKey, "annualContribution", v)} />
+      <Field label={t("expectedAnnualReturnLabel")} unit="%" step={0.5} value={account.expectedReturnPct} onChange={(v) => onUpdateAccount(accountKey, "expectedReturnPct", v)} />
+      <AgeField label={t("gbContributionEndAgeLabel")} value={account.contributionEndAge} onChange={(v) => onUpdateAccount(accountKey, "contributionEndAge", v)} />
+      {note && <div className="stat-sub">{note}</div>}
+    </div>
+  );
+}
+
+// ---------- イギリス選択時：投資口座パネル（ISA / SIPP / Workplace Pension / GIA / Cash Savings ＋ 税制） ----------
+// JPのNISA関連UI・USの401(k)関連UIとは完全に独立しており、GB_COUNTRY_RULES の関数のみを使用する。
+function GBInvestmentAccountsPanel({ gbInvestment, onUpdate, onUpdateAccount, age, investmentRules, taxRules, taxResult, pensionAllowance }) {
+  const { t, money } = useContext(LocaleContext);
+
+  const isaAllowance = investmentRules.getIsaAnnualAllowance();
+  const isaContributed = investmentRules.getIsaContributed(gbInvestment);
+  const isaRemaining = isaAllowance - isaContributed;
+
+  const pensionContributed = investmentRules.getPensionContributed(gbInvestment);
+  const pensionRemaining = pensionAllowance - pensionContributed;
+  const isTapered = pensionAllowance < investmentRules.limits.pensionAnnualAllowance;
+
+  const split = investmentRules.splitAssets(age, gbInvestment);
+  const accessAge = investmentRules.pensionAccessAge;
+  const cgtExempt = taxRules.capitalGains.annualExemptAmount;
+
+  return (
+    <div>
+      <div className="note" style={{ marginBottom: 14 }}>
+        <Info size={13} />
+        <span>{t("gbInvestmentSourceNote")}</span>
+      </div>
+
+      <Field label={t("gbAnnualIncomeLabel")} unit="£" step={1000} value={gbInvestment.annualIncome} onChange={(v) => onUpdate("annualIncome", v)} />
+      <Field label={t("gbAdjustedIncomeLabel")} unit="£" step={1000} value={gbInvestment.adjustedIncome} onChange={(v) => onUpdate("adjustedIncome", v)} />
+
+      <GBAccountFields
+        accountKey="stocksSharesIsa" title={t("gbStocksSharesIsaLabel")} account={gbInvestment.stocksSharesIsa}
+        onUpdateAccount={onUpdateAccount} borderColor="#8FBF7F"
+      />
+      <GBAccountFields
+        accountKey="cashIsa" title={t("gbCashIsaLabel")} account={gbInvestment.cashIsa}
+        onUpdateAccount={onUpdateAccount} borderColor="#8FBF7F"
+      />
+
+      <div className="stat-grid" style={{ marginTop: 12 }}>
+        <StatCard
+          label={t("gbIsaAllowanceLabel")}
+          value={money(isaAllowance)}
+          sub={t("gbIsaRemainingSub", { amount: money(isaAllowance) })}
+        />
+        <StatCard
+          label={t("gbIsaRemainingLabel")}
+          value={money(Math.max(0, isaRemaining))}
+          sub={t("gbIsaTaxFreeNote")}
+          tone={isaRemaining < 0 ? "danger" : "good"}
+        />
+      </div>
+      {isaRemaining < 0 && (
+        <div className="note" style={{ borderLeftColor: "#C2694F", marginTop: 10 }}>
+          <Info size={13} style={{ color: "#C2694F" }} />
+          <span>{t("gbIsaOverLabel", { amount: money(-isaRemaining) })}</span>
+        </div>
+      )}
+
+      <GBAccountFields
+        accountKey="sipp" title={t("gbSippLabel")} account={gbInvestment.sipp}
+        onUpdateAccount={onUpdateAccount} borderColor="#B08FD6"
+      />
+      <GBAccountFields
+        accountKey="workplacePension" title={t("gbWorkplacePensionLabel")} account={gbInvestment.workplacePension}
+        onUpdateAccount={onUpdateAccount} borderColor="#B08FD6"
+      />
+
+      <div className="stat-grid" style={{ marginTop: 12 }}>
+        <StatCard
+          label={t("gbPensionAllowanceLabel")}
+          value={money(pensionAllowance)}
+          sub={t("gbPensionRemainingSub", { amount: money(pensionAllowance) })}
+        />
+        <StatCard
+          label={t("gbPensionRemainingLabel")}
+          value={money(Math.max(0, pensionRemaining))}
+          sub={t("gbPensionAccessNote", { age: accessAge })}
+          tone={pensionRemaining < 0 ? "danger" : "good"}
+        />
+      </div>
+      {isTapered && (
+        <div className="note" style={{ borderLeftColor: "#D9A54F", marginTop: 10 }}>
+          <Info size={13} style={{ color: "#D9A54F" }} />
+          <span>{t("gbPensionTaperNote", { amount: money(pensionAllowance) })}</span>
+        </div>
+      )}
+      {pensionRemaining < 0 && (
+        <div className="note" style={{ borderLeftColor: "#C2694F", marginTop: 10 }}>
+          <Info size={13} style={{ color: "#C2694F" }} />
+          <span>{t("gbPensionOverLabel", { amount: money(-pensionRemaining) })}</span>
+        </div>
+      )}
+      <div className="note" style={{ marginTop: 10 }}>
+        <Info size={13} />
+        <span>{t("gbLumpSumNote", { amount: money(investmentRules.lumpSumAllowance) })}</span>
+      </div>
+
+      <GBAccountFields
+        accountKey="gia" title={t("gbGiaLabel")} account={gbInvestment.gia}
+        onUpdateAccount={onUpdateAccount} borderColor="#D9A54F"
+      />
+      <GBAccountFields
+        accountKey="cashSavings" title={t("gbCashSavingsLabel")} account={gbInvestment.cashSavings}
+        onUpdateAccount={onUpdateAccount} borderColor="#7BC9E0"
+      />
+
+      <div className="stat-grid" style={{ marginTop: 16 }}>
+        <StatCard label={t("gbTotalAssetsLabel")} value={money(split.total)} sub={t("gbTotalAssetsSub")} />
+      </div>
+      <div className="stat-grid" style={{ marginTop: 10 }}>
+        <StatCard
+          label={t("gbLiquidAssetsLabel")}
+          value={money(split.liquid)}
+          sub={t("gbLiquidAssetsSub", { age: accessAge })}
+          tone="good"
+        />
+        <StatCard
+          label={t("gbRestrictedAssetsLabel")}
+          value={money(split.restricted)}
+          sub={split.isAccessibleAge
+            ? t("gbRestrictedAssetsSubAccessible", { age: accessAge })
+            : t("gbRestrictedAssetsSubLocked", { age: accessAge })}
+        />
+        <StatCard
+          label={t("gbTaxAdvantagedLabel")}
+          value={money(split.taxAdvantaged)}
+          sub={t("gbTaxAdvantagedSub")}
+        />
+      </div>
+
+      <div className="section-block" style={{ borderColor: "#5FB0A0", marginTop: 16 }}>
+        <div className="field-label" style={{ marginBottom: 6 }}>{t("gbTaxSectionLabel")}</div>
+        <div className="note" style={{ marginBottom: 12 }}>
+          <Info size={13} />
+          <span>{t("gbTaxSourceNote")}</span>
+        </div>
+        <Field label={t("gbDividendIncomeLabel")} unit="£" step={100} value={gbInvestment.dividendIncomeAnnual} onChange={(v) => onUpdate("dividendIncomeAnnual", v)} />
+        <Field label={t("gbCapitalGainLabel")} unit="£" step={500} value={gbInvestment.estimatedCapitalGainAnnual} onChange={(v) => onUpdate("estimatedCapitalGainAnnual", v)} />
+        <div className="stat-grid" style={{ marginTop: 10 }}>
+          <StatCard label={t("gbIncomeTaxLabel")} value={money(taxResult.incomeTax)} sub={t("gbIncomeTaxSub", { amount: money(taxResult.taxableIncome) })} />
+          <StatCard label={t("gbDividendTaxLabel")} value={money(taxResult.dividendTax)} sub={t("gbDividendTaxSub", { amount: money(taxRules.dividend.allowance) })} />
+          <StatCard label={t("gbCgtLabel")} value={money(taxResult.capitalGainsTax)} sub={t("gbCgtSub", { amount: money(cgtExempt) })} />
+          <StatCard
+            label={t("gbPensionReliefLabel")}
+            value={money(taxResult.pensionTaxRelief)}
+            sub={t("gbPensionReliefSub", { pct: Math.round(taxResult.marginalRate * 100) })}
+            tone="good"
+          />
+        </div>
+        <div className="stat-grid" style={{ marginTop: 10 }}>
+          <StatCard label={t("gbTotalTaxLabel")} value={money(taxResult.totalTax)} sub={t("gbTotalTaxSub")} tone="danger" />
+        </div>
+        <div className="note" style={{ marginTop: 10 }}>
+          <Info size={13} />
+          <span>{t("gbIsaTaxFreeNote")}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------- イギリス選択時：退職後パネル（State Pension → Expenses → Withdrawal） ----------
+function GBRetirementPanel({
+  gbInvestment, onUpdateStatePension, onUpdate, retirementRules,
+  statePensionAge, claimAge, effectiveClaimAge, deferralFactor,
+  statePensionAnnual, retirementIncomeAnnual, fullStatePensionAnnual,
+  expensesAnnual, healthcareAnnual, withdrawalNeeded, incomeSurplus,
+}) {
+  const { t, money } = useContext(LocaleContext);
+  const deferralPct = Math.round((deferralFactor - 1) * 1000) / 10;
+  return (
+    <div>
+      <div className="note" style={{ marginBottom: 12 }}>
+        <Info size={13} />
+        <span>{t("gbStatePensionSourceNote")}</span>
+      </div>
+
+      <AgeField
+        label={t("gbStatePensionAgeLabel")}
+        value={statePensionAge}
+        onChange={(v) => onUpdateStatePension("statePensionAge", Math.round(v))}
+      />
+      <div className="note" style={{ marginTop: -8, marginBottom: 8 }}>
+        <Info size={13} />
+        <span>{t("gbStatePensionAgeNote")}</span>
+      </div>
+
+      <Field
+        label={t("gbStatePensionEstimateLabel")} unit="£" step={100}
+        value={gbInvestment.statePension.estimatedAnnual}
+        onChange={(v) => onUpdateStatePension("estimatedAnnual", v)}
+      />
+      <div className="stat-sub" style={{ marginBottom: 8 }}>
+        {t("gbFullStatePensionNote", { amount: money(fullStatePensionAnnual) })}
+      </div>
+
+      <AgeField
+        label={t("gbClaimAgeLabel")}
+        value={claimAge}
+        onChange={(v) => onUpdateStatePension("claimAge", Math.round(v))}
+      />
+      {effectiveClaimAge > claimAge && (
+        <div className="note" style={{ marginTop: -8, borderLeftColor: "#D9A54F" }}>
+          <Info size={13} style={{ color: "#D9A54F" }} />
+          <span>{t("gbEffectiveClaimAgeNote", { age: t("ageYears", { age: effectiveClaimAge }) })}</span>
+        </div>
+      )}
+      {deferralFactor > 1 && (
+        <div className="note" style={{ marginTop: -8 }}>
+          <Info size={13} />
+          <span>{t("gbDeferralNote", { pct: deferralPct })}</span>
+        </div>
+      )}
+
+      <Field
+        label={t("gbOverlapYearsLabel")} unit={t("gbOverlapYearsUnit")} step={1}
+        value={gbInvestment.statePension.incomeOverlapYears}
+        onChange={(v) => onUpdateStatePension("incomeOverlapYears", v)}
+      />
+      <div className="stat-sub" style={{ marginBottom: 8 }}>{t("gbOverlapYearsSub")}</div>
+
+      <Field
+        label={t("gbAdditionalPensionLabel")} unit="£" step={100}
+        value={gbInvestment.statePension.additionalPensionAnnual}
+        onChange={(v) => onUpdateStatePension("additionalPensionAnnual", v)}
+      />
+
+      <div className="stat-grid" style={{ marginTop: 10, marginBottom: 14 }}>
+        <StatCard label={t("gbStatePensionAnnualLabel")} value={money(statePensionAnnual)} sub={t("gbStatePensionAnnualSub")} />
+        <StatCard label={t("gbRetirementIncomeLabel")} value={money(retirementIncomeAnnual)} sub={t("gbRetirementIncomeSub")} tone="good" />
+      </div>
+
+      <Field
+        label={t("gbExpensesMonthlyLabel")} unit="£" step={50}
+        value={gbInvestment.expensesMonthly}
+        onChange={(v) => onUpdate("expensesMonthly", v)}
+      />
+
+      <div className="stat-grid" style={{ marginTop: 10 }}>
+        <StatCard label={t("gbExpensesTotalLabel")} value={money(expensesAnnual + healthcareAnnual)} sub={t("gbExpensesTotalSub")} />
+        {withdrawalNeeded > 0 ? (
+          <StatCard label={t("gbWithdrawalLabel")} value={money(withdrawalNeeded)} sub={t("gbWithdrawalSub")} tone="danger" />
+        ) : (
+          <StatCard label={t("gbSurplusLabel")} value={money(incomeSurplus)} sub={t("gbSurplusSub")} tone="good" />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---------- イギリス選択時：医療費パネル（NHS前提の簡易モデル） ----------
+function GBHealthcarePanel({ gbInvestment, onUpdate, totalAnnual }) {
+  const { t, money } = useContext(LocaleContext);
+  const h = gbInvestment.healthcare;
+  return (
+    <div>
+      <div className="note" style={{ marginBottom: 12 }}>
+        <Info size={13} />
+        <span>{t("gbHealthcareSourceNote")}</span>
+      </div>
+      <Field label={t("gbNhsBasicLabel")} unit="£" step={50} value={h.nhsBasicAnnual} onChange={(v) => onUpdate("nhsBasicAnnual", v)} />
+      <Field label={t("gbPrivateHealthLabel")} unit="£" step={10} value={h.privateHealthInsuranceMonthly} onChange={(v) => onUpdate("privateHealthInsuranceMonthly", v)} />
+      <Field label={t("gbDentalLabel")} unit="£" step={50} value={h.dentalAnnual} onChange={(v) => onUpdate("dentalAnnual", v)} />
+      <Field label={t("gbPrescriptionLabel")} unit="£" step={10} value={h.prescriptionAnnual} onChange={(v) => onUpdate("prescriptionAnnual", v)} />
+      <Field label={t("gbLongTermCareLabel")} unit="£" step={500} value={h.longTermCareAnnual} onChange={(v) => onUpdate("longTermCareAnnual", v)} />
+      <Field label={t("gbOtherOutOfPocketLabel")} unit="£" step={50} value={h.otherOutOfPocketAnnual} onChange={(v) => onUpdate("otherOutOfPocketAnnual", v)} />
+      <div className="stat-grid" style={{ marginTop: 10 }}>
+        <StatCard label={t("gbHealthcareTotalLabel")} value={money(totalAnnual)} sub={t("gbHealthcareTotalSub")} tone="danger" />
+      </div>
+    </div>
+  );
+}
+
 function SectionTitle({ index, title, icon: Icon }) {
   return (
     <div className="section-title">
@@ -2856,6 +3681,43 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       // ⑤ 退職後の生活費（Expenses）。JPのlivingCostMonthlyとは別データ
       expensesMonthly: 0,
     },
+    // イギリス選択時の投資口座・年金・医療費。
+    // JP側（NISA/iDeCo）・US側（usInvestment）とは完全に独立した専用データ。
+    // 6口座それぞれが「現在額・年間積立額・想定利回り・積立終了年齢」を個別に持つ。
+    gbInvestment: {
+      annualIncome: 0,   // 年間総所得（Income Tax・配当税・CGT・年金税軽減の判定に使用）
+      adjustedIncome: 0, // 年金拠出上限のテーパリング判定用（0なら annualIncome を使用）
+      dividendIncomeAnnual: 0,
+      estimatedCapitalGainAnnual: 0,
+      stocksSharesIsa:  { currentValue: 0, annualContribution: 0, expectedReturnPct: 5, contributionEndAge: 65 },
+      cashIsa:          { currentValue: 0, annualContribution: 0, expectedReturnPct: 3, contributionEndAge: 65 },
+      sipp:             { currentValue: 0, annualContribution: 0, expectedReturnPct: 5, contributionEndAge: 65 },
+      workplacePension: { currentValue: 0, annualContribution: 0, expectedReturnPct: 5, contributionEndAge: 65 },
+      gia:              { currentValue: 0, annualContribution: 0, expectedReturnPct: 5, contributionEndAge: 65 },
+      cashSavings:      { currentValue: 0, annualContribution: 0, expectedReturnPct: 2, contributionEndAge: 65 },
+      // ② State Pension（英国の公的年金）
+      statePension: {
+        statePensionAge: 67,       // 生年月日により66〜67歳。GOV.UKで確認した値を入力
+        claimAge: 67,              // 繰下げ受給する場合はここを引き上げる（繰上げ受給は不可）
+        // 初期値は2026/27年度の満額（参考値）。実際の受給額はNational Insuranceの加入記録により
+        // 異なるため、利用者がGOV.UKのforecastで確認した見込額で必ず上書きできる。
+        // 数値そのものは GB_COUNTRY_RULES にのみ持たせ、ここでは参照するだけにしている。
+        estimatedAnnual: Math.round(GB_COUNTRY_RULES.retirement.statePension.fullAnnualRate),
+        incomeOverlapYears: 0,     // 受給開始後も収入が続く年数
+        additionalPensionAnnual: 0,
+      },
+      // ④ Healthcare（NHS前提の簡易モデル）
+      healthcare: {
+        nhsBasicAnnual: 0,
+        privateHealthInsuranceMonthly: 0,
+        dentalAnnual: 0,
+        prescriptionAnnual: 0,
+        longTermCareAnnual: 0,
+        otherOutOfPocketAnnual: 0,
+      },
+      // ⑤ 退職後の生活費。JPのlivingCostMonthly・USのusInvestment.expensesMonthlyとは別データ
+      expensesMonthly: 0,
+    },
   });
   const [watchlist, setWatchlist] = useState(DEFAULT_WATCHLIST);
 
@@ -2914,6 +3776,61 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     (Number(inputs.usInvestment.traditionalIra.currentValue) || 0) +
     (Number(inputs.usInvestment.rothIra.currentValue) || 0) +
     (Number(inputs.usInvestment.brokerage.currentValue) || 0);
+
+  // ---------- イギリス選択時の派生計算（すべて GB_COUNTRY_RULES の関数のみを使用） ----------
+  // country !== "GB" のときは各ルール関数を呼び出さない（JP/USのルールには同名メソッドが存在しないため）。
+  const gbInvestment = inputs.gbInvestment;
+  const gbIsGB = country === "GB";
+  const gbGrossIncome = Number(gbInvestment.annualIncome) || 0;
+  const gbAdjustedIncome = Number(gbInvestment.adjustedIncome) || gbGrossIncome;
+
+  const gbIncomeTaxResult = (gbIsGB && rules.tax.implemented)
+    ? rules.tax.calculateIncomeTax(gbGrossIncome)
+    : { personalAllowance: 0, taxableIncome: 0, tax: 0 };
+  const gbDividendTax = (gbIsGB && rules.tax.implemented)
+    ? rules.tax.calculateDividendTax(gbInvestment.dividendIncomeAnnual, gbGrossIncome)
+    : 0;
+  const gbCapitalGainsTax = (gbIsGB && rules.tax.implemented)
+    ? rules.tax.calculateCapitalGainsTax(gbInvestment.estimatedCapitalGainAnnual, gbGrossIncome)
+    : 0;
+  const gbMarginalRate = (gbIsGB && rules.tax.implemented)
+    ? rules.tax.getMarginalRate(gbGrossIncome)
+    : 0;
+  const gbPensionAnnualAllowance = (gbIsGB && rules.investment.implemented)
+    ? rules.investment.getPensionAnnualAllowance(gbAdjustedIncome)
+    : 0;
+  const gbPensionContribution = (gbIsGB && rules.investment.implemented)
+    ? rules.investment.getPensionContributed(gbInvestment)
+    : 0;
+  const gbPensionTaxRelief = (gbIsGB && rules.tax.implemented)
+    ? rules.tax.calculatePensionTaxRelief(gbPensionContribution, gbGrossIncome, gbPensionAnnualAllowance)
+    : 0;
+  // 年金拠出による軽減額が税額を上回る場合でもマイナス表示にはしない
+  const gbTotalTax = Math.max(0, gbIncomeTaxResult.tax + gbDividendTax + gbCapitalGainsTax - gbPensionTaxRelief);
+
+  const gbHealthcareAnnual = (gbIsGB && rules.healthcare.implemented)
+    ? rules.healthcare.getAnnualTotal(gbInvestment.healthcare)
+    : 0;
+
+  const gbStatePensionAge = Number(gbInvestment.statePension.statePensionAge) || 67;
+  const gbClaimAge = Number(gbInvestment.statePension.claimAge) || gbStatePensionAge;
+  const gbEffectiveClaimAge = (gbIsGB && rules.retirement.implemented)
+    ? rules.retirement.getEffectiveClaimAge(gbClaimAge, gbStatePensionAge)
+    : gbClaimAge;
+  const gbDeferralFactor = (gbIsGB && rules.retirement.implemented)
+    ? rules.retirement.getDeferralFactor(gbEffectiveClaimAge, gbStatePensionAge)
+    : 1;
+  const gbStatePensionAnnual = (gbIsGB && rules.retirement.implemented)
+    ? rules.retirement.getAnnualBenefit(gbInvestment.statePension.estimatedAnnual, gbEffectiveClaimAge, gbStatePensionAge)
+    : 0;
+  const gbFullStatePensionAnnual = (gbIsGB && rules.retirement.implemented)
+    ? rules.retirement.getFullAnnualRate()
+    : 0;
+  const gbAdditionalPensionAnnual = Number(gbInvestment.statePension.additionalPensionAnnual) || 0;
+  const gbRetirementIncomeAnnual = gbStatePensionAnnual + gbAdditionalPensionAnnual;
+  const gbExpensesAnnual = (Number(gbInvestment.expensesMonthly) || 0) * 12;
+  const gbWithdrawalNeeded = Math.max(0, gbExpensesAnnual + gbHealthcareAnnual - gbRetirementIncomeAnnual);
+  const gbIncomeSurplus = Math.max(0, gbRetirementIncomeAnnual - (gbExpensesAnnual + gbHealthcareAnnual));
 
   const money = useCallback((n) => formatMoneyFor(baseCurrency, n), [baseCurrency]);
   const label = useCallback((key) => getCategoryLabel(key, country), [country]);
@@ -3150,6 +4067,19 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   // socialSecurity / healthcare も同じ入れ子構造なので同じ更新関数を流用できる
   const updateUsInvestmentNested = updateUsInvestmentAccount;
 
+  const updateGbInvestment = (key, val) =>
+    setInputs((prev) => ({ ...prev, gbInvestment: { ...prev.gbInvestment, [key]: val } }));
+  const updateGbInvestmentAccount = (accountKey, field, val) =>
+    setInputs((prev) => ({
+      ...prev,
+      gbInvestment: {
+        ...prev.gbInvestment,
+        [accountKey]: { ...prev.gbInvestment[accountKey], [field]: val },
+      },
+    }));
+  // statePension / healthcare も同じ入れ子構造なので同じ更新関数を流用できる
+  const updateGbInvestmentNested = updateGbInvestmentAccount;
+
   // 積立・成長投資枠・一括投資の銘柄別内訳、および「つみたて/成長投資枠：実際の残高」に入力された銘柄を集約して、
   // そのままスライダー（自動計算・操作不可）として表示する
   const allBreakdownItems = [
@@ -3189,6 +4119,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         brokerage: inputs.usInvestment.brokerage.currentValue,
       })
     : { liquid: 0, restricted: 0, isAccessibleAge: false };
+
+  // イギリス選択時：6口座を Liquid / Restricted / Tax-Advantaged に分ける。
+  // total は6口座の単純合計（＝ Liquid + Restricted）。Tax-Advantaged は横断的な内訳のため合計には含めない。
+  const gbAssetSplit = (country === "GB" && rules.investment.implemented)
+    ? rules.investment.splitAssets(effectiveCurrentAge, inputs.gbInvestment)
+    : { liquid: 0, restricted: 0, taxAdvantaged: 0, total: 0, isAccessibleAge: false };
 
   // 銘柄名から、その銘柄の想定年率（利回り）を取得する（銘柄別内訳のスライダーで手動調整した値があればそちらを優先）
   const getFundReturnPct = (name) =>
@@ -3374,6 +4310,22 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     });
   }, [country, rules, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, inputs.usInvestment, usWithdrawalNeeded]);
 
+  // イギリス選択時：ISA / SIPP / 職域年金 / GIA / Cash Savings の残高推移シミュレーション。
+  // GB_COUNTRY_RULES.investment.simulateGrowth のみを使用し、JP（runSimulation）・US（US側のsimulateGrowth）
+  // とは完全に独立している。country !== "GB" のときは計算自体を行わない（空データを返すだけ）。
+  const gbInvestmentSim = useMemo(() => {
+    if (country !== "GB" || !rules.investment.implemented) {
+      return { yearly: [], finalValue: 0 };
+    }
+    return rules.investment.simulateGrowth({
+      currentAge: effectiveCurrentAge,
+      retireAge: inputs.retireAge,
+      deathAge: inputs.deathAge,
+      accounts: inputs.gbInvestment,
+      annualWithdrawalNeeded: gbWithdrawalNeeded,
+    });
+  }, [country, rules, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, inputs.gbInvestment, gbWithdrawalNeeded]);
+
   // iDeCo 自動計算項目
   const idecoAnnualContribution = (inputs.ideco.monthlyContribution || 0) * 12;
   const idecoRemainingContribYears = Math.max(0, inputs.ideco.endAge - Math.max(inputs.ideco.startAge, effectiveCurrentAge));
@@ -3400,16 +4352,20 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       // アメリカ選択時のみ：401(k)/IRA/Roth/Brokerageの残高推移をnetWorthへ合算する
       // （country!=="US"のときはusInvestmentSim.yearlyが空のため常に0＝JP版の計算結果に一切影響しない）。
       const usInvestmentValue = usInvestmentSim.yearly[i]?.value ?? usInvestmentSim.finalValue ?? 0;
-      const spendableNetWorth = row.total + goldValue + bankValue + stockValue + pensionValue + usInvestmentValue - loanValue - insuranceValue;
+      // イギリス選択時のみ：ISA/SIPP/職域年金/GIA/Cash Savingsの残高推移をnetWorthへ合算する
+      // （country!=="GB"のときはgbInvestmentSim.yearlyが空のため常に0＝JP版・アメリカ版の計算結果に一切影響しない）。
+      const gbInvestmentValue = gbInvestmentSim.yearly[i]?.value ?? gbInvestmentSim.finalValue ?? 0;
+      const spendableNetWorth = row.total + goldValue + bankValue + stockValue + pensionValue + usInvestmentValue + gbInvestmentValue - loanValue - insuranceValue;
       return {
         ...row, goldValue, bankValue, stockValue, loanValue, insuranceValue, pensionValue,
         idecoLockedValue,
         usInvestmentValue,
+        gbInvestmentValue,
         spendableNetWorth,
         netWorth: spendableNetWorth + idecoLockedValue,
       };
     });
-  }, [sim, goldSim, bankSim, stockSim, loanSim, insuranceSim, pensionSim, idecoSim, usInvestmentSim]);
+  }, [sim, goldSim, bankSim, stockSim, loanSim, insuranceSim, pensionSim, idecoSim, usInvestmentSim, gbInvestmentSim]);
   const netWorthFinal = netWorthYearly.length ? netWorthYearly[netWorthYearly.length - 1].netWorth : sim.finalAssets;
   const inheritanceTotal = inputs.inheritancePlans.reduce((s, p) => s + (p.amount || 0), 0);
   const effectiveInheritanceTarget = inputs.inheritancePlans.length > 0 ? inheritanceTotal : inputs.inheritanceTarget;
@@ -3475,6 +4431,28 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       color: PIE_COLORS[i % PIE_COLORS.length],
     }));
   }, [country, rules, usInvestmentSim, inputs.retireAge, t]);
+
+  // イギリス選択時：退職時点の Stocks and Shares ISA / Cash ISA / SIPP / Workplace Pension /
+  // General Investment Account / Cash Savings の口座別内訳。
+  // JPのfundBreakdownAtRetire（NISA銘柄別）・USのusAccountBreakdownAtRetireとは別データ・別ロジック。
+  const gbAccountBreakdownAtRetire = useMemo(() => {
+    if (country !== "GB" || !rules.investment.implemented) return [];
+    const row = gbInvestmentSim.yearly.find((y) => y.age >= inputs.retireAge) || gbInvestmentSim.yearly[gbInvestmentSim.yearly.length - 1];
+    if (!row || !row.accounts) return [];
+    const labels = [
+      { key: "stocksSharesIsa", label: t("gbStocksSharesIsaLabel") },
+      { key: "cashIsa", label: t("gbCashIsaLabel") },
+      { key: "sipp", label: t("gbSippLabel") },
+      { key: "workplacePension", label: t("gbWorkplacePensionLabel") },
+      { key: "gia", label: t("gbGiaLabel") },
+      { key: "cashSavings", label: t("gbCashSavingsLabel") },
+    ];
+    return labels.map((l, i) => ({
+      name: l.label,
+      value: Math.round(row.accounts[l.key] || 0),
+      color: PIE_COLORS[i % PIE_COLORS.length],
+    }));
+  }, [country, rules, gbInvestmentSim, inputs.retireAge, t]);
 
   const addBank = () => {
     const balance = Number(newBank.balance) || 0;
@@ -4400,7 +5378,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 const currentJson = JSON.stringify(watchlist);
                 const isUntouchedDefault =
                   currentJson === JSON.stringify(DEFAULT_WATCHLIST_JP) ||
-                  currentJson === JSON.stringify(DEFAULT_WATCHLIST_US);
+                  currentJson === JSON.stringify(DEFAULT_WATCHLIST_US) ||
+                  currentJson === JSON.stringify(DEFAULT_WATCHLIST_GB);
                 if (isUntouchedDefault) {
                   setWatchlist(defaultWatchlistFor(nextCountry));
                 }
@@ -4943,6 +5922,25 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 totalTax: usTotalTax,
               }}
             />
+          ) : country === "GB" && rules.investment.implemented ? (
+            <GBInvestmentAccountsPanel
+              gbInvestment={inputs.gbInvestment}
+              onUpdate={updateGbInvestment}
+              onUpdateAccount={updateGbInvestmentAccount}
+              age={effectiveCurrentAge}
+              investmentRules={rules.investment}
+              taxRules={rules.tax}
+              pensionAllowance={gbPensionAnnualAllowance}
+              taxResult={{
+                incomeTax: gbIncomeTaxResult.tax,
+                taxableIncome: gbIncomeTaxResult.taxableIncome,
+                dividendTax: gbDividendTax,
+                capitalGainsTax: gbCapitalGainsTax,
+                pensionTaxRelief: gbPensionTaxRelief,
+                marginalRate: gbMarginalRate,
+                totalTax: gbTotalTax,
+              }}
+            />
           ) : (
             <div className="note" style={{ borderLeftColor: "#D9A54F" }}>
               <Info size={13} style={{ color: "#D9A54F" }} />
@@ -5078,7 +6076,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             </div>
           )}
 
-          {rules.tax.implemented ? (
+          {country === "GB" ? (
+            <div className="note" style={{ borderLeftColor: "#5FB0A0" }}>
+              <Info size={13} style={{ color: "#5FB0A0" }} />
+              <span>{t("gbTaxHandledInInvestmentNote")}</span>
+            </div>
+          ) : rules.tax.implemented ? (
             <>
               <div className="field-label" style={{ marginBottom: 6 }}>{t("taxSavingSimLabel")}</div>
               <Field label={t("annualIncomeLabel")} unit={uCurrency} step={100000} value={inputs.ideco.annualIncome} onChange={(v) => updateIdeco("annualIncome", v)} />
@@ -5177,6 +6180,24 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               withdrawalNeeded={usWithdrawalNeeded}
               incomeSurplus={usIncomeSurplus}
             />
+          ) : country === "GB" && rules.retirement.implemented ? (
+            <GBRetirementPanel
+              gbInvestment={inputs.gbInvestment}
+              onUpdateStatePension={(field, val) => updateGbInvestmentNested("statePension", field, val)}
+              onUpdate={updateGbInvestment}
+              retirementRules={rules.retirement}
+              statePensionAge={gbStatePensionAge}
+              claimAge={gbClaimAge}
+              effectiveClaimAge={gbEffectiveClaimAge}
+              deferralFactor={gbDeferralFactor}
+              statePensionAnnual={gbStatePensionAnnual}
+              retirementIncomeAnnual={gbRetirementIncomeAnnual}
+              fullStatePensionAnnual={gbFullStatePensionAnnual}
+              expensesAnnual={gbExpensesAnnual}
+              healthcareAnnual={gbHealthcareAnnual}
+              withdrawalNeeded={gbWithdrawalNeeded}
+              incomeSurplus={gbIncomeSurplus}
+            />
           ) : (
             <div className="note" style={{ borderLeftColor: "#D9A54F" }}>
               <Info size={13} style={{ color: "#D9A54F" }} />
@@ -5205,6 +6226,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               healthInsuranceAnnual={usHealthInsuranceAnnual}
               outOfPocketAnnual={usOutOfPocketAnnual}
               totalAnnual={usTotalHealthcareAnnual}
+            />
+          ) : country === "GB" && rules.healthcare.implemented ? (
+            <GBHealthcarePanel
+              gbInvestment={inputs.gbInvestment}
+              onUpdate={(field, val) => updateGbInvestmentNested("healthcare", field, val)}
+              totalAnnual={gbHealthcareAnnual}
             />
           ) : (
             <div className="note" style={{ borderLeftColor: "#D9A54F" }}>
@@ -5593,6 +6620,32 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                   sub={usLiquidRestrictedSplit.isAccessibleAge ? t("usRestrictedAssetsSubOver595") : t("usRestrictedAssetsSubUnder595")}
                 />
               </>
+            ) : country === "GB" ? (
+              <>
+                <StatCard
+                  label={t("gbLiquidAssetsLabel")}
+                  value={money(gbAssetSplit.liquid)}
+                  sub={t("gbLiquidAssetsSub", { age: rules.investment.pensionAccessAge })}
+                  tone="good"
+                />
+                <StatCard
+                  label={t("gbRestrictedAssetsLabel")}
+                  value={money(gbAssetSplit.restricted)}
+                  sub={gbAssetSplit.isAccessibleAge
+                    ? t("gbRestrictedAssetsSubAccessible", { age: rules.investment.pensionAccessAge })
+                    : t("gbRestrictedAssetsSubLocked", { age: rules.investment.pensionAccessAge })}
+                />
+                <StatCard
+                  label={t("gbTaxAdvantagedLabel")}
+                  value={money(gbAssetSplit.taxAdvantaged)}
+                  sub={t("gbTaxAdvantagedSub")}
+                />
+                <StatCard
+                  label={t("gbTotalAssetsLabel")}
+                  value={money(gbAssetSplit.total)}
+                  sub={t("gbTotalAssetsSub")}
+                />
+              </>
             ) : (
               <>
                 <StatCard label={t("statNisaAssetsLabel")} value={money(effectiveCurrentAssets)} sub={t("statNisaAssetsSub")} />
@@ -5717,6 +6770,27 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 label={t("usBrokerageLabel")}
                 value={money(Number(inputs.usInvestment.brokerage.currentValue) || 0)}
                 sub={t("usBrokerageNoLimitNote")}
+              />
+            </div>
+          ) : country === "GB" && rules.investment.implemented ? (
+            <div className="stat-grid" style={{ marginBottom: 22 }}>
+              <StatCard
+                label={t("gbIsaRemainingLabel")}
+                value={money(Math.max(0, rules.investment.getIsaRemaining(inputs.gbInvestment)))}
+                sub={t("gbIsaRemainingSub", { amount: money(rules.investment.getIsaAnnualAllowance()) })}
+                tone={rules.investment.getIsaRemaining(inputs.gbInvestment) < 0 ? "danger" : "good"}
+              />
+              <StatCard
+                label={t("gbPensionRemainingLabel")}
+                value={money(Math.max(0, gbPensionAnnualAllowance - gbPensionContribution))}
+                sub={t("gbPensionRemainingSub", { amount: money(gbPensionAnnualAllowance) })}
+                tone={(gbPensionAnnualAllowance - gbPensionContribution) < 0 ? "danger" : "good"}
+              />
+              <StatCard
+                label={t("gbTotalTaxLabel")}
+                value={money(gbTotalTax)}
+                sub={t("gbTotalTaxSub")}
+                tone="danger"
               />
             </div>
           ) : (
@@ -5871,16 +6945,18 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               <div className="chart-label">
                 {country === "US"
                   ? t("usAccountBreakdownChartTitle", { age: t("ageYears", { age: inputs.retireAge }) })
-                  : t("fundBreakdownChartTitle", { age: t("ageYears", { age: inputs.retireAge }) })}
+                  : country === "GB"
+                    ? t("gbAccountBreakdownChartTitle", { age: t("ageYears", { age: inputs.retireAge }) })
+                    : t("fundBreakdownChartTitle", { age: t("ageYears", { age: inputs.retireAge }) })}
               </div>
               <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={country === "US" ? usAccountBreakdownAtRetire : fundBreakdownAtRetire} layout="vertical" margin={{ left: 8, right: 16 }}>
+                <BarChart data={country === "US" ? usAccountBreakdownAtRetire : country === "GB" ? gbAccountBreakdownAtRetire : fundBreakdownAtRetire} layout="vertical" margin={{ left: 8, right: 16 }}>
                   <CartesianGrid stroke="#2A363C" strokeDasharray="3 3" horizontal={false} />
                   <XAxis type="number" stroke="#7C8A90" fontSize={11} tickFormatter={(v) => money(v)} />
                   <YAxis type="category" dataKey="name" stroke="#7C8A90" fontSize={11} width={90} />
                   <Tooltip contentStyle={{ background: "#151C20", border: "1px solid #2A363C", fontSize: 12 }} formatter={(v) => money(v)} />
                   <Bar dataKey="value" radius={[0, 3, 3, 0]}>
-                    {(country === "US" ? usAccountBreakdownAtRetire : fundBreakdownAtRetire).map((f, i) => (
+                    {(country === "US" ? usAccountBreakdownAtRetire : country === "GB" ? gbAccountBreakdownAtRetire : fundBreakdownAtRetire).map((f, i) => (
                       <Cell key={i} fill={f.color} />
                     ))}
                   </Bar>
@@ -5890,6 +6966,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 <div className="note" style={{ marginTop: 8 }}>
                   <Info size={13} />
                   <span>{t("usAccountBreakdownNote")}</span>
+                </div>
+              )}
+              {country === "GB" && (
+                <div className="note" style={{ marginTop: 8 }}>
+                  <Info size={13} />
+                  <span>{t("gbAccountBreakdownNote")}</span>
                 </div>
               )}
             </div>
