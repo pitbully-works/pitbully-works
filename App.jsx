@@ -1626,6 +1626,13 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     const toAge = Number(newTsumitateRange.toYears || 0) + Number(newTsumitateRange.toMonths || 0) / 12;
     const monthlyYen = Number(newTsumitateRange.monthlyYen);
     if (!newTsumitateRange.fromYears || !newTsumitateRange.toYears || toAge < fromAge || !monthlyYen) return;
+    if (tsumitateHoldingsAsOfAge !== null && fromAge < tsumitateHoldingsAsOfAge) {
+      window.alert(
+        `スケジュールの開始年齢が、上の「この残高時点の基準年齢」（${formatAge(tsumitateHoldingsAsOfAge)}）より前になっています。\n` +
+        `基準年齢より前の期間は、既に「実際の残高」に反映されているはずのため、開始年齢は基準年齢と同じかそれより後にしてください。`
+      );
+      return;
+    }
     setInputs((prev) => ({
       ...prev,
       tsumitateSchedule: [...prev.tsumitateSchedule, { fromAge, toAge, monthlyYen }].sort((a, b) => a.fromAge - b.fromAge),
@@ -1640,6 +1647,13 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     const toAge = Number(newGrowthRange.toYears || 0) + Number(newGrowthRange.toMonths || 0) / 12;
     const monthlyYen = Number(newGrowthRange.monthlyYen);
     if (!newGrowthRange.fromYears || !newGrowthRange.toYears || toAge < fromAge || !monthlyYen) return;
+    if (growthHoldingsAsOfAge !== null && fromAge < growthHoldingsAsOfAge) {
+      window.alert(
+        `スケジュールの開始年齢が、上の「この残高時点の基準年齢」（${formatAge(growthHoldingsAsOfAge)}）より前になっています。\n` +
+        `基準年齢より前の期間は、既に「実際の残高」に反映されているはずのため、開始年齢は基準年齢と同じかそれより後にしてください。`
+      );
+      return;
+    }
     setInputs((prev) => ({
       ...prev,
       growthSchedule: [...prev.growthSchedule, { fromAge, toAge, monthlyYen }].sort((a, b) => a.fromAge - b.fromAge),
@@ -2457,7 +2471,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           </div>
           <div className="note" style={{ marginBottom: 12 }}>
             <Info size={13} />
-            <span>つみたて投資枠スケジュール分（自動計算・複利込み）：<span className="mono">{yen(tsumitateCatchUp)}</span>　※上の「実際の残高」とは別に自動加算されます</span>
+            <span>上で設定した毎月の積立予定額から、これまで積み立てられてきたはずの金額を自動計算すると<span className="mono">{yen(tsumitateCatchUp)}</span>になります。これは上の「実際の残高」の入力欄とは別に、自動で上乗せされます（合計＝実際の残高の入力額＋この自動計算額）</span>
           </div>
 
           <div className="field-label" style={{ marginBottom: 6 }}>成長投資枠：実際の残高（銘柄・金額）</div>
@@ -2492,7 +2506,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           </div>
           <div className="note" style={{ marginBottom: 12 }}>
             <Info size={13} />
-            <span>成長投資枠スケジュール分（自動計算・複利込み）：<span className="mono">{yen(growthCatchUp)}</span>　※上の「実際の残高」とは別に自動加算されます</span>
+            <span>上で設定した毎月の積立予定額から、これまで積み立てられてきたはずの金額を自動計算すると<span className="mono">{yen(growthCatchUp)}</span>になります。これは上の「実際の残高」の入力欄とは別に、自動で上乗せされます（合計＝実際の残高の入力額＋この自動計算額）</span>
           </div>
 
           {autoHoldingRows.length > 0 && (
