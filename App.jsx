@@ -1567,33 +1567,17 @@ function runIdecoSimulation({ currentAge, deathAge, ideco }) {
   };
 }
 
-// ---------- default watchlist (personal holdings + reference sectors) ----------
-const DEFAULT_WATCHLIST_JP = [
-  { name: "東京エレクトロン", sector: "半導体製造装置", shares: 0, value: 0, currency: "JPY" },
-  { name: "アドバンテスト", sector: "半導体製造装置", shares: 0, value: 0, currency: "JPY" },
-  { name: "信越化学工業", sector: "半導体材料", shares: 0, value: 0, currency: "JPY" },
-  { name: "東京応化工業", sector: "半導体材料", shares: 0, value: 0, currency: "JPY" },
-  { name: "ローム", sector: "半導体", shares: 0, value: 0, currency: "JPY" },
-  { name: "ファナック", sector: "FA・産業用ロボット", shares: 0, value: 0, currency: "JPY" },
-  { name: "安川電機", sector: "FA・産業用ロボット", shares: 0, value: 0, currency: "JPY" },
-  { name: "ダイキン工業", sector: "空調・FA関連", shares: 0, value: 0, currency: "JPY" },
-  { name: "三菱重工業", sector: "重工業", shares: 0, value: 0, currency: "JPY" },
-  { name: "INPEX", sector: "資源・エネルギー", shares: 0, value: 0, currency: "JPY" },
-];
+// ---------- default watchlist ----------
+// 以前はサンプルの保有銘柄を初期表示していたが、初回起動時の画面を完全に空にするため、
+// 日本・アメリカとも初期候補は空リストにしている。銘柄は「追加」ボタンから自由に登録できる。
+// （参考：以前の日本版サンプル銘柄は 東京エレクトロン／アドバンテスト／信越化学工業／東京応化工業／
+//  ローム／ファナック／安川電機／ダイキン工業／三菱重工業／INPEX。米国版サンプル銘柄は
+//  Apple／Microsoft／NVIDIA／Amazon／Alphabet／Tesla／Berkshire Hathaway／JPMorgan Chase。
+//  再度サンプルを表示したい場合は、この配列にオブジェクトを追加すればよい。）
+const DEFAULT_WATCHLIST_JP = [];
+const DEFAULT_WATCHLIST_US = [];
 
-// アメリカ選択時の個別株初期候補（代表的な米国大型株の例。実際の保有銘柄に合わせて自由に編集・削除可能）
-const DEFAULT_WATCHLIST_US = [
-  { name: "Apple", sector: "Technology", shares: 0, value: 0, currency: "USD" },
-  { name: "Microsoft", sector: "Technology", shares: 0, value: 0, currency: "USD" },
-  { name: "NVIDIA", sector: "Semiconductors", shares: 0, value: 0, currency: "USD" },
-  { name: "Amazon", sector: "Consumer/E-commerce", shares: 0, value: 0, currency: "USD" },
-  { name: "Alphabet", sector: "Technology", shares: 0, value: 0, currency: "USD" },
-  { name: "Tesla", sector: "Automotive", shares: 0, value: 0, currency: "USD" },
-  { name: "Berkshire Hathaway", sector: "Diversified Holdings", shares: 0, value: 0, currency: "USD" },
-  { name: "JPMorgan Chase", sector: "Financials", shares: 0, value: 0, currency: "USD" },
-];
-
-// 既存の呼び出し箇所（初期状態の既定値）との後方互換のための別名。日本版の挙動は一切変わらない。
+// 既存の呼び出し箇所（初期状態の既定値）との後方互換のための別名。
 const DEFAULT_WATCHLIST = DEFAULT_WATCHLIST_JP;
 
 function defaultWatchlistFor(country) {
@@ -1859,14 +1843,14 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     currentAge: 35,
     retireAge: 65,
     deathAge: 90,
-    currentAssets: 3000000,
+    currentAssets: 0,
     currentAssetHoldings: [],
     tsumitateHoldings: [],
     tsumitateHoldingsAsOfYears: "", tsumitateHoldingsAsOfMonths: "", // この残高の基準年齢（未入力なら現在の年齢＝追加計算なし）
     growthHoldings: [],
     growthHoldingsAsOfYears: "", growthHoldingsAsOfMonths: "", // この残高の基準年齢（未入力なら現在の年齢＝追加計算なし）
-    tsumitateSchedule: [{ fromAge: 35, toAge: 65, monthlyYen: 100000 }],
-    growthSchedule: [{ fromAge: 35, toAge: 65, monthlyYen: 50000 }],
+    tsumitateSchedule: [],
+    growthSchedule: [],
     tsumitateUsed: 0,
     growthUsed: 0,
     lumpSums: [],
@@ -1874,20 +1858,20 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     tsumitateAllocation: [],
     growthAllocation: [],
     extraFundReturns: {},
-    pensionMonthly: 150000,
+    pensionMonthly: 0,
     pensionSources: [],
-    livingCostMonthly: 250000,
+    livingCostMonthly: 0,
     postRetireReturn: 3,
     postRetireReturnAuto: true,
-    healthBrackets: { b60: 150000, b70: 250000, b80: 400000 },
-    inheritanceTarget: 10000000,
+    healthBrackets: { b60: 0, b70: 0, b80: 0 },
+    inheritanceTarget: 0,
     inheritancePlans: [],
     gold: {
       currentGrams: 0,
-      pricePerGram: 24000,
+      pricePerGram: 0,
       priceGrowthPct: 3,
       priceGrowthPctAuto: true,
-      monthlyYen: 20000,
+      monthlyYen: 0,
       accumulateUntilAge: 65,
       asOfYears: "",
       asOfMonths: "",
@@ -1896,12 +1880,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     stockReturnPct: 6,
     stockReturnPctAuto: true,
     ideco: {
-      currentValue: 1000000,
-      principalTotal: 900000,
-      monthlyContribution: 23000,
+      currentValue: 0,
+      principalTotal: 0,
+      monthlyContribution: 0,
       startAge: 35,
       endAge: 60,
-      productName: "全世界株式", // 初期値（日本版の既定値）。国を切り替えると、未編集の場合のみ translations.idecoProductDefault に沿って自動的に入れ替わる
+      productName: "", // 初期値は空。国を切り替えても、未入力のままなら何も入れ替わらない
       returnPct: 5,
       returnPctAuto: true,
       payoutStartAge: 60,
