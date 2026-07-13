@@ -701,6 +701,18 @@ const TRANSLATIONS = {
     "monthlyPremiumPlaceholder": "毎月の払込金額（円）",
     "nameCol": "名前",
     "nameLabel": "お名前（任意）",
+    "publicPensionStartAgeLabel": "公的年金の受給開始年齢",
+    "publicPensionStartAgeGuide": "公的年金を受け取り始める年齢です。退職年齢とは別に設定できます（未入力なら65歳）。退職60歳・年金65歳なら、60〜64歳の5年間は公的年金の収入が0になり、その間の生活費は資産から取り崩されます。",
+    "withdrawalTaxTitle": "引出時課税（総資産推移に反映）",
+    "withdrawalTaxNote": "退職後に各口座から取り崩すとき、この税率ぶんが差し引かれます。手取りで必要額を得るには「必要額 ÷ (1 − 税率)」を口座から引き出す必要があるため、税率が高い口座ほど早く減ります。初期値は代表的な実効税率です。ご自身の状況に合わせて変更してください。",
+    "withdrawalTaxLabel": "引出時の税率",
+    "drawdownOrderTitle": "取り崩しの順番",
+    "drawdownOrderNote": "退職後、生活費・医療費・ローン返済・保険料をまかなうために、資産は次の順番で取り崩されます。先の資産が0円になってから、次の資産へ移ります。引出制限のある退職口座は、引き出し可能な年齢に達するまで一切取り崩されません。",
+    "drawCatCash": "現金・銀行預金",
+    "drawCatTaxable": "課税口座・個別株",
+    "drawCatTaxFree": "非課税投資口座",
+    "drawCatRestricted": "引出制限のある退職口座",
+    "drawCatPhysical": "金などの現物資産",
     "netWorthChartNote": "色の帯は資産を積み上げたものです。帯の一番上が「総資産」で、下から順に足し合わさっています（例：緑の線は「NISA＋金＋銀行預金」の合計であり、銀行預金だけの金額ではありません）。\n白い線は、その総資産から借入金の残高を差し引いた「純資産」です（純資産＝帯の一番上 − 借入残高）。\n生活費・医療費・ローン返済・保険料は、退職後は資産から実際に取り崩されます。取り崩しの順番は NISA →銀行預金 →個別株 →金 です。iDeCoの受取前残高と民間年金の積立金は、受取ルールに従って払い出されるまで取り崩されません。",
     "netWorthChartTitle": "総資産推移 — NISA + 金 + 銀行預金 + 個別株 + 民間年金積立 + iDeCo − 借入金 − 保険料累計（{currentAge} 〜 {deathAge}）",
     "nisaAllocationSlidersLabel": "NISA資産の配分（積立・成長投資枠・一括投資の内訳に入れた銘柄がそのままスライダーになります）",
@@ -1488,6 +1500,18 @@ const TRANSLATIONS = {
     "monthlyPremiumPlaceholder": "Monthly premium",
     "nameCol": "Name",
     "nameLabel": "Name (optional)",
+    "publicPensionStartAgeLabel": "State pension start age",
+    "publicPensionStartAgeGuide": "The age at which your state pension starts. This is separate from your retirement age (defaults to 65). If you retire at 60 but your pension starts at 65, you receive no state pension from 60 to 64 and must draw on your assets during those years.",
+    "withdrawalTaxTitle": "Withdrawal tax (applied to the net worth projection)",
+    "withdrawalTaxNote": "When you draw from each account in retirement, this rate is deducted. To receive a given amount after tax you must withdraw amount / (1 − rate), so accounts with a higher rate deplete faster. The defaults are typical effective rates — adjust them to your own situation.",
+    "withdrawalTaxLabel": "Withdrawal tax rate",
+    "drawdownOrderTitle": "Drawdown order",
+    "drawdownOrderNote": "In retirement, assets are drawn in this order to cover living costs, healthcare, loan repayments and insurance premiums. Each asset is exhausted before the next is touched. Restricted retirement accounts are never drawn from before you can legally access them.",
+    "drawCatCash": "Cash and bank savings",
+    "drawCatTaxable": "Taxable accounts and shares",
+    "drawCatTaxFree": "Tax-free investment accounts",
+    "drawCatRestricted": "Restricted retirement accounts",
+    "drawCatPhysical": "Physical assets such as gold",
     "netWorthChartNote": "The coloured bands are stacked: the top of the stack is your total assets, built up from the bottom (the green line, for example, is investments + gold + cash combined — not the cash on its own).\nThe white line is that total minus your outstanding loan balances (net worth = top of the stack − loans).\nAfter retirement, living costs, healthcare, loan repayments and insurance premiums are drawn from your assets in order: main investment accounts → cash → shares → gold. Retirement accounts you cannot yet access are never drawn from.",
     "netWorthChartTitle": "Net Worth Over Time — Investments + Gold + Cash + Stocks + Private Pension + Retirement Account − Loans − Cumulative Insurance Premiums ({currentAge} – {deathAge})",
     "nisaAllocationSlidersLabel": "Investment Allocation (holdings entered in the regular, growth, and lump-sum breakdowns above automatically appear as sliders here)",
@@ -3536,6 +3560,47 @@ function getCountryRules(country) {
 // ここでは既存コード互換のための別名として参照するのみ。
 // （NISA_LIMITS.xxx という参照は既存コード全体にそのまま残しているため、ここを書き換えても
 //   計算結果・呼び出し側のコードには一切影響しない。）
+// ============================================================================
+// 取り崩し順序（drawdown order）
+//
+// 標準設定：
+//   1. 現金・銀行預金        （即時に使え、運用機会損失が最小）
+//   2. 課税口座・個別株      （税優遇が無いので先に使う）
+//   3. 非課税投資口座        （NISA / Roth IRA / ISA / TFSA）
+//   4. 引出制限のある退職口座（iDeCo / 401(k) / SIPP / RRSP / Super。accessAge未満は不可）
+//   5. 金などの現物資産      （最後に温存）
+//
+// DRAWDOWN_CATEGORIES の並び順がそのまま優先順位になる。
+// 配列を差し替えれば順序を変更できる（将来の利用者設定用）。
+// ============================================================================
+export const DRAWDOWN_CATEGORIES = ["cash", "taxable", "taxFree", "restricted", "physical"];
+
+export function drawOrderOf(category, tieBreak = 0, order = DRAWDOWN_CATEGORIES) {
+  const rank = order.indexOf(category);
+  return (rank < 0 ? order.length : rank) * 100 + tieBreak;
+}
+
+// 各国の口座 → 取り崩しカテゴリの対応表。コメントではなく、この表が実装そのもの。
+export const ACCOUNT_DRAW_CATEGORY = {
+  // 日本：銀行預金 → 課税口座・個別株 → NISA → iDeCo → 金
+  JP: { bank: "cash", stock: "taxable", nisa: "taxFree", ideco: "restricted", gold: "physical" },
+  // 米国：Cash/Bank → Brokerage → Roth IRA → Traditional IRA・401(k) → Gold
+  US: {
+    cashSavings: "cash", brokerage: "taxable", rothIra: "taxFree",
+    traditionalIra: "restricted", k401: "restricted",
+  },
+  // 英国：Cash → General Investment Account → ISA → Pension/SIPP → Gold
+  GB: {
+    cashSavings: "cash", gia: "taxable",
+    cashIsa: "taxFree", stocksSharesIsa: "taxFree",
+    workplacePension: "restricted", sipp: "restricted",
+  },
+  // カナダ：Cash → Taxable Account → TFSA → RRSP/RRIF → Gold
+  CA: { cashSavings: "cash", nonRegistered: "taxable", tfsa: "taxFree", rrsp: "restricted" },
+  // 豪州：Cash → Taxable Investments → Superannuation → Gold
+  AU: { cashSavings: "cash", investmentAccount: "taxable", superannuation: "restricted" },
+};
+
 export const NISA_LIMITS = {
   tsumitateAnnual: JP_COUNTRY_RULES.investment.annualInstallmentLimit,
   growthAnnual: JP_COUNTRY_RULES.investment.annualGrowthLimit,
@@ -3860,10 +3925,10 @@ export function runSimulation(inputs, uncategorizedLabel, phaseAccumLabel, phase
 // 統合エンジンはこの配列を参照するだけなので、NISAの枠計算が二重実装にならない。
 export function buildNisaContributionPlan({
   currentAge, retireAge, deathAge,
-  tsumitateSchedule, growthSchedule, lumpSums, tsumitateUsed, growthUsed,
+  tsumitateSchedule, growthSchedule, lumpSums, tsumitateUsed, growthUsed, boundaries,
 }) {
   // 統合エンジンと同一の可変長ステップを共有する（添字が一致する）
-  const steps = buildAgeSteps(currentAge, deathAge);
+  const steps = buildAgeSteps(currentAge, deathAge, boundaries);
   const tsumitateMonthlyCap = NISA_LIMITS.tsumitateAnnual / 12;
   const growthMonthlyCap = NISA_LIMITS.growthAnnual / 12;
   let tsumitateCum = (tsumitateUsed || 0) + elapsedScheduleAmount(tsumitateSchedule, currentAge);
@@ -3884,7 +3949,7 @@ export function buildNisaContributionPlan({
     const months = st.dt * 12;
     let contribution = 0;
 
-    if (ageStart < retireAge) {
+    if (ageStart < retireAge - 1e-9) {
       let effGrowth = Math.min(scheduledAmount(growthSchedule, ageStart), growthMonthlyCap) * months;
       let effTsumitate = Math.min(scheduledAmount(tsumitateSchedule, ageStart), tsumitateMonthlyCap) * months;
       const growthRoom = Math.max(0, NISA_LIMITS.growthLifetime - growthCum);
@@ -5755,6 +5820,64 @@ function AUHealthcarePanel({ auInvestment, onUpdate, totalAnnual }) {
   );
 }
 
+// ---------- 取り崩し順序の表示（実装 DRAWDOWN_CATEGORIES と必ず一致する） ----------
+function DrawdownOrderPanel({ order, accountsByCategory }) {
+  const { t } = useContext(LocaleContext);
+  const catLabel = {
+    cash: t("drawCatCash"),
+    taxable: t("drawCatTaxable"),
+    taxFree: t("drawCatTaxFree"),
+    restricted: t("drawCatRestricted"),
+    physical: t("drawCatPhysical"),
+  };
+  return (
+    <div className="card" style={{ marginBottom: 18 }}>
+      <div className="chart-label">{t("drawdownOrderTitle")}</div>
+      <ol style={{ margin: "8px 0 10px 18px", padding: 0, fontSize: 13, lineHeight: 1.9 }}>
+        {order.map((cat) => (
+          <li key={cat}>
+            <strong>{catLabel[cat] || cat}</strong>
+            {accountsByCategory[cat] && accountsByCategory[cat].length > 0 && (
+              <span style={{ opacity: 0.75 }}>　{accountsByCategory[cat].join(" / ")}</span>
+            )}
+          </li>
+        ))}
+      </ol>
+      <div className="note">
+        <Info size={13} />
+        <span>{t("drawdownOrderNote")}</span>
+      </div>
+    </div>
+  );
+}
+
+// ---------- 引出時課税（各口座ごとに利用者が変更できる） ----------
+function WithdrawalTaxPanel({ accounts, onUpdateAccount }) {
+  const { t } = useContext(LocaleContext);
+  if (!accounts.length) return null;
+  return (
+    <div className="card" style={{ marginBottom: 18 }}>
+      <div className="chart-label">{t("withdrawalTaxTitle")}</div>
+      {accounts.map((a) => (
+        <Field
+          key={a.key}
+          label={`${a.label} — ${t("withdrawalTaxLabel")}`}
+          unit="%"
+          step={0.5}
+          min={0}
+          max={99}
+          value={a.withdrawalTaxPct}
+          onChange={(v) => onUpdateAccount(a.key, "withdrawalTaxPct", v)}
+        />
+      ))}
+      <div className="note">
+        <Info size={13} />
+        <span>{t("withdrawalTaxNote")}</span>
+      </div>
+    </div>
+  );
+}
+
 function SectionTitle({ index, title, icon: Icon }) {
   return (
     <div className="section-title">
@@ -5830,6 +5953,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     growthAllocation: [],
     extraFundReturns: {},
     pensionMonthly: 0,
+    // 【追加】公的年金の受給開始年齢。退職年齢とは独立（未入力＝65歳）。
+    // 退職60歳・年金65歳なら、60〜64歳は公的年金収入が0になる。
+    publicPensionStartAge: 65,
     pensionSources: [],
     livingCostMonthly: 0,
     postRetireReturn: 3,
@@ -5878,10 +6004,14 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       modifiedAGI: 0,
       coveredByWorkplacePlan: false,
       spouseCoveredByWorkplacePlan: false,
-      k401: { currentValue: 0, annualContribution: 0 },
-      traditionalIra: { currentValue: 0, annualContribution: 0 },
-      rothIra: { currentValue: 0, annualContribution: 0 },
-      brokerage: { currentValue: 0, annualContribution: 0 },
+      // withdrawalTaxPct = 引出時にかかる税率（%）。総資産推移の取り崩し計算に反映される。
+      // 初期値は代表的な実効税率。利用者が各口座ごとに変更できる。
+      // 401(k)/Traditional IRA は引出額が通常所得として課税される（初期値22%）。
+      // Roth IRA は適格引出なら非課税（0%）。Brokerage は長期キャピタルゲイン（初期値15%）。
+      k401: { currentValue: 0, annualContribution: 0, withdrawalTaxPct: 22 },
+      traditionalIra: { currentValue: 0, annualContribution: 0, withdrawalTaxPct: 22 },
+      rothIra: { currentValue: 0, annualContribution: 0, withdrawalTaxPct: 0 },
+      brokerage: { currentValue: 0, annualContribution: 0, withdrawalTaxPct: 15 },
       expectedReturnPct: 6, // 資産推移グラフ用の想定年率（JP版のデフォルト想定に準じた参考値）
       // ① Social Security（公的年金）
       socialSecurity: {
@@ -5907,12 +6037,14 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       adjustedIncome: 0, // 年金拠出上限のテーパリング判定用（0なら annualIncome を使用）
       dividendIncomeAnnual: 0,
       estimatedCapitalGainAnnual: 0,
-      stocksSharesIsa:  { currentValue: 0, annualContribution: 0, expectedReturnPct: 5, contributionEndAge: 65 },
-      cashIsa:          { currentValue: 0, annualContribution: 0, expectedReturnPct: 3, contributionEndAge: 65 },
-      sipp:             { currentValue: 0, annualContribution: 0, expectedReturnPct: 5, contributionEndAge: 65 },
-      workplacePension: { currentValue: 0, annualContribution: 0, expectedReturnPct: 5, contributionEndAge: 65 },
-      gia:              { currentValue: 0, annualContribution: 0, expectedReturnPct: 5, contributionEndAge: 65 },
-      cashSavings:      { currentValue: 0, annualContribution: 0, expectedReturnPct: 2, contributionEndAge: 65 },
+      // withdrawalTaxPct：ISAは非課税(0%)。SIPP・職域年金は25%が非課税で残り75%が所得課税
+      // されるため、基本税率20%なら実効15%（初期値）。GIAはCGT（初期値10%）。
+      stocksSharesIsa:  { currentValue: 0, annualContribution: 0, expectedReturnPct: 5, contributionEndAge: 65, withdrawalTaxPct: 0 },
+      cashIsa:          { currentValue: 0, annualContribution: 0, expectedReturnPct: 3, contributionEndAge: 65, withdrawalTaxPct: 0 },
+      sipp:             { currentValue: 0, annualContribution: 0, expectedReturnPct: 5, contributionEndAge: 65, withdrawalTaxPct: 15 },
+      workplacePension: { currentValue: 0, annualContribution: 0, expectedReturnPct: 5, contributionEndAge: 65, withdrawalTaxPct: 15 },
+      gia:              { currentValue: 0, annualContribution: 0, expectedReturnPct: 5, contributionEndAge: 65, withdrawalTaxPct: 10 },
+      cashSavings:      { currentValue: 0, annualContribution: 0, expectedReturnPct: 2, contributionEndAge: 65, withdrawalTaxPct: 0 },
       // ② State Pension（英国の公的年金）
       statePension: {
         statePensionAge: 67,       // 生年月日により66〜67歳。GOV.UKで確認した値を入力
@@ -5943,10 +6075,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       annualIncome: 0,        // 年間総所得（連邦所得税・RRSP税軽減・OASクローバックの判定に使用）
       priorEarnedIncome: 0,   // 前年の稼得所得（RRSP拠出枠 = この18% と $33,810 の低い方）
       estimatedCapitalGainAnnual: 0,
-      tfsa:          { currentValue: 0, annualContribution: 0, expectedReturnPct: 5, contributionEndAge: 65 },
-      rrsp:          { currentValue: 0, annualContribution: 0, expectedReturnPct: 5, contributionEndAge: 65 },
-      nonRegistered: { currentValue: 0, annualContribution: 0, expectedReturnPct: 5, contributionEndAge: 65 },
-      cashSavings:   { currentValue: 0, annualContribution: 0, expectedReturnPct: 2, contributionEndAge: 65 },
+      // withdrawalTaxPct：TFSAは非課税(0%)。RRSP/RRIFからの引出は全額が課税所得（初期値25%）。
+      // 非登録口座はキャピタルゲインの50%課税（初期値12%）。
+      tfsa:          { currentValue: 0, annualContribution: 0, expectedReturnPct: 5, contributionEndAge: 65, withdrawalTaxPct: 0 },
+      rrsp:          { currentValue: 0, annualContribution: 0, expectedReturnPct: 5, contributionEndAge: 65, withdrawalTaxPct: 25 },
+      nonRegistered: { currentValue: 0, annualContribution: 0, expectedReturnPct: 5, contributionEndAge: 65, withdrawalTaxPct: 12 },
+      cashSavings:   { currentValue: 0, annualContribution: 0, expectedReturnPct: 2, contributionEndAge: 65, withdrawalTaxPct: 0 },
       // CPP（拠出型の公的年金）
       cpp: {
         startAge: 65,           // 60〜70歳で選択可
@@ -5980,9 +6114,11 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       voluntaryConcessional: 0,    // 給与犠牲などの任意の税引前拠出（年額）
       estimatedCapitalGainAnnual: 0,
       capitalGainHeldOver12Months: true,
-      superannuation:    { currentValue: 0, annualContribution: 0, expectedReturnPct: 7, contributionEndAge: 65 }, // annualContributionは税引後（non-concessional）拠出
-      investmentAccount: { currentValue: 0, annualContribution: 0, expectedReturnPct: 7, contributionEndAge: 65 },
-      cashSavings:       { currentValue: 0, annualContribution: 0, expectedReturnPct: 2, contributionEndAge: 65 },
+      // withdrawalTaxPct：60歳以降のSuperからの引出は非課税(0%)。
+      // 課税投資口座はキャピタルゲイン50%割引後の課税（初期値15%）。
+      superannuation:    { currentValue: 0, annualContribution: 0, expectedReturnPct: 7, contributionEndAge: 65, withdrawalTaxPct: 0 }, // annualContributionは税引後（non-concessional）拠出
+      investmentAccount: { currentValue: 0, annualContribution: 0, expectedReturnPct: 7, contributionEndAge: 65, withdrawalTaxPct: 15 },
+      cashSavings:       { currentValue: 0, annualContribution: 0, expectedReturnPct: 2, contributionEndAge: 65, withdrawalTaxPct: 0 },
       // Age Pension（資産・所得テストあり）
       agePension: {
         status: "single",          // "single" または "couple"
@@ -6832,6 +6968,47 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   // 配列は [i] ではなく age で照合する（下の netWorthByAge を参照）。
   // ==========================================================================
 
+  // 公的年金の受給開始年齢（日本）。未入力なら65歳。退職年齢とは独立。
+  const effectivePublicPensionStartAge =
+    (inputs.publicPensionStartAge === null || inputs.publicPensionStartAge === undefined || inputs.publicPensionStartAge === "")
+      ? 65 : Number(inputs.publicPensionStartAge);
+
+  // ステップを分割すべき「境界年齢」。退職・年金開始・保険料の払込期間・民間年金の
+  // 受給期間・積立終了年齢・引出制限年齢などがステップの途中にあると、その1ヶ月ぶんが
+  // まるごと境界の内側/外側に丸め込まれ、終了年齢ちょうどから余分な1ヶ月分が
+  // 加算されてしまう。境界でステップを切ることでこれを防ぐ。
+  const planBoundaries = useMemo(() => {
+    const b = [inputs.retireAge, effectivePublicPensionStartAge];
+    (inputs.insurancePolicies || []).forEach((x) => b.push(x.premiumFromAge, x.premiumToAge));
+    (inputs.privatePensionPlans || []).forEach((x) => {
+      b.push(x.contribFromAge, x.contribToAge, x.payoutFromAge, x.payoutToAge);
+    });
+    (inputs.tsumitateSchedule || []).forEach((x) => b.push(x.fromAge, x.toAge));
+    (inputs.growthSchedule || []).forEach((x) => b.push(x.fromAge, x.toAge));
+    (inputs.lumpSums || []).forEach((x) => b.push(x.age));
+    b.push(inputs.gold.accumulateUntilAge);
+    b.push(inputs.ideco.startAge, inputs.ideco.endAge, inputs.ideco.payoutStartAge);
+    if (country === "US") {
+      b.push(inputs.usInvestment.socialSecurity.claimAge, 59.5);
+    } else if (country === "GB") {
+      b.push(gbEffectiveClaimAge, rules.investment.pensionAccessAge);
+      Object.values(inputs.gbInvestment).forEach((a) => { if (a && a.contributionEndAge) b.push(a.contributionEndAge); });
+    } else if (country === "CA") {
+      b.push(caCppStartAge, caOasStartAge, rules.investment.rrifConversionAge);
+      Object.values(inputs.caInvestment).forEach((a) => { if (a && a.contributionEndAge) b.push(a.contributionEndAge); });
+    } else if (country === "AU") {
+      b.push(auAgePensionQualifyingAge, rules.investment.preservationAge);
+      Object.values(inputs.auInvestment).forEach((a) => { if (a && a.contributionEndAge) b.push(a.contributionEndAge); });
+    }
+    return b.filter((v) => Number.isFinite(Number(v))).map(Number);
+  }, [
+    country, rules, inputs.retireAge, effectivePublicPensionStartAge,
+    inputs.insurancePolicies, inputs.privatePensionPlans, inputs.tsumitateSchedule,
+    inputs.growthSchedule, inputs.lumpSums, inputs.gold.accumulateUntilAge, inputs.ideco,
+    inputs.usInvestment, inputs.gbInvestment, inputs.caInvestment, inputs.auInvestment,
+    gbEffectiveClaimAge, caCppStartAge, caOasStartAge, auAgePensionQualifyingAge,
+  ]);
+
   // NISAの枠計算（年間上限・生涯上限・一括投資）は runSimulation と同一ルールで先に計算する
   const nisaPlan = useMemo(
     () => buildNisaContributionPlan({
@@ -6843,16 +7020,22 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       lumpSums: inputs.lumpSums,
       tsumitateUsed: inputs.tsumitateUsed,
       growthUsed: inputs.growthUsed,
+      boundaries: planBoundaries,
     }),
-    [effectiveCurrentAge, inputs.retireAge, inputs.deathAge, inputs.tsumitateSchedule, inputs.growthSchedule, inputs.lumpSums, inputs.tsumitateUsed, inputs.growthUsed]
+    [effectiveCurrentAge, inputs.retireAge, inputs.deathAge, inputs.tsumitateSchedule, inputs.growthSchedule, inputs.lumpSums, inputs.tsumitateUsed, inputs.growthUsed, planBoundaries]
   );
+
+  // 取り崩し順（利用者設定に対応できるよう配列で保持する）
+  const drawdownOrder = inputs.drawdownOrder && inputs.drawdownOrder.length
+    ? inputs.drawdownOrder : DRAWDOWN_CATEGORIES;
 
   const integrated = useMemo(() => {
     const pools = [];
+    const catMap = ACCOUNT_DRAW_CATEGORY[country] || ACCOUNT_DRAW_CATEGORY.JP;
+    const ord = (key, tie = 0) => drawOrderOf(catMap[key], tie, drawdownOrder);
 
     // ---- 主要投資口座（国別）----
     if (country === "JP") {
-      // 銘柄ごとに利回りが違うため、銘柄単位のプールにする（runSimulationの積立期と同じ複利計算）
       const entries = (dynamicFunds && dynamicFunds.length)
         ? dynamicFunds
         : [{ id: t("uncategorizedLabel"), pct: 100, returnPct: 5 }];
@@ -6860,65 +7043,62 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         pools.push({
           id: `nisa_${i}`,
           group: "investment",
+          drawCategory: catMap.nisa,
           balance: effectiveCurrentAssets * ((f.pct || 0) / 100),
           annualReturnPct: f.returnPct,
           retireReturnPct: effectivePostRetireReturn,
           contributionFn: (age, dt, stepIndex) => (nisaPlan.byStep[stepIndex] || 0) * ((f.pct || 0) / 100),
-          drawOrder: 10 + i,
+          withdrawalTaxPct: 0, // NISAは非課税
+          drawOrder: ord("nisa", i),
         });
       });
     } else if (country === "US" && rules.investment.implemented) {
       const acc = inputs.usInvestment;
       const early = rules.investment.earlyWithdrawalAge;
-      // 取崩し順：Brokerage → Traditional IRA → 401(k) → Roth IRA
-      // 59.5歳未満は 401(k)/IRA から取り崩さない（早期引き出しペナルティ）
-      [
-        ["brokerage", 10, 0],
-        ["traditionalIra", 11, early],
-        ["k401", 12, early],
-        ["rothIra", 13, early],
-      ].forEach(([key, order, accessAge]) => {
+      ["brokerage", "rothIra", "traditionalIra", "k401"].forEach((key, i) => {
         pools.push({
-          id: key, group: "investment",
+          id: key, group: "investment", drawCategory: catMap[key],
           balance: Number(acc[key].currentValue) || 0,
           annualReturnPct: acc.expectedReturnPct,
           monthlyContribution: (Number(acc[key].annualContribution) || 0) / 12,
           contribEndAge: inputs.retireAge,
-          accessAge, drawOrder: order,
+          // Brokerageはいつでも引き出せる。401(k)/IRA/Rothは59.5歳まで制限。
+          accessAge: key === "brokerage" ? 0 : early,
+          withdrawalTaxPct: Number(acc[key].withdrawalTaxPct) || 0,
+          drawOrder: ord(key, i),
         });
       });
     } else if (country === "GB" && rules.investment.implemented) {
       const acc = inputs.gbInvestment;
       const accessAge = rules.investment.pensionAccessAge;
-      [
-        ["gia", 10, 0], ["cashSavings", 11, 0], ["cashIsa", 12, 0],
-        ["stocksSharesIsa", 13, 0],
-        ["workplacePension", 14, accessAge], ["sipp", 15, accessAge],
-      ].forEach(([key, order, aa]) => {
-        const a = acc[key] || {};
-        pools.push({
-          id: key, group: "investment",
-          balance: Number(a.currentValue) || 0,
-          annualReturnPct: a.expectedReturnPct,
-          monthlyContribution: (Number(a.annualContribution) || 0) / 12,
-          contribEndAge: Number(a.contributionEndAge) || inputs.retireAge,
-          accessAge: aa, drawOrder: order,
+      ["cashSavings", "gia", "cashIsa", "stocksSharesIsa", "workplacePension", "sipp"]
+        .forEach((key, i) => {
+          const a = acc[key] || {};
+          const isPension = key === "sipp" || key === "workplacePension";
+          pools.push({
+            id: key, group: "investment", drawCategory: catMap[key],
+            balance: Number(a.currentValue) || 0,
+            annualReturnPct: a.expectedReturnPct,
+            monthlyContribution: (Number(a.annualContribution) || 0) / 12,
+            contribEndAge: Number(a.contributionEndAge) || inputs.retireAge,
+            accessAge: isPension ? accessAge : 0,
+            withdrawalTaxPct: Number(a.withdrawalTaxPct) || 0,
+            drawOrder: ord(key, i),
+          });
         });
-      });
     } else if (country === "CA" && rules.investment.implemented) {
       const acc = inputs.caInvestment;
       const inv = rules.investment;
-      [
-        ["nonRegistered", 10], ["cashSavings", 11], ["tfsa", 12], ["rrsp", 13],
-      ].forEach(([key, order]) => {
+      ["cashSavings", "nonRegistered", "tfsa", "rrsp"].forEach((key, i) => {
         const a = acc[key] || {};
         const pool = {
-          id: key, group: "investment",
+          id: key, group: "investment", drawCategory: catMap[key],
           balance: Number(a.currentValue) || 0,
           annualReturnPct: a.expectedReturnPct,
           monthlyContribution: (Number(a.annualContribution) || 0) / 12,
           contribEndAge: Number(a.contributionEndAge) || inputs.retireAge,
-          drawOrder: order,
+          withdrawalTaxPct: Number(a.withdrawalTaxPct) || 0,
+          drawOrder: ord(key, i),
         };
         // RRIF：71歳以降はRRSPから最低取崩し額が強制的に発生し、非登録口座へ移る
         if (key === "rrsp") {
@@ -6933,27 +7113,24 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       const inv = rules.investment;
       const contribTax = rules.tax.superannuation.contributionsTaxRate;
       const earnTax = rules.tax.superannuation.earningsTaxAccumulation;
-      // 税引前拠出（SG＋任意）は15%課税後にSuperへ入る
       const concessionalNet = inv.getTotalConcessional(
         acc.annualSalary, acc.voluntaryConcessional
       ) * (1 - contribTax);
-      [
-        ["investmentAccount", 10], ["cashSavings", 11], ["superannuation", 12],
-      ].forEach(([key, order]) => {
+      ["cashSavings", "investmentAccount", "superannuation"].forEach((key, i) => {
         const a = acc[key] || {};
         const isSuper = key === "superannuation";
         const pool = {
-          id: key, group: "investment",
+          id: key, group: "investment", drawCategory: catMap[key],
           balance: Number(a.currentValue) || 0,
           annualReturnPct: a.expectedReturnPct,
           monthlyContribution: ((Number(a.annualContribution) || 0) + (isSuper ? concessionalNet : 0)) / 12,
           contribEndAge: Number(a.contributionEndAge) || inputs.retireAge,
-          drawOrder: order,
+          withdrawalTaxPct: Number(a.withdrawalTaxPct) || 0,
+          drawOrder: ord(key, i),
         };
         if (isSuper) {
-          // preservation age までは取り崩せない。積立期の運用益には15%課税。
-          pool.accessAge = inv.preservationAge;
-          pool.earningsTaxPct = earnTax * 100;
+          pool.accessAge = inv.preservationAge; // preservation age まで取り崩せない
+          pool.earningsTaxPct = earnTax * 100;  // 積立期の運用益に15%課税
           pool.minimumDrawdown = (age, bal) =>
             (inv.canAccessSuper(age) ? inv.getMinimumDrawdown(age, bal) : 0);
           pool.minimumDrawdownTo = "investmentAccount";
@@ -6962,35 +7139,42 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       });
     }
 
-    // ---- 銀行預金（全ての国で共通。取り崩しの主戦力なので最優先の現金プール）----
+    // ---- 銀行預金（全ての国で共通。取り崩しの最優先）----
     (inputs.banks || []).forEach((b, i) => {
       pools.push({
-        id: `bank_${i}`, group: "bank",
+        id: `bank_${i}`, group: "bank", drawCategory: "cash",
         balance: Number(b.balance) || 0,
         annualReturnPct: b.interestPct || 0,
         monthlyContribution: Number(b.monthlyDeposit) || 0,
         contribEndAge: inputs.retireAge,
-        drawOrder: 30 + i,
+        withdrawalTaxPct: 0,
+        drawOrder: drawOrderOf("cash", i, drawdownOrder),
       });
     });
-    // 銀行口座が1つも無い場合の受け皿（一時金・余剰金の行き先）
     if (!(inputs.banks || []).length) {
-      pools.push({ id: "bank_0", group: "bank", balance: 0, annualReturnPct: 0, drawOrder: 30 });
+      // 銀行口座が1つも無い場合の受け皿（一時金・余剰金の行き先）
+      pools.push({
+        id: "bank_0", group: "bank", drawCategory: "cash",
+        balance: 0, annualReturnPct: 0, withdrawalTaxPct: 0,
+        drawOrder: drawOrderOf("cash", 0, drawdownOrder),
+      });
     }
 
-    // ---- 個別株 → 金（取り崩しは最後）----
+    // ---- 個別株（課税口座）→ 金（現物・最後）----
     pools.push({
-      id: "stock", group: "stock",
-      balance: stockTotalNow, annualReturnPct: effectiveStockReturnPct, drawOrder: 50,
+      id: "stock", group: "stock", drawCategory: "taxable",
+      balance: stockTotalNow, annualReturnPct: effectiveStockReturnPct,
+      withdrawalTaxPct: 0,
+      drawOrder: drawOrderOf("taxable", 50, drawdownOrder),
     });
     pools.push({
-      id: "gold", group: "gold",
+      id: "gold", group: "gold", drawCategory: "physical",
       balance: goldSim.currentValue,
       annualReturnPct: effectiveGoldReturnPct,
-      // 積立期の純金積立（毎月の円建て積立額）
       monthlyContribution: Number(inputs.gold.monthlyYen) || 0,
       contribEndAge: Number(inputs.gold.accumulateUntilAge) || inputs.retireAge,
-      drawOrder: 60,
+      withdrawalTaxPct: 0,
+      drawOrder: drawOrderOf("physical", 0, drawdownOrder),
     });
 
     // ---- 民間年金積立：生活費の直接の取り崩し対象にはしない（受給ルールに従ってのみ払い出す）----
@@ -7017,7 +7201,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       });
     });
 
-    // ---- iDeCo（日本のみ）：受取開始まではロック。生活費の取り崩し対象外。----
+    // ---- iDeCo（日本のみ）：受取開始まではロック。生活費の直接の取り崩し対象外。----
     let idecoPoolId = null;
     let idecoLumpAmount = 0;
     let idecoLumpAge = null;
@@ -7025,33 +7209,28 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     if (country === "JP") {
       idecoPoolId = "ideco";
       pools.push({
-        id: "ideco", group: "ideco",
+        id: "ideco", group: "ideco", drawCategory: "restricted",
         balance: idecoSim.currentValueAdjusted ?? (inputs.ideco.currentValue || 0),
         annualReturnPct: inputs.ideco.expectedReturnPct,
         monthlyContribution: Number(inputs.ideco.monthlyContribution) || 0,
         contribEndAge: inputs.ideco.endAge,
-        accessAge: NOT_DRAWABLE,
+        accessAge: NOT_DRAWABLE, // 受取ルール（一時金・年金）でのみ払い出される
       });
-      // 一時金は受取開始年齢に到達したとき一度だけ、年金は受取期間中に毎月。
-      // いずれもiDeCo残高が原資（残高以上は出ない）。
       idecoLumpAmount = (idecoPayoutMethod === "lump" || idecoPayoutMethod === "both")
         ? (idecoSim.lumpAmount || 0) : 0;
       idecoLumpAge = idecoSim.payoutStartAge;
       idecoAnnuityMonthly = (age) => (getIdecoMonthlyIncome ? (getIdecoMonthlyIncome(age) || 0) : 0);
     }
 
-    // ---- 国別の生活費・医療費・公的年金 ----
-    // 【修正】公的年金は退職年齢から自動的に始めてはいけない。
-    // 国ごとの受給開始年齢（US: Social Securityのclaim age、GB: State Pensionのeffective
-    // claim age、CA: CPPとOASで別々、AU: Age Pensionのqualifying age）に従う。
+    // ---- 国別の生活費・医療費・公的年金（受給開始年齢つき）----
+    // 公的年金は退職年齢から自動的には始まらない。
     let livingCostMonthly = 0;
     let healthCostAnnual = () => 0;
     const publicPensions = [];
     if (country === "JP") {
       livingCostMonthly = inputs.livingCostMonthly;
       healthCostAnnual = (age) => healthAnnualCost(age, inputs.healthBrackets);
-      // 日本の公的年金は受給開始年齢の入力が無いため、従来どおり退職年齢から
-      publicPensions.push({ monthlyAmount: effectivePensionMonthly, startAge: inputs.retireAge });
+      publicPensions.push({ monthlyAmount: effectivePensionMonthly, startAge: effectivePublicPensionStartAge });
     } else if (country === "US") {
       livingCostMonthly = Number(inputs.usInvestment.expensesMonthly) || 0;
       healthCostAnnual = () => usTotalHealthcareAnnual;
@@ -7060,18 +7239,15 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       livingCostMonthly = Number(inputs.gbInvestment.expensesMonthly) || 0;
       healthCostAnnual = () => gbHealthcareAnnual;
       publicPensions.push({ monthlyAmount: gbStatePensionAnnual / 12, startAge: gbEffectiveClaimAge });
-      // 職域年金など、State Pension以外の退職後収入は退職年齢から
       publicPensions.push({ monthlyAmount: gbAdditionalPensionAnnual / 12, startAge: inputs.retireAge });
     } else if (country === "CA") {
       livingCostMonthly = Number(inputs.caInvestment.expensesMonthly) || 0;
       healthCostAnnual = () => caHealthcareAnnual;
-      // CPPとOASは受給開始年齢が別々（OASは65歳より前倒しできない）
       publicPensions.push({ monthlyAmount: caCppAnnual / 12, startAge: caCppStartAge });
       publicPensions.push({
         monthlyAmount: caOasAnnual / 12,
         startAge: rules.retirement.implemented
-          ? rules.retirement.getOasEffectiveStartAge(caOasStartAge)
-          : caOasStartAge,
+          ? rules.retirement.getOasEffectiveStartAge(caOasStartAge) : caOasStartAge,
       });
       publicPensions.push({ monthlyAmount: caAdditionalPensionAnnual / 12, startAge: inputs.retireAge });
     } else if (country === "AU") {
@@ -7085,6 +7261,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       currentAge: effectiveCurrentAge,
       retireAge: inputs.retireAge,
       deathAge: inputs.deathAge,
+      boundaries: planBoundaries,
       pools,
       loans: inputs.loans,
       insurancePolicies: inputs.insurancePolicies,
@@ -7096,15 +7273,14 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       idecoLumpAmount,
       idecoLumpAge,
       idecoAnnuityMonthly,
-      // 余剰（年金が生活費を上回る分）と一時金の受け皿は現金プール
       surplusTargetId: "bank_0",
-      lumpSumTargetId: "bank_0",
     });
   }, [
     country, rules, effectiveCurrentAge, effectiveCurrentAssets, effectivePostRetireReturn,
-    inputs, dynamicFunds, nisaPlan, stockTotalNow, effectiveStockReturnPct,
+    inputs, dynamicFunds, nisaPlan, planBoundaries, drawdownOrder,
+    stockTotalNow, effectiveStockReturnPct,
     goldSim.currentValue, effectiveGoldReturnPct, idecoSim, idecoPayoutMethod, getIdecoMonthlyIncome,
-    effectivePensionMonthly,
+    effectivePensionMonthly, effectivePublicPensionStartAge,
     usSSMonthlyBenefit, usTotalHealthcareAnnual, usClaimAge,
     gbStatePensionAnnual, gbAdditionalPensionAnnual, gbEffectiveClaimAge, gbHealthcareAnnual,
     caCppAnnual, caCppStartAge, caOasAnnual, caOasStartAge, caAdditionalPensionAnnual, caHealthcareAnnual,
@@ -7133,128 +7309,155 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     : country === "AU" ? "legendAuInvestment"
     : "legendNisaAssets";
 
+  // 画面に表示する取り崩し順序。実装（ACCOUNT_DRAW_CATEGORY / drawOrderOf）から
+  // 生成するので、コメントや表示と実際の順序が食い違うことがない。
+  const drawdownAccountsByCategory = useMemo(() => {
+    const catMap = ACCOUNT_DRAW_CATEGORY[country] || ACCOUNT_DRAW_CATEGORY.JP;
+    const nameOf = (key) => {
+      const defs = accountBreakdownDefs[country] || [];
+      const hit = defs.find((d) => d.key === key);
+      if (hit) return hit.label;
+      if (key === "nisa") return t("legendNisaAssets");
+      if (key === "ideco") return t("legendIdecoAssets");
+      if (key === "stock") return t("legendStocks");
+      if (key === "gold") return t("legendGoldAssets");
+      if (key === "bank") return t("legendBankDeposits");
+      return key;
+    };
+    const out = {};
+    DRAWDOWN_CATEGORIES.forEach((c) => { out[c] = []; });
+    Object.entries(catMap).forEach(([key, cat]) => {
+      if (!out[cat]) out[cat] = [];
+      out[cat].push(nameOf(key));
+    });
+    // 銀行預金・個別株・金は全ての国で共通
+    if (!out.cash.includes(t("legendBankDeposits"))) out.cash.push(t("legendBankDeposits"));
+    if (!out.taxable.includes(t("legendStocks"))) out.taxable.push(t("legendStocks"));
+    if (!out.physical.includes(t("legendGoldAssets"))) out.physical.push(t("legendGoldAssets"));
+    return out;
+  }, [country, accountBreakdownDefs, t]);
+
+  // 引出時課税を編集できる口座一覧（国別）
+  const withdrawalTaxAccounts = useMemo(() => {
+    const defs = accountBreakdownDefs[country] || [];
+    const src = country === "US" ? inputs.usInvestment
+      : country === "GB" ? inputs.gbInvestment
+      : country === "CA" ? inputs.caInvestment
+      : country === "AU" ? inputs.auInvestment : null;
+    if (!src) return [];
+    return defs.map((d) => ({
+      key: d.key, label: d.label,
+      withdrawalTaxPct: Number((src[d.key] || {}).withdrawalTaxPct) || 0,
+    }));
+  }, [country, accountBreakdownDefs, inputs.usInvestment, inputs.gbInvestment, inputs.caInvestment, inputs.auInvestment]);
+
+  const updateWithdrawalTaxAccount = useCallback((key, field, val) => {
+    if (country === "US") updateUsInvestmentAccount(key, field, val);
+    else if (country === "GB") updateGbInvestmentAccount(key, field, val);
+    else if (country === "CA") updateCaInvestmentAccount(key, field, val);
+    else if (country === "AU") updateAuInvestmentAccount(key, field, val);
+  }, [country, updateUsInvestmentAccount, updateGbInvestmentAccount, updateCaInvestmentAccount, updateAuInvestmentAccount]);
+
   const netWorthFinal = integrated.finalNetWorth;
   const inheritanceTotal = inputs.inheritancePlans.reduce((s, p) => s + (p.amount || 0), 0);
   const effectiveInheritanceTarget = inputs.inheritancePlans.length > 0 ? inheritanceTotal : inputs.inheritanceTarget;
   const netInheritanceGap = netWorthFinal - effectiveInheritanceTarget;
 
+  // ==========================================================================
+  // 【統一】総資産に関わる内訳表示は、すべて統合エンジンの pool_* 残高から作る。
+  // 旧 bankSim / sim / 各国 InvestmentSim を参照していたときは、取り崩しが反映されず
+  // 「内訳の合計 ≠ 総資産帯」になっていた。ageで照合し、全内訳の合計は必ず
+  // その年齢のグループ残高（bankValue / investmentValue …）と一致する。
+  // ==========================================================================
+  const integratedRowAt = useCallback((age) => {
+    const target = Math.round(age);
+    const rows = integrated.yearly;
+    return rows.find((y) => y.age >= target) || rows[rows.length - 1];
+  }, [integrated]);
+
+  const breakdownAges = useMemo(() => ([
+    { label: t("currentLabelShort"), age: effectiveCurrentAge },
+    { label: t("ageYears", { age: inputs.retireAge }), age: inputs.retireAge },
+    { label: t("ageYears", { age: inputs.deathAge }), age: inputs.deathAge },
+  ]), [effectiveCurrentAge, inputs.retireAge, inputs.deathAge, t]);
+
   const loanBreakdownByAge = useMemo(() => {
-    const ages = [
-      { label: t("currentLabelShort"), age: effectiveCurrentAge },
-      { label: t("ageYears", { age: inputs.retireAge }), age: inputs.retireAge },
-      { label: t("ageYears", { age: inputs.deathAge }), age: inputs.deathAge },
-    ];
     return inputs.loans.map((l, i) => {
       const row = { name: l.name };
-      ages.forEach(({ label, age }) => {
-        const yr = loanSim.yearly.find((y) => y.age >= age) || loanSim.yearly[loanSim.yearly.length - 1];
-        row[label] = Math.round(yr ? yr[`loan_${i}`] : l.principal);
+      breakdownAges.forEach(({ label, age }) => {
+        const yr = integratedRowAt(age);
+        row[label] = Math.round(yr ? (yr[`loan_${i}`] ?? 0) : l.principal);
       });
       return row;
     });
-  }, [inputs.loans, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, loanSim, t]);
+  }, [inputs.loans, breakdownAges, integratedRowAt]);
 
   const bankBreakdownByAge = useMemo(() => {
-    const ages = [
-      { label: t("currentLabelShort"), age: effectiveCurrentAge },
-      { label: t("ageYears", { age: inputs.retireAge }), age: inputs.retireAge },
-      { label: t("ageYears", { age: inputs.deathAge }), age: inputs.deathAge },
-    ];
     return inputs.banks.map((b, i) => {
       const row = { name: b.name };
-      ages.forEach(({ label, age }) => {
-        const yr = bankSim.yearly.find((y) => y.age >= age) || bankSim.yearly[bankSim.yearly.length - 1];
-        row[label] = Math.round(yr ? yr[`bank_${i}`] : b.balance);
+      breakdownAges.forEach(({ label, age }) => {
+        const yr = integratedRowAt(age);
+        row[label] = Math.round(yr ? (yr[`pool_bank_${i}`] ?? 0) : b.balance);
       });
       return row;
     });
-  }, [inputs.banks, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, bankSim, t]);
+  }, [inputs.banks, breakdownAges, integratedRowAt]);
 
   const fundBreakdownAtRetire = useMemo(() => {
-    const row = sim.yearly.find((y) => y.age >= inputs.retireAge) || sim.yearly[sim.yearly.length - 1];
-    if (!row || !row.funds) return [];
+    if (country !== "JP") return [];
+    const row = integratedRowAt(inputs.retireAge);
+    if (!row) return [];
     return dynamicFunds.map((f, i) => ({
       name: f.id,
-      value: Math.round(row.funds[f.id] || 0),
+      value: Math.round(row[`pool_nisa_${i}`] ?? 0),
       color: PIE_COLORS[i % PIE_COLORS.length],
     }));
-  }, [sim, inputs.retireAge, JSON.stringify(dynamicFunds)]);
+  }, [country, integratedRowAt, inputs.retireAge, JSON.stringify(dynamicFunds)]);
 
-  // アメリカ選択時：退職時点の401(k)/Traditional IRA/Roth IRA/Brokerage 口座別内訳。
-  // JPのfundBreakdownAtRetire（NISA銘柄別）とは別データ・別ロジック。
-  const usAccountBreakdownAtRetire = useMemo(() => {
-    if (country !== "US" || !rules.investment.implemented) return [];
-    const row = usInvestmentSim.yearly.find((y) => y.age >= inputs.retireAge) || usInvestmentSim.yearly[usInvestmentSim.yearly.length - 1];
-    if (!row || !row.accounts) return [];
-    const labels = [
+  // 各国の退職時点の口座別内訳。口座名称は各国のものをそのまま維持する。
+  const accountBreakdownDefs = useMemo(() => ({
+    US: [
       { key: "k401", label: t("us401kLabel") },
       { key: "traditionalIra", label: t("usTraditionalIraLabel") },
       { key: "rothIra", label: t("usRothIraLabel") },
       { key: "brokerage", label: t("usBrokerageLabel") },
-    ];
-    return labels.map((l, i) => ({
-      name: l.label,
-      value: Math.round(row.accounts[l.key] || 0),
-      color: PIE_COLORS[i % PIE_COLORS.length],
-    }));
-  }, [country, rules, usInvestmentSim, inputs.retireAge, t]);
-
-  // イギリス選択時：退職時点の Stocks and Shares ISA / Cash ISA / SIPP / Workplace Pension /
-  // General Investment Account / Cash Savings の口座別内訳。
-  // JPのfundBreakdownAtRetire（NISA銘柄別）・USのusAccountBreakdownAtRetireとは別データ・別ロジック。
-  const gbAccountBreakdownAtRetire = useMemo(() => {
-    if (country !== "GB" || !rules.investment.implemented) return [];
-    const row = gbInvestmentSim.yearly.find((y) => y.age >= inputs.retireAge) || gbInvestmentSim.yearly[gbInvestmentSim.yearly.length - 1];
-    if (!row || !row.accounts) return [];
-    const labels = [
+    ],
+    GB: [
       { key: "stocksSharesIsa", label: t("gbStocksSharesIsaLabel") },
       { key: "cashIsa", label: t("gbCashIsaLabel") },
       { key: "sipp", label: t("gbSippLabel") },
       { key: "workplacePension", label: t("gbWorkplacePensionLabel") },
       { key: "gia", label: t("gbGiaLabel") },
       { key: "cashSavings", label: t("gbCashSavingsLabel") },
-    ];
-    return labels.map((l, i) => ({
-      name: l.label,
-      value: Math.round(row.accounts[l.key] || 0),
-      color: PIE_COLORS[i % PIE_COLORS.length],
-    }));
-  }, [country, rules, gbInvestmentSim, inputs.retireAge, t]);
-
-  // カナダ選択時：退職時点の TFSA / RRSP / 非登録口座 / 現金 の口座別内訳。
-  const caAccountBreakdownAtRetire = useMemo(() => {
-    if (country !== "CA" || !rules.investment.implemented) return [];
-    const row = caInvestmentSim.yearly.find((y) => y.age >= inputs.retireAge) || caInvestmentSim.yearly[caInvestmentSim.yearly.length - 1];
-    if (!row || !row.accounts) return [];
-    const labels = [
+    ],
+    CA: [
       { key: "tfsa", label: t("caTfsaLabel") },
       { key: "rrsp", label: t("caRrspLabel") },
       { key: "nonRegistered", label: t("caNonRegisteredLabel") },
       { key: "cashSavings", label: t("caCashSavingsLabel") },
-    ];
-    return labels.map((l, i) => ({
-      name: l.label,
-      value: Math.round(row.accounts[l.key] || 0),
-      color: PIE_COLORS[i % PIE_COLORS.length],
-    }));
-  }, [country, rules, caInvestmentSim, inputs.retireAge, t]);
-
-  // オーストラリア選択時：退職時点の Superannuation / 投資口座 / 現金 の口座別内訳。
-  const auAccountBreakdownAtRetire = useMemo(() => {
-    if (country !== "AU" || !rules.investment.implemented) return [];
-    const row = auInvestmentSim.yearly.find((y) => y.age >= inputs.retireAge) || auInvestmentSim.yearly[auInvestmentSim.yearly.length - 1];
-    if (!row || !row.accounts) return [];
-    const labels = [
+    ],
+    AU: [
       { key: "superannuation", label: t("auSuperLabel") },
       { key: "investmentAccount", label: t("auInvestmentAccountLabel") },
       { key: "cashSavings", label: t("auCashSavingsLabel") },
-    ];
-    return labels.map((l, i) => ({
+    ],
+  }), [t]);
+
+  const buildAccountBreakdown = useCallback((c) => {
+    if (country !== c || !rules.investment.implemented) return [];
+    const row = integratedRowAt(inputs.retireAge);
+    if (!row) return [];
+    return (accountBreakdownDefs[c] || []).map((l, i) => ({
       name: l.label,
-      value: Math.round(row.accounts[l.key] || 0),
+      value: Math.round(row[`pool_${l.key}`] ?? 0),
       color: PIE_COLORS[i % PIE_COLORS.length],
     }));
-  }, [country, rules, auInvestmentSim, inputs.retireAge, t]);
+  }, [country, rules, integratedRowAt, inputs.retireAge, accountBreakdownDefs]);
+
+  const usAccountBreakdownAtRetire = useMemo(() => buildAccountBreakdown("US"), [buildAccountBreakdown]);
+  const gbAccountBreakdownAtRetire = useMemo(() => buildAccountBreakdown("GB"), [buildAccountBreakdown]);
+  const caAccountBreakdownAtRetire = useMemo(() => buildAccountBreakdown("CA"), [buildAccountBreakdown]);
+  const auAccountBreakdownAtRetire = useMemo(() => buildAccountBreakdown("AU"), [buildAccountBreakdown]);
 
   const addBank = () => {
     const balance = Number(newBank.balance) || 0;
@@ -9123,6 +9326,13 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               <span>{t("pensionAutoNote")}</span>
             </div>
           )}
+          {/* 【追加】公的年金の受給開始年齢。退職年齢とは独立して設定できる。 */}
+          <AgeField
+            guide={t("publicPensionStartAgeGuide")}
+            label={t("publicPensionStartAgeLabel")}
+            value={effectivePublicPensionStartAge}
+            onChange={(v) => update({ publicPensionStartAge: v })}
+          />
           <Field guide={t("livingCostGuide")} label={t("livingCostLabel")} unit={uPerMonth} value={inputs.livingCostMonthly} step={5000} onChange={(v) => update({ livingCostMonthly: v })} />
           <Field
             label={`${t("postRetireReturnLabel")}${inputs.postRetireReturnAuto && dynamicFunds.length > 0 ? t("autoHalfWeightedSuffix") : ""}`}
@@ -9444,12 +9654,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <input placeholder={t("monthlyPaymentPlaceholder")} type="number" value={newLoan.monthlyPayment} onChange={(e) => setNewLoan((p) => ({ ...p, monthlyPayment: e.target.value }))} />
             <button className="add-btn" onClick={addLoan}><Plus size={15} /></button>
           </div>
-          {loanSim.payoffAges.some((a) => a !== null) && (
+          {integrated.loanPayoffAges.some((a) => a !== null) && (
             <div className="note">
               <Info size={13} />
               <span>
                 {t("payoffScheduleLabel")}：{inputs.loans.map((l, i) => (
-                  <span key={i}>{i > 0 && t("listSeparator")}{l.name} {loanSim.payoffAges[i] ? t("ageYears", { age: Math.round(loanSim.payoffAges[i]) }) : t("payoffInsufficientNote")}</span>
+                  <span key={i}>{i > 0 && t("listSeparator")}{l.name} {integrated.loanPayoffAges[i] ? t("ageYears", { age: Math.round(integrated.loanPayoffAges[i]) }) : t("payoffInsufficientNote")}</span>
                 ))}
               </span>
             </div>
@@ -10020,6 +10230,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <Info size={13} />
             <span>{t("netWorthChartNote")}</span>
           </div>
+
+          {/* 取り崩し順序（実装と必ず一致）と、海外口座の引出時課税 */}
+          <DrawdownOrderPanel order={drawdownOrder} accountsByCategory={drawdownAccountsByCategory} />
+          <WithdrawalTaxPanel accounts={withdrawalTaxAccounts} onUpdateAccount={updateWithdrawalTaxAccount} />
 
           {sim.lumpTruncations.length > 0 && (
             <div className="note" style={{ borderLeftColor: "#C2694F", marginBottom: 22 }}>
