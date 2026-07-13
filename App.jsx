@@ -7,7 +7,7 @@ import { Plus, Trash2, TrendingUp, HeartPulse, Landmark, Users, Ruler, Info, Coi
 import "./storageShim.js";
 // 総資産推移・純資産の唯一の計算源（全資産・負債・収支を1本の月次ループで扱う統合エンジン）。
 // 各パネル個別のシミュレーション（runSimulation / runGoldSimulation など）は表示用にそのまま残す。
-import { runIntegratedPlan, NOT_DRAWABLE } from "./lifePlanEngine.js";
+import { runIntegratedPlan, buildAgeSteps, NOT_DRAWABLE } from "./lifePlanEngine.js";
 
 // ---------- helpers ----------
 const yen = (n) => {
@@ -3862,29 +3862,31 @@ export function buildNisaContributionPlan({
   currentAge, retireAge, deathAge,
   tsumitateSchedule, growthSchedule, lumpSums, tsumitateUsed, growthUsed,
 }) {
-  const totalMonths = Math.max(1, Math.round((deathAge - currentAge) * 12));
+  // 統合エンジンと同一の可変長ステップを共有する（添字が一致する）
+  const steps = buildAgeSteps(currentAge, deathAge);
   const tsumitateMonthlyCap = NISA_LIMITS.tsumitateAnnual / 12;
   const growthMonthlyCap = NISA_LIMITS.growthAnnual / 12;
   let tsumitateCum = (tsumitateUsed || 0) + elapsedScheduleAmount(tsumitateSchedule, currentAge);
   let growthCum = (growthUsed || 0) + elapsedScheduleAmount(growthSchedule, currentAge) + elapsedLumpSumAmount(lumpSums, currentAge);
 
-  const lumpByMonth = new Map();
-  (lumpSums || []).forEach((entry) => {
-    const targetMonth = Math.max(1, Math.round((entry.age - currentAge) * 12));
-    if (targetMonth >= 1 && targetMonth <= totalMonths) {
-      lumpByMonth.set(targetMonth, (lumpByMonth.get(targetMonth) || 0) + entry.amount);
-    }
-  });
+  // 一括投資は「その金額を投じる年齢に到達した最初のステップ」で1回だけ実行する
+  const pendingLumps = (lumpSums || [])
+    .filter((e) => e && Number(e.amount) > 0 && Number(e.age) > currentAge)
+    .map((e) => ({ age: Number(e.age), amount: Number(e.amount), done: false }));
 
-  // byMonth[m] = その月にNISAへ実際に入る金額（上限適用後）
-  const byMonth = new Array(totalMonths + 1).fill(0);
-  for (let m = 1; m <= totalMonths; m++) {
-    const age = currentAge + m / 12;
+  // byStep[i] = ステップ i でNISAへ実際に入る金額（上限適用後）
+  const byStep = new Array(steps.length).fill(0);
+
+  steps.forEach((st, i) => {
+    const age = st.age;
+    // 資格判定はステップ開始時点の年齢で行う（エンジンと同じ規則）
+    const ageStart = st.age - st.dt;
+    const months = st.dt * 12;
     let contribution = 0;
 
-    if (age < retireAge) {
-      let effGrowth = Math.min(scheduledAmount(growthSchedule, age), growthMonthlyCap);
-      let effTsumitate = Math.min(scheduledAmount(tsumitateSchedule, age), tsumitateMonthlyCap);
+    if (ageStart < retireAge) {
+      let effGrowth = Math.min(scheduledAmount(growthSchedule, ageStart), growthMonthlyCap) * months;
+      let effTsumitate = Math.min(scheduledAmount(tsumitateSchedule, ageStart), tsumitateMonthlyCap) * months;
       const growthRoom = Math.max(0, NISA_LIMITS.growthLifetime - growthCum);
       if (effGrowth > growthRoom) effGrowth = growthRoom;
       let totalRoom = Math.max(0, NISA_LIMITS.totalLifetime - (tsumitateCum + growthCum));
@@ -3896,18 +3898,20 @@ export function buildNisaContributionPlan({
       contribution += effGrowth + effTsumitate;
     }
 
-    const lumpGross = lumpByMonth.get(m) || 0;
-    if (lumpGross > 0) {
+    pendingLumps.forEach((lp) => {
+      if (lp.done || ageStart < lp.age - 1e-9) return;
       const gRoom = Math.max(0, NISA_LIMITS.growthLifetime - growthCum);
       const tRoom = Math.max(0, NISA_LIMITS.totalLifetime - (tsumitateCum + growthCum));
-      const lumpEff = Math.min(lumpGross, gRoom, tRoom);
-      if (lumpEff > 0) growthCum += lumpEff;
-      contribution += lumpEff;
-    }
+      const eff = Math.min(lp.amount, gRoom, tRoom);
+      if (eff > 0) growthCum += eff;
+      contribution += eff;
+      lp.done = true;
+    });
 
-    byMonth[m] = contribution;
-  }
-  return { byMonth, tsumitateCum, growthCum };
+    byStep[i] = contribution;
+  });
+
+  return { byStep, tsumitateCum, growthCum };
 }
 
 // ---------- gold (純金積立) simulation ----------
@@ -6859,7 +6863,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           balance: effectiveCurrentAssets * ((f.pct || 0) / 100),
           annualReturnPct: f.returnPct,
           retireReturnPct: effectivePostRetireReturn,
-          contributionFn: (age, m) => (nisaPlan.byMonth[m] || 0) * ((f.pct || 0) / 100),
+          contributionFn: (age, dt, stepIndex) => (nisaPlan.byStep[stepIndex] || 0) * ((f.pct || 0) / 100),
           drawOrder: 10 + i,
         });
       });
@@ -7015,7 +7019,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
     // ---- iDeCo（日本のみ）：受取開始まではロック。生活費の取り崩し対象外。----
     let idecoPoolId = null;
-    let idecoDrawdown = null;
+    let idecoLumpAmount = 0;
+    let idecoLumpAge = null;
+    let idecoAnnuityMonthly = null;
     if (country === "JP") {
       idecoPoolId = "ideco";
       pools.push({
@@ -7026,39 +7032,53 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         contribEndAge: inputs.ideco.endAge,
         accessAge: NOT_DRAWABLE,
       });
-      // 受取開始月の一時金＋受取期間中の年金。いずれもiDeCo残高が原資（残高以上は出ない）。
-      idecoDrawdown = (age) => {
-        let amount = 0;
-        if (getIdecoSpendableLump) amount += getIdecoSpendableLump(age) || 0;
-        if (getIdecoMonthlyIncome) amount += getIdecoMonthlyIncome(age) || 0;
-        return amount;
-      };
+      // 一時金は受取開始年齢に到達したとき一度だけ、年金は受取期間中に毎月。
+      // いずれもiDeCo残高が原資（残高以上は出ない）。
+      idecoLumpAmount = (idecoPayoutMethod === "lump" || idecoPayoutMethod === "both")
+        ? (idecoSim.lumpAmount || 0) : 0;
+      idecoLumpAge = idecoSim.payoutStartAge;
+      idecoAnnuityMonthly = (age) => (getIdecoMonthlyIncome ? (getIdecoMonthlyIncome(age) || 0) : 0);
     }
 
     // ---- 国別の生活費・医療費・公的年金 ----
+    // 【修正】公的年金は退職年齢から自動的に始めてはいけない。
+    // 国ごとの受給開始年齢（US: Social Securityのclaim age、GB: State Pensionのeffective
+    // claim age、CA: CPPとOASで別々、AU: Age Pensionのqualifying age）に従う。
     let livingCostMonthly = 0;
-    let publicPensionMonthly = 0;
     let healthCostAnnual = () => 0;
+    const publicPensions = [];
     if (country === "JP") {
       livingCostMonthly = inputs.livingCostMonthly;
-      publicPensionMonthly = effectivePensionMonthly;
       healthCostAnnual = (age) => healthAnnualCost(age, inputs.healthBrackets);
+      // 日本の公的年金は受給開始年齢の入力が無いため、従来どおり退職年齢から
+      publicPensions.push({ monthlyAmount: effectivePensionMonthly, startAge: inputs.retireAge });
     } else if (country === "US") {
-      livingCostMonthly = (Number(inputs.usInvestment.expensesMonthly) || 0);
-      publicPensionMonthly = usSSMonthlyBenefit;
+      livingCostMonthly = Number(inputs.usInvestment.expensesMonthly) || 0;
       healthCostAnnual = () => usTotalHealthcareAnnual;
+      publicPensions.push({ monthlyAmount: usSSMonthlyBenefit, startAge: usClaimAge });
     } else if (country === "GB") {
-      livingCostMonthly = (Number(inputs.gbInvestment.expensesMonthly) || 0);
-      publicPensionMonthly = gbRetirementIncomeAnnual / 12;
+      livingCostMonthly = Number(inputs.gbInvestment.expensesMonthly) || 0;
       healthCostAnnual = () => gbHealthcareAnnual;
+      publicPensions.push({ monthlyAmount: gbStatePensionAnnual / 12, startAge: gbEffectiveClaimAge });
+      // 職域年金など、State Pension以外の退職後収入は退職年齢から
+      publicPensions.push({ monthlyAmount: gbAdditionalPensionAnnual / 12, startAge: inputs.retireAge });
     } else if (country === "CA") {
-      livingCostMonthly = (Number(inputs.caInvestment.expensesMonthly) || 0);
-      publicPensionMonthly = caRetirementIncomeAnnual / 12;
+      livingCostMonthly = Number(inputs.caInvestment.expensesMonthly) || 0;
       healthCostAnnual = () => caHealthcareAnnual;
+      // CPPとOASは受給開始年齢が別々（OASは65歳より前倒しできない）
+      publicPensions.push({ monthlyAmount: caCppAnnual / 12, startAge: caCppStartAge });
+      publicPensions.push({
+        monthlyAmount: caOasAnnual / 12,
+        startAge: rules.retirement.implemented
+          ? rules.retirement.getOasEffectiveStartAge(caOasStartAge)
+          : caOasStartAge,
+      });
+      publicPensions.push({ monthlyAmount: caAdditionalPensionAnnual / 12, startAge: inputs.retireAge });
     } else if (country === "AU") {
-      livingCostMonthly = (Number(inputs.auInvestment.expensesMonthly) || 0);
-      publicPensionMonthly = auRetirementIncomeAnnual / 12;
+      livingCostMonthly = Number(inputs.auInvestment.expensesMonthly) || 0;
       healthCostAnnual = () => auHealthcareAnnual;
+      publicPensions.push({ monthlyAmount: auAgePensionAnnual / 12, startAge: auAgePensionQualifyingAge });
+      publicPensions.push({ monthlyAmount: auOtherAnnualIncome / 12, startAge: inputs.retireAge });
     }
 
     return runIntegratedPlan({
@@ -7070,10 +7090,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       insurancePolicies: inputs.insurancePolicies,
       privatePensionPlans,
       livingCostMonthly,
-      publicPensionMonthly,
+      publicPensions,
       healthCostAnnual,
       idecoPoolId,
-      idecoDrawdown,
+      idecoLumpAmount,
+      idecoLumpAge,
+      idecoAnnuityMonthly,
       // 余剰（年金が生活費を上回る分）と一時金の受け皿は現金プール
       surplusTargetId: "bank_0",
       lumpSumTargetId: "bank_0",
@@ -7081,10 +7103,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   }, [
     country, rules, effectiveCurrentAge, effectiveCurrentAssets, effectivePostRetireReturn,
     inputs, dynamicFunds, nisaPlan, stockTotalNow, effectiveStockReturnPct,
-    goldSim.currentValue, effectiveGoldReturnPct, idecoSim, getIdecoSpendableLump, getIdecoMonthlyIncome,
-    effectivePensionMonthly, usSSMonthlyBenefit, usTotalHealthcareAnnual,
-    gbRetirementIncomeAnnual, gbHealthcareAnnual, caRetirementIncomeAnnual, caHealthcareAnnual,
-    auRetirementIncomeAnnual, auHealthcareAnnual, t,
+    goldSim.currentValue, effectiveGoldReturnPct, idecoSim, idecoPayoutMethod, getIdecoMonthlyIncome,
+    effectivePensionMonthly,
+    usSSMonthlyBenefit, usTotalHealthcareAnnual, usClaimAge,
+    gbStatePensionAnnual, gbAdditionalPensionAnnual, gbEffectiveClaimAge, gbHealthcareAnnual,
+    caCppAnnual, caCppStartAge, caOasAnnual, caOasStartAge, caAdditionalPensionAnnual, caHealthcareAnnual,
+    auAgePensionAnnual, auAgePensionQualifyingAge, auOtherAnnualIncome, auHealthcareAnnual, t,
   ]);
 
   // チャート用データ。行の age は「その時点で実際に到達している年齢」（整数）で、
