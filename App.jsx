@@ -7087,12 +7087,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     auRetirementIncomeAnnual, auHealthcareAnnual, t,
   ]);
 
-  // チャート用データ。sim.yearly とは [i] ではなく age で照合する。
+  // チャート用データ。行の age は「その時点で実際に到達している年齢」（整数）で、
+  // 計算に使った小数年齢は exactAge に保持されている。
   const netWorthYearly = useMemo(() => {
-    const byAge = new Map(sim.yearly.map((r) => [r.age, r]));
     return integrated.yearly.map((r) => ({
       ...r,
-      phase: byAge.get(r.age)?.phase,
+      phase: r.exactAge < inputs.retireAge ? t("phaseAccumulation") : t("phaseDrawdown"),
       // 生活費に使える資産（iDeCo受取前残高・民間年金積立を除く）から借入を引いたもの
       spendableNetWorth: r.spendableAssets - r.loanBalance,
       // 旧キーの互換（他の表示が参照している場合に備える）
@@ -7100,7 +7100,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       insuranceValue: r.cumulativePremiums,
       total: r.investmentValue,
     }));
-  }, [integrated, sim]);
+  }, [integrated, inputs.retireAge, t]);
   // 投資口座の帯の凡例名は国ごとに変える（各国の口座名称はそのまま維持する）
   const investmentLegendKey =
     country === "US" ? "legendUsInvestment"
