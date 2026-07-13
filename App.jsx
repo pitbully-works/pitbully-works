@@ -547,6 +547,18 @@ const TRANSLATIONS = {
     "coverageUntilLabel": "保障 {age}まで",
     "cumulativeTaxSavingLabel": "積立終了までの累計節税額（概算）",
     "currencyUnit": "円",
+    "unitMan": "万円",
+    "unitPerMonthSuffix": "/月",
+    "unitPerYearSuffix": "/年",
+    "amountPlaceholderMan": "金額（万円）",
+    "monthlyAmountPlaceholderMan": "毎月（万円）",
+    "monthlyDepositPlaceholderMan": "毎月積立（万円）",
+    "currentBalancePlaceholderMan": "残高（万円）",
+    "loanBalancePlaceholderMan": "借入残高（万円）",
+    "monthlyPaymentPlaceholderMan": "毎月返済（万円）",
+    "monthlyPremiumPlaceholderMan": "毎月保険料（万円）",
+    "inheritanceAmountPlaceholderMan": "金額（万円）",
+    "moneyInManNote": "金額はすべて「万円」単位で入力します（例：24万円 → 24）。入力欄の下に実額が表示されるので、桁を確認できます。",
     "currentAgeAutoNote": "生年月日が入力されているため、この欄は自動計算され編集できません。年齢を手動で調整したい場合は、上の生年月日を空欄にしてください。",
     "currentAgeFieldLabel": "現在の年齢",
     "currentAgeLabel": "現在",
@@ -713,7 +725,7 @@ const TRANSLATIONS = {
     "drawCatTaxFree": "非課税投資口座",
     "drawCatRestricted": "引出制限のある退職口座",
     "drawCatPhysical": "金などの現物資産",
-    "netWorthChartNote": "色の帯は資産を積み上げたものです。帯の一番上が「総資産」で、下から順に足し合わさっています（例：緑の線は「NISA＋金＋銀行預金」の合計であり、銀行預金だけの金額ではありません）。\n白い線は、その総資産から借入金の残高を差し引いた「純資産」です（純資産＝帯の一番上 − 借入残高）。\n生活費・医療費・ローン返済・保険料は、退職後は資産から実際に取り崩されます。取り崩しの順番は NISA →銀行預金 →個別株 →金 です。iDeCoの受取前残高と民間年金の積立金は、受取ルールに従って払い出されるまで取り崩されません。",
+    "netWorthChartNote": "色の帯は資産を積み上げたものです。帯の一番上が「総資産」で、下から順に足し合わさっています（例：緑の線は「NISA＋金＋銀行預金」の合計であり、銀行預金だけの金額ではありません）。\n白い線は、その総資産から借入金の残高を差し引いた「純資産」です（純資産＝帯の一番上 − 借入残高）。\n生活費・医療費・ローン返済・保険料は、退職後は資産から実際に取り崩されます。取り崩しの順番は下の「取り崩しの順番」のとおりです（銀行預金 →個別株 →NISA →iDeCo →金）。iDeCoの受取前残高と民間年金の積立金は、受取ルールに従って払い出されるまで取り崩されません。",
     "netWorthChartTitle": "総資産推移 — NISA + 金 + 銀行預金 + 個別株 + 民間年金積立 + iDeCo − 借入金 − 保険料累計（{currentAge} 〜 {deathAge}）",
     "nisaAllocationSlidersLabel": "NISA資産の配分（積立・成長投資枠・一括投資の内訳に入れた銘柄がそのままスライダーになります）",
     "nisaBreakdownChartTitle": "現在のNISA資産の内訳 — つみたて投資枠 × 成長投資枠（現在日付での使用累計ベース）",
@@ -1346,6 +1358,18 @@ const TRANSLATIONS = {
     "coverageUntilLabel": "Coverage until {age}",
     "cumulativeTaxSavingLabel": "Cumulative Tax Savings Through End of Contributions (Estimate)",
     "currencyUnit": "USD",
+    "unitMan": "",
+    "unitPerMonthSuffix": "/month",
+    "unitPerYearSuffix": "/year",
+    "amountPlaceholderMan": "Amount",
+    "monthlyAmountPlaceholderMan": "Monthly",
+    "monthlyDepositPlaceholderMan": "Monthly deposit",
+    "currentBalancePlaceholderMan": "Balance",
+    "loanBalancePlaceholderMan": "Loan balance",
+    "monthlyPaymentPlaceholderMan": "Monthly payment",
+    "monthlyPremiumPlaceholderMan": "Monthly premium",
+    "inheritanceAmountPlaceholderMan": "Amount",
+    "moneyInManNote": "Amounts are entered in your base currency. The exact figure is shown under each field so you can check the digits.",
     "currentAgeAutoNote": "This field is calculated automatically and cannot be edited because a date of birth has been entered. To adjust the age manually, clear the date of birth above.",
     "currentAgeFieldLabel": "Current Age",
     "currentAgeLabel": "Current Age",
@@ -1512,7 +1536,7 @@ const TRANSLATIONS = {
     "drawCatTaxFree": "Tax-free investment accounts",
     "drawCatRestricted": "Restricted retirement accounts",
     "drawCatPhysical": "Physical assets such as gold",
-    "netWorthChartNote": "The coloured bands are stacked: the top of the stack is your total assets, built up from the bottom (the green line, for example, is investments + gold + cash combined — not the cash on its own).\nThe white line is that total minus your outstanding loan balances (net worth = top of the stack − loans).\nAfter retirement, living costs, healthcare, loan repayments and insurance premiums are drawn from your assets in order: main investment accounts → cash → shares → gold. Retirement accounts you cannot yet access are never drawn from.",
+    "netWorthChartNote": "The coloured bands are stacked: the top of the stack is your total assets, built up from the bottom (the green line, for example, is investments + gold + cash combined — not the cash on its own).\nThe white line is that total minus your outstanding loan balances (net worth = top of the stack − loans).\nAfter retirement, living costs, healthcare, loan repayments and insurance premiums are drawn from your assets in the order shown under "Drawdown order" below: cash → taxable accounts → tax-free accounts → restricted retirement accounts → gold. Restricted accounts are never drawn from before you can access them.",
     "netWorthChartTitle": "Net Worth Over Time — Investments + Gold + Cash + Stocks + Private Pension + Retirement Account − Loans − Cumulative Insurance Premiums ({currentAge} – {deathAge})",
     "nisaAllocationSlidersLabel": "Investment Allocation (holdings entered in the regular, growth, and lump-sum breakdowns above automatically appear as sliders here)",
     "nisaBreakdownChartTitle": "Current Investment Account Breakdown — Regular vs. Growth Allocation (based on cumulative usage to date)",
@@ -4372,6 +4396,109 @@ function NisaTotalGuide() {
   );
 }
 
+// ============================================================================
+// 金額入力は「万円」単位に統一する（基準通貨が円のとき）。
+//
+// 【なぜ】円のまま7桁を入力させると、スマホでは先頭のゼロ1文字だけを消すような
+// 細かいカーソル操作ができず、`0240000`（24万円）を `023000`（2.3万円）に
+// 直してしまうような1桁の取り違えが起きる。実際にそれで生活費が1/10になり、
+// シミュレーション結果が別物になった。
+// 万円単位なら「24」の2桁で済むため、桁を数え間違えようがない。
+//
+// 内部で保持する値は従来どおり「円」。表示と入力だけを万円に変換する。
+// 円以外の通貨（USD等）は万の概念が無いため、そのままの単位で扱う。
+// ============================================================================
+const MAN = 10000;
+
+function useMoneyScale() {
+  const { baseCurrency } = useContext(LocaleContext);
+  return (baseCurrency || "JPY") === "JPY" ? MAN : 1;
+}
+
+// 円 <-> 万円 の相互変換を行う入力欄（行内の小さな入力用）
+function MoneyInput({ value, onChange, placeholder, className, style, disabled }) {
+  const scale = useMoneyScale();
+  const toDisplay = (yen) => (yen === "" || yen === null || yen === undefined ? "" : String(Number(yen) / scale));
+  const [text, setText] = useState(toDisplay(value));
+  const [editing, setEditing] = useState(false);
+
+  // 外部から値が変わったとき（他の操作でリセットされた等）に表示を同期する
+  useEffect(() => {
+    if (!editing) setText(toDisplay(value));
+  }, [value, scale]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <input
+      type="number"
+      inputMode="decimal"
+      className={className}
+      style={style}
+      disabled={disabled}
+      placeholder={placeholder}
+      value={text}
+      onFocus={(e) => { setEditing(true); e.target.select(); }}
+      onBlur={() => { setEditing(false); setText(toDisplay(value)); }}
+      onChange={(e) => {
+        const raw = e.target.value;
+        setText(raw);
+        onChange(raw === "" ? "" : Number(raw) * scale);
+      }}
+    />
+  );
+}
+
+// ラベル付きの金額入力欄（Field の金額版）
+function MoneyField({ label, value, onChange, unitPer, guide, disabled, mono = true }) {
+  const { t, baseCurrency, currencySymbol } = useContext(LocaleContext);
+  const [showGuide, setShowGuide] = useState(false);
+  const isYen = (baseCurrency || "JPY") === "JPY";
+  const scale = isYen ? MAN : 1;
+  // unitPer: undefined | "month" | "year"
+  const base = isYen ? t("unitMan") : currencySymbol;
+  const unit = unitPer === "month" ? `${base}${t("unitPerMonthSuffix")}`
+    : unitPer === "year" ? `${base}${t("unitPerYearSuffix")}`
+    : base;
+
+  const toDisplay = (yen) => (yen === "" || yen === null || yen === undefined ? "" : String(Number(yen) / scale));
+  const [text, setText] = useState(toDisplay(value));
+  const [editing, setEditing] = useState(false);
+  useEffect(() => { if (!editing) setText(toDisplay(value)); }, [value, scale]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <label className="field">
+      <span className="field-label-row">
+        <span className="field-label">{label}</span>
+        {guide && <GuideButton open={showGuide} onToggle={() => setShowGuide((v) => !v)} />}
+      </span>
+      {guide && showGuide && <span className="guide-text">{guide}</span>}
+      <div className="field-input-wrap">
+        <input
+          type="number"
+          inputMode="decimal"
+          value={text}
+          min={0}
+          disabled={disabled}
+          className={mono ? "mono" : ""}
+          onFocus={(e) => { setEditing(true); e.target.select(); }}
+          onBlur={() => { setEditing(false); setText(toDisplay(value)); }}
+          onChange={(e) => {
+            const raw = e.target.value;
+            setText(raw);
+            onChange(raw === "" ? 0 : Number(raw) * scale);
+          }}
+        />
+        <span className="field-unit">{unit}</span>
+      </div>
+      {/* 桁の取り違えを目視で防ぐため、実額を併記する */}
+      {value !== "" && value !== null && value !== undefined && Number(value) > 0 && (
+        <span className="guide-text" style={{ opacity: 0.6, marginTop: 4 }}>
+          = {new Intl.NumberFormat().format(Math.round(Number(value)))} {isYen ? t("currencyUnit") : currencySymbol}
+        </span>
+      )}
+    </label>
+  );
+}
+
 function Field({ label, unit, value, onChange, step = 1, min = 0, max, mono = true, disabled = false, guide }) {
   const [showGuide, setShowGuide] = useState(false);
   return (
@@ -4467,11 +4594,19 @@ function AgeYMInput({ years, months, onYears, onMonths, placeholder }) {
 
 // 常に表示されるラベル付き入力（placeholderは入力すると消えてしまい何の欄か分からなくなるため、
 // ラベルを別要素として常時表示する）
-function LabeledMiniInput({ label, value, onChange, type = "number" }) {
+function LabeledMiniInput({ label, value, onChange, type = "number", money = false, onChangeValue }) {
+  const { t, baseCurrency } = useContext(LocaleContext);
+  const isYen = (baseCurrency || "JPY") === "JPY";
   return (
     <div style={{ flex: 1 }}>
-      <div style={{ fontSize: 10, color: "#7C8A90", marginBottom: 2 }}>{label}</div>
-      <input type={type} value={value} onChange={onChange} style={{ width: "100%" }} />
+      <div style={{ fontSize: 10, color: "#7C8A90", marginBottom: 2 }}>
+        {label}{money && isYen ? `（${t("unitMan")}）` : ""}
+      </div>
+      {money ? (
+        <MoneyInput value={value} onChange={(v) => onChangeValue(v)} style={{ width: "100%" }} />
+      ) : (
+        <input type={type} value={value} onChange={onChange} style={{ width: "100%" }} />
+      )}
     </div>
   );
 }
@@ -4484,7 +4619,7 @@ function CustomBenefitEditor({ onAdd }) {
   return (
     <div className="add-row" style={{ marginTop: 6 }}>
       <input placeholder={t("customBenefitNamePlaceholder")} value={name} onChange={(e) => setName(e.target.value)} />
-      <input placeholder={t("amountPlaceholder")} type="number" value={amount} onChange={(e) => setAmount(e.target.value)} />
+      <MoneyInput placeholder={t("amountPlaceholderMan")} value={amount} onChange={(v) => setAmount(v)} />
       <button
         className="add-btn"
         onClick={() => {
@@ -4578,9 +4713,9 @@ function AllocationBreakdown({ items, newItem, onNewItemChange, onAdd, onRemove,
                   />
                 </td>
                 <td style={{ width: 96 }}>
-                  <input
-                    type="number" className="inline-num" value={it.amount}
-                    onChange={(e) => onUpdate(i, "amount", Number(e.target.value))}
+                  <MoneyInput
+                    className="inline-num" value={it.amount}
+                    onChange={(v) => onUpdate(i, "amount", v === "" ? 0 : v)}
                   />
                 </td>
                 <td className="mono" style={{ width: 52 }}>{total > 0 ? `${((it.amount / total) * 100).toFixed(1)}%` : "—"}</td>
@@ -4594,7 +4729,7 @@ function AllocationBreakdown({ items, newItem, onNewItemChange, onAdd, onRemove,
       )}
       <div className="add-row" style={{ marginBottom: total > 0 ? 8 : 0 }}>
         <input placeholder={t("holdingNamePlaceholder")} value={newItem.name} onChange={(e) => onNewItemChange({ ...newItem, name: e.target.value })} />
-        <input placeholder={t("amountPlaceholder")} type="number" value={newItem.amount} onChange={(e) => onNewItemChange({ ...newItem, amount: e.target.value })} />
+        <MoneyInput placeholder={t("amountPlaceholderMan")} value={newItem.amount} onChange={(v) => onNewItemChange({ ...newItem, amount: v })} />
         <button className="add-btn" onClick={onAdd}><Plus size={15} /></button>
       </div>
       <AllocationCharts items={items} />
@@ -6376,12 +6511,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const money = useCallback((n) => formatMoneyFor(baseCurrency, n), [baseCurrency]);
   const label = useCallback((key) => getCategoryLabel(key, country), [country]);
   const t = useCallback((key, vars) => translateWith(language, key, vars), [language]);
-  const localeValue = useMemo(
-    () => ({ country, baseCurrency, language, money, label, t, rules }),
-    [country, baseCurrency, language, money, label, t, rules]
-  );
   // Field/表示用の単位文字列（通貨のみ切替、円建て表示のロジック自体は変更しない）
   const currencySymbol = (CURRENCY_BY_CODE[baseCurrency] || CURRENCY_BY_CODE.JPY).symbol;
+  const localeValue = useMemo(
+    () => ({ country, baseCurrency, language, money, label, t, rules, currencySymbol }),
+    [country, baseCurrency, language, money, label, t, rules, currencySymbol]
+  );
   const uCurrency = baseCurrency === "JPY" ? "円" : currencySymbol;
   const uPerMonth = baseCurrency === "JPY" ? "円/月" : `${currencySymbol}/month`;
   const uPerYear = baseCurrency === "JPY" ? "円/年" : `${currencySymbol}/year`;
@@ -8722,7 +8857,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           )}
           <div className="add-row" style={{ marginBottom: 8 }}>
             <input placeholder={t("holdingNamePlaceholder")} value={newTsumitateHolding.name} onChange={(e) => setNewTsumitateHolding((p) => ({ ...p, name: e.target.value }))} />
-            <input placeholder={t("amountPlaceholder")} type="number" value={newTsumitateHolding.value} onChange={(e) => setNewTsumitateHolding((p) => ({ ...p, value: e.target.value }))} />
+            <MoneyInput placeholder={t("amountPlaceholderMan")} value={newTsumitateHolding.value} onChange={(v) => setNewTsumitateHolding((p) => ({ ...p, value: v }))} />
             <button className="add-btn" onClick={addTsumitateHolding}><Plus size={15} /></button>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
@@ -8757,7 +8892,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           )}
           <div className="add-row" style={{ marginBottom: 8 }}>
             <input placeholder={t("holdingNamePlaceholder")} value={newGrowthHolding.name} onChange={(e) => setNewGrowthHolding((p) => ({ ...p, name: e.target.value }))} />
-            <input placeholder={t("amountPlaceholder")} type="number" value={newGrowthHolding.value} onChange={(e) => setNewGrowthHolding((p) => ({ ...p, value: e.target.value }))} />
+            <MoneyInput placeholder={t("amountPlaceholderMan")} value={newGrowthHolding.value} onChange={(v) => setNewGrowthHolding((p) => ({ ...p, value: v }))} />
             <button className="add-btn" onClick={addGrowthHolding}><Plus size={15} /></button>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
@@ -8861,7 +8996,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             />
           </div>
           <div className="add-row" style={{ marginBottom: 14 }}>
-            <input placeholder={t("monthlyAmountPlaceholder")} type="number" value={newTsumitateRange.monthlyYen} onChange={(e) => setNewTsumitateRange((p) => ({ ...p, monthlyYen: e.target.value }))} />
+            <MoneyInput placeholder={t("monthlyAmountPlaceholderMan")} value={newTsumitateRange.monthlyYen} onChange={(v) => setNewTsumitateRange((p) => ({ ...p, monthlyYen: v }))} />
             <button className="add-btn" onClick={addTsumitateRange}><Plus size={15} /></button>
           </div>
           <div className="note">
@@ -8923,7 +9058,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             />
           </div>
           <div className="add-row" style={{ marginBottom: 14 }}>
-            <input placeholder={t("monthlyAmountPlaceholder")} type="number" value={newGrowthRange.monthlyYen} onChange={(e) => setNewGrowthRange((p) => ({ ...p, monthlyYen: e.target.value }))} />
+            <MoneyInput placeholder={t("monthlyAmountPlaceholderMan")} value={newGrowthRange.monthlyYen} onChange={(v) => setNewGrowthRange((p) => ({ ...p, monthlyYen: v }))} />
             <button className="add-btn" onClick={addGrowthRange}><Plus size={15} /></button>
           </div>
           <div className="note">
@@ -8990,7 +9125,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               onYears={(v) => setNewLump((p) => ({ ...p, years: v }))}
               onMonths={(v) => setNewLump((p) => ({ ...p, months: v }))}
             />
-            <input placeholder={t("amountPlaceholder")} type="number" value={newLump.amount} onChange={(e) => setNewLump((p) => ({ ...p, amount: e.target.value }))} />
+            <MoneyInput placeholder={t("amountPlaceholderMan")} value={newLump.amount} onChange={(v) => setNewLump((p) => ({ ...p, amount: v }))} />
             <button className="add-btn" onClick={addLump}><Plus size={15} /></button>
           </div>
 
@@ -9149,7 +9284,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             </span>
           </div>
 
-          <Field guide={t("idecoCurrentValueGuide")} label={t("idecoCurrentValueLabel")} unit={uCurrency} step={10000} value={inputs.ideco.currentValue} onChange={(v) => updateIdeco("currentValue", v)} />
+          <MoneyField guide={t("idecoCurrentValueGuide")} label={t("idecoCurrentValueLabel")} value={inputs.ideco.currentValue} onChange={(v) => updateIdeco("currentValue", v)} />
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
             <span style={{ fontSize: 10, color: "#E07A5F", whiteSpace: "nowrap", fontWeight: 700 }}>{t("asOfAgeRequired")}</span>
             <AgeYMInput
@@ -9171,8 +9306,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               <span className="field-unit">{uCurrency}</span>
             </div>
           </label>
-          <Field guide={t("idecoPrincipalGuide")} label={t("idecoPrincipalLabel")} unit={uCurrency} step={10000} value={inputs.ideco.principalTotal} onChange={(v) => updateIdeco("principalTotal", v)} />
-          <Field guide={t("idecoMonthlyContributionGuide")} label={t("idecoMonthlyContributionLabel")} unit={uCurrency} step={1000} value={inputs.ideco.monthlyContribution} onChange={(v) => updateIdeco("monthlyContribution", v)} />
+          <MoneyField guide={t("idecoPrincipalGuide")} label={t("idecoPrincipalLabel")} value={inputs.ideco.principalTotal} onChange={(v) => updateIdeco("principalTotal", v)} />
+          <MoneyField guide={t("idecoMonthlyContributionGuide")} label={t("idecoMonthlyContributionLabel")} value={inputs.ideco.monthlyContribution} onChange={(v) => updateIdeco("monthlyContribution", v)} />
           <AgeField label={t("idecoContributionStartAgeLabel")} value={inputs.ideco.startAge} onChange={(v) => updateIdeco("startAge", v)} />
           <AgeField label={t("idecoContributionEndAgeLabel")} value={inputs.ideco.endAge} onChange={(v) => updateIdeco("endAge", v)} />
 
@@ -9267,7 +9402,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           ) : rules.tax.implemented ? (
             <>
               <div className="field-label" style={{ marginBottom: 6 }}>{t("taxSavingSimLabel")}</div>
-              <Field guide={t("annualIncomeGuide")} label={t("annualIncomeLabel")} unit={uCurrency} step={100000} value={inputs.ideco.annualIncome} onChange={(v) => updateIdeco("annualIncome", v)} />
+              <MoneyField guide={t("annualIncomeGuide")} label={t("annualIncomeLabel")} value={inputs.ideco.annualIncome} onChange={(v) => updateIdeco("annualIncome", v)} />
               <div className="stat-sub" style={{ marginBottom: 4 }}>{t("annualTaxSavingLabel")}：<span className="mono">{money(idecoAnnualTaxSaving)}</span></div>
               <div className="stat-sub" style={{ marginBottom: 8 }}>{t("cumulativeTaxSavingLabel")}：<span className="mono">{money(idecoCumulativeTaxSaving)}</span></div>
               <div className="note" style={{ marginTop: -4 }}>
@@ -9310,15 +9445,14 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           )}
           <div className="add-row" style={{ marginBottom: 8 }}>
             <input placeholder={t("pensionNamePlaceholder")} value={newPensionSource.name} onChange={(e) => setNewPensionSource((p) => ({ ...p, name: e.target.value }))} />
-            <input placeholder={t("monthlyAmountPlaceholder")} type="number" value={newPensionSource.monthlyAmount} onChange={(e) => setNewPensionSource((p) => ({ ...p, monthlyAmount: e.target.value }))} />
+            <MoneyInput placeholder={t("monthlyAmountPlaceholderMan")} value={newPensionSource.monthlyAmount} onChange={(v) => setNewPensionSource((p) => ({ ...p, monthlyAmount: v }))} />
             <button className="add-btn" onClick={addPensionSource}><Plus size={15} /></button>
           </div>
-          <Field
+          <MoneyField
+            unitPer="month"
             label={inputs.pensionSources.length > 0 ? t("pensionTotalAutoLabel") : t("pensionEstimateLabel")}
-            unit={uPerMonth}
             value={effectivePensionMonthly}
             disabled={inputs.pensionSources.length > 0}
-            step={5000}
             onChange={(v) => update({ pensionMonthly: v })}
           />
           {inputs.pensionSources.length > 0 && (
@@ -9334,7 +9468,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             value={effectivePublicPensionStartAge}
             onChange={(v) => update({ publicPensionStartAge: v })}
           />
-          <Field guide={t("livingCostGuide")} label={t("livingCostLabel")} unit={uPerMonth} value={inputs.livingCostMonthly} step={5000} onChange={(v) => update({ livingCostMonthly: v })} />
+          <MoneyField unitPer="month" guide={t("livingCostGuide")} label={t("livingCostLabel")} value={inputs.livingCostMonthly} onChange={(v) => update({ livingCostMonthly: v })} />
           <Field
             label={`${t("postRetireReturnLabel")}${inputs.postRetireReturnAuto && dynamicFunds.length > 0 ? t("autoHalfWeightedSuffix") : ""}`}
             unit="%" step={0.5}
@@ -9440,9 +9574,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           <SectionTitle index="05" title={label("healthCost")} icon={HeartPulse} />
           {country === "JP" ? (
           <>
-          <Field guide={t("health60sGuide")} label={t("health60sLabel")} unit={uPerYear} step={10000} value={inputs.healthBrackets.b60} onChange={(v) => updateHealth("b60", v)} />
-          <Field guide={t("health70sGuide")} label={t("health70sLabel")} unit={uPerYear} step={10000} value={inputs.healthBrackets.b70} onChange={(v) => updateHealth("b70", v)} />
-          <Field guide={t("health80sGuide")} label={t("health80sLabel")} unit={uPerYear} step={10000} value={inputs.healthBrackets.b80} onChange={(v) => updateHealth("b80", v)} />
+          <MoneyField unitPer={"year"} guide={t("health60sGuide")} label={t("health60sLabel")} value={inputs.healthBrackets.b60} onChange={(v) => updateHealth("b60", v)} />
+          <MoneyField unitPer={"year"} guide={t("health70sGuide")} label={t("health70sLabel")} value={inputs.healthBrackets.b70} onChange={(v) => updateHealth("b70", v)} />
+          <MoneyField unitPer={"year"} guide={t("health80sGuide")} label={t("health80sLabel")} value={inputs.healthBrackets.b80} onChange={(v) => updateHealth("b80", v)} />
           <div className="note">
             <Info size={13} />
             <span>{t("healthCostNote")}</span>
@@ -9507,7 +9641,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <input placeholder={t("relationPlaceholder")} value={newInheritance.relation} onChange={(e) => setNewInheritance((p) => ({ ...p, relation: e.target.value }))} />
           </div>
           <div className="add-row" style={{ marginBottom: 10 }}>
-            <input placeholder={t("inheritanceAmountPlaceholder")} type="number" value={newInheritance.amount} onChange={(e) => setNewInheritance((p) => ({ ...p, amount: e.target.value }))} />
+            <MoneyInput placeholder={t("inheritanceAmountPlaceholderMan")} value={newInheritance.amount} onChange={(v) => setNewInheritance((p) => ({ ...p, amount: v }))} />
             <button className="add-btn" onClick={addInheritancePlan}><Plus size={15} /></button>
           </div>
           {inputs.inheritancePlans.length > 0 && (
@@ -9515,10 +9649,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               {t("inheritanceTotalLabel")}：<span className="mono">{money(inheritanceTotal)}</span>（{t("peopleCount", { count: inputs.inheritancePlans.length })}）
             </div>
           )}
-          <Field
+          <MoneyField
             guide={t("inheritanceTargetGuide")}
             label={inputs.inheritancePlans.length > 0 ? t("inheritanceTargetAutoLabel") : t("inheritanceTargetLabel")}
-            unit={uCurrency} step={100000}
             value={effectiveInheritanceTarget}
             disabled={inputs.inheritancePlans.length > 0}
             onChange={(v) => update({ inheritanceTarget: v })}
@@ -9577,7 +9710,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               </span>
             </div>
           )}
-          <Field guide={t("goldMonthlyContributionGuide")} label={t("goldMonthlyContributionLabel")} unit={uPerMonth} step={1000} value={inputs.gold.monthlyYen} onChange={(v) => updateGold("monthlyYen", v)} />
+          <MoneyField unitPer={"month"} guide={t("goldMonthlyContributionGuide")} label={t("goldMonthlyContributionLabel")} value={inputs.gold.monthlyYen} onChange={(v) => updateGold("monthlyYen", v)} />
           <AgeField label={t("goldAccumulateUntilLabel")} value={inputs.gold.accumulateUntilAge} onChange={(v) => updateGold("accumulateUntilAge", v)} />
           <div className="note">
             <Info size={13} />
@@ -9612,10 +9745,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           )}
           <div className="add-row" style={{ flexWrap: "wrap" }}>
             <input placeholder={t("bankNameCol")} value={newBank.name} onChange={(e) => setNewBank((p) => ({ ...p, name: e.target.value }))} />
-            <input placeholder={t("currentBalancePlaceholder")} type="number" value={newBank.balance} onChange={(e) => setNewBank((p) => ({ ...p, balance: e.target.value }))} />
+            <MoneyInput placeholder={t("currentBalancePlaceholderMan")} value={newBank.balance} onChange={(v) => setNewBank((p) => ({ ...p, balance: v }))} />
           </div>
           <div className="add-row">
-            <input placeholder={t("monthlyDepositPlaceholder")} type="number" value={newBank.monthlyDeposit} onChange={(e) => setNewBank((p) => ({ ...p, monthlyDeposit: e.target.value }))} />
+            <MoneyInput placeholder={t("monthlyDepositPlaceholderMan")} value={newBank.monthlyDeposit} onChange={(v) => setNewBank((p) => ({ ...p, monthlyDeposit: v }))} />
             <input placeholder={t("interestRatePlaceholder")} type="number" value={newBank.interestPct} onChange={(e) => setNewBank((p) => ({ ...p, interestPct: e.target.value }))} />
             <button className="add-btn" onClick={addBank}><Plus size={15} /></button>
           </div>
@@ -9648,11 +9781,11 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           )}
           <div className="add-row" style={{ flexWrap: "wrap" }}>
             <input placeholder={t("loanNamePlaceholder")} value={newLoan.name} onChange={(e) => setNewLoan((p) => ({ ...p, name: e.target.value }))} />
-            <input placeholder={t("loanBalancePlaceholder")} type="number" value={newLoan.principal} onChange={(e) => setNewLoan((p) => ({ ...p, principal: e.target.value }))} />
+            <MoneyInput placeholder={t("loanBalancePlaceholderMan")} value={newLoan.principal} onChange={(v) => setNewLoan((p) => ({ ...p, principal: v }))} />
           </div>
           <div className="add-row">
             <input placeholder={t("annualRatePlaceholder")} type="number" value={newLoan.annualRatePct} onChange={(e) => setNewLoan((p) => ({ ...p, annualRatePct: e.target.value }))} />
-            <input placeholder={t("monthlyPaymentPlaceholder")} type="number" value={newLoan.monthlyPayment} onChange={(e) => setNewLoan((p) => ({ ...p, monthlyPayment: e.target.value }))} />
+            <MoneyInput placeholder={t("monthlyPaymentPlaceholderMan")} value={newLoan.monthlyPayment} onChange={(v) => setNewLoan((p) => ({ ...p, monthlyPayment: v }))} />
             <button className="add-btn" onClick={addLoan}><Plus size={15} /></button>
           </div>
           {integrated.loanPayoffAges.some((a) => a !== null) && (
@@ -9726,7 +9859,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             />
           </div>
           <div className="add-row" style={{ marginBottom: 8 }}>
-            <input placeholder={t("monthlyPremiumPlaceholder")} type="number" value={newInsurance.monthlyPremium} onChange={(e) => setNewInsurance((p) => ({ ...p, monthlyPremium: e.target.value }))} />
+            <MoneyInput placeholder={t("monthlyPremiumPlaceholderMan")} value={newInsurance.monthlyPremium} onChange={(v) => setNewInsurance((p) => ({ ...p, monthlyPremium: v }))} />
           </div>
 
           <div className="field-label" style={{ marginBottom: 4 }}>{t("coverageUntilAgeLabel")}</div>
@@ -9740,19 +9873,19 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
           <div className="field-label" style={{ marginBottom: 4 }}>{t("benefitDetailsLabel")}</div>
           <div className="add-row" style={{ marginBottom: 6 }}>
-            <LabeledMiniInput label={t("hospitalizationPerDayLabel")} value={newInsurance.hospitalizationPerDay} onChange={(e) => setNewInsurance((p) => ({ ...p, hospitalizationPerDay: e.target.value }))} />
+            <LabeledMiniInput label={t("hospitalizationPerDayLabel")} money value={newInsurance.hospitalizationPerDay} onChangeValue={(v) => setNewInsurance((p) => ({ ...p, hospitalizationPerDay: v }))} />
             <LabeledMiniInput label={t("hospitalizationDaysLimitLabel")} value={newInsurance.hospitalizationDaysLimit} onChange={(e) => setNewInsurance((p) => ({ ...p, hospitalizationDaysLimit: e.target.value }))} />
           </div>
           <div className="add-row" style={{ marginBottom: 6 }}>
-            <LabeledMiniInput label={t("hospitalizationSurgeryLabel")} value={newInsurance.hospitalizationSurgery} onChange={(e) => setNewInsurance((p) => ({ ...p, hospitalizationSurgery: e.target.value }))} />
-            <LabeledMiniInput label={t("daySurgeryLabel")} value={newInsurance.daySurgery} onChange={(e) => setNewInsurance((p) => ({ ...p, daySurgery: e.target.value }))} />
+            <LabeledMiniInput label={t("hospitalizationSurgeryLabel")} money value={newInsurance.hospitalizationSurgery} onChangeValue={(v) => setNewInsurance((p) => ({ ...p, hospitalizationSurgery: v }))} />
+            <LabeledMiniInput label={t("daySurgeryLabel")} money value={newInsurance.daySurgery} onChangeValue={(v) => setNewInsurance((p) => ({ ...p, daySurgery: v }))} />
           </div>
           <div className="add-row" style={{ marginBottom: 6 }}>
-            <LabeledMiniInput label={t("radiationLabel")} value={newInsurance.radiationPerSession} onChange={(e) => setNewInsurance((p) => ({ ...p, radiationPerSession: e.target.value }))} />
-            <LabeledMiniInput label={t("advancedMedicalLabel")} value={newInsurance.advancedMedical} onChange={(e) => setNewInsurance((p) => ({ ...p, advancedMedical: e.target.value }))} />
+            <LabeledMiniInput label={t("radiationLabel")} money value={newInsurance.radiationPerSession} onChangeValue={(v) => setNewInsurance((p) => ({ ...p, radiationPerSession: v }))} />
+            <LabeledMiniInput label={t("advancedMedicalLabel")} money value={newInsurance.advancedMedical} onChangeValue={(v) => setNewInsurance((p) => ({ ...p, advancedMedical: v }))} />
           </div>
           <div className="add-row" style={{ marginBottom: 10 }}>
-            <LabeledMiniInput label={t("deathBenefitLabel")} value={newInsurance.death} onChange={(e) => setNewInsurance((p) => ({ ...p, death: e.target.value }))} />
+            <LabeledMiniInput label={t("deathBenefitLabel")} money value={newInsurance.death} onChangeValue={(v) => setNewInsurance((p) => ({ ...p, death: v }))} />
           </div>
           <div className="add-row" style={{ marginBottom: 14 }}>
             <button className="add-btn" onClick={addInsurance} style={{ width: "100%" }}><Plus size={15} /></button>
@@ -9813,7 +9946,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             />
           </div>
           <div className="add-row" style={{ marginBottom: 8 }}>
-            <LabeledMiniInput label={t("monthlyContribAmountLabel")} value={newPension.monthlyContribution} onChange={(e) => setNewPension((p) => ({ ...p, monthlyContribution: e.target.value }))} />
+            <LabeledMiniInput label={t("monthlyContribAmountLabel")} money value={newPension.monthlyContribution} onChangeValue={(v) => setNewPension((p) => ({ ...p, monthlyContribution: v }))} />
           </div>
 
           <div className="field-label" style={{ marginBottom: 4 }}>{t("payoutPeriodLabel")}</div>
@@ -9830,15 +9963,14 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             />
           </div>
           <div className="add-row" style={{ marginBottom: 10 }}>
-            <LabeledMiniInput label={t("monthlyPayoutAmountLabel")} value={newPension.monthlyPayout} onChange={(e) => setNewPension((p) => ({ ...p, monthlyPayout: e.target.value }))} />
+            <LabeledMiniInput label={t("monthlyPayoutAmountLabel")} money value={newPension.monthlyPayout} onChangeValue={(v) => setNewPension((p) => ({ ...p, monthlyPayout: v }))} />
           </div>
           <div className="field-label" style={{ marginBottom: 4 }}>{t("currentBalanceOptionalLabel")}</div>
           <div className="add-row" style={{ marginBottom: 10 }}>
-            <input
-              type="number"
+            <MoneyInput
               placeholder={t("currentBalanceAutoPlaceholder")}
               value={newPension.currentBalance}
-              onChange={(e) => setNewPension((p) => ({ ...p, currentBalance: e.target.value }))}
+              onChange={(v) => setNewPension((p) => ({ ...p, currentBalance: v }))}
             />
           </div>
           <div className="add-row" style={{ marginBottom: 14 }}>
@@ -10319,9 +10451,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                         />
                       </td>
                       <td style={{ width: 96 }}>
-                        <input
-                          type="number" value={s.value} className="mono inline-num"
-                          onChange={(e) => updateStockField(i, "value", Number(e.target.value))}
+                        <MoneyInput
+                          value={s.value} className="mono inline-num"
+                          onChange={(v) => updateStockField(i, "value", v === "" ? 0 : v)}
                         />
                       </td>
                       <td style={{ width: 24 }}>
