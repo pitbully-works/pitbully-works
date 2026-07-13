@@ -34,7 +34,7 @@ export const SUPPORTED_COUNTRIES = [
   { code: "US", flag: "🇺🇸", name: "United States", enabled: true },
   { code: "GB", flag: "🇬🇧", name: "United Kingdom", enabled: true },
   { code: "CA", flag: "🇨🇦", name: "Canada", enabled: true },
-  { code: "AU", flag: "🇦🇺", name: "Australia", enabled: false },
+  { code: "AU", flag: "🇦🇺", name: "Australia", enabled: true },
 ];
 
 // 通貨（コード・記号・ロケール）。キーは通貨コード（ISO 4217）そのものにし、
@@ -45,7 +45,7 @@ const CURRENCY_BY_CODE = {
   USD: { symbol: "$", locale: "en-US" },
   GBP: { symbol: "£", locale: "en-GB" },
   CAD: { symbol: "C$", locale: "en-CA" },
-  AUD: { symbol: "$", locale: "en-AU" },
+  AUD: { symbol: "A$", locale: "en-AU" },
 };
 
 // 国を選んだ際に「初期値として」自動設定する基準通貨・表示言語。
@@ -319,6 +319,86 @@ const TRANSLATIONS = {
     "caWithdrawalLabel": "取崩し必要額（口座から）",
     "caWithdrawalSub": "年金収入で賄えない年間の不足額",
     "caYearsUnit": "年",
+    "auAccountBreakdownChartTitle": "退職時点（{age}）の口座別内訳",
+    "auAccountBreakdownNote": "退職時点における、Superannuation・投資口座・現金貯蓄の口座別残高の内訳です。",
+    "auAgePensionAnnualLabel": "Age Pension 年間受給額",
+    "auAgePensionAnnualSub": "所得テストと資産テストの低い方が適用されます",
+    "auAgePensionMaxLabel": "Age Pension 満額（年額）",
+    "auAgePensionMaxSub": "{status}の最大給付額。実際の受給額は資力調査により減額されます",
+    "auAgePensionNotYetNote": "Age Pensionの受給資格年齢は{age}歳です。退職から受給開始まで、Superや投資口座からの取崩しで生活費を賄う必要があります。",
+    "auAgePensionQualifyingAgeLabel": "Age Pension 受給資格年齢",
+    "auAgePensionZeroNote": "資力調査により、Age Pensionの受給額はゼロです（資産または所得がカットオフを超えています）。",
+    "auAnnualContributionLabel": "年間積立額（税引後拠出）",
+    "auAnnualSalaryLabel": "年間給与（SG拠出額・所得税の算定に使用）",
+    "auAssetsTestLabel": "資産テスト",
+    "auAssetsTestSub": "無影響枠 {amount} を超えた1,000ドルごとに、隔週{taper}ドル減額",
+    "auCapitalGainDiscountLabel": "12か月を超えて保有している（{pct}%割引の対象）",
+    "auCapitalGainLabel": "年間の譲渡益見込額（Superの外側）",
+    "auCashSavingsLabel": "Cash Savings",
+    "auCgtLabel": "譲渡益への課税（概算）",
+    "auCgtSub": "12か月超の保有なら利益の{pct}%が割引され、限界税率＋Medicare levyで課税されます",
+    "auConcessionalCapLabel": "税引前拠出の上限（{taxYear}）",
+    "auConcessionalCapSub": "雇用主のSG拠出と給与犠牲の合計で年間 {amount} まで",
+    "auConcessionalOverLabel": "税引前拠出の上限を {amount} 超過しています（超過分には追加課税があります）",
+    "auConcessionalRemainingLabel": "税引前拠出枠の残り",
+    "auContributionEndAgeLabel": "積立終了年齢",
+    "auContributionTaxLabel": "拠出時の課税（{pct}%）",
+    "auContributionTaxSub": "税引前拠出は口座へ入る前に課税されます",
+    "auCoupleLabel": "夫婦",
+    "auCurrentValueLabel": "現在の残高",
+    "auDentalLabel": "歯科費用（年額）",
+    "auDiv293Note": "所得と税引前拠出の合計が {threshold} を超えるため、Division 293により拠出への課税が{pct}%（通常15%＋追加15%）になっています。",
+    "auExpensesMonthlyLabel": "退職後の毎月の生活費見込み",
+    "auExpensesTotalLabel": "支出合計（生活費＋医療費）",
+    "auExpensesTotalSub": "年間の生活費と医療費の合計",
+    "auGapLabel": "診療費の自己負担（Medicareの差額・年額）",
+    "auHomeownerLabel": "持家である（資産テストの無影響枠が変わります）",
+    "auIncomeTaxLabel": "所得税（概算）",
+    "auIncomeTaxSub": "{taxYear}年度の税率。第2バンドは15%へ引下げ済み",
+    "auIncomeTestLabel": "所得テスト",
+    "auIncomeTestSub": "無影響枠 {amount} を超えた1ドルにつき{taper}セント減額",
+    "auInvestmentAccountLabel": "Investment Account（Super外の投資口座）",
+    "auInvestmentSourceNote": "掲載している上限額・税率は{taxYear}会計年度（2026年7月1日〜2027年6月30日）のATO公表値です。実際の税務判断は専門家にご確認ください。",
+    "auLiquidAssetsLabel": "Liquid / Accessible Assets（引き出し可能資産）",
+    "auLiquidAssetsSub": "投資口座・現金貯蓄（{age}歳以降はSuperannuationも含む）",
+    "auMedicareLevyLabel": "Medicare levy（{pct}%）",
+    "auMedicareLevySub": "公的医療制度の財源。所得税とは別に課されます",
+    "auAgedCareLabel": "高齢者介護費用（年額）",
+    "auOpticalLabel": "視力・眼鏡費用（年額）",
+    "auOtherIncomeLabel": "年金以外の年間収入（Age Pensionの所得テストで評価されます）",
+    "auOtherOutOfPocketLabel": "その他の自己負担医療費（年額）",
+    "auPharmaceuticalLabel": "薬剤費（年額）",
+    "auPreservationAgeNote": "Superannuationは原則{age}歳（preservation age）まで引き出せません。{unrestricted}歳になれば就労状況に関わらず無条件で引き出せます。",
+    "auPrivateHealthLabel": "民間医療保険料（月額）",
+    "auRestrictedAssetsLabel": "Restricted Assets（制約付き資産）",
+    "auRestrictedAssetsSubAccessible": "{age}歳以降のため、Superannuationも引き出し可能です",
+    "auRestrictedAssetsSubLocked": "Superannuation（{age}歳まで引き出し不可）",
+    "auRetirementIncomeLabel": "Retirement Income（退職後の収入）",
+    "auRetirementIncomeSub": "Age Pension＋その他収入の年間合計",
+    "auSalarySacrificeLabel": "給与犠牲などの任意の税引前拠出（年額）",
+    "auSalarySacrificeSavingLabel": "給与犠牲による節税（概算）",
+    "auSalarySacrificeSavingSub": "限界税率{pct}%と拠出課税15%の差分",
+    "auSgContributionLabel": "雇用主のSG拠出（{pct}%）",
+    "auSgContributionSub": "給与の{pct}%が自動的にSuperへ拠出されます（対象収入の上限あり）",
+    "auSingleLabel": "単身",
+    "auMinimumDrawdownNote": "退職フェーズでは、年齢別の最低取崩し率に従ってSuperから引き出す義務があります（65歳未満{under65}%、65〜74歳{age65}%、75〜79歳{age75}%、95歳以降{age95}%）。この強制取崩し分はシミュレーションに反映されています。",
+    "auStatusLabel": "配偶者の有無（Age Pensionの給付額・資力調査が変わります）",
+    "auSuperEarningsTaxNote": "Superの運用益は積立期に{pct}%課税されます。退職フェーズ（{age}歳以降かつ退職後）では、Transfer Balance Cap（{tbc}）の範囲内で非課税になります。",
+    "auSuperLabel": "Superannuation",
+    "auSuperTaxFreeNote": "{age}歳以降のSuperからの引き出しは非課税です（課税済みファンドの場合）。",
+    "auSurplusLabel": "収支余剰",
+    "auSurplusSub": "退職後の収入が生活費・医療費を上回る年間額",
+    "auTaxAdvantagedLabel": "Tax-Advantaged Assets（税制優遇資産）",
+    "auTaxAdvantagedSub": "Superannuation（運用益への課税が15%に軽減され、退職後は非課税）",
+    "auTaxHandledInInvestmentNote": "オーストラリアの税制（所得税・Medicare levy・Super拠出課税・譲渡益課税）は、セクション02「Investment Account」内でまとめて計算しています。",
+    "auTaxSectionLabel": "Tax（{taxYear}会計年度）",
+    "auTaxSourceNote": "所得税・Medicare levy・譲渡益課税は{taxYear}年度のATO公表値に基づく概算です。LITO・SAPTOなどの税額控除、Medicare Levy Surcharge、HECS-HELPの返済は未実装です。",
+    "auTotalAssetsLabel": "総資産（3口座の合計）",
+    "auTotalAssetsSub": "Superannuation＋投資口座＋現金貯蓄のすべての合計",
+    "auTotalTaxLabel": "税額合計（概算）",
+    "auTotalTaxSub": "所得税＋Medicare levy＋譲渡益課税",
+    "auWithdrawalLabel": "取崩し必要額（口座から）",
+    "auWithdrawalSub": "退職後の収入で賄えない年間の不足額",
     "advancedMedicalLabel": "先進医療（円）",
     "ageYM": "{years}歳{months}ヶ月",
     "ageYMD": "{years}歳{months}ヶ月{days}日",
@@ -944,6 +1024,86 @@ const TRANSLATIONS = {
     "caWithdrawalLabel": "Withdrawal Needed from Your Accounts",
     "caWithdrawalSub": "Annual shortfall not covered by pension income",
     "caYearsUnit": "years",
+    "auAccountBreakdownChartTitle": "Account Breakdown at Retirement ({age})",
+    "auAccountBreakdownNote": "Projected balance of each account — superannuation, investment account and cash savings — at your retirement age.",
+    "auAgePensionAnnualLabel": "Age Pension (Annual)",
+    "auAgePensionAnnualSub": "The lower of the income test and assets test applies",
+    "auAgePensionMaxLabel": "Maximum Age Pension (Annual)",
+    "auAgePensionMaxSub": "The maximum rate for a {status}. Means testing reduces what you actually receive",
+    "auAgePensionNotYetNote": "The Age Pension starts at {age}. Between retirement and that age you will need to fund your living costs from super and your investment account.",
+    "auAgePensionQualifyingAgeLabel": "Age Pension Qualifying Age",
+    "auAgePensionZeroNote": "Means testing reduces your Age Pension to zero — your assets or income are above the cut-off point.",
+    "auAnnualContributionLabel": "Annual Contribution (after-tax)",
+    "auAnnualSalaryLabel": "Annual Salary (used for SG contributions and income tax)",
+    "auAssetsTestLabel": "Assets Test",
+    "auAssetsTestSub": "Reduces by ${taper} a fortnight for every $1,000 of assets above {amount}",
+    "auCapitalGainDiscountLabel": "Held for more than 12 months (eligible for the {pct}% discount)",
+    "auCapitalGainLabel": "Estimated Annual Capital Gains (outside super)",
+    "auCashSavingsLabel": "Cash Savings",
+    "auCgtLabel": "Tax on Capital Gains (Estimate)",
+    "auCgtSub": "Held over 12 months, {pct}% of the gain is discounted; the rest is taxed at your marginal rate plus the Medicare levy",
+    "auConcessionalCapLabel": "Concessional Contributions Cap ({taxYear})",
+    "auConcessionalCapSub": "Up to {amount} a year across employer SG and salary sacrifice combined",
+    "auConcessionalOverLabel": "You are {amount} over the concessional cap (excess contributions attract extra tax)",
+    "auConcessionalRemainingLabel": "Remaining Concessional Cap",
+    "auContributionEndAgeLabel": "Contributions End at Age",
+    "auContributionTaxLabel": "Contributions Tax ({pct}%)",
+    "auContributionTaxSub": "Concessional contributions are taxed before they land in your fund",
+    "auCoupleLabel": "Couple",
+    "auCurrentValueLabel": "Current Balance",
+    "auDentalLabel": "Dental Costs (Annual)",
+    "auDiv293Note": "Your income plus concessional contributions is above {threshold}, so Division 293 lifts the tax on those contributions to {pct}% (the standard 15% plus an extra 15%).",
+    "auExpensesMonthlyLabel": "Estimated Monthly Living Costs in Retirement",
+    "auExpensesTotalLabel": "Total Outgoings (Living + Healthcare)",
+    "auExpensesTotalSub": "Annual living costs plus healthcare costs",
+    "auGapLabel": "Medical Gap Payments (above the Medicare rebate, Annual)",
+    "auHomeownerLabel": "I own my home (this changes the assets test threshold)",
+    "auIncomeTaxLabel": "Income Tax (Estimate)",
+    "auIncomeTaxSub": "{taxYear} rates. The second bracket dropped to 15% from 1 July 2026",
+    "auIncomeTestLabel": "Income Test",
+    "auIncomeTestSub": "Reduces by {taper}c for every dollar of income above {amount}",
+    "auInvestmentAccountLabel": "Investment Account (outside super)",
+    "auInvestmentSourceNote": "Caps and rates shown are the ATO figures for the {taxYear} financial year (1 July 2026 to 30 June 2027). Please consult a qualified professional for your own tax position.",
+    "auLiquidAssetsLabel": "Liquid / Accessible Assets",
+    "auLiquidAssetsSub": "Investment account and cash savings (plus superannuation once you are {age} or older)",
+    "auMedicareLevyLabel": "Medicare Levy ({pct}%)",
+    "auMedicareLevySub": "Funds the public health system, charged on top of income tax",
+    "auAgedCareLabel": "Aged Care Costs (Annual)",
+    "auOpticalLabel": "Optical Costs (Annual)",
+    "auOtherIncomeLabel": "Other Annual Income (assessed under the Age Pension income test)",
+    "auOtherOutOfPocketLabel": "Other Out-of-Pocket Healthcare Costs (Annual)",
+    "auPharmaceuticalLabel": "Pharmaceutical Costs (Annual)",
+    "auPreservationAgeNote": "Superannuation cannot normally be accessed before {age} (your preservation age). From {unrestricted} it is accessible regardless of your work status.",
+    "auPrivateHealthLabel": "Private Health Insurance (Monthly)",
+    "auRestrictedAssetsLabel": "Restricted Assets",
+    "auRestrictedAssetsSubAccessible": "You are {age} or older, so your superannuation is accessible",
+    "auRestrictedAssetsSubLocked": "Superannuation (locked until age {age})",
+    "auRetirementIncomeLabel": "Retirement Income",
+    "auRetirementIncomeSub": "Annual Age Pension plus any other income",
+    "auSalarySacrificeLabel": "Salary Sacrifice and Other Concessional Contributions (Annual)",
+    "auSalarySacrificeSavingLabel": "Salary Sacrifice Saving (Estimate)",
+    "auSalarySacrificeSavingSub": "The gap between your {pct}% marginal rate and the 15% contributions tax",
+    "auSgContributionLabel": "Employer SG Contribution ({pct}%)",
+    "auSgContributionSub": "{pct}% of your salary is paid into super automatically (subject to the maximum contribution base)",
+    "auSingleLabel": "Single",
+    "auMinimumDrawdownNote": "In the retirement phase you must draw a minimum percentage from super each year, based on your age ({under65}% under 65, {age65}% at 65–74, {age75}% at 75–79, {age95}% from 95). These mandatory withdrawals are included in the projection.",
+    "auStatusLabel": "Relationship Status (this changes your Age Pension rate and means test)",
+    "auSuperEarningsTaxNote": "Earnings inside super are taxed at {pct}% during the accumulation phase. In the retirement phase (from age {age}, once retired) they are tax-free up to the Transfer Balance Cap ({tbc}).",
+    "auSuperLabel": "Superannuation",
+    "auSuperTaxFreeNote": "Withdrawals from super after age {age} are tax-free (from a taxed fund).",
+    "auSurplusLabel": "Income Surplus",
+    "auSurplusSub": "Annual amount by which your retirement income exceeds your outgoings",
+    "auTaxAdvantagedLabel": "Tax-Advantaged Assets",
+    "auTaxAdvantagedSub": "Superannuation (earnings taxed at just 15%, and tax-free in retirement)",
+    "auTaxHandledInInvestmentNote": "Australian tax — income tax, the Medicare levy, super contributions tax and capital gains — is calculated together in section 02 (Investment Account).",
+    "auTaxSectionLabel": "Tax ({taxYear} financial year)",
+    "auTaxSourceNote": "Income tax, the Medicare levy and capital gains tax are estimates based on ATO figures for {taxYear}. Offsets such as LITO and SAPTO, the Medicare Levy Surcharge and HECS-HELP repayments are not implemented.",
+    "auTotalAssetsLabel": "Total Assets (all three accounts)",
+    "auTotalAssetsSub": "Superannuation + investment account + cash savings combined",
+    "auTotalTaxLabel": "Total Tax (Estimate)",
+    "auTotalTaxSub": "Income tax + Medicare levy + capital gains tax",
+    "auWithdrawalLabel": "Withdrawal Needed from Your Accounts",
+    "auWithdrawalSub": "Annual shortfall not covered by your retirement income",
     "advancedMedicalLabel": "Advanced medical care",
     "ageYM": "{years}y {months}m",
     "ageYMD": "{years} years {months} months {days} days",
@@ -2709,11 +2869,478 @@ export const CA_COUNTRY_RULES = {
   defaults: {},
 };
 
+// ---------- countryRules/AU.js 相当（オーストラリア版：実装済み） ----------
+// country: AU
+// lastUpdated: 2026-07-13
+// source: ato.gov.au（税制・Superannuation）／ servicesaustralia.gov.au（Age Pension）
+// 対象年度：2026-27会計年度（2026年7月1日〜2027年6月30日）。
+//   ※オーストラリアの会計年度は7月1日開始。2026年7月13日現在、2026-27年度が進行中。
+//   ※Age Pensionの給付額は毎年3月20日・9月20日に物価連動で改定される（本データは2026年3月20日改定値）。
+// 制度上限・税率はすべて AU_COUNTRY_RULES 内に集約し、画面や共通計算関数へ直接書かない。
+// 各セクションは effectiveTaxYear / lastUpdated / sourceName / sourceUrl を持つ。
+// 【重要】このオブジェクトは JP / US / GB / CA のルールを一切参照せず、逆に参照もされない。
+export const AU_COUNTRY_RULES = {
+  investment: {
+    implemented: true,
+    effectiveTaxYear: "2026-27",
+    lastUpdated: "2026-07-13",
+    sourceName: "Australian Taxation Office (ATO) — Key superannuation rates and thresholds",
+    sourceUrl: "https://www.ato.gov.au/tax-rates-and-codes/key-superannuation-rates-and-thresholds",
+    sourceUrls: {
+      contributionsCaps: "https://www.ato.gov.au/tax-rates-and-codes/key-superannuation-rates-and-thresholds/contributions-caps",
+      paymentsFromSuper: "https://www.ato.gov.au/tax-rates-and-codes/key-superannuation-rates-and-thresholds/payments-from-super",
+      superGuarantee: "https://www.ato.gov.au/businesses-and-organisations/super-for-employers/paying-super-contributions/how-much-super-to-pay",
+      preservationAge: "https://www.ato.gov.au/individuals-and-families/super-for-individuals-and-families/super/withdrawing-and-using-your-super",
+    },
+    // オーストラリア版で別々に管理・計算する口座
+    accountTypes: ["superannuation", "investmentAccount", "cashSavings"],
+    taxAdvantagedAccounts: ["superannuation"],
+    limits: {
+      // 2026年7月1日からの拠出上限（前年度は $30,000 / $120,000）
+      concessionalCap: 32500,        // 税引前拠出（SG＋給与犠牲＋個人控除拠出の合計）
+      nonConcessionalCap: 130000,    // 税引後拠出
+      // 3年分の前倒し拠出（bring-forward）。総残高により利用可否が変わる。
+      bringForwardMax: 390000,
+      // Superannuation Guarantee（雇用主の義務拠出率）。2025年7月1日に12%へ到達し、以降据置。
+      superGuaranteeRate: 0.12,
+      // SG算定の対象となる四半期あたり収入の上限（年額換算・2026-27）
+      maximumContributionBase: 270830,
+      // Transfer Balance Cap：退職フェーズ（非課税）へ移せる上限（2026年7月1日から）
+      transferBalanceCap: 2100000,
+      // 繰越拠出（carry-forward）が使える総残高の上限
+      carryForwardBalanceThreshold: 500000,
+    },
+    // Preservation age：Superにアクセスできる最低年齢。1964年7月1日以降生まれは60歳。
+    // 60歳＋「条件を満たす退職」で引き出し可能。65歳になれば就労状況に関わらず無条件で引き出せる。
+    preservationAge: 60,
+    unrestrictedAccessAge: 65,
+    // Account-based pension の年齢別「最低取崩し率」（ATO公表テーブル）
+    minimumDrawdownFactors: {
+      under65: 0.04,
+      "65to74": 0.05,
+      "75to79": 0.06,
+      "80to84": 0.07,
+      "85to89": 0.09,
+      "90to94": 0.11,
+      "95plus": 0.14,
+    },
+
+    // ---------- 計算関数（すべて純関数） ----------
+    _num(v) { return Number(v) || 0; },
+    getConcessionalCap() { return this.limits.concessionalCap; },
+    getNonConcessionalCap() { return this.limits.nonConcessionalCap; },
+    getSuperGuaranteeRate() { return this.limits.superGuaranteeRate; },
+    // 雇用主のSG拠出額。SG算定の対象収入には上限（maximum contribution base）がある。
+    getEmployerSgContribution(annualSalary) {
+      const l = this.limits;
+      const base = Math.min(this._num(annualSalary), l.maximumContributionBase);
+      return base * l.superGuaranteeRate;
+    },
+    // 税引前拠出の合計（雇用主SG ＋ 本人の給与犠牲・個人控除拠出）
+    getTotalConcessional(annualSalary, voluntaryConcessional) {
+      return this.getEmployerSgContribution(annualSalary) + this._num(voluntaryConcessional);
+    },
+    getConcessionalRemaining(annualSalary, voluntaryConcessional) {
+      return this.limits.concessionalCap - this.getTotalConcessional(annualSalary, voluntaryConcessional);
+    },
+    getNonConcessionalRemaining(nonConcessionalContribution) {
+      return this.limits.nonConcessionalCap - this._num(nonConcessionalContribution);
+    },
+    // Superへアクセスできるか（60歳以上。65歳で無条件）
+    canAccessSuper(age) {
+      return (Number(age) || 0) >= this.preservationAge;
+    },
+    // 年齢別の最低取崩し率（Account-based pension）
+    getMinimumDrawdownFactor(age) {
+      const a = Number(age) || 0;
+      const f = this.minimumDrawdownFactors;
+      if (a < 65) return f.under65;
+      if (a < 75) return f["65to74"];
+      if (a < 80) return f["75to79"];
+      if (a < 85) return f["80to84"];
+      if (a < 90) return f["85to89"];
+      if (a < 95) return f["90to94"];
+      return f["95plus"];
+    },
+    getMinimumDrawdown(age, superBalance) {
+      return (Number(superBalance) || 0) * this.getMinimumDrawdownFactor(age);
+    },
+
+    // 3口座の残高を、現在の年齢から死亡想定年齢まで年単位で積み上げる。
+    // Superの特殊な扱い：
+    //   ・税引前拠出は「拠出時に15%課税」されてから口座へ入る
+    //   ・積立期（accumulation phase）の運用益には15%課税 → 実効利回りが下がる
+    //   ・退職フェーズ（preservation age以降かつ退職後）では運用益が非課税
+    //   ・退職後は年齢別の最低取崩し率に従って引き出す義務がある
+    // 取崩し順：Investment Account → Cash Savings → Superannuation
+    //           （Superは preservation age に達するまで取り崩せない）
+    simulateGrowth({
+      currentAge, retireAge, deathAge, accounts, annualWithdrawalNeeded,
+      annualSalary, voluntaryConcessional, contributionsTaxRate, earningsTaxAccumulation,
+    }) {
+      const keys = this.accountTypes;
+      const contribTax = (contributionsTaxRate === undefined || contributionsTaxRate === null) ? 0.15 : Number(contributionsTaxRate);
+      const earnTax = (earningsTaxAccumulation === undefined || earningsTaxAccumulation === null) ? 0.15 : Number(earningsTaxAccumulation);
+
+      const balances = {}, contributions = {}, rates = {}, endAges = {};
+      keys.forEach((k) => {
+        const a = accounts[k] || {};
+        balances[k] = Number(a.currentValue) || 0;
+        contributions[k] = Number(a.annualContribution) || 0;
+        rates[k] = (Number(a.expectedReturnPct) || 0) / 100;
+        endAges[k] = Number(a.contributionEndAge) || 0;
+      });
+      // Superへの税引前拠出（SG＋任意拠出）は、上限を超えた分も含めて15%課税後に口座へ入る。
+      const concessionalGross = this.getTotalConcessional(annualSalary, voluntaryConcessional);
+      const concessionalNet = concessionalGross * (1 - contribTax);
+
+      const withdrawalOrder = ["investmentAccount", "cashSavings", "superannuation"];
+      const totalOf = (b) => keys.reduce((s, k) => s + b[k], 0);
+      const startAge = Math.round(currentAge);
+      const endAge = Math.round(deathAge);
+      const yearly = [{ age: startAge, value: totalOf(balances), accounts: { ...balances }, minimumDrawdown: 0 }];
+
+      for (let age = startAge + 1; age <= endAge; age++) {
+        // 退職フェーズか（preservation age以降かつ退職後）。運用益が非課税になる。
+        const inRetirementPhase = age > retireAge && this.canAccessSuper(age);
+
+        keys.forEach((k) => {
+          let r = rates[k];
+          // Superの積立期は運用益に15%課税されるため、実効利回りが下がる
+          if (k === "superannuation" && !inRetirementPhase) r = r * (1 - earnTax);
+          balances[k] = balances[k] * (1 + r);
+        });
+
+        // 積立（Superは税引前拠出が15%課税後に入る＋任意の税引後拠出）
+        keys.forEach((k) => {
+          if (age > endAges[k]) return;
+          if (k === "superannuation") {
+            balances[k] += concessionalNet + contributions[k]; // contributions[k] は税引後拠出（non-concessional）
+          } else {
+            balances[k] += contributions[k];
+          }
+        });
+
+        // 退職フェーズでの最低取崩し（引き出した額は投資口座へ移し、生活費に充てられる状態にする）
+        let minimumDrawdown = 0;
+        if (inRetirementPhase && balances.superannuation > 0) {
+          minimumDrawdown = Math.min(
+            balances.superannuation,
+            this.getMinimumDrawdown(age, balances.superannuation)
+          );
+          balances.superannuation -= minimumDrawdown;
+          balances.investmentAccount += minimumDrawdown;
+        }
+
+        if (age > retireAge) {
+          let remaining = Number(annualWithdrawalNeeded) || 0;
+          for (const key of withdrawalOrder) {
+            if (remaining <= 0) break;
+            if (key === "superannuation" && !this.canAccessSuper(age)) continue;
+            const take = Math.min(balances[key], remaining);
+            balances[key] -= take;
+            remaining -= take;
+          }
+        }
+        yearly.push({ age, value: totalOf(balances), accounts: { ...balances }, minimumDrawdown });
+      }
+      return { yearly, finalValue: totalOf(balances), finalAccounts: { ...balances } };
+    },
+
+    // 資産区分。
+    // ・Liquid / Accessible：Investment Account・Cash Savings（＋preservation age以降のSuper）
+    // ・Restricted：Superannuation（preservation age未満は一切引き出せない）
+    // ・Tax-Advantaged：Superannuation（上2区分と重なる横断的な内訳）
+    // 総資産（total）は3口座の単純合計であり、Liquid + Restricted と必ず一致する。
+    splitAssets(age, accounts) {
+      const v = {};
+      this.accountTypes.forEach((k) => { v[k] = Number((accounts[k] || {}).currentValue) || 0; });
+      const accessible = this.canAccessSuper(age);
+      const liquidBase = v.investmentAccount + v.cashSavings;
+      const liquid = liquidBase + (accessible ? v.superannuation : 0);
+      const restricted = accessible ? 0 : v.superannuation;
+      return {
+        liquid, restricted,
+        taxAdvantaged: v.superannuation,
+        total: liquidBase + v.superannuation,
+        isAccessibleAge: accessible,
+        accounts: v,
+      };
+    },
+    notImplemented: [
+      "繰越拠出（carry-forward）：総残高$500,000未満なら過去5年分の未使用枠を繰り越せる",
+      "3年分の前倒し拠出（bring-forward）の可否判定",
+      "Transfer Balance Capを超えた分の課税（超過分は積立フェーズに留まり15%課税）",
+      "Downsizer contribution（自宅売却時の最大$300,000拠出）",
+      "政府のco-contribution（低・中所得者への最大$500の上乗せ）",
+      "残高$3M超の運用益への追加課税（Division 296）",
+    ],
+  },
+
+  retirement: {
+    implemented: true,
+    effectiveTaxYear: "2026-27",
+    lastUpdated: "2026-07-13",
+    sourceName: "Services Australia — Age Pension（給付額は2026年3月20日改定値、資産・所得基準は2026年7月1日改定値）",
+    sourceUrl: "https://www.servicesaustralia.gov.au/age-pension",
+    sourceUrls: {
+      howMuch: "https://www.servicesaustralia.gov.au/how-much-age-pension-you-can-get",
+      incomeTest: "https://www.servicesaustralia.gov.au/income-test-for-age-pension",
+      assetsTest: "https://www.servicesaustralia.gov.au/assets-test-for-age-pension",
+      eligibility: "https://www.servicesaustralia.gov.au/who-can-get-age-pension",
+    },
+    accountTypes: ["agePension"],
+    agePension: {
+      // 受給資格年齢（引き上げは2023年7月に完了し、67歳で確定）
+      qualifyingAge: 67,
+      fortnightsPerYear: 26,
+      // 最大給付額（2026年3月20日〜9月19日。年金補助・エネルギー補助を含む）
+      maxFortnightlySingle: 1200.90,
+      maxFortnightlyCoupleEach: 905.20,
+      // 所得テスト：無影響枠を超えた分、1ドルにつき50セント減額
+      incomeFreeAreaFortnightlySingle: 226,
+      incomeFreeAreaFortnightlyCoupleCombined: 396,
+      incomeTaperPerDollar: 0.50,
+      // 資産テスト：無影響枠を超えた1,000ドルごとに、隔週3ドル減額
+      assetsFreeAreaSingleHomeowner: 333000,
+      assetsFreeAreaSingleNonHomeowner: 600000,
+      assetsFreeAreaCoupleHomeowner: 499000,
+      assetsFreeAreaCoupleNonHomeowner: 766000,
+      assetsTaperPerThousandFortnightly: 3,
+      // Work Bonus：就労収入のうち、所得テストから除外される年額
+      workBonusAnnual: 11800,
+    },
+
+    getQualifyingAge() { return this.agePension.qualifyingAge; },
+    // 最大給付額（年額）
+    getMaxAnnual(status) {
+      const p = this.agePension;
+      const fortnightly = status === "couple" ? p.maxFortnightlyCoupleEach : p.maxFortnightlySingle;
+      return fortnightly * p.fortnightsPerYear;
+    },
+    // 資産テストの無影響枠
+    getAssetsFreeArea(status, homeowner) {
+      const p = this.agePension;
+      if (status === "couple") {
+        return homeowner ? p.assetsFreeAreaCoupleHomeowner : p.assetsFreeAreaCoupleNonHomeowner;
+      }
+      return homeowner ? p.assetsFreeAreaSingleHomeowner : p.assetsFreeAreaSingleNonHomeowner;
+    },
+    // 所得テストの無影響枠（年額）
+    getIncomeFreeAreaAnnual(status) {
+      const p = this.agePension;
+      const fortnightly = status === "couple"
+        ? p.incomeFreeAreaFortnightlyCoupleCombined
+        : p.incomeFreeAreaFortnightlySingle;
+      return fortnightly * p.fortnightsPerYear;
+    },
+    // 所得テストによる給付額（年額）。就労収入はWork Bonus分が除外される。
+    getAgePensionByIncomeTest(annualIncome, status) {
+      const p = this.agePension;
+      const max = this.getMaxAnnual(status);
+      const excess = Math.max(0, (Number(annualIncome) || 0) - this.getIncomeFreeAreaAnnual(status));
+      return Math.max(0, max - excess * p.incomeTaperPerDollar);
+    },
+    // 資産テストによる給付額（年額）
+    getAgePensionByAssetsTest(assessableAssets, status, homeowner) {
+      const p = this.agePension;
+      const max = this.getMaxAnnual(status);
+      const excess = Math.max(0, (Number(assessableAssets) || 0) - this.getAssetsFreeArea(status, homeowner));
+      const reductionPerYear = (excess / 1000) * p.assetsTaperPerThousandFortnightly * p.fortnightsPerYear;
+      return Math.max(0, max - reductionPerYear);
+    },
+    // 実際の給付額 ＝ 所得テストと資産テストの「低い方」。受給資格年齢未満はゼロ。
+    getAgePension({ age, annualIncome, assessableAssets, status, homeowner }) {
+      if ((Number(age) || 0) < this.agePension.qualifyingAge) return 0;
+      const byIncome = this.getAgePensionByIncomeTest(annualIncome, status);
+      const byAssets = this.getAgePensionByAssetsTest(assessableAssets, status, homeowner);
+      return Math.min(byIncome, byAssets);
+    },
+    notImplemented: [
+      "Deeming（金融資産のみなし収入）— 実際の運用益ではなく、みなし利率で所得を算定する制度",
+      "Work Bonusの income bank（未使用分の繰越）",
+      "Rent Assistance（賃貸住宅手当）",
+      "Transitional rate pension（2009年以前からの受給者への経過措置）",
+      "Commonwealth Seniors Health Card",
+    ],
+  },
+
+  healthcare: {
+    implemented: true,
+    // Medicare（公的医療保険）でカバーされることを前提に、
+    // 自己負担が生じうる費目のみ年間費用を入力する簡易モデル。
+    model: "selfInputAnnualCostsWithMedicare",
+    effectiveTaxYear: "2026-27",
+    lastUpdated: "2026-07-13",
+    sourceName: "Services Australia — Medicare",
+    sourceUrl: "https://www.servicesaustralia.gov.au/medicare",
+    costItems: [
+      "gapAnnual",
+      "privateHealthInsuranceMonthly",
+      "pharmaceuticalAnnual",
+      "dentalAnnual",
+      "opticalAnnual",
+      "agedCareAnnual",
+      "otherOutOfPocketAnnual",
+    ],
+    getAnnualTotal(healthcare) {
+      const h = healthcare || {};
+      const n = (v) => Number(v) || 0;
+      return n(h.gapAnnual)
+        + n(h.privateHealthInsuranceMonthly) * 12
+        + n(h.pharmaceuticalAnnual)
+        + n(h.dentalAnnual)
+        + n(h.opticalAnnual)
+        + n(h.agedCareAnnual)
+        + n(h.otherOutOfPocketAnnual);
+    },
+    notImplemented: [
+      "Medicare Levy Surcharge（民間医療保険未加入の高所得者への1〜1.5%の追加課税）",
+      "PBS Safety Net（薬剤費の自己負担上限）",
+      "Medicare Safety Net（診療費の自己負担上限）",
+      "Aged care（高齢者介護）の資力調査に基づく自己負担額",
+    ],
+  },
+
+  tax: {
+    implemented: true,
+    model: "australiaIncomeTaxPlusMedicareLevy",
+    effectiveTaxYear: "2026-27",
+    lastUpdated: "2026-07-13",
+    sourceName: "Australian Taxation Office (ATO) — Tax rates for Australian residents",
+    sourceUrl: "https://www.ato.gov.au/tax-rates-and-codes/tax-rates-australian-residents",
+    sourceUrls: {
+      incomeTax: "https://www.ato.gov.au/tax-rates-and-codes/tax-rates-australian-residents",
+      medicareLevy: "https://www.ato.gov.au/individuals-and-families/medicare-and-private-health-insurance/medicare-levy",
+      capitalGains: "https://www.ato.gov.au/individuals-and-families/investments-and-assets/capital-gains-tax",
+      div293: "https://www.ato.gov.au/individuals-and-families/super-for-individuals-and-families/super/growing-your-super/how-to-save-more-in-your-super/division-293-tax",
+    },
+    region: "Australian residents (foreign residents not implemented)",
+    // 2026-27年度の税率。第2バンドは2026年7月1日に16%→15%へ引下げ済み。
+    // （さらに2027年7月1日から14%へ引下げが法制化されているが、本年度は未適用）
+    incomeTax: {
+      taxFreeThreshold: 18200,
+      bands: [
+        { upTo: 18200, rate: 0.00 },
+        { upTo: 45000, rate: 0.15 },
+        { upTo: 135000, rate: 0.30 },
+        { upTo: 190000, rate: 0.37 },
+        { upTo: Infinity, rate: 0.45 },
+      ],
+      scheduledSecondBandRateFrom2027: 0.14, // 2027年7月1日から。本年度は未適用。
+    },
+    medicareLevy: { rate: 0.02 },
+    // Superannuationの税制
+    superannuation: {
+      contributionsTaxRate: 0.15,           // 税引前拠出への課税
+      earningsTaxAccumulation: 0.15,        // 積立期の運用益への課税
+      earningsTaxRetirementPhase: 0.00,     // 退職フェーズの運用益（Transfer Balance Capの範囲内）
+      withdrawalTaxAfter60: 0.00,           // 60歳以降の引き出しは非課税（課税済みファンドの場合）
+      div293Threshold: 250000,              // 所得＋拠出額がこの額を超えると
+      div293AdditionalRate: 0.15,           //   税引前拠出に追加15%（合計30%）
+      lowRateCap: 260000,                   // 60歳未満の一時金の低税率枠（2026年7月1日から）
+    },
+    // 譲渡益：12か月超保有した資産は50%割引
+    capitalGains: { discountRate: 0.50, minimumHoldingMonths: 12 },
+
+    // 所得税（Medicare levyを除く）
+    calculateIncomeTax(taxableIncome) {
+      const income = Math.max(0, Number(taxableIncome) || 0);
+      let tax = 0;
+      let lower = 0;
+      for (const b of this.incomeTax.bands) {
+        if (income > lower) {
+          tax += (Math.min(income, b.upTo) - lower) * b.rate;
+          lower = b.upTo;
+        } else break;
+      }
+      return tax;
+    },
+    // Medicare levy（2%）。低所得者の減免は未実装。
+    calculateMedicareLevy(taxableIncome) {
+      return Math.max(0, Number(taxableIncome) || 0) * this.medicareLevy.rate;
+    },
+    // 所得税＋Medicare levy の合計
+    calculateTotalTax(taxableIncome) {
+      const incomeTax = this.calculateIncomeTax(taxableIncome);
+      const medicareLevy = this.calculateMedicareLevy(taxableIncome);
+      return { incomeTax, medicareLevy, total: incomeTax + medicareLevy };
+    },
+    getMarginalRate(taxableIncome) {
+      const income = Math.max(0, Number(taxableIncome) || 0);
+      for (const b of this.incomeTax.bands) {
+        if (income <= b.upTo) return b.rate;
+      }
+      return this.incomeTax.bands[this.incomeTax.bands.length - 1].rate;
+    },
+    // Medicare levyを含む実効限界税率
+    getMarginalRateWithLevy(taxableIncome) {
+      return this.getMarginalRate(taxableIncome) + this.medicareLevy.rate;
+    },
+    // 税引前拠出への課税。所得＋拠出額が$250,000を超えるとDivision 293で追加15%。
+    calculateSuperContributionTax(concessionalContribution, taxableIncome) {
+      const s = this.superannuation;
+      const c = Math.max(0, Number(concessionalContribution) || 0);
+      const income = Math.max(0, Number(taxableIncome) || 0);
+      const baseTax = c * s.contributionsTaxRate;
+      const div293Applies = (income + c) > s.div293Threshold;
+      const div293Tax = div293Applies ? c * s.div293AdditionalRate : 0;
+      return {
+        baseTax,
+        div293Tax,
+        total: baseTax + div293Tax,
+        effectiveRate: c > 0 ? (baseTax + div293Tax) / c : 0,
+        div293Applies,
+      };
+    },
+    // 給与犠牲による節税額 ＝ 拠出額 ×（限界税率＋Medicare levy − 拠出課税の実効税率）
+    calculateSalarySacrificeSaving(concessionalContribution, taxableIncome) {
+      const c = Math.max(0, Number(concessionalContribution) || 0);
+      if (c <= 0) return 0;
+      const income = Math.max(0, Number(taxableIncome) || 0);
+      // 拠出前の税額 − 拠出後（課税所得が減る）の税額
+      const before = this.calculateTotalTax(income).total;
+      const after = this.calculateTotalTax(Math.max(0, income - c)).total;
+      const personalTaxSaved = before - after;
+      const superTax = this.calculateSuperContributionTax(c, Math.max(0, income - c)).total;
+      return Math.max(0, personalTaxSaved - superTax);
+    },
+    // 譲渡益課税：12か月超保有なら利益の50%が課税所得に算入され、限界税率＋levyで課税される
+    calculateCapitalGainsTax(gain, otherIncome, heldOver12Months) {
+      const g = Math.max(0, Number(gain) || 0);
+      if (g <= 0) return 0;
+      const discount = (heldOver12Months === false) ? 0 : this.capitalGains.discountRate;
+      const taxableGain = g * (1 - discount);
+      const base = this.calculateTotalTax(otherIncome).total;
+      const withGain = this.calculateTotalTax((Number(otherIncome) || 0) + taxableGain).total;
+      return Math.max(0, withGain - base);
+    },
+    notImplemented: [
+      "Low Income Tax Offset（LITO・最大$700）",
+      "Seniors and Pensioners Tax Offset（SAPTO・最大$2,230）",
+      "Medicare levyの低所得者減免",
+      "Medicare Levy Surcharge（民間医療保険未加入の高所得者）",
+      "HECS-HELP（学生ローン）の返済",
+      "非居住者（foreign resident）の税率",
+      "60歳未満のSuper引き出しへの課税（low rate capは保持）",
+    ],
+  },
+
+  labels: {
+    investmentNote: null,
+    retirementNote: null,
+    healthcareNote: null,
+    taxNote: "auTaxHandledInInvestmentNote",
+  },
+  defaults: {},
+};
+
 const COUNTRY_RULES = {
   JP: JP_COUNTRY_RULES,
   US: US_COUNTRY_RULES,
   GB: GB_COUNTRY_RULES,
   CA: CA_COUNTRY_RULES,
+  AU: AU_COUNTRY_RULES,
   // CA / AU: SUPPORTED_COUNTRIES 側でまだ enabled:false（Coming Soon）のため、
   // ここに追加しなくても getCountryRules() は自動的に JP へフォールバック値を
   // 返さず、下記の通り「未定義国は最も安全側の＝未実装として扱う」ようにしてある。
@@ -3372,6 +3999,7 @@ const DEFAULT_WATCHLIST_JP = [];
 const DEFAULT_WATCHLIST_US = [];
 const DEFAULT_WATCHLIST_GB = [];
 const DEFAULT_WATCHLIST_CA = [];
+const DEFAULT_WATCHLIST_AU = [];
 
 // 既存の呼び出し箇所（初期状態の既定値）との後方互換のための別名。
 const DEFAULT_WATCHLIST = DEFAULT_WATCHLIST_JP;
@@ -3380,6 +4008,7 @@ function defaultWatchlistFor(country) {
   if (country === "US") return DEFAULT_WATCHLIST_US;
   if (country === "GB") return DEFAULT_WATCHLIST_GB;
   if (country === "CA") return DEFAULT_WATCHLIST_CA;
+  if (country === "AU") return DEFAULT_WATCHLIST_AU;
   return DEFAULT_WATCHLIST_JP;
 }
 
@@ -4502,6 +5131,315 @@ function CAHealthcarePanel({ caInvestment, onUpdate, totalAnnual }) {
   );
 }
 
+// ---------- オーストラリア選択時：1口座分の入力欄 ----------
+function AUAccountFields({ accountKey, title, account, onUpdateAccount, borderColor, contributionLabel, note }) {
+  const { t } = useContext(LocaleContext);
+  return (
+    <div className="section-block" style={{ borderColor, marginTop: 12 }}>
+      <div className="field-label" style={{ marginBottom: 6 }}>{title}</div>
+      <Field label={t("auCurrentValueLabel")} unit="A$" step={500} value={account.currentValue} onChange={(v) => onUpdateAccount(accountKey, "currentValue", v)} />
+      <Field label={contributionLabel || t("auAnnualContributionLabel")} unit="A$" step={100} value={account.annualContribution} onChange={(v) => onUpdateAccount(accountKey, "annualContribution", v)} />
+      <Field label={t("expectedAnnualReturnLabel")} unit="%" step={0.5} value={account.expectedReturnPct} onChange={(v) => onUpdateAccount(accountKey, "expectedReturnPct", v)} />
+      <AgeField label={t("auContributionEndAgeLabel")} value={account.contributionEndAge} onChange={(v) => onUpdateAccount(accountKey, "contributionEndAge", v)} />
+      {note && <div className="stat-sub">{note}</div>}
+    </div>
+  );
+}
+
+// ---------- オーストラリア選択時：投資口座パネル（Super / 投資口座 / 現金 ＋ 税制） ----------
+function AUInvestmentAccountsPanel({
+  auInvestment, onUpdate, onUpdateAccount, age, investmentRules, taxRules,
+  sgContribution, totalConcessional, concessionalRemaining, nonConcessionalRemaining,
+  superContributionTax, salarySacrificeSaving, taxResult, capitalGainsTax, totalTax, marginalRate,
+}) {
+  const { t, money } = useContext(LocaleContext);
+  // 画面に出す数値・年度・税率はすべて AU_COUNTRY_RULES から取り出す。
+  const pct = (rate) => `${Number((rate * 100).toFixed(2))}`;
+  const l = investmentRules.limits;
+  const superTax = taxRules.superannuation;
+  const split = investmentRules.splitAssets(age, auInvestment);
+  const preservationAge = investmentRules.preservationAge;
+
+  return (
+    <div>
+      <div className="note" style={{ marginBottom: 14 }}>
+        <Info size={13} />
+        <span>{t("auInvestmentSourceNote", { taxYear: investmentRules.effectiveTaxYear })}</span>
+      </div>
+
+      <Field label={t("auAnnualSalaryLabel")} unit="A$" step={1000} value={auInvestment.annualSalary} onChange={(v) => onUpdate("annualSalary", v)} />
+      <Field label={t("auSalarySacrificeLabel")} unit="A$" step={500} value={auInvestment.voluntaryConcessional} onChange={(v) => onUpdate("voluntaryConcessional", v)} />
+
+      <div className="stat-grid" style={{ marginTop: 12 }}>
+        <StatCard
+          label={t("auSgContributionLabel", { pct: pct(l.superGuaranteeRate) })}
+          value={money(sgContribution)}
+          sub={t("auSgContributionSub", { pct: pct(l.superGuaranteeRate) })}
+        />
+        <StatCard
+          label={t("auConcessionalCapLabel", { taxYear: investmentRules.effectiveTaxYear })}
+          value={money(l.concessionalCap)}
+          sub={t("auConcessionalCapSub", { amount: money(l.concessionalCap) })}
+        />
+        <StatCard
+          label={t("auConcessionalRemainingLabel")}
+          value={money(Math.max(0, concessionalRemaining))}
+          sub={t("auContributionTaxSub")}
+          tone={concessionalRemaining < 0 ? "danger" : "good"}
+        />
+      </div>
+      {concessionalRemaining < 0 && (
+        <div className="note" style={{ borderLeftColor: "#C2694F", marginTop: 10 }}>
+          <Info size={13} style={{ color: "#C2694F" }} />
+          <span>{t("auConcessionalOverLabel", { amount: money(-concessionalRemaining) })}</span>
+        </div>
+      )}
+      {superContributionTax.div293Applies && (
+        <div className="note" style={{ borderLeftColor: "#D9A54F", marginTop: 10 }}>
+          <Info size={13} style={{ color: "#D9A54F" }} />
+          <span>{t("auDiv293Note", {
+            threshold: money(superTax.div293Threshold),
+            pct: pct(superTax.contributionsTaxRate + superTax.div293AdditionalRate),
+          })}</span>
+        </div>
+      )}
+
+      <AUAccountFields
+        accountKey="superannuation" title={t("auSuperLabel")} account={auInvestment.superannuation}
+        onUpdateAccount={onUpdateAccount} borderColor="#B08FD6"
+      />
+      <div className="stat-grid" style={{ marginTop: 12 }}>
+        <StatCard
+          label={t("auContributionTaxLabel", { pct: pct(superTax.contributionsTaxRate) })}
+          value={money(superContributionTax.total)}
+          sub={t("auContributionTaxSub")}
+          tone="danger"
+        />
+        <StatCard
+          label={t("auSalarySacrificeSavingLabel")}
+          value={money(salarySacrificeSaving)}
+          sub={t("auSalarySacrificeSavingSub", { pct: pct(marginalRate) })}
+          tone="good"
+        />
+      </div>
+      <div className="note" style={{ marginTop: 10 }}>
+        <Info size={13} />
+        <span>{t("auPreservationAgeNote", { age: preservationAge, unrestricted: investmentRules.unrestrictedAccessAge })}</span>
+      </div>
+      <div className="note" style={{ marginTop: 8 }}>
+        <Info size={13} />
+        <span>{t("auSuperEarningsTaxNote", {
+          pct: pct(superTax.earningsTaxAccumulation),
+          age: preservationAge,
+          tbc: money(l.transferBalanceCap),
+        })}</span>
+      </div>
+      <div className="note" style={{ marginTop: 8 }}>
+        <Info size={13} />
+        <span>{t("auMinimumDrawdownNote", {
+          under65: pct(investmentRules.minimumDrawdownFactors.under65),
+          age65: pct(investmentRules.minimumDrawdownFactors["65to74"]),
+          age75: pct(investmentRules.minimumDrawdownFactors["75to79"]),
+          age95: pct(investmentRules.minimumDrawdownFactors["95plus"]),
+        })}</span>
+      </div>
+
+      <AUAccountFields
+        accountKey="investmentAccount" title={t("auInvestmentAccountLabel")} account={auInvestment.investmentAccount}
+        onUpdateAccount={onUpdateAccount} borderColor="#D9A54F"
+      />
+      <AUAccountFields
+        accountKey="cashSavings" title={t("auCashSavingsLabel")} account={auInvestment.cashSavings}
+        onUpdateAccount={onUpdateAccount} borderColor="#7BC9E0"
+      />
+
+      <div className="stat-grid" style={{ marginTop: 16 }}>
+        <StatCard label={t("auTotalAssetsLabel")} value={money(split.total)} sub={t("auTotalAssetsSub")} />
+      </div>
+      <div className="stat-grid" style={{ marginTop: 10 }}>
+        <StatCard label={t("auLiquidAssetsLabel")} value={money(split.liquid)} sub={t("auLiquidAssetsSub", { age: preservationAge })} tone="good" />
+        <StatCard
+          label={t("auRestrictedAssetsLabel")}
+          value={money(split.restricted)}
+          sub={split.isAccessibleAge
+            ? t("auRestrictedAssetsSubAccessible", { age: preservationAge })
+            : t("auRestrictedAssetsSubLocked", { age: preservationAge })}
+        />
+        <StatCard label={t("auTaxAdvantagedLabel")} value={money(split.taxAdvantaged)} sub={t("auTaxAdvantagedSub")} />
+      </div>
+
+      <div className="section-block" style={{ borderColor: "#5FB0A0", marginTop: 16 }}>
+        <div className="field-label" style={{ marginBottom: 6 }}>
+          {t("auTaxSectionLabel", { taxYear: taxRules.effectiveTaxYear })}
+        </div>
+        <div className="note" style={{ marginBottom: 12 }}>
+          <Info size={13} />
+          <span>{t("auTaxSourceNote", { taxYear: taxRules.effectiveTaxYear })}</span>
+        </div>
+        <Field label={t("auCapitalGainLabel")} unit="A$" step={500} value={auInvestment.estimatedCapitalGainAnnual} onChange={(v) => onUpdate("estimatedCapitalGainAnnual", v)} />
+        <label className="checkbox-row">
+          <input
+            type="checkbox"
+            checked={!!auInvestment.capitalGainHeldOver12Months}
+            onChange={(e) => onUpdate("capitalGainHeldOver12Months", e.target.checked)}
+          />
+          <span>{t("auCapitalGainDiscountLabel", { pct: pct(taxRules.capitalGains.discountRate) })}</span>
+        </label>
+        <div className="stat-grid" style={{ marginTop: 10 }}>
+          <StatCard
+            label={t("auIncomeTaxLabel")}
+            value={money(taxResult.incomeTax)}
+            sub={t("auIncomeTaxSub", { taxYear: taxRules.effectiveTaxYear })}
+          />
+          <StatCard
+            label={t("auMedicareLevyLabel", { pct: pct(taxRules.medicareLevy.rate) })}
+            value={money(taxResult.medicareLevy)}
+            sub={t("auMedicareLevySub")}
+          />
+          <StatCard
+            label={t("auCgtLabel")}
+            value={money(capitalGainsTax)}
+            sub={t("auCgtSub", { pct: pct(taxRules.capitalGains.discountRate) })}
+          />
+        </div>
+        <div className="stat-grid" style={{ marginTop: 10 }}>
+          <StatCard label={t("auTotalTaxLabel")} value={money(totalTax)} sub={t("auTotalTaxSub")} tone="danger" />
+        </div>
+        <div className="note" style={{ marginTop: 10 }}>
+          <Info size={13} />
+          <span>{t("auSuperTaxFreeNote", { age: preservationAge })}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------- オーストラリア選択時：退職後パネル（Age Pension → Expenses → Withdrawal） ----------
+function AURetirementPanel({
+  auInvestment, onUpdateAgePension, onUpdate, retirementRules,
+  qualifyingAge, maxAnnual, agePensionAnnual, retirementIncomeAnnual,
+  assessableAssets, expensesAnnual, healthcareAnnual, withdrawalNeeded, incomeSurplus, retireAge,
+}) {
+  const { t, money } = useContext(LocaleContext);
+  const p = retirementRules.agePension;
+  const status = auInvestment.agePension.status;
+  const homeowner = !!auInvestment.agePension.homeowner;
+  const statusLabel = status === "couple" ? t("auCoupleLabel") : t("auSingleLabel");
+
+  return (
+    <div>
+      <div className="stat-grid" style={{ marginBottom: 12 }}>
+        <StatCard
+          label={t("auAgePensionQualifyingAgeLabel")}
+          value={t("ageYears", { age: qualifyingAge })}
+          sub={t("auAgePensionMaxSub", { status: statusLabel })}
+        />
+        <StatCard label={t("auAgePensionMaxLabel")} value={money(maxAnnual)} sub={t("auAgePensionMaxSub", { status: statusLabel })} />
+      </div>
+      {retireAge < qualifyingAge && (
+        <div className="note" style={{ borderLeftColor: "#D9A54F", marginBottom: 10 }}>
+          <Info size={13} style={{ color: "#D9A54F" }} />
+          <span>{t("auAgePensionNotYetNote", { age: qualifyingAge })}</span>
+        </div>
+      )}
+
+      <div className="field-label" style={{ marginBottom: 6 }}>{t("auStatusLabel")}</div>
+      <div className="chip-row" style={{ marginBottom: 10 }}>
+        <button
+          className={`chip ${status === "single" ? "chip-active" : ""}`}
+          onClick={() => onUpdateAgePension("status", "single")}
+        >{t("auSingleLabel")}</button>
+        <button
+          className={`chip ${status === "couple" ? "chip-active" : ""}`}
+          onClick={() => onUpdateAgePension("status", "couple")}
+        >{t("auCoupleLabel")}</button>
+      </div>
+
+      <label className="checkbox-row">
+        <input
+          type="checkbox"
+          checked={homeowner}
+          onChange={(e) => onUpdateAgePension("homeowner", e.target.checked)}
+        />
+        <span>{t("auHomeownerLabel")}</span>
+      </label>
+
+      <Field
+        label={t("auOtherIncomeLabel")} unit="A$" step={500}
+        value={auInvestment.agePension.otherAnnualIncome}
+        onChange={(v) => onUpdateAgePension("otherAnnualIncome", v)}
+      />
+
+      <div className="stat-grid" style={{ marginTop: 10 }}>
+        <StatCard
+          label={t("auIncomeTestLabel")}
+          value={money(retirementRules.getAgePensionByIncomeTest(auInvestment.agePension.otherAnnualIncome, status))}
+          sub={t("auIncomeTestSub", {
+            amount: money(retirementRules.getIncomeFreeAreaAnnual(status)),
+            taper: Math.round(p.incomeTaperPerDollar * 100),
+          })}
+        />
+        <StatCard
+          label={t("auAssetsTestLabel")}
+          value={money(retirementRules.getAgePensionByAssetsTest(assessableAssets, status, homeowner))}
+          sub={t("auAssetsTestSub", {
+            amount: money(retirementRules.getAssetsFreeArea(status, homeowner)),
+            taper: p.assetsTaperPerThousandFortnightly,
+          })}
+        />
+      </div>
+      <div className="stat-grid" style={{ marginTop: 10, marginBottom: 14 }}>
+        <StatCard label={t("auAgePensionAnnualLabel")} value={money(agePensionAnnual)} sub={t("auAgePensionAnnualSub")} />
+        <StatCard label={t("auRetirementIncomeLabel")} value={money(retirementIncomeAnnual)} sub={t("auRetirementIncomeSub")} tone="good" />
+      </div>
+      {agePensionAnnual <= 0 && retireAge >= qualifyingAge && (
+        <div className="note" style={{ borderLeftColor: "#C2694F", marginBottom: 10 }}>
+          <Info size={13} style={{ color: "#C2694F" }} />
+          <span>{t("auAgePensionZeroNote")}</span>
+        </div>
+      )}
+
+      <Field
+        label={t("auExpensesMonthlyLabel")} unit="A$" step={50}
+        value={auInvestment.expensesMonthly}
+        onChange={(v) => onUpdate("expensesMonthly", v)}
+      />
+      <div className="stat-grid" style={{ marginTop: 10 }}>
+        <StatCard label={t("auExpensesTotalLabel")} value={money(expensesAnnual + healthcareAnnual)} sub={t("auExpensesTotalSub")} />
+        {withdrawalNeeded > 0 ? (
+          <StatCard label={t("auWithdrawalLabel")} value={money(withdrawalNeeded)} sub={t("auWithdrawalSub")} tone="danger" />
+        ) : (
+          <StatCard label={t("auSurplusLabel")} value={money(incomeSurplus)} sub={t("auSurplusSub")} tone="good" />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---------- オーストラリア選択時：医療費パネル（Medicare前提の簡易モデル） ----------
+function AUHealthcarePanel({ auInvestment, onUpdate, totalAnnual }) {
+  const { t, money } = useContext(LocaleContext);
+  const h = auInvestment.healthcare;
+  return (
+    <div>
+      <div className="note" style={{ marginBottom: 12 }}>
+        <Info size={13} />
+        <span>{t("auTaxSourceNote", { taxYear: "2026-27" })}</span>
+      </div>
+      <Field label={t("auGapLabel")} unit="A$" step={50} value={h.gapAnnual} onChange={(v) => onUpdate("gapAnnual", v)} />
+      <Field label={t("auPrivateHealthLabel")} unit="A$" step={10} value={h.privateHealthInsuranceMonthly} onChange={(v) => onUpdate("privateHealthInsuranceMonthly", v)} />
+      <Field label={t("auPharmaceuticalLabel")} unit="A$" step={50} value={h.pharmaceuticalAnnual} onChange={(v) => onUpdate("pharmaceuticalAnnual", v)} />
+      <Field label={t("auDentalLabel")} unit="A$" step={50} value={h.dentalAnnual} onChange={(v) => onUpdate("dentalAnnual", v)} />
+      <Field label={t("auOpticalLabel")} unit="A$" step={50} value={h.opticalAnnual} onChange={(v) => onUpdate("opticalAnnual", v)} />
+      <Field label={t("auAgedCareLabel")} unit="A$" step={500} value={h.agedCareAnnual} onChange={(v) => onUpdate("agedCareAnnual", v)} />
+      <Field label={t("auOtherOutOfPocketLabel")} unit="A$" step={50} value={h.otherOutOfPocketAnnual} onChange={(v) => onUpdate("otherOutOfPocketAnnual", v)} />
+      <div className="stat-grid" style={{ marginTop: 10 }}>
+        <StatCard label={t("auTotalTaxLabel")} value={money(totalAnnual)} sub={t("auExpensesTotalSub")} tone="danger" />
+      </div>
+    </div>
+  );
+}
+
 function SectionTitle({ index, title, icon: Icon }) {
   return (
     <div className="section-title">
@@ -4720,6 +5658,34 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       // 退職後の生活費。他国のデータとは別項目
       expensesMonthly: 0,
     },
+    // オーストラリア選択時の投資口座・年金・医療費。
+    // 他国（JP/US/GB/CA）とは完全に独立した専用データ。
+    auInvestment: {
+      annualSalary: 0,             // 年間給与（SG拠出額・所得税・Div293の判定に使用）
+      voluntaryConcessional: 0,    // 給与犠牲などの任意の税引前拠出（年額）
+      estimatedCapitalGainAnnual: 0,
+      capitalGainHeldOver12Months: true,
+      superannuation:    { currentValue: 0, annualContribution: 0, expectedReturnPct: 7, contributionEndAge: 65 }, // annualContributionは税引後（non-concessional）拠出
+      investmentAccount: { currentValue: 0, annualContribution: 0, expectedReturnPct: 7, contributionEndAge: 65 },
+      cashSavings:       { currentValue: 0, annualContribution: 0, expectedReturnPct: 2, contributionEndAge: 65 },
+      // Age Pension（資産・所得テストあり）
+      agePension: {
+        status: "single",          // "single" または "couple"
+        homeowner: true,           // 持家かどうか（資産テストの無影響枠が変わる）
+        otherAnnualIncome: 0,      // Age Pensionの所得テストで評価される、年金以外の年間収入
+      },
+      // 医療費（Medicare前提の簡易モデル）
+      healthcare: {
+        gapAnnual: 0,
+        privateHealthInsuranceMonthly: 0,
+        pharmaceuticalAnnual: 0,
+        dentalAnnual: 0,
+        opticalAnnual: 0,
+        agedCareAnnual: 0,
+        otherOutOfPocketAnnual: 0,
+      },
+      expensesMonthly: 0,
+    },
   });
   const [watchlist, setWatchlist] = useState(DEFAULT_WATCHLIST);
 
@@ -4891,6 +5857,70 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const caExpensesAnnual = (Number(caInvestment.expensesMonthly) || 0) * 12;
   const caWithdrawalNeeded = Math.max(0, caExpensesAnnual + caHealthcareAnnual - caRetirementIncomeAnnual);
   const caIncomeSurplus = Math.max(0, caRetirementIncomeAnnual - (caExpensesAnnual + caHealthcareAnnual));
+
+  // ---------- オーストラリア選択時の派生計算（すべて AU_COUNTRY_RULES の関数のみを使用） ----------
+  const auInvestment = inputs.auInvestment;
+  const auIsAU = country === "AU";
+  const auSalary = Number(auInvestment.annualSalary) || 0;
+  const auVoluntaryConcessional = Number(auInvestment.voluntaryConcessional) || 0;
+
+  const auSgContribution = (auIsAU && rules.investment.implemented)
+    ? rules.investment.getEmployerSgContribution(auSalary) : 0;
+  const auTotalConcessional = (auIsAU && rules.investment.implemented)
+    ? rules.investment.getTotalConcessional(auSalary, auVoluntaryConcessional) : 0;
+  const auConcessionalCap = (auIsAU && rules.investment.implemented)
+    ? rules.investment.getConcessionalCap() : 0;
+  const auConcessionalRemaining = auConcessionalCap - auTotalConcessional;
+  const auNonConcessionalRemaining = (auIsAU && rules.investment.implemented)
+    ? rules.investment.getNonConcessionalRemaining(auInvestment.superannuation.annualContribution) : 0;
+
+  // 課税所得＝給与 − 給与犠牲（税引前拠出は課税所得から控除される）
+  const auTaxableIncome = Math.max(0, auSalary - auVoluntaryConcessional);
+  const auTaxResult = (auIsAU && rules.tax.implemented)
+    ? rules.tax.calculateTotalTax(auTaxableIncome)
+    : { incomeTax: 0, medicareLevy: 0, total: 0 };
+  const auMarginalRate = (auIsAU && rules.tax.implemented)
+    ? rules.tax.getMarginalRateWithLevy(auTaxableIncome) : 0;
+  const auSuperContributionTax = (auIsAU && rules.tax.implemented)
+    ? rules.tax.calculateSuperContributionTax(auTotalConcessional, auTaxableIncome)
+    : { baseTax: 0, div293Tax: 0, total: 0, effectiveRate: 0, div293Applies: false };
+  const auSalarySacrificeSaving = (auIsAU && rules.tax.implemented)
+    ? rules.tax.calculateSalarySacrificeSaving(auVoluntaryConcessional, auSalary) : 0;
+  const auCapitalGainsTax = (auIsAU && rules.tax.implemented)
+    ? rules.tax.calculateCapitalGainsTax(
+        auInvestment.estimatedCapitalGainAnnual,
+        auTaxableIncome,
+        auInvestment.capitalGainHeldOver12Months
+      )
+    : 0;
+  const auTotalTax = auTaxResult.total + auCapitalGainsTax;
+
+  const auHealthcareAnnual = (auIsAU && rules.healthcare.implemented)
+    ? rules.healthcare.getAnnualTotal(auInvestment.healthcare) : 0;
+
+  // Age Pension：資産テストの対象資産は、退職時点の総資産（3口座の合計）で評価する。
+  // （Superは受給資格年齢に達すると資産テストの対象になる）
+  const auAssetSplitAtRetire = (auIsAU && rules.investment.implemented)
+    ? rules.investment.splitAssets(inputs.retireAge, inputs.auInvestment)
+    : { liquid: 0, restricted: 0, taxAdvantaged: 0, total: 0, isAccessibleAge: false };
+  const auAgePensionQualifyingAge = (auIsAU && rules.retirement.implemented)
+    ? rules.retirement.getQualifyingAge() : 67;
+  const auAgePensionMaxAnnual = (auIsAU && rules.retirement.implemented)
+    ? rules.retirement.getMaxAnnual(auInvestment.agePension.status) : 0;
+  const auAgePensionAnnual = (auIsAU && rules.retirement.implemented)
+    ? rules.retirement.getAgePension({
+        age: Math.max(inputs.retireAge, auAgePensionQualifyingAge),
+        annualIncome: auInvestment.agePension.otherAnnualIncome,
+        assessableAssets: auAssetSplitAtRetire.total,
+        status: auInvestment.agePension.status,
+        homeowner: auInvestment.agePension.homeowner,
+      })
+    : 0;
+  const auOtherAnnualIncome = Number(auInvestment.agePension.otherAnnualIncome) || 0;
+  const auRetirementIncomeAnnual = auAgePensionAnnual + auOtherAnnualIncome;
+  const auExpensesAnnual = (Number(auInvestment.expensesMonthly) || 0) * 12;
+  const auWithdrawalNeeded = Math.max(0, auExpensesAnnual + auHealthcareAnnual - auRetirementIncomeAnnual);
+  const auIncomeSurplus = Math.max(0, auRetirementIncomeAnnual - (auExpensesAnnual + auHealthcareAnnual));
 
   const money = useCallback((n) => formatMoneyFor(baseCurrency, n), [baseCurrency]);
   const label = useCallback((key) => getCategoryLabel(key, country), [country]);
@@ -5153,6 +6183,19 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   // cpp / oas / healthcare も同じ入れ子構造なので同じ更新関数を流用できる
   const updateCaInvestmentNested = updateCaInvestmentAccount;
 
+  const updateAuInvestment = (key, val) =>
+    setInputs((prev) => ({ ...prev, auInvestment: { ...prev.auInvestment, [key]: val } }));
+  const updateAuInvestmentAccount = (accountKey, field, val) =>
+    setInputs((prev) => ({
+      ...prev,
+      auInvestment: {
+        ...prev.auInvestment,
+        [accountKey]: { ...prev.auInvestment[accountKey], [field]: val },
+      },
+    }));
+  // agePension / healthcare も同じ入れ子構造なので同じ更新関数を流用できる
+  const updateAuInvestmentNested = updateAuInvestmentAccount;
+
   // 積立・成長投資枠・一括投資の銘柄別内訳、および「つみたて/成長投資枠：実際の残高」に入力された銘柄を集約して、
   // そのままスライダー（自動計算・操作不可）として表示する
   const allBreakdownItems = [
@@ -5204,6 +6247,11 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const caAssetSplit = (country === "CA" && rules.investment.implemented)
     ? rules.investment.splitAssets(effectiveCurrentAge, inputs.caInvestment)
     : { liquid: 0, restricted: 0, taxAdvantaged: 0, total: 0, isRrifPhase: false };
+
+  // オーストラリア選択時：3口座を Liquid / Restricted / Tax-Advantaged に分ける。
+  const auAssetSplit = (country === "AU" && rules.investment.implemented)
+    ? rules.investment.splitAssets(effectiveCurrentAge, inputs.auInvestment)
+    : { liquid: 0, restricted: 0, taxAdvantaged: 0, total: 0, isAccessibleAge: false };
 
   // 銘柄名から、その銘柄の想定年率（利回り）を取得する（銘柄別内訳のスライダーで手動調整した値があればそちらを優先）
   const getFundReturnPct = (name) =>
@@ -5421,6 +6469,25 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     });
   }, [country, rules, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, inputs.caInvestment, caWithdrawalNeeded]);
 
+  // オーストラリア選択時：Superannuation / 投資口座 / 現金 の残高推移シミュレーション。
+  // AU_COUNTRY_RULES.investment.simulateGrowth のみを使用し、他国とは完全に独立している。
+  const auInvestmentSim = useMemo(() => {
+    if (country !== "AU" || !rules.investment.implemented) {
+      return { yearly: [], finalValue: 0 };
+    }
+    return rules.investment.simulateGrowth({
+      currentAge: effectiveCurrentAge,
+      retireAge: inputs.retireAge,
+      deathAge: inputs.deathAge,
+      accounts: inputs.auInvestment,
+      annualWithdrawalNeeded: auWithdrawalNeeded,
+      annualSalary: inputs.auInvestment.annualSalary,
+      voluntaryConcessional: inputs.auInvestment.voluntaryConcessional,
+      contributionsTaxRate: rules.tax.superannuation.contributionsTaxRate,
+      earningsTaxAccumulation: rules.tax.superannuation.earningsTaxAccumulation,
+    });
+  }, [country, rules, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, inputs.auInvestment, auWithdrawalNeeded]);
+
   // iDeCo 自動計算項目
   const idecoAnnualContribution = (inputs.ideco.monthlyContribution || 0) * 12;
   const idecoRemainingContribYears = Math.max(0, inputs.ideco.endAge - Math.max(inputs.ideco.startAge, effectiveCurrentAge));
@@ -5453,18 +6520,22 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       // カナダ選択時のみ：TFSA/RRSP/非登録口座/現金の残高推移をnetWorthへ合算する
       // （country!=="CA"のときはcaInvestmentSim.yearlyが空のため常に0＝他国の計算結果に一切影響しない）。
       const caInvestmentValue = caInvestmentSim.yearly[i]?.value ?? caInvestmentSim.finalValue ?? 0;
-      const spendableNetWorth = row.total + goldValue + bankValue + stockValue + pensionValue + usInvestmentValue + gbInvestmentValue + caInvestmentValue - loanValue - insuranceValue;
+      // オーストラリア選択時のみ：Super/投資口座/現金の残高推移をnetWorthへ合算する
+      // （country!=="AU"のときはauInvestmentSim.yearlyが空のため常に0＝他国の計算結果に一切影響しない）。
+      const auInvestmentValue = auInvestmentSim.yearly[i]?.value ?? auInvestmentSim.finalValue ?? 0;
+      const spendableNetWorth = row.total + goldValue + bankValue + stockValue + pensionValue + usInvestmentValue + gbInvestmentValue + caInvestmentValue + auInvestmentValue - loanValue - insuranceValue;
       return {
         ...row, goldValue, bankValue, stockValue, loanValue, insuranceValue, pensionValue,
         idecoLockedValue,
         usInvestmentValue,
         gbInvestmentValue,
         caInvestmentValue,
+        auInvestmentValue,
         spendableNetWorth,
         netWorth: spendableNetWorth + idecoLockedValue,
       };
     });
-  }, [sim, goldSim, bankSim, stockSim, loanSim, insuranceSim, pensionSim, idecoSim, usInvestmentSim, gbInvestmentSim, caInvestmentSim]);
+  }, [sim, goldSim, bankSim, stockSim, loanSim, insuranceSim, pensionSim, idecoSim, usInvestmentSim, gbInvestmentSim, caInvestmentSim, auInvestmentSim]);
   const netWorthFinal = netWorthYearly.length ? netWorthYearly[netWorthYearly.length - 1].netWorth : sim.finalAssets;
   const inheritanceTotal = inputs.inheritancePlans.reduce((s, p) => s + (p.amount || 0), 0);
   const effectiveInheritanceTarget = inputs.inheritancePlans.length > 0 ? inheritanceTotal : inputs.inheritanceTarget;
@@ -5570,6 +6641,23 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       color: PIE_COLORS[i % PIE_COLORS.length],
     }));
   }, [country, rules, caInvestmentSim, inputs.retireAge, t]);
+
+  // オーストラリア選択時：退職時点の Superannuation / 投資口座 / 現金 の口座別内訳。
+  const auAccountBreakdownAtRetire = useMemo(() => {
+    if (country !== "AU" || !rules.investment.implemented) return [];
+    const row = auInvestmentSim.yearly.find((y) => y.age >= inputs.retireAge) || auInvestmentSim.yearly[auInvestmentSim.yearly.length - 1];
+    if (!row || !row.accounts) return [];
+    const labels = [
+      { key: "superannuation", label: t("auSuperLabel") },
+      { key: "investmentAccount", label: t("auInvestmentAccountLabel") },
+      { key: "cashSavings", label: t("auCashSavingsLabel") },
+    ];
+    return labels.map((l, i) => ({
+      name: l.label,
+      value: Math.round(row.accounts[l.key] || 0),
+      color: PIE_COLORS[i % PIE_COLORS.length],
+    }));
+  }, [country, rules, auInvestmentSim, inputs.retireAge, t]);
 
   const addBank = () => {
     const balance = Number(newBank.balance) || 0;
@@ -6246,6 +7334,26 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           border-bottom: 1px solid var(--line); padding: 10px 28px; line-height: 1.6;
         }
         @media (max-width: 640px) { .disclaimer-banner { padding: 10px 16px; font-size: 11px; } }
+        /* オーストラリア版で使用する、チェックボックスと選択チップ（他国の画面には影響しない） */
+        .checkbox-row {
+          display: flex; gap: 8px; align-items: flex-start;
+          font-size: 13px; color: var(--text); line-height: 1.6;
+          margin: 4px 0 12px; cursor: pointer;
+        }
+        .checkbox-row input[type="checkbox"] {
+          width: 16px; height: 16px; margin-top: 2px; flex-shrink: 0; cursor: pointer;
+          accent-color: var(--blue);
+        }
+        .chip-row { display: flex; gap: 8px; flex-wrap: wrap; }
+        .chip {
+          padding: 7px 16px; border-radius: 999px; cursor: pointer;
+          border: 1px solid var(--line); background: transparent; color: var(--muted);
+          font-size: 13px; font-family: inherit; transition: all 0.15s;
+        }
+        .chip:hover { border-color: var(--blue); color: var(--text); }
+        .chip-active {
+          border-color: var(--blue); background: rgba(79,168,216,0.14); color: var(--text); font-weight: 600;
+        }
         .history-panel {
           padding: 14px 28px; border-bottom: 1px solid var(--line);
           background: var(--panel);
@@ -6504,7 +7612,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                   currentJson === JSON.stringify(DEFAULT_WATCHLIST_JP) ||
                   currentJson === JSON.stringify(DEFAULT_WATCHLIST_US) ||
                   currentJson === JSON.stringify(DEFAULT_WATCHLIST_GB) ||
-                  currentJson === JSON.stringify(DEFAULT_WATCHLIST_CA);
+                  currentJson === JSON.stringify(DEFAULT_WATCHLIST_CA) ||
+                  currentJson === JSON.stringify(DEFAULT_WATCHLIST_AU);
                 if (isUntouchedDefault) {
                   setWatchlist(defaultWatchlistFor(nextCountry));
                 }
@@ -7089,6 +8198,25 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 totalTax: caTotalTax,
               }}
             />
+          ) : country === "AU" && rules.investment.implemented ? (
+            <AUInvestmentAccountsPanel
+              auInvestment={inputs.auInvestment}
+              onUpdate={updateAuInvestment}
+              onUpdateAccount={updateAuInvestmentAccount}
+              age={effectiveCurrentAge}
+              investmentRules={rules.investment}
+              taxRules={rules.tax}
+              sgContribution={auSgContribution}
+              totalConcessional={auTotalConcessional}
+              concessionalRemaining={auConcessionalRemaining}
+              nonConcessionalRemaining={auNonConcessionalRemaining}
+              superContributionTax={auSuperContributionTax}
+              salarySacrificeSaving={auSalarySacrificeSaving}
+              taxResult={auTaxResult}
+              capitalGainsTax={auCapitalGainsTax}
+              totalTax={auTotalTax}
+              marginalRate={auMarginalRate}
+            />
           ) : (
             <div className="note" style={{ borderLeftColor: "#D9A54F" }}>
               <Info size={13} style={{ color: "#D9A54F" }} />
@@ -7224,7 +8352,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             </div>
           )}
 
-          {country === "GB" || country === "CA" ? (
+          {country === "GB" || country === "CA" || country === "AU" ? (
             <div className="note" style={{ borderLeftColor: "#5FB0A0" }}>
               <Info size={13} style={{ color: "#5FB0A0" }} />
               <span>{t(rules.labels.taxNote)}</span>
@@ -7369,6 +8497,23 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               withdrawalNeeded={caWithdrawalNeeded}
               incomeSurplus={caIncomeSurplus}
             />
+          ) : country === "AU" && rules.retirement.implemented ? (
+            <AURetirementPanel
+              auInvestment={inputs.auInvestment}
+              onUpdateAgePension={(field, val) => updateAuInvestmentNested("agePension", field, val)}
+              onUpdate={updateAuInvestment}
+              retirementRules={rules.retirement}
+              qualifyingAge={auAgePensionQualifyingAge}
+              maxAnnual={auAgePensionMaxAnnual}
+              agePensionAnnual={auAgePensionAnnual}
+              retirementIncomeAnnual={auRetirementIncomeAnnual}
+              assessableAssets={auAssetSplitAtRetire.total}
+              expensesAnnual={auExpensesAnnual}
+              healthcareAnnual={auHealthcareAnnual}
+              withdrawalNeeded={auWithdrawalNeeded}
+              incomeSurplus={auIncomeSurplus}
+              retireAge={inputs.retireAge}
+            />
           ) : (
             <div className="note" style={{ borderLeftColor: "#D9A54F" }}>
               <Info size={13} style={{ color: "#D9A54F" }} />
@@ -7409,6 +8554,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               caInvestment={inputs.caInvestment}
               onUpdate={(field, val) => updateCaInvestmentNested("healthcare", field, val)}
               totalAnnual={caHealthcareAnnual}
+            />
+          ) : country === "AU" && rules.healthcare.implemented ? (
+            <AUHealthcarePanel
+              auInvestment={inputs.auInvestment}
+              onUpdate={(field, val) => updateAuInvestmentNested("healthcare", field, val)}
+              totalAnnual={auHealthcareAnnual}
             />
           ) : (
             <div className="note" style={{ borderLeftColor: "#D9A54F" }}>
@@ -7834,6 +8985,19 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 <StatCard label={t("caTaxAdvantagedLabel")} value={money(caAssetSplit.taxAdvantaged)} sub={t("caTaxAdvantagedSub")} />
                 <StatCard label={t("caTotalAssetsLabel")} value={money(caAssetSplit.total)} sub={t("caTotalAssetsSub")} />
               </>
+            ) : country === "AU" ? (
+              <>
+                <StatCard label={t("auLiquidAssetsLabel")} value={money(auAssetSplit.liquid)} sub={t("auLiquidAssetsSub", { age: rules.investment.preservationAge })} tone="good" />
+                <StatCard
+                  label={t("auRestrictedAssetsLabel")}
+                  value={money(auAssetSplit.restricted)}
+                  sub={auAssetSplit.isAccessibleAge
+                    ? t("auRestrictedAssetsSubAccessible", { age: rules.investment.preservationAge })
+                    : t("auRestrictedAssetsSubLocked", { age: rules.investment.preservationAge })}
+                />
+                <StatCard label={t("auTaxAdvantagedLabel")} value={money(auAssetSplit.taxAdvantaged)} sub={t("auTaxAdvantagedSub")} />
+                <StatCard label={t("auTotalAssetsLabel")} value={money(auAssetSplit.total)} sub={t("auTotalAssetsSub")} />
+              </>
             ) : (
               <>
                 <StatCard label={t("statNisaAssetsLabel")} value={money(effectiveCurrentAssets)} sub={t("statNisaAssetsSub")} />
@@ -8000,6 +9164,21 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               />
               <StatCard label={t("caTotalTaxLabel")} value={money(caTotalTax)} sub={t("caTotalTaxSub")} tone="danger" />
             </div>
+          ) : country === "AU" && rules.investment.implemented ? (
+            <div className="stat-grid" style={{ marginBottom: 22 }}>
+              <StatCard
+                label={t("auConcessionalRemainingLabel")}
+                value={money(Math.max(0, auConcessionalRemaining))}
+                sub={t("auConcessionalCapSub", { amount: money(rules.investment.getConcessionalCap()) })}
+                tone={auConcessionalRemaining < 0 ? "danger" : "good"}
+              />
+              <StatCard
+                label={t("auAgePensionAnnualLabel")}
+                value={money(auAgePensionAnnual)}
+                sub={t("auAgePensionAnnualSub")}
+              />
+              <StatCard label={t("auTotalTaxLabel")} value={money(auTotalTax)} sub={t("auTotalTaxSub")} tone="danger" />
+            </div>
           ) : (
             <div className="note" style={{ borderLeftColor: "#D9A54F", marginBottom: 22 }}>
               <Info size={13} style={{ color: "#D9A54F" }} />
@@ -8156,16 +9335,18 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                     ? t("gbAccountBreakdownChartTitle", { age: t("ageYears", { age: inputs.retireAge }) })
                     : country === "CA"
                       ? t("caAccountBreakdownChartTitle", { age: t("ageYears", { age: inputs.retireAge }) })
-                      : t("fundBreakdownChartTitle", { age: t("ageYears", { age: inputs.retireAge }) })}
+                      : country === "AU"
+                        ? t("auAccountBreakdownChartTitle", { age: t("ageYears", { age: inputs.retireAge }) })
+                        : t("fundBreakdownChartTitle", { age: t("ageYears", { age: inputs.retireAge }) })}
               </div>
               <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={country === "US" ? usAccountBreakdownAtRetire : country === "GB" ? gbAccountBreakdownAtRetire : country === "CA" ? caAccountBreakdownAtRetire : fundBreakdownAtRetire} layout="vertical" margin={{ left: 8, right: 16 }}>
+                <BarChart data={country === "US" ? usAccountBreakdownAtRetire : country === "GB" ? gbAccountBreakdownAtRetire : country === "CA" ? caAccountBreakdownAtRetire : country === "AU" ? auAccountBreakdownAtRetire : fundBreakdownAtRetire} layout="vertical" margin={{ left: 8, right: 16 }}>
                   <CartesianGrid stroke="#2A363C" strokeDasharray="3 3" horizontal={false} />
                   <XAxis type="number" stroke="#7C8A90" fontSize={11} tickFormatter={(v) => money(v)} />
                   <YAxis type="category" dataKey="name" stroke="#7C8A90" fontSize={11} width={90} />
                   <Tooltip contentStyle={{ background: "#151C20", border: "1px solid #2A363C", fontSize: 12 }} formatter={(v) => money(v)} />
                   <Bar dataKey="value" radius={[0, 3, 3, 0]}>
-                    {(country === "US" ? usAccountBreakdownAtRetire : country === "GB" ? gbAccountBreakdownAtRetire : country === "CA" ? caAccountBreakdownAtRetire : fundBreakdownAtRetire).map((f, i) => (
+                    {(country === "US" ? usAccountBreakdownAtRetire : country === "GB" ? gbAccountBreakdownAtRetire : country === "CA" ? caAccountBreakdownAtRetire : country === "AU" ? auAccountBreakdownAtRetire : fundBreakdownAtRetire).map((f, i) => (
                       <Cell key={i} fill={f.color} />
                     ))}
                   </Bar>
@@ -8187,6 +9368,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 <div className="note" style={{ marginTop: 8 }}>
                   <Info size={13} />
                   <span>{t("caAccountBreakdownNote")}</span>
+                </div>
+              )}
+              {country === "AU" && (
+                <div className="note" style={{ marginTop: 8 }}>
+                  <Info size={13} />
+                  <span>{t("auAccountBreakdownNote")}</span>
                 </div>
               )}
             </div>
