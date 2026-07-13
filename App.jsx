@@ -662,6 +662,9 @@ const TRANSLATIONS = {
     "legendPrivatePension": "民間年金積立",
     "legendStocks": "個別株",
     "legendUsInvestment": "投資口座（401k/IRA/Roth/Brokerage）",
+    "legendGbInvestment": "投資口座（ISA/SIPP/職域年金/GIA/現金）",
+    "legendCaInvestment": "投資口座（TFSA/RRSP/非登録口座/現金）",
+    "legendAuInvestment": "投資口座（Super/投資口座/現金）",
     "lifeExpectancyLabel": "想定寿命",
     "lifetimeRemainingAfterInvestment": "投資後 生涯枠残り {amount}",
     "lifetimeRemainingAtEnd": "区間終了時 生涯枠残り {amount}",
@@ -695,7 +698,7 @@ const TRANSLATIONS = {
     "monthlyPremiumPlaceholder": "毎月の払込金額（円）",
     "nameCol": "名前",
     "nameLabel": "お名前（任意）",
-    "netWorthChartNote": "塗りつぶし部分は資産の内訳（総額）、白い線が借入金・生命保険の払込累計額を差し引いた実質的な純資産です。",
+    "netWorthChartNote": "色の帯は資産を積み上げたものです。帯の一番上が「総資産」で、下から順に足し合わさっています（例：緑の線は「NISA＋金＋銀行預金」の合計であり、銀行預金だけの金額ではありません）。\n白い線は、その総資産から借入金と生命保険の払込累計額を差し引いた「純資産」です。借入金や保険料がある限り、白い線は必ず帯の一番上より下になります。",
     "netWorthChartTitle": "総資産推移 — NISA + 金 + 銀行預金 + 個別株 + 民間年金積立 + iDeCo − 借入金 − 保険料累計（{currentAge} 〜 {deathAge}）",
     "nisaAllocationSlidersLabel": "NISA資産の配分（積立・成長投資枠・一括投資の内訳に入れた銘柄がそのままスライダーになります）",
     "nisaBreakdownChartTitle": "現在のNISA資産の内訳 — つみたて投資枠 × 成長投資枠（現在日付での使用累計ベース）",
@@ -1446,6 +1449,9 @@ const TRANSLATIONS = {
     "legendPrivatePension": "Private Pension",
     "legendStocks": "Individual Stocks",
     "legendUsInvestment": "Investment Accounts (401k/IRA/Roth/Brokerage)",
+    "legendGbInvestment": "Investment Accounts (ISA/SIPP/Workplace Pension/GIA/Cash)",
+    "legendCaInvestment": "Investment Accounts (TFSA/RRSP/Non-Registered/Cash)",
+    "legendAuInvestment": "Investment Accounts (Super/Investment Account/Cash)",
     "lifeExpectancyLabel": "Life Expectancy",
     "lifetimeRemainingAfterInvestment": "Lifetime limit remaining after this investment: {amount}",
     "lifetimeRemainingAtEnd": "Lifetime limit remaining at end of range: {amount}",
@@ -1479,7 +1485,7 @@ const TRANSLATIONS = {
     "monthlyPremiumPlaceholder": "Monthly premium",
     "nameCol": "Name",
     "nameLabel": "Name (optional)",
-    "netWorthChartNote": "The filled areas show the breakdown of total assets; the white line shows net worth after subtracting cumulative loan balances and life insurance premiums paid.",
+    "netWorthChartNote": "The coloured bands are stacked: the top of the stack is your total assets, built up from the bottom (the green line, for example, is NISA + gold + cash combined — not the cash on its own).\nThe white line is that total minus your loan balances and the life insurance premiums you have paid. As long as you have either, the white line always sits below the top of the stack.",
     "netWorthChartTitle": "Net Worth Over Time — Investments + Gold + Cash + Stocks + Private Pension + Retirement Account − Loans − Cumulative Insurance Premiums ({currentAge} – {deathAge})",
     "nisaAllocationSlidersLabel": "Investment Allocation (holdings entered in the regular, growth, and lump-sum breakdowns above automatically appear as sliders here)",
     "nisaBreakdownChartTitle": "Current Investment Account Breakdown — Regular vs. Growth Allocation (based on cumulative usage to date)",
@@ -7616,6 +7622,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         .guide-btn-open {
           border-color: var(--blue); background: var(--blue); color: var(--bg);
         }
+        /* 注記内の改行（\n）を反映させる。既存の1行の注記には影響しない。 */
+        .note span { white-space: pre-line; }
         .guide-text {
           display: block;
           font-size: 11px; color: var(--muted); line-height: 1.7;
@@ -9628,7 +9636,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           </div>
 
           <div className="chart-frame">
-            <div className="chart-label">{t("netWorthChartTitle", { currentAge: t("ageYears", { age: effectiveCurrentAge }), deathAge: t("ageYears", { age: inputs.deathAge }) })}</div>
+            {/* 【修正】年齢に端数があると「57.66478859472867歳」と表示されていたため、整数に丸める。 */}
+            <div className="chart-label">{t("netWorthChartTitle", { currentAge: t("ageYears", { age: Math.round(effectiveCurrentAge) }), deathAge: t("ageYears", { age: Math.round(inputs.deathAge) }) })}</div>
             <ResponsiveContainer width="100%" height={340}>
               <ComposedChart data={netWorthYearly} margin={{ top: 10, right: 24, left: 8, bottom: 4 }}>
                 <CartesianGrid stroke="#2A363C" strokeDasharray="3 3" />
@@ -9648,17 +9657,28 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                   <ReferenceLine x={Math.round(sim.depletionAge)} stroke="#C2694F" strokeDasharray="4 4" label={{ value: t("depletionMarkerLabel"), position: "top", fill: "#C2694F", fontSize: 11 }} />
                 )}
                 {country === "JP" && (
-                  <Area type="monotone" dataKey="total" name={t("legendNisaAssets")} stackId="net" stroke="#4FA8D8" fill="rgba(79,168,216,0.35)" strokeWidth={1.5} />
+                  <Area type="monotone" dataKey="total" name={t("legendNisaAssets")} stackId="net" stroke="#4FA8D8" fill="rgba(79,168,216,0.35)" strokeWidth={1.5} legendType="rect" />
                 )}
                 {country === "US" && (
-                  <Area type="monotone" dataKey="usInvestmentValue" name={t("legendUsInvestment")} stackId="net" stroke="#4FA8D8" fill="rgba(79,168,216,0.35)" strokeWidth={1.5} />
+                  <Area type="monotone" dataKey="usInvestmentValue" name={t("legendUsInvestment")} stackId="net" stroke="#4FA8D8" fill="rgba(79,168,216,0.35)" strokeWidth={1.5} legendType="rect" />
                 )}
-                <Area type="monotone" dataKey="goldValue" name={t("legendGoldAssets")} stackId="net" stroke="#D9A54F" fill="rgba(217,165,79,0.35)" strokeWidth={1.5} />
-                <Area type="monotone" dataKey="bankValue" name={t("legendBankDeposits")} stackId="net" stroke="#8FBF7F" fill="rgba(143,191,127,0.35)" strokeWidth={1.5} />
-                <Area type="monotone" dataKey="stockValue" name={t("legendStocks")} stackId="net" stroke="#B08FD6" fill="rgba(176,143,214,0.35)" strokeWidth={1.5} />
-                <Area type="monotone" dataKey="pensionValue" name={t("legendPrivatePension")} stackId="net" stroke="#6FA88A" fill="rgba(111,168,138,0.35)" strokeWidth={1.5} />
+                {/* 【修正】イギリス・カナダ・オーストラリアの資産が帯に描かれておらず、
+                    純資産（白い線）だけが帯の上へ飛び出していた。 */}
+                {country === "GB" && (
+                  <Area type="monotone" dataKey="gbInvestmentValue" name={t("legendGbInvestment")} stackId="net" stroke="#4FA8D8" fill="rgba(79,168,216,0.35)" strokeWidth={1.5} legendType="rect" />
+                )}
+                {country === "CA" && (
+                  <Area type="monotone" dataKey="caInvestmentValue" name={t("legendCaInvestment")} stackId="net" stroke="#4FA8D8" fill="rgba(79,168,216,0.35)" strokeWidth={1.5} legendType="rect" />
+                )}
+                {country === "AU" && (
+                  <Area type="monotone" dataKey="auInvestmentValue" name={t("legendAuInvestment")} stackId="net" stroke="#4FA8D8" fill="rgba(79,168,216,0.35)" strokeWidth={1.5} legendType="rect" />
+                )}
+                <Area type="monotone" dataKey="goldValue" name={t("legendGoldAssets")} stackId="net" stroke="#D9A54F" fill="rgba(217,165,79,0.35)" strokeWidth={1.5} legendType="rect" />
+                <Area type="monotone" dataKey="bankValue" name={t("legendBankDeposits")} stackId="net" stroke="#8FBF7F" fill="rgba(143,191,127,0.35)" strokeWidth={1.5} legendType="rect" />
+                <Area type="monotone" dataKey="stockValue" name={t("legendStocks")} stackId="net" stroke="#B08FD6" fill="rgba(176,143,214,0.35)" strokeWidth={1.5} legendType="rect" />
+                <Area type="monotone" dataKey="pensionValue" name={t("legendPrivatePension")} stackId="net" stroke="#6FA88A" fill="rgba(111,168,138,0.35)" strokeWidth={1.5} legendType="rect" />
                 {country === "JP" && (
-                  <Area type="monotone" dataKey="idecoLockedValue" name={t("legendIdecoAssets")} stackId="net" stroke="#D68FB0" fill="rgba(214,143,176,0.35)" strokeWidth={1.5} />
+                  <Area type="monotone" dataKey="idecoLockedValue" name={t("legendIdecoAssets")} stackId="net" stroke="#D68FB0" fill="rgba(214,143,176,0.35)" strokeWidth={1.5} legendType="rect" />
                 )}
                 <Line type="monotone" dataKey="netWorth" name={t("legendNetWorth")} stroke="#F2F5F6" strokeWidth={2} dot={false} />
               </ComposedChart>
