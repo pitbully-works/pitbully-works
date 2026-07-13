@@ -65,40 +65,49 @@ function growthFactor(annualPct, dt) {
  * エンジンと呼び出し側（NISA枠の事前計算など）が同じ添字を共有できるよう、
  * 決定的な純関数として公開する。
  */
-export function buildAgeSteps(currentAge, deathAge) {
+export function buildAgeSteps(currentAge, deathAge, boundaries) {
   const start = num(currentAge);
   const end = num(deathAge);
   const steps = [];
   if (end <= start + EPS) return steps;
 
-  const pushSpan = (from, to) => {
+  // 区切りたい年齢（誕生日 ＋ 各種の境界年齢）を集めて昇順に並べる。
+  // 境界がステップの途中にあると、その1ヶ月ぶんが丸ごと「境界の内側」または
+  // 「外側」と判定され、終了年齢ちょうどのはずが1ヶ月分よけいに加算されてしまう。
+  const cuts = new Set();
+  for (let a = Math.ceil(start - EPS); a <= Math.floor(end + EPS); a++) {
+    if (a > start + EPS && a < end - EPS) cuts.add(a);
+  }
+  (boundaries || []).forEach((b) => {
+    const v = Number(b);
+    if (Number.isFinite(v) && v > start + EPS && v < end - EPS) cuts.add(v);
+  });
+  const cutList = Array.from(cuts).sort((a, b) => a - b);
+
+  // 区間を、およそ1ヶ月ずつのステップに分割する
+  const pushSpan = (from, to, isBirthday) => {
     const span = to - from;
     if (span <= EPS) return;
     const n = Math.max(1, Math.round(span * 12));
     for (let i = 1; i <= n; i++) {
+      const last = i === n;
       steps.push({
         dt: span / n,
-        // ステップ終了時点の年齢。最後のステップは浮動小数の誤差を避けるため
-        // 区間の終端（誕生日 or deathAge）をそのまま使う。
-        age: i === n ? to : from + (span * i) / n,
-        snapshot: i === n,
+        // 最後のステップは浮動小数の誤差を避けるため区間の終端をそのまま使う
+        age: last ? to : from + (span * i) / n,
+        // スナップショットは誕生日（整数年齢）と deathAge のみ。境界年齢では記録しない。
+        snapshot: last && isBirthday,
       });
     }
   };
 
   let a = start;
-  // 現在年齢 → 次の誕生日（すでに誕生日ちょうどならスキップ）
-  const firstBirthday = Math.ceil(start - EPS);
-  if (firstBirthday > start + EPS && firstBirthday < end - EPS) {
-    pushSpan(a, firstBirthday);
-    a = firstBirthday;
-  }
-  // 以降は誕生日ごとに1年ずつ。最後は deathAge ちょうどで終わる。
-  while (a < end - EPS) {
-    const to = Math.min(a + 1, end);
-    pushSpan(a, to);
-    a = to;
-  }
+  cutList.forEach((cut) => {
+    const isBirthday = Math.abs(cut - Math.round(cut)) < EPS;
+    pushSpan(a, cut, isBirthday);
+    a = cut;
+  });
+  pushSpan(a, end, true); // 最終区間は deathAge ちょうどで終わり、必ず記録する
   return steps;
 }
 
@@ -151,6 +160,11 @@ export function runIntegratedPlan(p) {
     minimumDrawdown: typeof raw.minimumDrawdown === "function" ? raw.minimumDrawdown : null,
     minimumDrawdownTo: raw.minimumDrawdownTo || null,
     contributionFn: typeof raw.contributionFn === "function" ? raw.contributionFn : null,
+    // 引出時課税（%）。取り崩した金額に対してこの率で課税され、手取りが目減りするため、
+    // 必要額を賄うには「必要額 ÷ (1 − 税率)」を口座から引き出す必要がある。
+    // 非課税口座（NISA / Roth IRA / ISA / TFSA / 豪Super(60歳以降) など）は 0。
+    withdrawalTaxPct: Math.min(99, Math.max(0, num(raw.withdrawalTaxPct))),
+    drawCategory: raw.drawCategory || null,
   }));
   const poolById = new Map(pools.map((x) => [x.id, x]));
   const drawSequence = pools
@@ -185,6 +199,7 @@ export function runIntegratedPlan(p) {
   let cumulativeLoanInterest = 0;
   let cumulativeLoanPrincipal = 0;
   let idecoLumpPaid = false;
+  let cumulativeWithdrawalTax = 0;   // 引出時課税として失われた額の累計
 
   const totalAssets = () => pools.reduce((s, x) => s + x.balance, 0);
   const totalLoans = () => loans.reduce((s, l) => s + l.balance, 0);
@@ -197,10 +212,12 @@ export function runIntegratedPlan(p) {
       age: Math.floor(age + 1e-9),
       exactAge: age,
       loanBalance: clampZero(totalLoans()),
+      cumulativeWithdrawalTax,
       cumulativeUnmet,
       cumulativeUnpaidLoan,
       cumulativePremiums,
     };
+    loans.forEach((l, i) => { row[`loan_${i}`] = clampZero(l.balance); });
     const groups = { investment: 0, gold: 0, bank: 0, stock: 0, privatePension: 0, ideco: 0 };
     pools.forEach((x) => {
       groups[x.group] = (groups[x.group] || 0) + x.balance;
@@ -221,7 +238,7 @@ export function runIntegratedPlan(p) {
   };
 
   const yearly = [snapshot(currentAge)];
-  const steps = buildAgeSteps(currentAge, deathAge);
+  const steps = buildAgeSteps(currentAge, deathAge, p.boundaries);
 
   for (let i = 0; i < steps.length; i++) {
     const { dt, age, snapshot: isBirthday } = steps[i];
@@ -248,7 +265,8 @@ export function runIntegratedPlan(p) {
       if (x.contributionFn) {
         gross = clampZero(num(x.contributionFn(age, dt, i)));
       } else {
-        if (x.monthlyContribution <= 0 || ageStart > x.contribEndAge + EPS) return;
+        // 積立も [.., contribEndAge) の開区間。終了年齢ちょうどで拠出が止まる。
+        if (x.monthlyContribution <= 0 || ageStart >= x.contribEndAge - EPS) return;
         gross = x.monthlyContribution * months;
       }
       if (gross <= 0) return;
@@ -281,7 +299,9 @@ export function runIntegratedPlan(p) {
 
     // 民間年金：その期間に残高から実際に取り崩せた額だけが収入になる
     privatePensionPlans.forEach((pl) => {
-      if (ageStart < num(pl.payoutFromAge) - EPS || ageStart > num(pl.payoutToAge) + EPS) return;
+      // 受給期間は [payoutFromAge, payoutToAge) の開区間。終了年齢ちょうどに到達したら
+      // その時点で終了し、1ヶ月ぶん余計に払わない。
+      if (ageStart < num(pl.payoutFromAge) - EPS || ageStart >= num(pl.payoutToAge) - EPS) return;
       const pool = poolById.get(pl.poolId);
       if (!pool || pool.balance <= 0) return;
       const paid = Math.min(pool.balance, num(pl.monthlyPayout) * months);
@@ -320,9 +340,14 @@ export function runIntegratedPlan(p) {
           if (need <= EPS) break;
           if (pool.balance <= EPS) continue;
           if (ageStart < pool.accessAge) continue; // 引出制限中の退職口座は手を付けない
-          const take = Math.min(pool.balance, need);
-          pool.balance = clampZero(pool.balance - take);
-          need -= take;
+          // 引出時課税：手取り need を得るには gross = need / (1 - 税率) を引き出す必要がある
+          const keep = 1 - pool.withdrawalTaxPct / 100;
+          const grossWanted = keep > 0 ? need / keep : Infinity;
+          const gross = Math.min(pool.balance, grossWanted);
+          const net = gross * keep;
+          pool.balance = clampZero(pool.balance - gross);
+          cumulativeWithdrawalTax += gross - net;
+          need -= net;
         }
       }
       const shortfall = Math.max(0, need);
@@ -334,7 +359,8 @@ export function runIntegratedPlan(p) {
 
     let premium = 0;
     insurancePolicies.forEach((pol) => {
-      if (ageStart >= num(pol.premiumFromAge) - EPS && ageStart <= num(pol.premiumToAge) + EPS) {
+      // 払込期間も [premiumFromAge, premiumToAge) の開区間
+      if (ageStart >= num(pol.premiumFromAge) - EPS && ageStart < num(pol.premiumToAge) - EPS) {
         premium += num(pol.monthlyPremium) * months;
       }
     });
@@ -403,6 +429,7 @@ export function runIntegratedPlan(p) {
     cumulativePremiums,
     cumulativeLoanInterest,
     cumulativeLoanPrincipal,
+    cumulativeWithdrawalTax,
     loanPayoffAges: loans.map((l) => l.payoffAge),
     peakNetWorth: yearly.reduce((mx, r) => Math.max(mx, r.netWorth), -Infinity),
   };
