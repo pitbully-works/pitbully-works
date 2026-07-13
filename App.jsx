@@ -399,6 +399,81 @@ const TRANSLATIONS = {
     "auTotalTaxSub": "所得税＋Medicare levy＋譲渡益課税",
     "auWithdrawalLabel": "取崩し必要額（口座から）",
     "auWithdrawalSub": "退職後の収入で賄えない年間の不足額",
+    "guideButtonLabel": "この欄の説明を見る",
+    "tsumitateHoldingsGuide": "【銘柄ごとに、いま積立枠に溜まっている金額を入れてください】\n積立投資枠（年間120万円まで）で買った投資信託を、銘柄ごとに分けて入力します。金額は「取得価額（買った時の値段の合計）」ではなく、証券口座に表示されている現在の評価額を入れてください。\n下の「基準年齢」には、この金額を確認した時点のあなたの年齢を入れます。そこから現在までの分は自動で追いつき計算されます。",
+    "growthHoldingsGuide": "【銘柄ごとに、いま成長投資枠に溜まっている金額を入れてください】\n成長投資枠（年間240万円まで）で買った投資信託・株式を、銘柄ごとに分けて入力します。金額は証券口座に表示されている現在の評価額です。\n積立枠と成長枠を両方使っている場合は、それぞれ別のブロックに分けて入れてください。",
+    "tsumitateScheduleGuide": "【毎月いくら積み立てるかを入れてください（積立投資枠）】\n「何歳から何歳まで、毎月いくら」という形で登録します。金額は積立枠の合計額です。銘柄ごとの内訳は、次の「積立枠の配分」で決めます。\n年間120万円（月10万円）が上限です。上限を超えると自動的に切り詰められ、その旨が表示されます。\n収入が変わる予定があれば、期間を分けて複数登録できます（例：40歳まで月5万円、その後は月10万円）。",
+    "tsumitateAllocationGuide": "【銘柄ごとに、毎月いくら投資するかを決めてください（積立投資枠）】\n上で決めた「毎月の合計額」を、銘柄ごとに何％ずつ振り分けるかを指定します。合計が100%になるように調整してください。\n例：毎月10万円 ＋ 配分がオルカン70%・S&P500が30% → オルカンに毎月7万円、S&P500に毎月3万円。\n想定利回りも銘柄ごとに設定でき、シミュレーションに反映されます。",
+    "growthScheduleGuide": "【毎月いくら積み立てるかを入れてください（成長投資枠）】\n積立枠とは別に、成長投資枠で毎月いくら投資するかを登録します。年間240万円（月20万円）が上限です。\n成長投資枠を使わない場合は、この欄は空のままで構いません。",
+    "growthAllocationGuide": "【銘柄ごとに、毎月いくら投資するかを決めてください（成長投資枠）】\n成長投資枠の毎月の合計額を、銘柄ごとに何％ずつ振り分けるかを指定します。合計が100%になるように調整してください。",
+    "lumpSumGuide": "【一括投資する金額を入れてください（成長投資枠）】\n退職金やボーナスなどで、ある年齢にまとめて投資する予定があれば、その金額と年齢を登録します。\nここに入れた金額は成長投資枠を消費します。年間240万円・生涯1200万円の上限を超える分は自動的に切り詰められ、その旨が表示されます。\n一括投資の予定がなければ、空のままで構いません。",
+    "lumpAllocationGuide": "【一括投資の内訳を、銘柄ごとに決めてください】\n上で登録した一括投資の金額を、銘柄ごとに何％ずつ振り分けるかを指定します。合計が100%になるように調整してください。",
+    "nisaTotalGuide": "【NISA全体の合計です（自動計算・入力不要）】\n積立枠と成長枠の保有額を合計した、現在のNISA資産の評価額です。上のブロックに入力した金額から自動で計算されます。",
+    "currentAgeGuide": "【いまのあなたの年齢を入れてください】\n生年月日を入力していれば自動で計算されます。シミュレーションはこの年齢を起点に、毎月1回ずつ資産を計算していきます。",
+    "retireAgeGuide": "【何歳で仕事を辞める予定かを入れてください】\nこの年齢を境に、シミュレーションが「積立期」から「取崩期」に切り替わります。積立が止まり、生活費の取り崩しが始まります。\n実際にはまだ決めていなくても構いません。65歳などで一度入れて、あとから動かして比べてみてください。",
+    "deathAgeGuide": "【何歳まで生きる想定でシミュレーションするかを入れてください】\n資産が何歳まで持つかを見るための「計算の終わり」です。長寿リスクに備えるなら、平均寿命より長め（90〜95歳）に設定することをおすすめします。",
+    "idecoCurrentValueGuide": "【iDeCo口座の、いまの評価額を入れてください】\n運営管理機関のサイトに表示されている「資産評価額」です。拠出した元本ではなく、運用益を含んだ現在の金額を入れてください。",
+    "idecoPrincipalGuide": "【これまでiDeCoに拠出した元本の合計を入れてください】\n受取時の税金（退職所得控除）の計算に使います。運用益は含めず、実際に払い込んだ金額の累計を入れてください。",
+    "idecoMonthlyContributionGuide": "【毎月いくらiDeCoに拠出するかを入れてください】\n拠出限度額は職業や企業年金の有無で変わります（会社員：月12,000〜23,000円、自営業：月68,000円など）。ご自身の限度額は運営管理機関でご確認ください。\n拠出額は全額が所得控除になり、下の「節税シミュレーション」に反映されます。",
+    "idecoPayoutYearsGuide": "【年金として何年に分けて受け取るかを入れてください】\n5年〜20年の範囲で選べるのが一般的です。年数を長くすると1年あたりの受取額は減りますが、公的年金等控除の枠内に収まりやすく、税負担を抑えられる場合があります。",
+    "idecoPayoutReturnGuide": "【受取期間中も運用を続ける場合の、想定利回りを入れてください】\n年金として分割で受け取る間も、残りの資産は運用され続けます。安全運用に切り替えるなら0〜1%、株式のまま持つなら3〜5%が目安です。",
+    "idecoLumpPortionGuide": "【一時金と年金を併用する場合、何％を一時金で受け取るかを入れてください】\n例：50%と入れると、半分を一時金でまとめて受け取り、残り半分を年金として分割で受け取ります。\n一時金は退職所得控除、年金は公的年金等控除の対象になるため、併用すると税負担を抑えられる場合があります。",
+    "annualIncomeGuide": "【現在の年収（額面）を入れてください】\niDeCo拠出による節税額を計算するために使います。手取りではなく、源泉徴収票の「支払金額」を入れてください。\nこの金額から所得税・住民税の限界税率を推定し、拠出額 × 税率で年間の節税額を出します。",
+    "livingCostGuide": "【退職後、毎月いくらで暮らす想定かを入れてください】\n家賃・食費・光熱費・通信費・趣味など、生活に必要な支出の合計です。医療費は別のセクション（05）で入れるので、ここには含めません。\n総務省の家計調査では、65歳以上の夫婦のみ世帯で月25〜28万円程度が目安です。",
+    "health60sGuide": "【60代の年間医療費（自己負担分）を入れてください】\n公的医療保険でカバーされない、実際に自分で払う金額です。窓口負担・薬代・健診・歯科などの合計を、年額で入れてください。\n目安がなければ、年10〜15万円から始めて調整してください。",
+    "health70sGuide": "【70代の年間医療費（自己負担分）を入れてください】\n70歳以降は窓口負担が原則2割（現役並み所得者は3割）に下がりますが、受診回数が増えるため総額は上がる傾向があります。",
+    "health80sGuide": "【80代以降の年間医療費（自己負担分）を入れてください】\n75歳以降は後期高齢者医療制度で原則1割負担になりますが、入院や介護に関わる費用が増えます。介護費用を見込むなら多めに設定してください。",
+    "inheritanceTargetGuide": "【子や配偶者に、いくら遺したいかを入れてください】\nシミュレーションの最後（死亡想定年齢）に、この金額が残っているかを確認できます。\n遺したい金額がなければ0のままで構いません。その場合は「資産を使い切る」前提の計算になります。",
+    "goldCurrentHoldingGuide": "【いま保有している金（きん）の重さを、グラム単位で入れてください】\n地金・純金積立・金貨などの合計です。金ETFや投資信託は、このセクションではなく「個別株」や「NISA」の方で管理してください。",
+    "goldPriceRefGuide": "【金1グラムあたりの現在価格を入れてください】\n田中貴金属などの小売価格（税込）が目安です。この価格を起点に、下の想定上昇率で将来の価格を計算します。",
+    "goldGrowthGuide": "【金価格が年何％上昇すると想定するかを入れてください】\n過去20年の金価格は年平均8〜10%程度上昇していますが、変動は大きく、下落する年もあります。控えめに見るなら2〜3%が無難です。",
+    "goldMonthlyContributionGuide": "【毎月いくら金を買い増すかを入れてください（純金積立）】\n金額を入れると、その時々の価格で自動的にグラム数に換算して積み上がります。買い増さない場合は0のままで構いません。",
+    "usModifiedAGIGuide": "【調整後総所得（MAGI）を入れてください】\nRoth IRAの拠出可否や、Traditional IRAの控除可否を判定するために使います。ざっくりとは、税引前の年収から一部の控除を戻した金額です。\n正確な数字が分からなければ、まずは年収の額面を入れて構いません。",
+    "usCurrentBalanceGuide": "【この口座の、いまの残高を入れてください】\n証券会社・運営管理機関のサイトに表示されている現在の評価額です。拠出した元本ではなく、運用益を含んだ金額を入れてください。",
+    "usAnnualContributionGuide": "【この口座に、年間いくら拠出するかを入れてください】\n401(k)は年24,500ドル（50歳以上は+8,000ドル、60〜63歳は+11,250ドル）、IRAは年7,500ドル（50歳以上は+1,100ドル）が上限です。\n上限を超えると警告が出ます。",
+    "usStateTaxRateGuide": "【お住まいの州の所得税率を入れてください】\n州によって0%（テキサス・フロリダなど）から13%超（カリフォルニア）まで大きく異なります。州税は自動計算していないため、ご自身で入力してください。",
+    "usCapitalGainGuide": "【年間の譲渡益の見込額を入れてください】\n課税口座（Brokerage）で売却して得る利益の見込みです。401(k)やIRAの中の利益は課税されないので、含めません。",
+    "usPiaGuide": "【Social Securityの月額受給見込額を入れてください】\nssa.gov の「my Social Security」で確認できる、満額支給開始年齢（67歳）時点の見込額（PIA）です。\n受給開始年齢を早める・遅らせると、この金額から自動的に増減が計算されます。",
+    "usExpensesMonthlyGuide": "【退職後、毎月いくらで暮らす想定かを入れてください】\n生活に必要な支出の合計です。医療費は別のセクションで入れるので、ここには含めません。",
+    "usHealthInsuranceGuide": "【民間医療保険の月額保険料を入れてください】\nMedicare Part B の保険料は所得に応じて自動計算されるので、ここには含めません。Medigap や Part D、退職前の民間保険などを入れてください。",
+    "usOutOfPocketGuide": "【年間の自己負担医療費を入れてください】\n保険でカバーされない、実際に自分で払う金額です。deductible・copay・処方薬・歯科・眼科などの合計を年額で入れてください。",
+    "gbCurrentValueGuide": "【この口座の、いまの残高を入れてください】\nプロバイダーのサイトに表示されている現在の評価額です。拠出した元本ではなく、運用益を含んだ金額を入れてください。",
+    "gbAnnualContributionGuide": "【この口座に、年間いくら拠出するかを入れてください】\nISA（Stocks & Shares + Cash 合算）は年£20,000、年金（SIPP + 職域年金）は年£60,000が上限です。上限を超えると警告が出ます。",
+    "gbExpectedReturnGuide": "【この口座の、想定年利回りを入れてください】\n株式中心なら5〜7%、債券・現金中心なら1〜3%が目安です。口座ごとに別々に設定できます。",
+    "gbContributionEndAgeGuide": "【この口座への積立を、何歳でやめるかを入れてください】\n通常は退職年齢と同じにしますが、口座ごとに別々に設定できます（例：現金貯蓄だけ早めにやめる）。",
+    "gbAnnualIncomeGuide": "【年間の総所得を入れてください】\n給与・年金などの合計（税引前）です。Income Tax、Dividend Tax、CGT、年金拠出の税軽減の判定すべてに使われます。",
+    "gbAdjustedIncomeGuide": "【Adjusted Incomeを入れてください（分からなければ空欄で構いません）】\n年金拠出上限（Annual Allowance）のテーパリング判定に使う所得です。£260,000を超えると拠出上限が減額されます。\n空欄なら、上の年間総所得と同じ額として計算します。",
+    "gbDividendIncomeGuide": "【年間の配当収入を入れてください】\nISAや年金の「外側」で受け取る配当のみです。ISA内の配当は非課税なので含めません。\n年£500までは非課税枠があります。",
+    "gbCapitalGainGuide": "【年間の譲渡益の見込額を入れてください】\nISAや年金の「外側」（General Investment Account など）で売却して得る利益です。ISA内の利益は非課税なので含めません。\n年£3,000までは非課税枠があります。",
+    "gbStatePensionEstimateGuide": "【State Pensionの年間受給見込額を入れてください】\nGOV.UKの「Check your State Pension forecast」で確認できます。National Insuranceの納付記録によって金額が変わるため、必ずご自身の見込額で上書きしてください。\n初期値は満額（2026/27年度）を参考値として入れてあります。",
+    "gbOverlapYearsGuide": "【State Pension受給開始後も収入が続く年数を入れてください】\n受給を開始したあとも給与などの収入が続く場合、その年数を入れます。該当しなければ0で構いません。",
+    "gbAdditionalPensionGuide": "【職域年金など、追加の年金収入を年額で入れてください】\nState Pension以外に受け取る予定の年金（確定給付年金など）があれば入れてください。SIPPや職域年金の「取り崩し」はセクション02で計算されるので、ここには含めません。",
+    "gbExpensesMonthlyGuide": "【退職後、毎月いくらで暮らす想定かを入れてください】\n生活に必要な支出の合計です。医療費は別のセクションで入れるので、ここには含めません。",
+    "gbHealthcareGuide": "【NHSでカバーされない、自己負担の医療費を入れてください】\n基本的な医療はNHSが無料でカバーします。ここには、民間保険料・歯科・処方箋料・眼科・介護など、実際に自分で払う金額を入れてください。",
+    "caCurrentValueGuide": "【この口座の、いまの残高を入れてください】\n金融機関のサイトに表示されている現在の評価額です。拠出した元本ではなく、運用益を含んだ金額を入れてください。",
+    "caAnnualContributionGuide": "【この口座に、年間いくら拠出するかを入れてください】\nTFSAは年C$7,000、RRSPは「前年の稼得所得の18%」と「C$33,810」の低い方が上限です。上限を超えると警告が出ます。",
+    "caAnnualIncomeGuide": "【年間の総所得を入れてください】\n給与・年金などの合計です。連邦所得税、譲渡益課税、RRSP拠出の節税額、OASのクローバック判定すべてに使われます。",
+    "caPriorEarnedIncomeGuide": "【前年の稼得所得を入れてください（分からなければ空欄で構いません）】\nRRSPの拠出枠（前年所得の18%）を計算するために使います。空欄なら、上の年間総所得と同じ額として計算します。\n正確な枠は、CRAの Notice of Assessment に記載されています。",
+    "caCapitalGainGuide": "【年間の譲渡益の見込額を入れてください】\nTFSAやRRSPの「外側」（非登録口座）で売却して得る利益です。TFSA内の利益は完全非課税なので含めません。\nカナダでは利益の50%が課税所得に算入されます。",
+    "caCppEstimateGuide": "【65歳時点のCPP年間受給見込額を入れてください】\nMy Service Canada Account で確認できます。拠出履歴によって金額が大きく変わるため、必ずご自身の見込額で上書きしてください。\n初期値は満額（2026年）を参考値として入れてあります。受給開始年齢を60〜70歳で変えると、自動的に増減が計算されます。",
+    "caOasResidenceGuide": "【18歳以降、カナダに住んだ年数を入れてください】\n40年で満額、10年未満だと受給資格がありません。20年なら満額の50%になります。\n生まれてからずっとカナダに住んでいる場合は40を入れてください。",
+    "caAdditionalPensionGuide": "【職域年金など、追加の年金収入を年額で入れてください】\nCPP・OAS以外に受け取る予定の年金があれば入れてください。RRSPやTFSAの「取り崩し」はセクション02で計算されるので、ここには含めません。",
+    "caExpensesMonthlyGuide": "【退職後、毎月いくらで暮らす想定かを入れてください】\n生活に必要な支出の合計です。医療費は別のセクションで入れるので、ここには含めません。",
+    "caHealthcareGuide": "【州の公的医療保険でカバーされない、自己負担の医療費を入れてください】\n基本的な医療は州の公的保険がカバーします。ここには、処方薬・歯科・視力・民間保険料・介護など、実際に自分で払う金額を入れてください。州によって補助の範囲が大きく異なります。",
+    "auCurrentValueGuide": "【この口座の、いまの残高を入れてください】\nSuper基金・証券会社のサイトに表示されている現在の評価額です。拠出した元本ではなく、運用益を含んだ金額を入れてください。",
+    "auAnnualContributionGuide": "【この口座に、年間いくら拠出するかを入れてください】\nSuperの欄は「税引後拠出（non-concessional）」を入れます。雇用主のSG拠出と給与犠牲は、上の「年間給与」「給与犠牲」から自動計算されるので、ここには含めません。",
+    "auAnnualSalaryGuide": "【年間給与（税引前）を入れてください】\n雇用主のSG拠出額（給与の12%）と、所得税・Medicare levy の計算に使います。\nSG拠出の対象収入には年A$270,830の上限があります。",
+    "auSalarySacrificeGuide": "【給与犠牲など、任意の税引前拠出を年額で入れてください】\n給与から天引きしてSuperに入れる分です。所得税（最高47%）ではなく15%の課税で済むため、節税になります。\n雇用主のSG拠出と合わせて年A$32,500が上限です。超えると追加課税があります。",
+    "auCapitalGainGuide": "【年間の譲渡益の見込額を入れてください】\nSuperの「外側」（投資口座）で売却して得る利益です。Super内の利益は別に課税されるので含めません。\n12か月を超えて保有した資産は、利益の50%が割引されます。",
+    "auOtherIncomeGuide": "【年金以外の年間収入を入れてください】\nAge Pensionの「所得テスト」で評価される収入です。賃料収入・配当・パート収入などが含まれます。\nこの金額が大きいほど、Age Pensionの受給額が減ります（無影響枠を超えた1ドルにつき50セント減額）。",
+    "auExpensesMonthlyGuide": "【退職後、毎月いくらで暮らす想定かを入れてください】\n生活に必要な支出の合計です。医療費は別のセクションで入れるので、ここには含めません。\nASFAの基準では、快適な老後（単身）に年A$54,840程度が目安とされています。",
+    "auHealthcareGuide": "【Medicareでカバーされない、自己負担の医療費を入れてください】\n基本的な医療はMedicareがカバーします。ここには、診療費の差額（gap）・民間保険料・薬剤費・歯科・視力・介護など、実際に自分で払う金額を入れてください。",
+    "bankGuide": "【銀行口座・現金の残高を入れてください】\n普通預金・定期預金・タンス預金などの合計です。口座ごとに分けて登録でき、それぞれに毎月の積立額と金利を設定できます。\n投資に回していない「守りのお金」をここに入れてください。",
+    "stockGuide": "【NISA以外で保有している個別株の銘柄を登録してください】\n特定口座・一般口座で持っている株式です。NISA口座内の株はセクション02で管理するので、ここには含めません。\n銘柄名を入れると想定利回りが自動で提案されますが、自由に変更できます。",
+    "loanGuide": "【住宅ローンなどの借入を登録してください】\n残高・金利・毎月の返済額を入れると、完済までのシミュレーションができます。\n返済額が利息を下回っていると残高が減らないため、その場合は警告が出ます。",
+    "insuranceGuide": "【生命保険・医療保険の保険料を登録してください】\n払込期間と月額保険料を入れると、生涯で払う保険料の総額が計算され、資産から差し引かれます。\n保障内容はメモとして残せますが、シミュレーションには反映されません。",
+    "privatePensionGuide": "【企業年金・個人年金保険などを登録してください】\n拠出期間と月額拠出額、受取期間と月額受取額を入れると、資産の推移に反映されます。\niDeCoはセクション03で別に管理するので、ここには含めません。",
+    "pensionSourcesGuide": "【公的年金の受給見込額を入れてください】\n「ねんきん定期便」や「ねんきんネット」で確認できる、65歳時点の年間受給見込額です。老齢基礎年金と老齢厚生年金の合計を入れてください。\n複数の年金（配偶者分など）がある場合は、それぞれ分けて登録できます。",
     "advancedMedicalLabel": "先進医療（円）",
     "ageYM": "{years}歳{months}ヶ月",
     "ageYMD": "{years}歳{months}ヶ月{days}日",
@@ -1104,6 +1179,81 @@ const TRANSLATIONS = {
     "auTotalTaxSub": "Income tax + Medicare levy + capital gains tax",
     "auWithdrawalLabel": "Withdrawal Needed from Your Accounts",
     "auWithdrawalSub": "Annual shortfall not covered by your retirement income",
+    "guideButtonLabel": "Show what to enter here",
+    "tsumitateHoldingsGuide": "[Enter what you currently hold in the accumulation quota, fund by fund]\nList the funds you bought inside the accumulation quota (up to 1.2M yen a year), one row per fund. Enter the current market value shown in your brokerage account, not the price you originally paid.\nIn the 'as of age' field below, enter your age when you checked these figures. The app then catches the balance up to today automatically.",
+    "growthHoldingsGuide": "[Enter what you currently hold in the growth quota, fund by fund]\nList the funds and shares you bought inside the growth quota (up to 2.4M yen a year), one row per fund. Enter the current market value shown in your brokerage account.\nIf you use both quotas, keep them in their separate blocks.",
+    "tsumitateScheduleGuide": "[Enter how much you invest each month in the accumulation quota]\nRegister it as 'from age X to age Y, this much per month'. This is the total for the quota — you split it between funds in the next block.\nThe cap is 1.2M yen a year (100k a month). Anything above the cap is trimmed automatically and flagged.\nYou can register several periods if your income will change (for example 50k a month until 40, then 100k).",
+    "tsumitateAllocationGuide": "[Decide how much of your monthly investment goes into each fund — accumulation quota]\nSplit the monthly total above between your funds as percentages. They should add up to 100%.\nExample: 100k a month, split 70% global equity and 30% S&P 500, means 70k into global equity and 30k into the S&P 500 every month.\nYou can also set an expected return per fund, which feeds the projection.",
+    "growthScheduleGuide": "[Enter how much you invest each month in the growth quota]\nSeparate from the accumulation quota, register how much you invest monthly in the growth quota. The cap is 2.4M yen a year (200k a month).\nIf you do not use the growth quota, leave this empty.",
+    "growthAllocationGuide": "[Decide how much of your monthly investment goes into each fund — growth quota]\nSplit the monthly total for the growth quota between your funds as percentages. They should add up to 100%.",
+    "lumpSumGuide": "[Enter any lump-sum investments — growth quota]\nIf you plan to invest a lump sum at a certain age (from a retirement payout or bonus, for example), register the amount and the age.\nThis consumes your growth quota. Anything above the 2.4M annual or 12M lifetime cap is trimmed automatically and flagged.\nIf you have no lump sum planned, leave this empty.",
+    "lumpAllocationGuide": "[Decide how the lump sum is split between funds]\nSplit the lump sum registered above between your funds as percentages. They should add up to 100%.",
+    "nisaTotalGuide": "[This is your NISA total — calculated automatically, nothing to enter]\nThe combined current value of your accumulation and growth holdings, worked out from the amounts you entered in the blocks above.",
+    "currentAgeGuide": "[Enter your age today]\nIf you entered your date of birth, this is filled in automatically. The projection starts from this age and steps forward one month at a time.",
+    "retireAgeGuide": "[Enter the age you plan to stop working]\nAt this age the projection switches from the accumulation phase to the drawdown phase: contributions stop and you begin living off your assets.\nYou do not have to have decided. Put 65 in, then move it around to compare.",
+    "deathAgeGuide": "[Enter how long the projection should run]\nThis is where the calculation ends, so you can see whether your money lasts. To be safe against living a long time, set it beyond average life expectancy — 90 to 95 is a common choice.",
+    "idecoCurrentValueGuide": "[Enter the current value of your iDeCo account]\nThis is the balance shown by your provider. Enter the current market value including growth, not the total you have paid in.",
+    "idecoPrincipalGuide": "[Enter the total you have paid into iDeCo so far]\nThis is used for the retirement income deduction when you withdraw. Enter only the contributions, excluding investment growth.",
+    "idecoMonthlyContributionGuide": "[Enter how much you pay into iDeCo each month]\nYour cap depends on your job and whether you have a workplace pension (typically 12,000 to 23,000 yen a month for employees, 68,000 for the self-employed). Check your own cap with your provider.\nContributions are fully deductible, and this feeds the tax-saving estimate below.",
+    "idecoPayoutYearsGuide": "[Enter over how many years you will draw it as a pension]\nUsually between 5 and 20 years. A longer period means a smaller annual payment, which can keep you inside the public pension deduction and reduce your tax.",
+    "idecoPayoutReturnGuide": "[Enter the expected return while you are drawing it down]\nYour remaining balance keeps being invested while you draw it. Use 0-1% if you switch to cash, or 3-5% if you stay in equities.",
+    "idecoLumpPortionGuide": "[If you take both, enter what percentage you take as a lump sum]\nFor example, 50% means half as a lump sum and half drawn as a pension.\nThe lump sum uses the retirement income deduction and the pension uses the public pension deduction, so splitting can reduce your total tax.",
+    "annualIncomeGuide": "[Enter your current gross annual income]\nUsed to estimate the tax you save through iDeCo. Enter the gross figure from your withholding slip, not your take-home pay.\nThe app estimates your marginal rate from this and multiplies it by your contributions.",
+    "livingCostGuide": "[Enter what you expect to spend each month in retirement]\nRent, food, utilities, phone, hobbies and so on. Do not include healthcare — that goes in section 05.\nFor reference, Japanese government surveys put a retired couple at around 250,000 to 280,000 yen a month.",
+    "health60sGuide": "[Enter your annual out-of-pocket healthcare costs in your 60s]\nThis is what you actually pay yourself, on top of public insurance: co-payments, medicines, check-ups, dental work.\nIf you have no idea, start with 100,000 to 150,000 yen a year and adjust.",
+    "health70sGuide": "[Enter your annual out-of-pocket healthcare costs in your 70s]\nCo-payments drop to 20% from age 70 (30% for higher earners), but people visit more often, so the total usually rises.",
+    "health80sGuide": "[Enter your annual out-of-pocket healthcare costs from 80]\nFrom 75 the co-payment is usually 10%, but hospital stays and care costs increase. Set this higher if you want to allow for long-term care.",
+    "inheritanceTargetGuide": "[Enter how much you want to leave behind]\nAt the end of the projection you can check whether this much is still there.\nIf you have no target, leave it at zero — the projection then assumes you spend it all.",
+    "goldCurrentHoldingGuide": "[Enter how many grams of gold you hold]\nBullion, gold accumulation plans and coins. Gold ETFs and funds belong under shares or NISA instead.",
+    "goldPriceRefGuide": "[Enter the current price of gold per gram]\nUse the retail price from a dealer. Future prices are projected from here using the growth rate below.",
+    "goldGrowthGuide": "[Enter how fast you expect gold to rise each year]\nGold has risen around 8-10% a year over the past two decades, but it is volatile and does fall. Two or three percent is a conservative choice.",
+    "goldMonthlyContributionGuide": "[Enter how much gold you buy each month]\nEnter an amount and it is converted into grams at whatever the price is that month. Leave it at zero if you are not adding to it.",
+    "usModifiedAGIGuide": "[Enter your Modified Adjusted Gross Income]\nUsed to work out whether you can contribute to a Roth IRA and whether your Traditional IRA contribution is deductible.\nIf you are not sure of the exact figure, start with your gross salary.",
+    "usCurrentBalanceGuide": "[Enter the current balance of this account]\nThe value shown by your provider. Enter the current market value including growth, not the total you have paid in.",
+    "usAnnualContributionGuide": "[Enter how much you contribute to this account each year]\n401(k): $24,500 (plus $8,000 from 50, or $11,250 at 60-63). IRA: $7,500 (plus $1,100 from 50).\nYou will see a warning if you go over.",
+    "usStateTaxRateGuide": "[Enter your state income tax rate]\nThis varies from 0% (Texas, Florida) to over 13% (California). State tax is not calculated automatically, so please enter it yourself.",
+    "usCapitalGainGuide": "[Enter your expected annual capital gains]\nGains you expect to realise in your taxable brokerage account. Gains inside a 401(k) or IRA are not taxed, so leave them out.",
+    "usPiaGuide": "[Enter your monthly Social Security benefit]\nThis is the amount at full retirement age (67), which you can find in your my Social Security account at ssa.gov.\nClaiming earlier or later adjusts this figure automatically.",
+    "usExpensesMonthlyGuide": "[Enter what you expect to spend each month in retirement]\nYour total living costs. Healthcare goes in a separate section, so leave it out here.",
+    "usHealthInsuranceGuide": "[Enter your monthly private health insurance premium]\nMedicare Part B is calculated automatically from your income, so do not include it. Enter Medigap, Part D, or pre-retirement private cover here.",
+    "usOutOfPocketGuide": "[Enter your annual out-of-pocket healthcare costs]\nWhat you pay yourself on top of insurance: deductibles, co-pays, prescriptions, dental and vision.",
+    "gbCurrentValueGuide": "[Enter the current balance of this account]\nThe value shown by your provider. Enter the current market value including growth, not the total you have paid in.",
+    "gbAnnualContributionGuide": "[Enter how much you contribute to this account each year]\nISAs are capped at £20,000 a year across all of them, and pensions at £60,000 a year. You will see a warning if you go over.",
+    "gbExpectedReturnGuide": "[Enter the expected annual return for this account]\nAround 5-7% for a mostly equity portfolio, 1-3% for cash and bonds. You can set this separately for each account.",
+    "gbContributionEndAgeGuide": "[Enter the age you stop paying into this account]\nUsually the same as your retirement age, but you can set it separately for each account.",
+    "gbAnnualIncomeGuide": "[Enter your total annual income]\nSalary, pension and so on, before tax. This drives Income Tax, Dividend Tax, CGT and your pension tax relief.",
+    "gbAdjustedIncomeGuide": "[Enter your adjusted income (leave blank if unsure)]\nUsed to work out whether your pension annual allowance is tapered. Above £260,000 the allowance starts to fall.\nIf you leave it blank, your total income above is used instead.",
+    "gbDividendIncomeGuide": "[Enter your annual dividend income]\nOnly dividends received outside ISAs and pensions. Dividends inside an ISA are tax-free, so leave them out.\nThe first £500 is tax-free.",
+    "gbCapitalGainGuide": "[Enter your expected annual capital gains]\nGains realised outside ISAs and pensions (in a General Investment Account, for example). Gains inside an ISA are tax-free.\nThe first £3,000 is tax-free.",
+    "gbStatePensionEstimateGuide": "[Enter your annual State Pension forecast]\nYou can find this with the GOV.UK State Pension forecast. What you receive depends on your National Insurance record, so please replace the default with your own figure.\nThe default shown is the full rate for 2026/27, for reference.",
+    "gbOverlapYearsGuide": "[Enter how many years you keep earning after your State Pension starts]\nIf you carry on working past your State Pension age, enter the number of years. Enter 0 if that does not apply.",
+    "gbAdditionalPensionGuide": "[Enter any other annual pension income]\nWorkplace defined benefit pensions and so on. Drawdown from your SIPP or workplace pension is already calculated in section 02, so do not include it here.",
+    "gbExpensesMonthlyGuide": "[Enter what you expect to spend each month in retirement]\nYour total living costs. Healthcare goes in a separate section, so leave it out here.",
+    "gbHealthcareGuide": "[Enter the healthcare costs the NHS does not cover]\nCore healthcare is free on the NHS. Enter only what you pay yourself: private cover, dental, prescriptions, optical and long-term care.",
+    "caCurrentValueGuide": "[Enter the current balance of this account]\nThe value shown by your institution. Enter the current market value including growth, not the total you have paid in.",
+    "caAnnualContributionGuide": "[Enter how much you contribute to this account each year]\nTFSA: C$7,000. RRSP: the lesser of 18% of last year's earned income and C$33,810. You will see a warning if you go over.",
+    "caAnnualIncomeGuide": "[Enter your total annual income]\nSalary, pension and so on. This drives federal tax, capital gains, your RRSP tax saving and the OAS clawback.",
+    "caPriorEarnedIncomeGuide": "[Enter last year's earned income (leave blank if unsure)]\nUsed to work out your RRSP room (18% of it). If you leave it blank, your total income above is used instead.\nYour exact room is on your CRA Notice of Assessment.",
+    "caCapitalGainGuide": "[Enter your expected annual capital gains]\nGains realised outside your TFSA and RRSP, in a non-registered account. Gains inside a TFSA are entirely tax-free.\nIn Canada, 50% of a gain is included in your taxable income.",
+    "caCppEstimateGuide": "[Enter your annual CPP at 65]\nYou can find this in My Service Canada Account. It depends heavily on your contribution history, so please replace the default with your own figure.\nThe default is the 2026 maximum, for reference. Starting between 60 and 70 adjusts it automatically.",
+    "caOasResidenceGuide": "[Enter how many years you have lived in Canada since 18]\n40 years gives the full amount; below 10 years there is no entitlement. 20 years gives you half.\nIf you have lived in Canada all your life, enter 40.",
+    "caAdditionalPensionGuide": "[Enter any other annual pension income]\nAnything beyond CPP and OAS. Drawdown from your RRSP and TFSA is already calculated in section 02, so do not include it here.",
+    "caExpensesMonthlyGuide": "[Enter what you expect to spend each month in retirement]\nYour total living costs. Healthcare goes in a separate section, so leave it out here.",
+    "caHealthcareGuide": "[Enter the healthcare costs your province does not cover]\nCore healthcare is covered provincially. Enter only what you pay yourself: prescriptions, dental, vision, private cover and long-term care. Coverage varies a lot by province.",
+    "auCurrentValueGuide": "[Enter the current balance of this account]\nThe value shown by your super fund or broker. Enter the current market value including growth, not the total you have paid in.",
+    "auAnnualContributionGuide": "[Enter how much you contribute to this account each year]\nFor super, enter after-tax (non-concessional) contributions only. Employer SG and salary sacrifice are worked out from your salary above, so do not include them here.",
+    "auAnnualSalaryGuide": "[Enter your annual salary before tax]\nUsed to work out your employer's SG contribution (12% of salary) and your income tax and Medicare levy.\nSG is only paid on earnings up to A$270,830 a year.",
+    "auSalarySacrificeGuide": "[Enter your salary sacrifice and other concessional contributions]\nMoney taken from your pay before tax and put into super. It is taxed at 15% instead of your marginal rate (up to 47%), which is where the saving comes from.\nTogether with employer SG, the cap is A$32,500 a year. Going over attracts extra tax.",
+    "auCapitalGainGuide": "[Enter your expected annual capital gains]\nGains realised outside super, in your investment account. Gains inside super are taxed separately, so leave them out.\nAssets held over 12 months get a 50% discount.",
+    "auOtherIncomeGuide": "[Enter your other annual income]\nIncome assessed under the Age Pension income test: rent, dividends, part-time work and so on.\nThe more you have, the less Age Pension you receive — 50c less for every dollar above the free area.",
+    "auExpensesMonthlyGuide": "[Enter what you expect to spend each month in retirement]\nYour total living costs. Healthcare goes in a separate section, so leave it out here.\nASFA puts a comfortable retirement for a single person at around A$54,840 a year.",
+    "auHealthcareGuide": "[Enter the healthcare costs Medicare does not cover]\nCore healthcare is covered by Medicare. Enter only what you pay yourself: gap payments, private cover, pharmaceuticals, dental, optical and aged care.",
+    "bankGuide": "[Enter your bank and cash balances]\nSavings accounts, term deposits and cash. You can add several accounts, each with its own monthly deposit and interest rate.\nThis is the money you are not investing.",
+    "stockGuide": "[Add the individual shares you hold outside NISA]\nShares in a taxable account. Shares inside your NISA belong in section 02, so do not include them here.\nEntering a name suggests an expected return, which you can then change.",
+    "loanGuide": "[Add your mortgage and other loans]\nEnter the balance, the interest rate and your monthly payment, and the app projects it through to being paid off.\nIf your payment is smaller than the interest, the balance never falls, and you will be warned.",
+    "insuranceGuide": "[Add your life and health insurance premiums]\nEnter the payment period and the monthly premium, and the total you will pay over your lifetime is deducted from your assets.\nCover details are kept as a note but do not feed the projection.",
+    "privatePensionGuide": "[Add workplace and private pension plans]\nEnter the contribution period and amount, and the payout period and amount, and it feeds the asset projection.\niDeCo is handled separately in section 03, so do not include it here.",
+    "pensionSourcesGuide": "[Enter your public pension forecast]\nThe annual amount at 65, from your pension statement or the online pension service. Include both the basic and the earnings-related portions.\nYou can register several pensions separately (for a spouse, for example).",
     "advancedMedicalLabel": "Advanced medical care",
     "ageYM": "{years}y {months}m",
     "ageYMD": "{years} years {months} months {days} days",
@@ -4013,10 +4163,82 @@ function defaultWatchlistFor(country) {
 }
 
 // ---------- UI atoms ----------
-function Field({ label, unit, value, onChange, step = 1, min = 0, max, mono = true, disabled = false }) {
+// ---------- 入力ガイド（「?」ボタンを押すと、何を入力する欄なのかが開く） ----------
+// 金額の入力欄・入力ブロックの見出しの隣に置き、迷わず入力できるようにする。
+// 計算やデータ構造には一切関与しない、表示専用のUI部品。
+function GuideButton({ open, onToggle }) {
+  const { t } = useContext(LocaleContext);
+  return (
+    <button
+      type="button"
+      className={`guide-btn ${open ? "guide-btn-open" : ""}`}
+      aria-label={t("guideButtonLabel")}
+      aria-expanded={open}
+      title={t("guideButtonLabel")}
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggle(); }}
+    >
+      ?
+    </button>
+  );
+}
+
+// 入力ブロックの見出し（例：「積立枠の保有銘柄」）にガイドを付けるためのラッパー。
+// <GuideLabel guide={t("...Guide")}>{t("...Label")}</GuideLabel> の形で使う。
+// セクション見出しの直下に置く、単独のガイドボタン（テーブル形式のセクション用）
+function SectionGuide({ guide }) {
+  const { t } = useContext(LocaleContext);
+  const [open, setOpen] = useState(false);
+  if (!guide) return null;
+  return (
+    <div style={{ marginBottom: 10, marginTop: -4 }}>
+      <button
+        type="button"
+        className={`section-guide-btn ${open ? "guide-btn-open" : ""}`}
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span className="guide-btn" aria-hidden="true">?</span>
+        <span>{t("guideButtonLabel")}</span>
+      </button>
+      {open && <div className="guide-text">{guide}</div>}
+    </div>
+  );
+}
+
+function GuideLabel({ children, guide, style }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ marginBottom: 6, ...(style || {}) }}>
+      <div className="field-label-row">
+        <span className="field-label">{children}</span>
+        {guide && <GuideButton open={open} onToggle={() => setOpen((v) => !v)} />}
+      </div>
+      {guide && open && <div className="guide-text">{guide}</div>}
+    </div>
+  );
+}
+
+// NISA合計の見出し（span内に置くため、GuideLabelとは別に用意した専用のガイド）
+function NisaTotalGuide() {
+  const { t } = useContext(LocaleContext);
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <GuideButton open={open} onToggle={() => setOpen((v) => !v)} />
+      {open && <span className="guide-text">{t("nisaTotalGuide")}</span>}
+    </>
+  );
+}
+
+function Field({ label, unit, value, onChange, step = 1, min = 0, max, mono = true, disabled = false, guide }) {
+  const [showGuide, setShowGuide] = useState(false);
   return (
     <label className="field">
-      <span className="field-label">{label}</span>
+      <span className="field-label-row">
+        <span className="field-label">{label}</span>
+        {guide && <GuideButton open={showGuide} onToggle={() => setShowGuide((v) => !v)} />}
+      </span>
+      {guide && showGuide && <span className="guide-text">{guide}</span>}
       <div className="field-input-wrap">
         <input
           type="number"
@@ -4038,8 +4260,9 @@ function Field({ label, unit, value, onChange, step = 1, min = 0, max, mono = tr
 // 年齢の「歳＋ヶ月」表示は、言語設定を必要とするためコンポーネント内のformatAge（下記）で行う。
 
 // 年齢を「歳」と「ヶ月」の2つの入力欄に分けて、小数の年齢値として扱う
-function AgeField({ label, value, onChange, disabled }) {
+function AgeField({ label, value, onChange, disabled, guide }) {
   const { t } = useContext(LocaleContext);
+  const [showGuide, setShowGuide] = useState(false);
   const years = Math.floor(value + 1e-9);
   const months = Math.round((value - years) * 12);
   const commit = (y, m) => {
@@ -4050,7 +4273,11 @@ function AgeField({ label, value, onChange, disabled }) {
   };
   return (
     <label className="field">
-      <span className="field-label">{label}</span>
+      <span className="field-label-row">
+        <span className="field-label">{label}</span>
+        {guide && <GuideButton open={showGuide} onToggle={() => setShowGuide((v) => !v)} />}
+      </span>
+      {guide && showGuide && <span className="guide-text">{guide}</span>}
       <div style={{ display: "flex", gap: 6 }}>
         <div className="field-input-wrap" style={{ flex: 1 }}>
           <input type="number" className="mono" value={years} disabled={disabled} onChange={(e) => commit(Number(e.target.value), months)} onFocus={(e) => e.target.select()} />
@@ -4305,6 +4532,7 @@ function USInvestmentAccountsPanel({ usInvestment, onUpdate, onUpdateAccount, ag
       </div>
 
       <Field
+        guide={t("usModifiedAGIGuide")}
         label={t("usModifiedAGILabel")} unit="$" step={1000}
         value={usInvestment.modifiedAGI}
         onChange={(v) => onUpdate("modifiedAGI", v)}
@@ -4328,8 +4556,8 @@ function USInvestmentAccountsPanel({ usInvestment, onUpdate, onUpdateAccount, ag
 
       <div className="section-block" style={{ borderColor: "#4FA8D8", marginTop: 16 }}>
         <div className="field-label" style={{ marginBottom: 6 }}>{t("us401kLabel")}</div>
-        <Field label={t("currentBalancePlaceholder")} unit="$" step={1000} value={usInvestment.k401.currentValue} onChange={(v) => onUpdateAccount("k401", "currentValue", v)} />
-        <Field label={t("usAnnualContributionLabel")} unit="$" step={500} value={usInvestment.k401.annualContribution} onChange={(v) => onUpdateAccount("k401", "annualContribution", v)} />
+        <Field guide={t("usCurrentBalanceGuide")} label={t("currentBalancePlaceholder")} unit="$" step={1000} value={usInvestment.k401.currentValue} onChange={(v) => onUpdateAccount("k401", "currentValue", v)} />
+        <Field guide={t("usAnnualContributionGuide")} label={t("usAnnualContributionLabel")} unit="$" step={500} value={usInvestment.k401.annualContribution} onChange={(v) => onUpdateAccount("k401", "annualContribution", v)} />
         <div className="stat-sub">{t("usEmployeeLimitLabel")}：<span className="mono">{money(k401Limit)}</span></div>
         <div className="stat-sub">{t("usCombinedLimitLabel")}：<span className="mono">{money(k401Combined)}</span></div>
         <div className="stat-sub" style={{ color: k401Remaining < 0 ? "#C2694F" : "#7C8A90" }}>
@@ -4341,8 +4569,8 @@ function USInvestmentAccountsPanel({ usInvestment, onUpdate, onUpdateAccount, ag
 
       <div className="section-block" style={{ borderColor: "#D9A54F", marginTop: 12 }}>
         <div className="field-label" style={{ marginBottom: 6 }}>{t("usTraditionalIraLabel")}</div>
-        <Field label={t("currentBalancePlaceholder")} unit="$" step={500} value={usInvestment.traditionalIra.currentValue} onChange={(v) => onUpdateAccount("traditionalIra", "currentValue", v)} />
-        <Field label={t("usAnnualContributionLabel")} unit="$" step={100} value={usInvestment.traditionalIra.annualContribution} onChange={(v) => onUpdateAccount("traditionalIra", "annualContribution", v)} />
+        <Field guide={t("usCurrentBalanceGuide")} label={t("currentBalancePlaceholder")} unit="$" step={500} value={usInvestment.traditionalIra.currentValue} onChange={(v) => onUpdateAccount("traditionalIra", "currentValue", v)} />
+        <Field guide={t("usAnnualContributionGuide")} label={t("usAnnualContributionLabel")} unit="$" step={100} value={usInvestment.traditionalIra.annualContribution} onChange={(v) => onUpdateAccount("traditionalIra", "annualContribution", v)} />
         <div className="stat-sub">{t("usIraSharedLimitLabel")}：<span className="mono">{money(iraLimit)}</span></div>
         <div className="stat-sub">{t("usDeductibleAmountLabel")}：<span className="mono">{money(traditionalDeductibleAmount)}</span></div>
         {deductibleFraction < 1 && deductibleFraction > 0 && (
@@ -4355,8 +4583,8 @@ function USInvestmentAccountsPanel({ usInvestment, onUpdate, onUpdateAccount, ag
 
       <div className="section-block" style={{ borderColor: "#8FBF7F", marginTop: 12 }}>
         <div className="field-label" style={{ marginBottom: 6 }}>{t("usRothIraLabel")}</div>
-        <Field label={t("currentBalancePlaceholder")} unit="$" step={500} value={usInvestment.rothIra.currentValue} onChange={(v) => onUpdateAccount("rothIra", "currentValue", v)} />
-        <Field label={t("usAnnualContributionLabel")} unit="$" step={100} value={usInvestment.rothIra.annualContribution} onChange={(v) => onUpdateAccount("rothIra", "annualContribution", v)} />
+        <Field guide={t("usCurrentBalanceGuide")} label={t("currentBalancePlaceholder")} unit="$" step={500} value={usInvestment.rothIra.currentValue} onChange={(v) => onUpdateAccount("rothIra", "currentValue", v)} />
+        <Field guide={t("usAnnualContributionGuide")} label={t("usAnnualContributionLabel")} unit="$" step={100} value={usInvestment.rothIra.annualContribution} onChange={(v) => onUpdateAccount("rothIra", "annualContribution", v)} />
         <div className="stat-sub">{t("usIraSharedLimitLabel")}：<span className="mono">{money(iraLimit)}</span></div>
         <div className="stat-sub">{t("usRothAllowedLabel")}：<span className="mono">{money(rothAllowedContribution)}</span></div>
         {rothEligibleFraction === 0 && (
@@ -4383,8 +4611,8 @@ function USInvestmentAccountsPanel({ usInvestment, onUpdate, onUpdateAccount, ag
 
       <div className="section-block" style={{ borderColor: "#B08FD6", marginTop: 12 }}>
         <div className="field-label" style={{ marginBottom: 6 }}>{t("usBrokerageLabel")}</div>
-        <Field label={t("currentBalancePlaceholder")} unit="$" step={1000} value={usInvestment.brokerage.currentValue} onChange={(v) => onUpdateAccount("brokerage", "currentValue", v)} />
-        <Field label={t("usAnnualContributionLabel")} unit="$" step={500} value={usInvestment.brokerage.annualContribution} onChange={(v) => onUpdateAccount("brokerage", "annualContribution", v)} />
+        <Field guide={t("usCurrentBalanceGuide")} label={t("currentBalancePlaceholder")} unit="$" step={1000} value={usInvestment.brokerage.currentValue} onChange={(v) => onUpdateAccount("brokerage", "currentValue", v)} />
+        <Field guide={t("usAnnualContributionGuide")} label={t("usAnnualContributionLabel")} unit="$" step={500} value={usInvestment.brokerage.annualContribution} onChange={(v) => onUpdateAccount("brokerage", "annualContribution", v)} />
         <div className="stat-sub">{t("usBrokerageNoLimitNote")}</div>
       </div>
 
@@ -4410,8 +4638,8 @@ function USInvestmentAccountsPanel({ usInvestment, onUpdate, onUpdateAccount, ag
           <Info size={13} />
           <span>{t("usTaxSourceNote")}</span>
         </div>
-        <Field label={t("usStateTaxRateLabel")} unit="%" step={0.5} value={usInvestment.stateTaxRatePct} onChange={(v) => onUpdate("stateTaxRatePct", v)} />
-        <Field label={t("usCapitalGainLabel")} unit="$" step={1000} value={usInvestment.estimatedCapitalGainAnnual} onChange={(v) => onUpdate("estimatedCapitalGainAnnual", v)} />
+        <Field guide={t("usStateTaxRateGuide")} label={t("usStateTaxRateLabel")} unit="%" step={0.5} value={usInvestment.stateTaxRatePct} onChange={(v) => onUpdate("stateTaxRatePct", v)} />
+        <Field guide={t("usCapitalGainGuide")} label={t("usCapitalGainLabel")} unit="$" step={1000} value={usInvestment.estimatedCapitalGainAnnual} onChange={(v) => onUpdate("estimatedCapitalGainAnnual", v)} />
         <div className="stat-grid" style={{ marginTop: 10 }}>
           <StatCard label={t("usFederalTaxLabel")} value={money(taxResult.federalTax)} sub={t("usTaxableIncomeSub", { amount: money(taxResult.taxableIncome) })} />
           <StatCard label={t("usCapGainsTaxLabel")} value={money(taxResult.ltcgTax)} sub={t("usCapGainsTaxSub")} />
@@ -4436,7 +4664,7 @@ function USRetirementPanel({ usInvestment, onUpdateSS, onUpdate, retirementRules
         <Info size={13} />
         <span>{t("usSsSourceNote")}</span>
       </div>
-      <Field label={t("usPiaLabel")} unit="$" step={50} value={usInvestment.socialSecurity.piaMonthly} onChange={(v) => onUpdateSS("piaMonthly", v)} />
+      <Field guide={t("usPiaGuide")} label={t("usPiaLabel")} unit="$" step={50} value={usInvestment.socialSecurity.piaMonthly} onChange={(v) => onUpdateSS("piaMonthly", v)} />
       <AgeField
         label={t("usClaimAgeLabel")}
         value={claimAge}
@@ -4449,7 +4677,7 @@ function USRetirementPanel({ usInvestment, onUpdateSS, onUpdate, retirementRules
       </div>
 
       <div className="field-label" style={{ marginBottom: 6 }}>{t("usExpensesLabel")}</div>
-      <Field label={t("usExpensesMonthlyLabel")} unit="$" step={100} value={usInvestment.expensesMonthly} onChange={(v) => onUpdate("expensesMonthly", v)} />
+      <Field guide={t("usExpensesMonthlyGuide")} label={t("usExpensesMonthlyLabel")} unit="$" step={100} value={usInvestment.expensesMonthly} onChange={(v) => onUpdate("expensesMonthly", v)} />
 
       <div className="stat-grid" style={{ marginTop: 10 }}>
         <StatCard label={t("usRetirementIncomeLabel")} value={money(ssAnnual)} sub={t("usRetirementIncomeSub")} tone="good" />
@@ -4478,8 +4706,8 @@ function USHealthcarePanel({ usInvestment, onUpdate, medicareAnnual, healthInsur
         <Info size={13} />
         <span>{t("usMedicareAutoNote")}</span>
       </div>
-      <Field label={t("usHealthInsuranceLabel")} unit="$" step={50} value={usInvestment.healthcare.healthInsuranceMonthly} onChange={(v) => onUpdate("healthInsuranceMonthly", v)} />
-      <Field label={t("usOutOfPocketLabel")} unit="$" step={100} value={usInvestment.healthcare.outOfPocketAnnual} onChange={(v) => onUpdate("outOfPocketAnnual", v)} />
+      <Field guide={t("usHealthInsuranceGuide")} label={t("usHealthInsuranceLabel")} unit="$" step={50} value={usInvestment.healthcare.healthInsuranceMonthly} onChange={(v) => onUpdate("healthInsuranceMonthly", v)} />
+      <Field guide={t("usOutOfPocketGuide")} label={t("usOutOfPocketLabel")} unit="$" step={100} value={usInvestment.healthcare.outOfPocketAnnual} onChange={(v) => onUpdate("outOfPocketAnnual", v)} />
       <div className="stat-grid" style={{ marginTop: 10 }}>
         <StatCard label={t("usMedicareLabel")} value={money(medicareAnnual)} sub={t("usMedicareSub")} />
         <StatCard label={t("usHealthInsuranceTotalLabel")} value={money(healthInsuranceAnnual)} sub={t("usHealthInsuranceSub")} />
@@ -4499,10 +4727,10 @@ function GBAccountFields({ accountKey, title, account, onUpdateAccount, borderCo
   return (
     <div className="section-block" style={{ borderColor, marginTop: 12 }}>
       <div className="field-label" style={{ marginBottom: 6 }}>{title}</div>
-      <Field label={t("gbCurrentValueLabel")} unit="£" step={500} value={account.currentValue} onChange={(v) => onUpdateAccount(accountKey, "currentValue", v)} />
-      <Field label={t("gbAnnualContributionLabel")} unit="£" step={100} value={account.annualContribution} onChange={(v) => onUpdateAccount(accountKey, "annualContribution", v)} />
-      <Field label={t("expectedAnnualReturnLabel")} unit="%" step={0.5} value={account.expectedReturnPct} onChange={(v) => onUpdateAccount(accountKey, "expectedReturnPct", v)} />
-      <AgeField label={t("gbContributionEndAgeLabel")} value={account.contributionEndAge} onChange={(v) => onUpdateAccount(accountKey, "contributionEndAge", v)} />
+      <Field guide={t("gbCurrentValueGuide")} label={t("gbCurrentValueLabel")} unit="£" step={500} value={account.currentValue} onChange={(v) => onUpdateAccount(accountKey, "currentValue", v)} />
+      <Field guide={t("gbAnnualContributionGuide")} label={t("gbAnnualContributionLabel")} unit="£" step={100} value={account.annualContribution} onChange={(v) => onUpdateAccount(accountKey, "annualContribution", v)} />
+      <Field guide={t("gbExpectedReturnGuide")} label={t("expectedAnnualReturnLabel")} unit="%" step={0.5} value={account.expectedReturnPct} onChange={(v) => onUpdateAccount(accountKey, "expectedReturnPct", v)} />
+      <AgeField guide={t("gbContributionEndAgeGuide")} label={t("gbContributionEndAgeLabel")} value={account.contributionEndAge} onChange={(v) => onUpdateAccount(accountKey, "contributionEndAge", v)} />
       {note && <div className="stat-sub">{note}</div>}
     </div>
   );
@@ -4536,8 +4764,8 @@ function GBInvestmentAccountsPanel({ gbInvestment, onUpdate, onUpdateAccount, ag
         <span>{t("gbInvestmentSourceNote", { taxYear: investmentRules.effectiveTaxYear, region: taxRules.region })}</span>
       </div>
 
-      <Field label={t("gbAnnualIncomeLabel")} unit="£" step={1000} value={gbInvestment.annualIncome} onChange={(v) => onUpdate("annualIncome", v)} />
-      <Field label={t("gbAdjustedIncomeLabel")} unit="£" step={1000} value={gbInvestment.adjustedIncome} onChange={(v) => onUpdate("adjustedIncome", v)} />
+      <Field guide={t("gbAnnualIncomeGuide")} label={t("gbAnnualIncomeLabel")} unit="£" step={1000} value={gbInvestment.annualIncome} onChange={(v) => onUpdate("annualIncome", v)} />
+      <Field guide={t("gbAdjustedIncomeGuide")} label={t("gbAdjustedIncomeLabel")} unit="£" step={1000} value={gbInvestment.adjustedIncome} onChange={(v) => onUpdate("adjustedIncome", v)} />
 
       <GBAccountFields
         accountKey="stocksSharesIsa" title={t("gbStocksSharesIsaLabel")} account={gbInvestment.stocksSharesIsa}
@@ -4659,8 +4887,8 @@ function GBInvestmentAccountsPanel({ gbInvestment, onUpdate, onUpdateAccount, ag
           <Info size={13} />
           <span>{t("gbTaxSourceNote", { taxYear: taxRules.effectiveTaxYear, region: taxRules.region })}</span>
         </div>
-        <Field label={t("gbDividendIncomeLabel")} unit="£" step={100} value={gbInvestment.dividendIncomeAnnual} onChange={(v) => onUpdate("dividendIncomeAnnual", v)} />
-        <Field label={t("gbCapitalGainLabel")} unit="£" step={500} value={gbInvestment.estimatedCapitalGainAnnual} onChange={(v) => onUpdate("estimatedCapitalGainAnnual", v)} />
+        <Field guide={t("gbDividendIncomeGuide")} label={t("gbDividendIncomeLabel")} unit="£" step={100} value={gbInvestment.dividendIncomeAnnual} onChange={(v) => onUpdate("dividendIncomeAnnual", v)} />
+        <Field guide={t("gbCapitalGainGuide")} label={t("gbCapitalGainLabel")} unit="£" step={500} value={gbInvestment.estimatedCapitalGainAnnual} onChange={(v) => onUpdate("estimatedCapitalGainAnnual", v)} />
         <div className="stat-grid" style={{ marginTop: 10 }}>
           <StatCard label={t("gbIncomeTaxLabel")} value={money(taxResult.incomeTax)} sub={t("gbIncomeTaxSub", { amount: money(taxResult.taxableIncome) })} />
           <StatCard
@@ -4737,6 +4965,7 @@ function GBRetirementPanel({
       </div>
 
       <Field
+        guide={t("gbStatePensionEstimateGuide")}
         label={t("gbStatePensionEstimateLabel")} unit="£" step={100}
         value={gbInvestment.statePension.estimatedAnnual}
         onChange={(v) => onUpdateStatePension("estimatedAnnual", v)}
@@ -4772,6 +5001,7 @@ function GBRetirementPanel({
       )}
 
       <Field
+        guide={t("gbOverlapYearsGuide")}
         label={t("gbOverlapYearsLabel")} unit={t("gbOverlapYearsUnit")} step={1}
         value={gbInvestment.statePension.incomeOverlapYears}
         onChange={(v) => onUpdateStatePension("incomeOverlapYears", v)}
@@ -4779,6 +5009,7 @@ function GBRetirementPanel({
       <div className="stat-sub" style={{ marginBottom: 8 }}>{t("gbOverlapYearsSub")}</div>
 
       <Field
+        guide={t("gbAdditionalPensionGuide")}
         label={t("gbAdditionalPensionLabel")} unit="£" step={100}
         value={gbInvestment.statePension.additionalPensionAnnual}
         onChange={(v) => onUpdateStatePension("additionalPensionAnnual", v)}
@@ -4790,6 +5021,7 @@ function GBRetirementPanel({
       </div>
 
       <Field
+        guide={t("gbExpensesMonthlyGuide")}
         label={t("gbExpensesMonthlyLabel")} unit="£" step={50}
         value={gbInvestment.expensesMonthly}
         onChange={(v) => onUpdate("expensesMonthly", v)}
@@ -4817,7 +5049,7 @@ function GBHealthcarePanel({ gbInvestment, onUpdate, totalAnnual }) {
         <Info size={13} />
         <span>{t("gbHealthcareSourceNote")}</span>
       </div>
-      <Field label={t("gbNhsBasicLabel")} unit="£" step={50} value={h.nhsBasicAnnual} onChange={(v) => onUpdate("nhsBasicAnnual", v)} />
+      <Field guide={t("gbHealthcareGuide")} label={t("gbNhsBasicLabel")} unit="£" step={50} value={h.nhsBasicAnnual} onChange={(v) => onUpdate("nhsBasicAnnual", v)} />
       <Field label={t("gbPrivateHealthLabel")} unit="£" step={10} value={h.privateHealthInsuranceMonthly} onChange={(v) => onUpdate("privateHealthInsuranceMonthly", v)} />
       <Field label={t("gbDentalLabel")} unit="£" step={50} value={h.dentalAnnual} onChange={(v) => onUpdate("dentalAnnual", v)} />
       <Field label={t("gbPrescriptionLabel")} unit="£" step={10} value={h.prescriptionAnnual} onChange={(v) => onUpdate("prescriptionAnnual", v)} />
@@ -4836,10 +5068,10 @@ function CAAccountFields({ accountKey, title, account, onUpdateAccount, borderCo
   return (
     <div className="section-block" style={{ borderColor, marginTop: 12 }}>
       <div className="field-label" style={{ marginBottom: 6 }}>{title}</div>
-      <Field label={t("caCurrentValueLabel")} unit="C$" step={500} value={account.currentValue} onChange={(v) => onUpdateAccount(accountKey, "currentValue", v)} />
-      <Field label={t("caAnnualContributionLabel")} unit="C$" step={100} value={account.annualContribution} onChange={(v) => onUpdateAccount(accountKey, "annualContribution", v)} />
-      <Field label={t("expectedAnnualReturnLabel")} unit="%" step={0.5} value={account.expectedReturnPct} onChange={(v) => onUpdateAccount(accountKey, "expectedReturnPct", v)} />
-      <AgeField label={t("caContributionEndAgeLabel")} value={account.contributionEndAge} onChange={(v) => onUpdateAccount(accountKey, "contributionEndAge", v)} />
+      <Field guide={t("caCurrentValueGuide")} label={t("caCurrentValueLabel")} unit="C$" step={500} value={account.currentValue} onChange={(v) => onUpdateAccount(accountKey, "currentValue", v)} />
+      <Field guide={t("caAnnualContributionGuide")} label={t("caAnnualContributionLabel")} unit="C$" step={100} value={account.annualContribution} onChange={(v) => onUpdateAccount(accountKey, "annualContribution", v)} />
+      <Field guide={t("gbExpectedReturnGuide")} label={t("expectedAnnualReturnLabel")} unit="%" step={0.5} value={account.expectedReturnPct} onChange={(v) => onUpdateAccount(accountKey, "expectedReturnPct", v)} />
+      <AgeField guide={t("gbContributionEndAgeGuide")} label={t("caContributionEndAgeLabel")} value={account.contributionEndAge} onChange={(v) => onUpdateAccount(accountKey, "contributionEndAge", v)} />
       {note && <div className="stat-sub">{note}</div>}
     </div>
   );
@@ -4865,8 +5097,8 @@ function CAInvestmentAccountsPanel({ caInvestment, onUpdate, onUpdateAccount, ag
         <span>{t("caInvestmentSourceNote", { taxYear: investmentRules.effectiveTaxYear, region: taxRules.region })}</span>
       </div>
 
-      <Field label={t("caAnnualIncomeLabel")} unit="C$" step={1000} value={caInvestment.annualIncome} onChange={(v) => onUpdate("annualIncome", v)} />
-      <Field label={t("caPriorEarnedIncomeLabel")} unit="C$" step={1000} value={caInvestment.priorEarnedIncome} onChange={(v) => onUpdate("priorEarnedIncome", v)} />
+      <Field guide={t("caAnnualIncomeGuide")} label={t("caAnnualIncomeLabel")} unit="C$" step={1000} value={caInvestment.annualIncome} onChange={(v) => onUpdate("annualIncome", v)} />
+      <Field guide={t("caPriorEarnedIncomeGuide")} label={t("caPriorEarnedIncomeLabel")} unit="C$" step={1000} value={caInvestment.priorEarnedIncome} onChange={(v) => onUpdate("priorEarnedIncome", v)} />
 
       <CAAccountFields
         accountKey="tfsa" title={t("caTfsaLabel")} account={caInvestment.tfsa}
@@ -4954,7 +5186,7 @@ function CAInvestmentAccountsPanel({ caInvestment, onUpdate, onUpdateAccount, ag
           <Info size={13} />
           <span>{t("caTaxSourceNote", { taxYear: taxRules.effectiveTaxYear })}</span>
         </div>
-        <Field label={t("caCapitalGainLabel")} unit="C$" step={500} value={caInvestment.estimatedCapitalGainAnnual} onChange={(v) => onUpdate("estimatedCapitalGainAnnual", v)} />
+        <Field guide={t("caCapitalGainGuide")} label={t("caCapitalGainLabel")} unit="C$" step={500} value={caInvestment.estimatedCapitalGainAnnual} onChange={(v) => onUpdate("estimatedCapitalGainAnnual", v)} />
         <div className="stat-grid" style={{ marginTop: 10 }}>
           <StatCard
             label={t("caFederalTaxLabel")}
@@ -5004,6 +5236,7 @@ function CARetirementPanel({
       {/* ---- CPP ---- */}
       <div className="field-label" style={{ marginBottom: 6 }}>{t("caCppAnnualLabel")}</div>
       <Field
+        guide={t("caCppEstimateGuide")}
         label={t("caCppEstimateLabel")} unit="C$" step={100}
         value={caInvestment.cpp.estimatedAnnualAt65}
         onChange={(v) => onUpdateCpp("estimatedAnnualAt65", v)}
@@ -5042,6 +5275,7 @@ function CARetirementPanel({
         </div>
       )}
       <Field
+        guide={t("caOasResidenceGuide")}
         label={t("caOasResidenceLabel", { full: oas.fullResidenceYears })}
         unit={t("caYearsUnit")} step={1}
         value={caInvestment.oas.residenceYears}
@@ -5073,6 +5307,7 @@ function CARetirementPanel({
       )}
 
       <Field
+        guide={t("caAdditionalPensionGuide")}
         label={t("caAdditionalPensionLabel")} unit="C$" step={100}
         value={caInvestment.additionalPensionAnnual}
         onChange={(v) => onUpdate("additionalPensionAnnual", v)}
@@ -5091,6 +5326,7 @@ function CARetirementPanel({
       </div>
 
       <Field
+        guide={t("caExpensesMonthlyGuide")}
         label={t("caExpensesMonthlyLabel")} unit="C$" step={50}
         value={caInvestment.expensesMonthly}
         onChange={(v) => onUpdate("expensesMonthly", v)}
@@ -5117,7 +5353,7 @@ function CAHealthcarePanel({ caInvestment, onUpdate, totalAnnual }) {
         <Info size={13} />
         <span>{t("caHealthcareSourceNote")}</span>
       </div>
-      <Field label={t("caBasicHealthLabel")} unit="C$" step={50} value={h.basicAnnual} onChange={(v) => onUpdate("basicAnnual", v)} />
+      <Field guide={t("caHealthcareGuide")} label={t("caBasicHealthLabel")} unit="C$" step={50} value={h.basicAnnual} onChange={(v) => onUpdate("basicAnnual", v)} />
       <Field label={t("caPrivateHealthLabel")} unit="C$" step={10} value={h.privateHealthInsuranceMonthly} onChange={(v) => onUpdate("privateHealthInsuranceMonthly", v)} />
       <Field label={t("caPrescriptionLabel")} unit="C$" step={50} value={h.prescriptionAnnual} onChange={(v) => onUpdate("prescriptionAnnual", v)} />
       <Field label={t("caDentalLabel")} unit="C$" step={50} value={h.dentalAnnual} onChange={(v) => onUpdate("dentalAnnual", v)} />
@@ -5137,10 +5373,10 @@ function AUAccountFields({ accountKey, title, account, onUpdateAccount, borderCo
   return (
     <div className="section-block" style={{ borderColor, marginTop: 12 }}>
       <div className="field-label" style={{ marginBottom: 6 }}>{title}</div>
-      <Field label={t("auCurrentValueLabel")} unit="A$" step={500} value={account.currentValue} onChange={(v) => onUpdateAccount(accountKey, "currentValue", v)} />
-      <Field label={contributionLabel || t("auAnnualContributionLabel")} unit="A$" step={100} value={account.annualContribution} onChange={(v) => onUpdateAccount(accountKey, "annualContribution", v)} />
-      <Field label={t("expectedAnnualReturnLabel")} unit="%" step={0.5} value={account.expectedReturnPct} onChange={(v) => onUpdateAccount(accountKey, "expectedReturnPct", v)} />
-      <AgeField label={t("auContributionEndAgeLabel")} value={account.contributionEndAge} onChange={(v) => onUpdateAccount(accountKey, "contributionEndAge", v)} />
+      <Field guide={t("auCurrentValueGuide")} label={t("auCurrentValueLabel")} unit="A$" step={500} value={account.currentValue} onChange={(v) => onUpdateAccount(accountKey, "currentValue", v)} />
+      <Field guide={t("auAnnualContributionGuide")} label={contributionLabel || t("auAnnualContributionLabel")} unit="A$" step={100} value={account.annualContribution} onChange={(v) => onUpdateAccount(accountKey, "annualContribution", v)} />
+      <Field guide={t("gbExpectedReturnGuide")} label={t("expectedAnnualReturnLabel")} unit="%" step={0.5} value={account.expectedReturnPct} onChange={(v) => onUpdateAccount(accountKey, "expectedReturnPct", v)} />
+      <AgeField guide={t("gbContributionEndAgeGuide")} label={t("auContributionEndAgeLabel")} value={account.contributionEndAge} onChange={(v) => onUpdateAccount(accountKey, "contributionEndAge", v)} />
       {note && <div className="stat-sub">{note}</div>}
     </div>
   );
@@ -5167,8 +5403,8 @@ function AUInvestmentAccountsPanel({
         <span>{t("auInvestmentSourceNote", { taxYear: investmentRules.effectiveTaxYear })}</span>
       </div>
 
-      <Field label={t("auAnnualSalaryLabel")} unit="A$" step={1000} value={auInvestment.annualSalary} onChange={(v) => onUpdate("annualSalary", v)} />
-      <Field label={t("auSalarySacrificeLabel")} unit="A$" step={500} value={auInvestment.voluntaryConcessional} onChange={(v) => onUpdate("voluntaryConcessional", v)} />
+      <Field guide={t("auAnnualSalaryGuide")} label={t("auAnnualSalaryLabel")} unit="A$" step={1000} value={auInvestment.annualSalary} onChange={(v) => onUpdate("annualSalary", v)} />
+      <Field guide={t("auSalarySacrificeGuide")} label={t("auSalarySacrificeLabel")} unit="A$" step={500} value={auInvestment.voluntaryConcessional} onChange={(v) => onUpdate("voluntaryConcessional", v)} />
 
       <div className="stat-grid" style={{ marginTop: 12 }}>
         <StatCard
@@ -5276,7 +5512,7 @@ function AUInvestmentAccountsPanel({
           <Info size={13} />
           <span>{t("auTaxSourceNote", { taxYear: taxRules.effectiveTaxYear })}</span>
         </div>
-        <Field label={t("auCapitalGainLabel")} unit="A$" step={500} value={auInvestment.estimatedCapitalGainAnnual} onChange={(v) => onUpdate("estimatedCapitalGainAnnual", v)} />
+        <Field guide={t("auCapitalGainGuide")} label={t("auCapitalGainLabel")} unit="A$" step={500} value={auInvestment.estimatedCapitalGainAnnual} onChange={(v) => onUpdate("estimatedCapitalGainAnnual", v)} />
         <label className="checkbox-row">
           <input
             type="checkbox"
@@ -5365,6 +5601,7 @@ function AURetirementPanel({
       </label>
 
       <Field
+        guide={t("auOtherIncomeGuide")}
         label={t("auOtherIncomeLabel")} unit="A$" step={500}
         value={auInvestment.agePension.otherAnnualIncome}
         onChange={(v) => onUpdateAgePension("otherAnnualIncome", v)}
@@ -5400,6 +5637,7 @@ function AURetirementPanel({
       )}
 
       <Field
+        guide={t("auExpensesMonthlyGuide")}
         label={t("auExpensesMonthlyLabel")} unit="A$" step={50}
         value={auInvestment.expensesMonthly}
         onChange={(v) => onUpdate("expensesMonthly", v)}
@@ -5426,7 +5664,7 @@ function AUHealthcarePanel({ auInvestment, onUpdate, totalAnnual }) {
         <Info size={13} />
         <span>{t("auTaxSourceNote", { taxYear: "2026-27" })}</span>
       </div>
-      <Field label={t("auGapLabel")} unit="A$" step={50} value={h.gapAnnual} onChange={(v) => onUpdate("gapAnnual", v)} />
+      <Field guide={t("auHealthcareGuide")} label={t("auGapLabel")} unit="A$" step={50} value={h.gapAnnual} onChange={(v) => onUpdate("gapAnnual", v)} />
       <Field label={t("auPrivateHealthLabel")} unit="A$" step={10} value={h.privateHealthInsuranceMonthly} onChange={(v) => onUpdate("privateHealthInsuranceMonthly", v)} />
       <Field label={t("auPharmaceuticalLabel")} unit="A$" step={50} value={h.pharmaceuticalAnnual} onChange={(v) => onUpdate("pharmaceuticalAnnual", v)} />
       <Field label={t("auDentalLabel")} unit="A$" step={50} value={h.dentalAnnual} onChange={(v) => onUpdate("dentalAnnual", v)} />
@@ -7354,6 +7592,42 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         .chip-active {
           border-color: var(--blue); background: rgba(79,168,216,0.14); color: var(--text); font-weight: 600;
         }
+        /* 入力ガイド（「?」ボタンと、開いたときの説明文） */
+        .field-label-row {
+          display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+        }
+        .guide-btn {
+          width: 17px; height: 17px; flex-shrink: 0; padding: 0;
+          border-radius: 50%; cursor: pointer;
+          border: 1px solid var(--line); background: transparent; color: var(--muted);
+          font-size: 11px; font-weight: 700; line-height: 1; font-family: inherit;
+          display: inline-flex; align-items: center; justify-content: center;
+          transition: all 0.15s;
+        }
+        .guide-btn:hover { border-color: var(--blue); color: var(--blue); }
+        .guide-btn-open {
+          border-color: var(--blue); background: var(--blue); color: var(--bg);
+        }
+        .guide-text {
+          display: block;
+          font-size: 11px; color: var(--muted); line-height: 1.7;
+          background: rgba(79,168,216,0.07);
+          border-left: 2px solid var(--blue);
+          padding: 7px 10px; margin: 5px 0 3px;
+          border-radius: 0 4px 4px 0;
+          white-space: pre-line;
+        }
+        .section-guide-btn {
+          display: inline-flex; align-items: center; gap: 6px;
+          padding: 0; border: none; background: transparent; cursor: pointer;
+          color: var(--muted); font-size: 11px; font-family: inherit;
+        }
+        .section-guide-btn:hover { color: var(--blue); }
+        .section-guide-btn:hover .guide-btn { border-color: var(--blue); color: var(--blue); }
+        .section-guide-btn.guide-btn-open .guide-btn {
+          border-color: var(--blue); background: var(--blue); color: var(--bg);
+        }
+        @media print { .guide-btn, .section-guide-btn { display: none; } }
         .history-panel {
           padding: 14px 28px; border-bottom: 1px solid var(--line);
           background: var(--panel);
@@ -7799,15 +8073,15 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           </div>
           <div className="section-block" style={{ borderColor: "#D9A54F" }}>
           <SectionTitle index="01" title={label("basicInfo")} icon={Ruler} />
-          <AgeField label={t("currentAgeFieldLabel")} value={effectiveCurrentAge} disabled={!!preciseAge} onChange={(v) => update({ currentAge: v })} />
+          <AgeField guide={t("currentAgeGuide")} label={t("currentAgeFieldLabel")} value={effectiveCurrentAge} disabled={!!preciseAge} onChange={(v) => update({ currentAge: v })} />
           {preciseAge && (
             <div className="note" style={{ marginTop: -8 }}>
               <Info size={13} />
               <span>{t("currentAgeAutoNote")}</span>
             </div>
           )}
-          <AgeField label={t("retireAgeFieldLabel")} value={inputs.retireAge} onChange={(v) => update({ retireAge: v })} />
-          <AgeField label={t("lifeExpectancyLabel")} value={inputs.deathAge} onChange={(v) => update({ deathAge: v })} />
+          <AgeField guide={t("retireAgeGuide")} label={t("retireAgeFieldLabel")} value={inputs.retireAge} onChange={(v) => update({ retireAge: v })} />
+          <AgeField guide={t("deathAgeGuide")} label={t("lifeExpectancyLabel")} value={inputs.deathAge} onChange={(v) => update({ deathAge: v })} />
 
           </div>
           <div className="section-block" style={{ borderColor: "#8FBF7F" }}>
@@ -7815,7 +8089,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
           {country === "JP" ? (
           <>
-          <div className="field-label" style={{ marginBottom: 6 }}>{t("tsumitateHoldingsLabel")}</div>
+          <GuideLabel guide={t("tsumitateHoldingsGuide")}>{t("tsumitateHoldingsLabel")}</GuideLabel>
           {inputs.tsumitateHoldings.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 8 }}>
               <thead><tr><th>{t("colName")}</th><th>{t("colAmount")}</th><th></th></tr></thead>
@@ -7850,7 +8124,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <span>{t("tsumitateAsOfNote", { manual: money(tsumitateHoldingsManualTotal), catchup: money(tsumitateCatchUp) })}</span>
           </div>
 
-          <div className="field-label" style={{ marginBottom: 6 }}>{t("growthHoldingsLabel")}</div>
+          <GuideLabel guide={t("growthHoldingsGuide")}>{t("growthHoldingsLabel")}</GuideLabel>
           {inputs.growthHoldings.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 8 }}>
               <thead><tr><th>{t("colName")}</th><th>{t("colAmount")}</th><th></th></tr></thead>
@@ -7905,7 +8179,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           )}
 
           <label className="field">
-            <span className="field-label">{t("nisaTotalLabel")}</span>
+            <span className="field-label-row">
+              <span className="field-label">{t("nisaTotalLabel")}</span>
+              <NisaTotalGuide />
+            </span>
             <div className="field-input-wrap">
               <div className="mono" style={{ flex: 1, padding: "8px 10px", fontSize: 13 }}>
                 {Math.round(effectiveCurrentAssets).toLocaleString()}
@@ -7927,7 +8204,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             </span>
           </div>
 
-          <div className="field-label" style={{ marginBottom: 6 }}>{t("tsumitateScheduleLabel")}</div>
+          <GuideLabel guide={t("tsumitateScheduleGuide")}>{t("tsumitateScheduleLabel")}</GuideLabel>
           {inputs.tsumitateSchedule.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 8 }}>
               <thead><tr><th>{t("colAge")}</th><th>{t("colMonthlyVsCap")}</th><th></th></tr></thead>
@@ -7973,7 +8250,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <span>{t("scheduleExampleNote")}</span>
           </div>
 
-          <div className="field-label" style={{ marginBottom: 6 }}>{t("tsumitateAllocationLabel")}</div>
+          <GuideLabel guide={t("tsumitateAllocationGuide")}>{t("tsumitateAllocationLabel")}</GuideLabel>
           <AllocationBreakdown
             items={inputs.tsumitateAllocation}
             newItem={newTsumitateAllocItem}
@@ -7984,7 +8261,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           />
           <div style={{ marginBottom: 18 }} />
 
-          <div className="field-label" style={{ marginBottom: 6 }}>{t("growthScheduleLabel")}</div>
+          <GuideLabel guide={t("growthScheduleGuide")}>{t("growthScheduleLabel")}</GuideLabel>
           {inputs.growthSchedule.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 8 }}>
               <thead><tr><th>{t("colAge")}</th><th>{t("colMonthlyVsCap")}</th><th></th></tr></thead>
@@ -8030,7 +8307,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <span>{t("growthScheduleExampleNote")}</span>
           </div>
 
-          <div className="field-label" style={{ marginBottom: 6 }}>{t("growthAllocationLabel")}</div>
+          <GuideLabel guide={t("growthAllocationGuide")}>{t("growthAllocationLabel")}</GuideLabel>
           <AllocationBreakdown
             items={inputs.growthAllocation}
             newItem={newGrowthAllocItem}
@@ -8050,7 +8327,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             </div>
           )}
 
-          <div className="field-label" style={{ marginBottom: 6 }}>{t("lumpSumLabel")}</div>
+          <GuideLabel guide={t("lumpSumGuide")}>{t("lumpSumLabel")}</GuideLabel>
           {inputs.lumpSums.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 8 }}>
               <thead><tr><th>{t("colAge")}</th><th>{t("colAmountVsCap")}</th><th></th></tr></thead>
@@ -8088,7 +8365,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <button className="add-btn" onClick={addLump}><Plus size={15} /></button>
           </div>
 
-          <div className="field-label" style={{ marginBottom: 6 }}>{t("lumpAllocationLabel")}</div>
+          <GuideLabel guide={t("lumpAllocationGuide")}>{t("lumpAllocationLabel")}</GuideLabel>
           <AllocationBreakdown
             items={inputs.lumpAllocation}
             newItem={newLumpAllocItem}
@@ -8242,7 +8519,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             </span>
           </div>
 
-          <Field label={t("idecoCurrentValueLabel")} unit={uCurrency} step={10000} value={inputs.ideco.currentValue} onChange={(v) => updateIdeco("currentValue", v)} />
+          <Field guide={t("idecoCurrentValueGuide")} label={t("idecoCurrentValueLabel")} unit={uCurrency} step={10000} value={inputs.ideco.currentValue} onChange={(v) => updateIdeco("currentValue", v)} />
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
             <span style={{ fontSize: 10, color: "#E07A5F", whiteSpace: "nowrap", fontWeight: 700 }}>{t("asOfAgeRequired")}</span>
             <AgeYMInput
@@ -8264,8 +8541,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               <span className="field-unit">{uCurrency}</span>
             </div>
           </label>
-          <Field label={t("idecoPrincipalLabel")} unit={uCurrency} step={10000} value={inputs.ideco.principalTotal} onChange={(v) => updateIdeco("principalTotal", v)} />
-          <Field label={t("idecoMonthlyContributionLabel")} unit={uCurrency} step={1000} value={inputs.ideco.monthlyContribution} onChange={(v) => updateIdeco("monthlyContribution", v)} />
+          <Field guide={t("idecoPrincipalGuide")} label={t("idecoPrincipalLabel")} unit={uCurrency} step={10000} value={inputs.ideco.principalTotal} onChange={(v) => updateIdeco("principalTotal", v)} />
+          <Field guide={t("idecoMonthlyContributionGuide")} label={t("idecoMonthlyContributionLabel")} unit={uCurrency} step={1000} value={inputs.ideco.monthlyContribution} onChange={(v) => updateIdeco("monthlyContribution", v)} />
           <AgeField label={t("idecoContributionStartAgeLabel")} value={inputs.ideco.startAge} onChange={(v) => updateIdeco("startAge", v)} />
           <AgeField label={t("idecoContributionEndAgeLabel")} value={inputs.ideco.endAge} onChange={(v) => updateIdeco("endAge", v)} />
 
@@ -8327,12 +8604,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
           {(inputs.ideco.payoutMethod === "pension" || inputs.ideco.payoutMethod === "both") && (
             <>
-              <Field label={t("payoutYearsLabel")} unit={uYears} step={1} value={inputs.ideco.payoutYears} onChange={(v) => updateIdeco("payoutYears", v)} />
-              <Field label={t("payoutReturnPctLabel")} unit="%" step={0.5} value={inputs.ideco.payoutReturnPct} onChange={(v) => updateIdeco("payoutReturnPct", v)} />
+              <Field guide={t("idecoPayoutYearsGuide")} label={t("payoutYearsLabel")} unit={uYears} step={1} value={inputs.ideco.payoutYears} onChange={(v) => updateIdeco("payoutYears", v)} />
+              <Field guide={t("idecoPayoutReturnGuide")} label={t("payoutReturnPctLabel")} unit="%" step={0.5} value={inputs.ideco.payoutReturnPct} onChange={(v) => updateIdeco("payoutReturnPct", v)} />
             </>
           )}
           {inputs.ideco.payoutMethod === "both" && (
-            <Field label={t("lumpPortionPctLabel")} unit="%" step={5} min={0} max={100} value={inputs.ideco.lumpPortionPct} onChange={(v) => updateIdeco("lumpPortionPct", v)} />
+            <Field guide={t("idecoLumpPortionGuide")} label={t("lumpPortionPctLabel")} unit="%" step={5} min={0} max={100} value={inputs.ideco.lumpPortionPct} onChange={(v) => updateIdeco("lumpPortionPct", v)} />
           )}
 
           <div className="stat-sub" style={{ marginBottom: 4 }}>{t("annualContributionLabel")}：<span className="mono">{money(idecoAnnualContribution)}</span></div>
@@ -8360,7 +8637,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           ) : rules.tax.implemented ? (
             <>
               <div className="field-label" style={{ marginBottom: 6 }}>{t("taxSavingSimLabel")}</div>
-              <Field label={t("annualIncomeLabel")} unit={uCurrency} step={100000} value={inputs.ideco.annualIncome} onChange={(v) => updateIdeco("annualIncome", v)} />
+              <Field guide={t("annualIncomeGuide")} label={t("annualIncomeLabel")} unit={uCurrency} step={100000} value={inputs.ideco.annualIncome} onChange={(v) => updateIdeco("annualIncome", v)} />
               <div className="stat-sub" style={{ marginBottom: 4 }}>{t("annualTaxSavingLabel")}：<span className="mono">{money(idecoAnnualTaxSaving)}</span></div>
               <div className="stat-sub" style={{ marginBottom: 8 }}>{t("cumulativeTaxSavingLabel")}：<span className="mono">{money(idecoCumulativeTaxSaving)}</span></div>
               <div className="note" style={{ marginTop: -4 }}>
@@ -8384,7 +8661,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           <SectionTitle index="04" title={label("pensionRetirement")} icon={Landmark} />
           {country === "JP" ? (
           <>
-          <div className="field-label" style={{ marginBottom: 6 }}>{t("pensionSourcesLabel")}</div>
+          <GuideLabel guide={t("pensionSourcesGuide")}>{t("pensionSourcesLabel")}</GuideLabel>
           {inputs.pensionSources.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 8 }}>
               <thead><tr><th>{t("pensionTypeCol")}</th><th>{t("monthlyAmountCol")}</th><th></th></tr></thead>
@@ -8420,7 +8697,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               <span>{t("pensionAutoNote")}</span>
             </div>
           )}
-          <Field label={t("livingCostLabel")} unit={uPerMonth} value={inputs.livingCostMonthly} step={5000} onChange={(v) => update({ livingCostMonthly: v })} />
+          <Field guide={t("livingCostGuide")} label={t("livingCostLabel")} unit={uPerMonth} value={inputs.livingCostMonthly} step={5000} onChange={(v) => update({ livingCostMonthly: v })} />
           <Field
             label={`${t("postRetireReturnLabel")}${inputs.postRetireReturnAuto && dynamicFunds.length > 0 ? t("autoHalfWeightedSuffix") : ""}`}
             unit="%" step={0.5}
@@ -8526,9 +8803,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           <SectionTitle index="05" title={label("healthCost")} icon={HeartPulse} />
           {country === "JP" ? (
           <>
-          <Field label={t("health60sLabel")} unit={uPerYear} step={10000} value={inputs.healthBrackets.b60} onChange={(v) => updateHealth("b60", v)} />
-          <Field label={t("health70sLabel")} unit={uPerYear} step={10000} value={inputs.healthBrackets.b70} onChange={(v) => updateHealth("b70", v)} />
-          <Field label={t("health80sLabel")} unit={uPerYear} step={10000} value={inputs.healthBrackets.b80} onChange={(v) => updateHealth("b80", v)} />
+          <Field guide={t("health60sGuide")} label={t("health60sLabel")} unit={uPerYear} step={10000} value={inputs.healthBrackets.b60} onChange={(v) => updateHealth("b60", v)} />
+          <Field guide={t("health70sGuide")} label={t("health70sLabel")} unit={uPerYear} step={10000} value={inputs.healthBrackets.b70} onChange={(v) => updateHealth("b70", v)} />
+          <Field guide={t("health80sGuide")} label={t("health80sLabel")} unit={uPerYear} step={10000} value={inputs.healthBrackets.b80} onChange={(v) => updateHealth("b80", v)} />
           <div className="note">
             <Info size={13} />
             <span>{t("healthCostNote")}</span>
@@ -8602,6 +8879,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             </div>
           )}
           <Field
+            guide={t("inheritanceTargetGuide")}
             label={inputs.inheritancePlans.length > 0 ? t("inheritanceTargetAutoLabel") : t("inheritanceTargetLabel")}
             unit={uCurrency} step={100000}
             value={effectiveInheritanceTarget}
@@ -8618,7 +8896,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           </div>
           <div className="section-block" style={{ borderColor: "#6FA88A" }}>
           <SectionTitle index="07" title={label("gold")} icon={Coins} />
-          <Field label={t("goldCurrentHoldingLabel")} unit="g" step={1} value={inputs.gold.currentGrams} onChange={(v) => updateGold("currentGrams", v)} />
+          <Field guide={t("goldCurrentHoldingGuide")} label={t("goldCurrentHoldingLabel")} unit="g" step={1} value={inputs.gold.currentGrams} onChange={(v) => updateGold("currentGrams", v)} />
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
             <span style={{ fontSize: 10, color: "#E07A5F", whiteSpace: "nowrap", fontWeight: 700 }}>{t("asOfAgeRequired")}</span>
             <AgeYMInput
@@ -8640,8 +8918,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               <span className="field-unit">{uCurrency}</span>
             </div>
           </label>
-          <Field label={t("goldPriceRefLabel")} unit={uPerGram} step={100} value={inputs.gold.pricePerGram} onChange={(v) => updateGold("pricePerGram", v)} />
+          <Field guide={t("goldPriceRefGuide")} label={t("goldPriceRefLabel")} unit={uPerGram} step={100} value={inputs.gold.pricePerGram} onChange={(v) => updateGold("pricePerGram", v)} />
           <Field
+            guide={t("goldGrowthGuide")}
             label={`${t("goldGrowthRateLabel")}${inputs.gold.priceGrowthPctAuto ? t("autoEstimatedSuffix") : ""}`}
             unit="%" step={0.5}
             value={effectiveGoldReturnPct}
@@ -8661,7 +8940,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               </span>
             </div>
           )}
-          <Field label={t("goldMonthlyContributionLabel")} unit={uPerMonth} step={1000} value={inputs.gold.monthlyYen} onChange={(v) => updateGold("monthlyYen", v)} />
+          <Field guide={t("goldMonthlyContributionGuide")} label={t("goldMonthlyContributionLabel")} unit={uPerMonth} step={1000} value={inputs.gold.monthlyYen} onChange={(v) => updateGold("monthlyYen", v)} />
           <AgeField label={t("goldAccumulateUntilLabel")} value={inputs.gold.accumulateUntilAge} onChange={(v) => updateGold("accumulateUntilAge", v)} />
           <div className="note">
             <Info size={13} />
@@ -8671,6 +8950,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           </div>
           <div className="section-block" style={{ borderColor: "#E0C34F" }}>
           <SectionTitle index="08" title={label("cash")} icon={PiggyBank} />
+          <SectionGuide guide={t("bankGuide")} />
           {inputs.banks.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 8 }}>
               <thead><tr><th>{t("bankNameCol")}</th><th>{t("balanceCol")}</th><th>{t("monthlyDepositCol")}</th><th></th></tr></thead>
@@ -8710,6 +8990,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           </div>
           <div className="section-block" style={{ borderColor: "#9D8FD6" }}>
           <SectionTitle index="09" title={label("loan")} icon={Landmark} />
+          <SectionGuide guide={t("loanGuide")} />
           {inputs.loans.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 8 }}>
               <thead><tr><th>{t("loanNameCol")}</th><th>{t("loanPrincipalCol")}</th><th>{t("interestRateCol")}</th><th>{t("monthlyPaymentCol")}</th><th></th></tr></thead>
@@ -8751,6 +9032,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           </div>
           <div className="section-block" style={{ borderColor: "#5FB0A0" }}>
           <SectionTitle index="10" title={label("insurance")} icon={HeartPulse} />
+          <SectionGuide guide={t("insuranceGuide")} />
           {inputs.insurancePolicies.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 10 }}>
               <thead><tr><th style={{ width: "26%" }}>{t("insuranceNameCol")}</th><th style={{ width: "62%" }}>{t("premiumCoverageCol")}</th><th style={{ width: "24px" }}></th></tr></thead>
@@ -8846,6 +9128,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           </div>
           <div className="section-block" style={{ borderColor: "#D67F9E" }}>
           <SectionTitle index="11" title={label("privatePension")} icon={PiggyBank} />
+          <SectionGuide guide={t("privatePensionGuide")} />
           {inputs.privatePensionPlans.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 10 }}>
               <thead><tr><th style={{ width: "26%" }}>{t("pensionNameCol")}</th><th style={{ width: "62%" }}>{t("contribPayoutCol")}</th><th style={{ width: "24px" }}></th></tr></thead>
