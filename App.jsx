@@ -474,6 +474,10 @@ const TRANSLATIONS = {
     "insuranceGuide": "【生命保険・医療保険の保険料を登録してください】\n払込期間と月額保険料を入れると、生涯で払う保険料の総額が計算され、資産から差し引かれます。\n保障内容はメモとして残せますが、シミュレーションには反映されません。",
     "privatePensionGuide": "【企業年金・個人年金保険などを登録してください】\n拠出期間と月額拠出額、受取期間と月額受取額を入れると、資産の推移に反映されます。\niDeCoはセクション03で別に管理するので、ここには含めません。",
     "pensionSourcesGuide": "【公的年金の受給見込額を入れてください】\n「ねんきん定期便」や「ねんきんネット」で確認できる、65歳時点の年間受給見込額です。老齢基礎年金と老齢厚生年金の合計を入れてください。\n複数の年金（配偶者分など）がある場合は、それぞれ分けて登録できます。",
+    "nisaGroupHoldings": "① いま溜まっている金額",
+    "nisaGroupTsumitate": "② つみたて投資枠（毎月）",
+    "nisaGroupGrowth": "③ 成長投資枠（毎月）",
+    "nisaGroupLump": "④ 一括投資（成長投資枠）",
     "advancedMedicalLabel": "先進医療（円）",
     "ageYM": "{years}歳{months}ヶ月",
     "ageYMD": "{years}歳{months}ヶ月{days}日",
@@ -1254,6 +1258,10 @@ const TRANSLATIONS = {
     "insuranceGuide": "[Add your life and health insurance premiums]\nEnter the payment period and the monthly premium, and the total you will pay over your lifetime is deducted from your assets.\nCover details are kept as a note but do not feed the projection.",
     "privatePensionGuide": "[Add workplace and private pension plans]\nEnter the contribution period and amount, and the payout period and amount, and it feeds the asset projection.\niDeCo is handled separately in section 03, so do not include it here.",
     "pensionSourcesGuide": "[Enter your public pension forecast]\nThe annual amount at 65, from your pension statement or the online pension service. Include both the basic and the earnings-related portions.\nYou can register several pensions separately (for a spouse, for example).",
+    "nisaGroupHoldings": "1. What you already hold",
+    "nisaGroupTsumitate": "2. Accumulation quota (monthly)",
+    "nisaGroupGrowth": "3. Growth quota (monthly)",
+    "nisaGroupLump": "4. Lump sum (growth quota)",
     "advancedMedicalLabel": "Advanced medical care",
     "ageYM": "{years}y {months}m",
     "ageYMD": "{years} years {months} months {days} days",
@@ -7628,6 +7636,52 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           border-color: var(--blue); background: var(--blue); color: var(--bg);
         }
         @media print { .guide-btn, .section-guide-btn { display: none; } }
+
+        /* NISAセクションの4ブロックを、背景のグラデーションで視覚的に区切る。
+           入力欄そのものには手を加えず、囲みの背景色だけで境界を示す。 */
+        .nisa-group {
+          position: relative;
+          padding: 30px 14px 14px;
+          margin: 0 -4px 20px;
+          border-radius: 10px;
+          border: 1px solid var(--line);
+        }
+        .nisa-group-title {
+          position: absolute; top: 9px; left: 14px;
+          font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
+          color: var(--muted); text-transform: uppercase;
+        }
+        /* ① いま溜まっている金額：青（現状の把握） */
+        .nisa-group-holdings {
+          background: linear-gradient(160deg, rgba(79,168,216,0.10) 0%, rgba(79,168,216,0.02) 55%, transparent 100%);
+          border-color: rgba(79,168,216,0.28);
+        }
+        .nisa-group-holdings .nisa-group-title { color: #4FA8D8; }
+        /* ② つみたて投資枠：緑（コツコツ積み上げる） */
+        .nisa-group-tsumitate {
+          background: linear-gradient(160deg, rgba(143,191,127,0.10) 0%, rgba(143,191,127,0.02) 55%, transparent 100%);
+          border-color: rgba(143,191,127,0.28);
+        }
+        .nisa-group-tsumitate .nisa-group-title { color: #8FBF7F; }
+        /* ③ 成長投資枠：琥珀（攻めの枠） */
+        .nisa-group-growth {
+          background: linear-gradient(160deg, rgba(217,165,79,0.10) 0%, rgba(217,165,79,0.02) 55%, transparent 100%);
+          border-color: rgba(217,165,79,0.28);
+        }
+        .nisa-group-growth .nisa-group-title { color: #D9A54F; }
+        /* ④ 一括投資：紫（まとまった資金） */
+        .nisa-group-lump {
+          background: linear-gradient(160deg, rgba(176,143,214,0.10) 0%, rgba(176,143,214,0.02) 55%, transparent 100%);
+          border-color: rgba(176,143,214,0.28);
+        }
+        .nisa-group-lump .nisa-group-title { color: #B08FD6; }
+        @media (max-width: 640px) {
+          .nisa-group { padding: 28px 10px 12px; margin: 0 -2px 16px; }
+          .nisa-group-title { left: 10px; }
+        }
+        @media print {
+          .nisa-group { background: none; border-color: var(--line); }
+        }
         .history-panel {
           padding: 14px 28px; border-bottom: 1px solid var(--line);
           background: var(--panel);
@@ -8089,6 +8143,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
           {country === "JP" ? (
           <>
+          {/* ① いま溜まっている金額（保有銘柄＋NISA合計） */}
+          <div className="nisa-group nisa-group-holdings">
+            <div className="nisa-group-title">{t("nisaGroupHoldings")}</div>
           <GuideLabel guide={t("tsumitateHoldingsGuide")}>{t("tsumitateHoldingsLabel")}</GuideLabel>
           {inputs.tsumitateHoldings.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 8 }}>
@@ -8204,6 +8261,11 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             </span>
           </div>
 
+          </div>
+
+          {/* ② つみたて投資枠（毎月の投資＋銘柄配分） */}
+          <div className="nisa-group nisa-group-tsumitate">
+            <div className="nisa-group-title">{t("nisaGroupTsumitate")}</div>
           <GuideLabel guide={t("tsumitateScheduleGuide")}>{t("tsumitateScheduleLabel")}</GuideLabel>
           {inputs.tsumitateSchedule.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 8 }}>
@@ -8261,6 +8323,11 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           />
           <div style={{ marginBottom: 18 }} />
 
+          </div>
+
+          {/* ③ 成長投資枠（毎月の投資＋銘柄配分） */}
+          <div className="nisa-group nisa-group-growth">
+            <div className="nisa-group-title">{t("nisaGroupGrowth")}</div>
           <GuideLabel guide={t("growthScheduleGuide")}>{t("growthScheduleLabel")}</GuideLabel>
           {inputs.growthSchedule.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 8 }}>
@@ -8327,6 +8394,11 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             </div>
           )}
 
+          </div>
+
+          {/* ④ 一括投資枠（成長投資枠を使う一括投資＋銘柄配分） */}
+          <div className="nisa-group nisa-group-lump">
+            <div className="nisa-group-title">{t("nisaGroupLump")}</div>
           <GuideLabel guide={t("lumpSumGuide")}>{t("lumpSumLabel")}</GuideLabel>
           {inputs.lumpSums.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 8 }}>
@@ -8374,6 +8446,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             onRemove={(i) => removeAllocationItem("lumpAllocation", i)}
             onUpdate={(i, key, val) => updateAllocationItem("lumpAllocation", i, key, val)}
           />
+          </div>
 
           <div className="field-label" style={{ marginTop: 16, marginBottom: 6 }}>
             {t("nisaAllocationSlidersLabel")}
