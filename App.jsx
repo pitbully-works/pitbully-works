@@ -494,8 +494,9 @@ const TRANSLATIONS = {
     "annualPayoutAmountLabel": "年間予想受取額（{from}〜{to}歳）",
     "annualRatePlaceholder": "金利（年率%）",
     "annualTaxSavingLabel": "年間節税額（概算）",
-    "appSubtitle": "NISA積立 × 老後資産 × 年金 × 健康費用 × 相続 — 統合シミュレーション",
+    "appSubtitle": "総合シミュレーション",
     "appTitle": "資産形成 総合ライフプラン",
+    "sectionNavTitle": "入力する項目を選ぶ",
     "appTitleWithName": "（{name}様）",
     "asOfAgePlaceholder": "基準年齢",
     "asOfAgeRequired": "この残高時点の基準年齢（必須）",
@@ -1305,8 +1306,9 @@ const TRANSLATIONS = {
     "annualPayoutAmountLabel": "Estimated annual payout (ages {from}–{to})",
     "annualRatePlaceholder": "Interest rate (annual %)",
     "annualTaxSavingLabel": "Annual Tax Savings (Estimate)",
-    "appSubtitle": "Investment Accounts × Retirement Assets × Pensions × Healthcare Costs × Estate Planning — Integrated Simulation",
+    "appSubtitle": "Integrated Simulation",
     "appTitle": "Comprehensive Financial Life Planner",
+    "sectionNavTitle": "Jump to a section",
     "appTitleWithName": "({name})",
     "asOfAgePlaceholder": "Reference age",
     "asOfAgeRequired": "Reference age for this balance (required)",
@@ -6015,11 +6017,34 @@ function WithdrawalTaxPanel({ accounts, onUpdateAccount }) {
 
 function SectionTitle({ index, title, icon: Icon }) {
   return (
-    <div className="section-title">
+    // id を付けて、上部のショートカットボタンからここへ飛べるようにする
+    <div className="section-title" id={`section-${index}`}>
       <span className="section-index">{index}</span>
 
       <Icon size={15} strokeWidth={1.75} />
       <h2>{title}</h2>
+    </div>
+  );
+}
+
+// ---------- セクションへのショートカット（トップ画面のジャンプボタン） ----------
+function SectionNav({ items }) {
+  const { t } = useContext(LocaleContext);
+  const jump = (index) => {
+    const el = document.getElementById(`section-${index}`);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+  return (
+    <div className="card no-print" style={{ marginBottom: 18 }}>
+      <div className="chart-label">{t("sectionNavTitle")}</div>
+      <div className="section-nav">
+        {items.map(({ index, title, icon: Icon }) => (
+          <button key={index} className="section-nav-btn" onClick={() => jump(index)}>
+            <Icon size={14} strokeWidth={1.75} />
+            <span>{title}</span>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -7444,6 +7469,22 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     : country === "AU" ? "legendAuInvestment"
     : "legendNisaAssets";
 
+  // トップのショートカットボタン。SectionTitle の index と1対1で対応する。
+  const sectionNavItems = useMemo(() => ([
+    { index: "00", title: label("personalInfo"), icon: Users },
+    { index: "01", title: label("basicInfo"), icon: Ruler },
+    { index: "02", title: label("investmentTaxAdvantaged"), icon: TrendingUp },
+    { index: "03", title: label("retirementAccount"), icon: Landmark },
+    { index: "04", title: label("pensionRetirement"), icon: Landmark },
+    { index: "05", title: label("healthCost"), icon: HeartPulse },
+    { index: "06", title: label("inheritance"), icon: Users },
+    { index: "07", title: label("gold"), icon: Coins },
+    { index: "08", title: label("cash"), icon: PiggyBank },
+    { index: "09", title: label("loan"), icon: Landmark },
+    { index: "10", title: label("insurance"), icon: HeartPulse },
+    { index: "11", title: label("privatePension"), icon: PiggyBank },
+  ]), [label]);
+
   const netWorthFinal = integrated.finalNetWorth;
   const inheritanceTotal = inputs.inheritancePlans.reduce((s, p) => s + (p.amount || 0), 0);
   const effectiveInheritanceTarget = inputs.inheritancePlans.length > 0 ? inheritanceTotal : inputs.inheritanceTarget;
@@ -8048,6 +8089,43 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           margin-bottom: 18px;
           opacity: 0.92;
         }
+        /* タイトル内のお名前（○○様）。見出しより小さく控えめに。 */
+        .title-username {
+          display: block;
+          font-size: 0.5em;
+          font-weight: 500;
+          color: #7C8A90;
+          letter-spacing: 0.04em;
+          margin-top: 6px;
+        }
+        /* 入力セクションへのショートカットボタン */
+        .section-nav {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          margin-top: 10px;
+        }
+        .section-nav-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 9px 12px;
+          border-radius: 8px;
+          border: 1px solid #2A3439;
+          background: #161E22;
+          color: #C9D6DC;
+          font-size: 13px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: border-color .15s, background .15s;
+        }
+        .section-nav-btn:hover, .section-nav-btn:active {
+          border-color: #4FA8D8;
+          background: #1B262B;
+        }
+        /* 上部固定ヘッダーに隠れないよう、ジャンプ先に余白を確保する */
+        .section-title { scroll-margin-top: 16px; }
+
         .section-block .section-title {
           margin-top: 4px;
         }
@@ -8602,7 +8680,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         <div>
           <h1>
             {t("appTitle")}
-            {inputs.userName && <><br />{t("appTitleWithName", { name: inputs.userName })}</>}
+            {/* お名前はタイトルより小さく、控えめに表示する */}
+            {inputs.userName && (
+              <span className="title-username">
+                {t("appTitleWithName", { name: inputs.userName })}
+              </span>
+            )}
           </h1>
           <div className="sub">
             {t("appSubtitle")}
@@ -8782,6 +8865,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       <div className="grid-main">
         {/* -------- LEFT: INPUT PANEL -------- */}
         <div className="panel">
+          {/* 各入力セクションへのショートカット */}
+          <SectionNav items={sectionNavItems} />
           <div className="section-block" style={{ borderColor: "#4FA8D8" }}>
           <SectionTitle index="00" title={label("personalInfo")} icon={Users} />
           <label className="field">
