@@ -6775,19 +6775,24 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       // オーストラリア選択時のみ：Super/投資口座/現金の残高推移をnetWorthへ合算する
       // （country!=="AU"のときはauInvestmentSim.yearlyが空のため常に0＝他国の計算結果に一切影響しない）。
       const auInvestmentValue = auInvestmentSim.yearly[i]?.value ?? auInvestmentSim.finalValue ?? 0;
-      const spendableNetWorth = row.total + goldValue + bankValue + stockValue + pensionValue + usInvestmentValue + gbInvestmentValue + caInvestmentValue + auInvestmentValue - loanValue - insuranceValue;
+      // 【修正】NISA(row.total)とiDeCoは日本専用の資産。国が日本以外のときは
+      // 帯（Area）に描画されないため、純資産（白い線）にも加算してはいけない。
+      // 加算したままだと、白い線だけが帯の上へ大きく飛び出して差が年々開いていく。
+      const jpInvestmentValue = country === "JP" ? row.total : 0;
+      const jpIdecoValue = country === "JP" ? idecoLockedValue : 0;
+      const spendableNetWorth = jpInvestmentValue + goldValue + bankValue + stockValue + pensionValue + usInvestmentValue + gbInvestmentValue + caInvestmentValue + auInvestmentValue - loanValue - insuranceValue;
       return {
         ...row, goldValue, bankValue, stockValue, loanValue, insuranceValue, pensionValue,
-        idecoLockedValue,
+        idecoLockedValue: jpIdecoValue,
         usInvestmentValue,
         gbInvestmentValue,
         caInvestmentValue,
         auInvestmentValue,
         spendableNetWorth,
-        netWorth: spendableNetWorth + idecoLockedValue,
+        netWorth: spendableNetWorth + jpIdecoValue,
       };
     });
-  }, [sim, goldSim, bankSim, stockSim, loanSim, insuranceSim, pensionSim, idecoSim, usInvestmentSim, gbInvestmentSim, caInvestmentSim, auInvestmentSim]);
+  }, [country, sim, goldSim, bankSim, stockSim, loanSim, insuranceSim, pensionSim, idecoSim, usInvestmentSim, gbInvestmentSim, caInvestmentSim, auInvestmentSim]);
   const netWorthFinal = netWorthYearly.length ? netWorthYearly[netWorthYearly.length - 1].netWorth : sim.finalAssets;
   const inheritanceTotal = inputs.inheritancePlans.reduce((s, p) => s + (p.amount || 0), 0);
   const effectiveInheritanceTarget = inputs.inheritancePlans.length > 0 ? inheritanceTotal : inputs.inheritanceTarget;
