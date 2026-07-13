@@ -168,7 +168,12 @@ export function runIntegratedPlan(p) {
 
   const snapshot = (age) => {
     const row = {
-      age: Math.round(age),
+      // 表示用の整数年齢。現在年齢は 58.66 のような小数になるため、
+      // Math.round だと 58歳台が「59歳」と表示され、グラフの横軸が1歳ずれていた。
+      // 「その時点で実際に到達している年齢」＝ Math.floor を使う。
+      age: Math.floor(age + 1e-9),
+      // 計算に使った実際の年齢（小数）。表示用の age とは分けて保持する。
+      exactAge: age,
       loanBalance: clampZero(totalLoans()),
       cumulativeUnmet,
       cumulativePremiums,
@@ -350,6 +355,14 @@ export function runIntegratedPlan(p) {
     pools.forEach((x) => { x.balance = clampZero(Number.isFinite(x.balance) ? x.balance : 0); });
 
     if (m % 12 === 0) yearly.push(snapshot(age));
+  }
+
+  // 現在年齢が小数（例：58.66歳）のとき、最後の12ヶ月区切りは deathAge に届かない
+  // （58.66 → 59.66 → … → 94.66 で終わり、95歳が記録されない）。
+  // 死亡想定年齢のスナップショットを必ず1件だけ追加し、年齢の欠落をなくす。
+  const finalDisplayAge = Math.floor(deathAge + 1e-9);
+  if (yearly[yearly.length - 1].age < finalDisplayAge) {
+    yearly.push(snapshot(deathAge));
   }
 
   const last = yearly[yearly.length - 1];
