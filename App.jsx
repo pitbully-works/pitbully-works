@@ -33,7 +33,7 @@ export const SUPPORTED_COUNTRIES = [
   { code: "JP", flag: "🇯🇵", name: "日本", enabled: true },
   { code: "US", flag: "🇺🇸", name: "United States", enabled: true },
   { code: "GB", flag: "🇬🇧", name: "United Kingdom", enabled: true },
-  { code: "CA", flag: "🇨🇦", name: "Canada", enabled: false },
+  { code: "CA", flag: "🇨🇦", name: "Canada", enabled: true },
   { code: "AU", flag: "🇦🇺", name: "Australia", enabled: false },
 ];
 
@@ -44,7 +44,7 @@ const CURRENCY_BY_CODE = {
   JPY: { symbol: "¥", locale: "ja-JP" },
   USD: { symbol: "$", locale: "en-US" },
   GBP: { symbol: "£", locale: "en-GB" },
-  CAD: { symbol: "$", locale: "en-CA" },
+  CAD: { symbol: "C$", locale: "en-CA" },
   AUD: { symbol: "$", locale: "en-AU" },
 };
 
@@ -240,6 +240,85 @@ const TRANSLATIONS = {
     "gbWithdrawalSub": "年金収入で賄えない年間の不足額",
     "gbWorkplacePensionLabel": "Workplace Pension",
     "disclaimerBanner": "【免責事項】本アプリは情報提供とシミュレーションを目的としたものであり、税務・投資・法務上の助言ではありません。制度・税率は変更される場合があり、計算結果は一定の前提に基づく概算です。実際のご判断は、税理士・ファイナンシャルプランナー等の専門家にご確認ください。",
+    "caAccountBreakdownChartTitle": "退職時点（{age}）の口座別内訳",
+    "caAccountBreakdownNote": "退職時点における、TFSA・RRSP・非登録口座・現金貯蓄の口座別残高の内訳です。",
+    "caAdditionalPensionLabel": "任意の追加年金収入（年額・職域年金など）",
+    "caAnnualContributionLabel": "年間積立額",
+    "caAnnualIncomeLabel": "年間総所得（給与・年金等）",
+    "caBasicHealthLabel": "基本医療費（州の公的保険でカバーされる前提の自己負担・年額）",
+    "caCapitalGainLabel": "年間の譲渡益見込額（TFSA・RRSPの外側）",
+    "caCashSavingsLabel": "Cash Savings",
+    "caCgtLabel": "譲渡益への課税（概算）",
+    "caCgtSub": "利益の{pct}%が課税所得に算入され、限界税率で課税されます",
+    "caContributionEndAgeLabel": "積立終了年齢",
+    "caCppAnnualLabel": "CPP 年間受給額",
+    "caCppAnnualSub": "受給開始年齢による増減を反映",
+    "caCppEstimateLabel": "65歳時点の年間受給見込額（My Service Canada Accountで確認）",
+    "caCppFactorNote": "受給開始年齢{age}歳のため、65歳基準の{pct}%になります（繰上げは月{early}%減、繰下げは月{late}%増）。",
+    "caCppFullNote": "参考：{taxYear}年に65歳で受給を開始した場合の満額は年 {amount} です。実際の受給額は拠出履歴により大きく異なるため、My Service Canada Account で確認した金額に必ず書き換えてください。",
+    "caCppStartAgeLabel": "CPP 受給開始年齢（{min}〜{max}歳）",
+    "caCurrentValueLabel": "現在の残高",
+    "caDentalLabel": "歯科費用（年額）",
+    "caExpensesMonthlyLabel": "退職後の毎月の生活費見込み",
+    "caExpensesTotalLabel": "支出合計（生活費＋医療費）",
+    "caExpensesTotalSub": "年間の生活費と医療費の合計",
+    "caFederalTaxLabel": "連邦所得税（概算）",
+    "caFederalTaxSub": "基礎控除（BPA {amount}）を最低税率で税額控除した後",
+    "caHealthcareSourceNote": "基本的な医療は州・準州の公的医療保険でカバーされる前提のうえ、自己負担が生じうる費目のみ年間費用を入力する簡易モデルです。処方薬・歯科・視力の公的補助は州により制度が大きく異なるため、自動計算していません。",
+    "caHealthcareTotalLabel": "医療費合計（年額）",
+    "caHealthcareTotalSub": "基本医療費＋民間保険料＋処方薬＋歯科＋視力＋介護＋その他の合計",
+    "caInvestmentSourceNote": "掲載している上限額・税率は{taxYear}課税年度のcanada.ca（CRA / Service Canada）公表値です。{region}。実際の税務判断は専門家にご確認ください。",
+    "caLiquidAssetsLabel": "Liquid / Accessible Assets（引き出し可能資産）",
+    "caLiquidAssetsSub": "TFSA・非登録口座・現金貯蓄（引出しに課税されない、または課税済みの資産）",
+    "caLongTermCareLabel": "介護費用（年額）",
+    "caNonRegisteredLabel": "Non-Registered Account（課税口座）",
+    "caOasAnnualLabel": "OAS 年間受給額（クローバック後）",
+    "caOasAnnualSub": "居住年数と繰下げを反映し、回収税を差し引いた後",
+    "caOasClawbackLabel": "OAS回収税（クローバック）",
+    "caOasClawbackNote": "純所得が {threshold} を超えるため、超過分の{pct}%（{amount}）がOASから回収されます。TFSAからの引出しは純所得に含まれないため、クローバックの対象外です。",
+    "caOasClawbackSub": "純所得 {threshold} 超で、超過分の{pct}%が回収されます",
+    "caOasEnhancedNote": "OASは四半期ごとに物価連動で改定されます。75歳以降は10%上乗せされます（現在の満額：65〜74歳は年 {base}、75歳以降は年 {enhanced}）。",
+    "caOasNoEarlyNote": "OASは65歳より前には受給できません。実際の受給開始は{age}歳です。",
+    "caOasResidenceLabel": "18歳以降のカナダ居住年数（{full}年で満額）",
+    "caOasResidenceSub": "居住{years}年 → 満額の{pct}%（{min}年未満は受給資格なし）",
+    "caOasStartAgeLabel": "OAS 受給開始年齢（{min}〜{max}歳・繰上げ不可）",
+    "caOtherOutOfPocketLabel": "その他の自己負担医療費（年額）",
+    "caPrescriptionLabel": "処方薬費用（年額）",
+    "caPrivateHealthLabel": "民間医療保険料（月額）",
+    "caPriorEarnedIncomeLabel": "前年の稼得所得（RRSP拠出枠の算定用・未入力なら年収と同額）",
+    "caRestrictedAssetsLabel": "Restricted Assets（制約付き資産）",
+    "caRestrictedAssetsSub": "RRSP（引出しは可能だが全額が課税所得となり、{age}歳でRRIFへ強制転換されます）",
+    "caRetirementIncomeLabel": "Retirement Income（年金収入）",
+    "caRetirementIncomeSub": "CPP＋OAS（クローバック後）＋追加年金の年間受給額",
+    "caRrifNote": "RRSPは{age}歳の年末までにRRIFへ転換され、翌年から年齢別の最低取崩し率に従って引き出す義務が生じます（{age}歳で{pct}%、80歳で{pct80}%、95歳以降は{pct95}%）。この強制取崩し分はシミュレーションに反映されています。",
+    "caRrspLabel": "RRSP",
+    "caRrspRoomLabel": "RRSP年間拠出枠",
+    "caRrspRoomSub": "前年の稼得所得の{pct}% と 上限 {cap} の低い方",
+    "caRrspOverLabel": "RRSP拠出枠を {amount} 超過しています",
+    "caRrspRemainingLabel": "RRSP拠出枠の残り",
+    "caRrspTaxSavingLabel": "RRSP拠出による税軽減（概算）",
+    "caRrspTaxSavingSub": "拠出額は所得控除。限界税率 {pct}% 相当の軽減",
+    "caSurplusLabel": "収支余剰",
+    "caSurplusSub": "年金収入が生活費・医療費を上回る年間額",
+    "caTaxAdvantagedLabel": "Tax-Advantaged Accounts（税制優遇資産）",
+    "caTaxAdvantagedSub": "TFSA＋RRSP（上2区分と重なる横断的な内訳）",
+    "caTaxHandledInInvestmentNote": "カナダの税制（連邦所得税・譲渡益課税・RRSP拠出の税軽減）は、セクション02「TFSA」内でまとめて計算しています。",
+    "caTaxSectionLabel": "Tax（{taxYear}課税年度・連邦税のみ）",
+    "caTaxSourceNote": "連邦所得税・譲渡益課税は{taxYear}課税年度のCRA公表値に基づく概算です。州・準州の所得税（13地域すべてで税率が異なる）、配当税額控除、CPP拠出金・EI保険料、AMTは未実装です。",
+    "caTfsaLabel": "TFSA",
+    "caTfsaLimitLabel": "TFSA年間拠出上限（{taxYear}）",
+    "caTfsaOverLabel": "TFSA年間上限を {amount} 超過しています",
+    "caTfsaRemainingLabel": "TFSA年間枠の残り",
+    "caTfsaRemainingSub": "年間 {amount} まで。累積枠は個人の状況により異なります",
+    "caTfsaTaxFreeNote": "TFSA内の運用益・引出しはすべて非課税です。引出しは純所得に含まれないため、OASのクローバックにも影響しません。",
+    "caTotalAssetsLabel": "総資産（4口座の合計）",
+    "caTotalAssetsSub": "TFSA＋RRSP＋非登録口座＋現金貯蓄のすべての合計",
+    "caTotalTaxLabel": "税額合計（概算・RRSP軽減後）",
+    "caTotalTaxSub": "連邦所得税＋譲渡益課税 − RRSP拠出による軽減",
+    "caVisionLabel": "視力・眼鏡費用（年額）",
+    "caWithdrawalLabel": "取崩し必要額（口座から）",
+    "caWithdrawalSub": "年金収入で賄えない年間の不足額",
+    "caYearsUnit": "年",
     "advancedMedicalLabel": "先進医療（円）",
     "ageYM": "{years}歳{months}ヶ月",
     "ageYMD": "{years}歳{months}ヶ月{days}日",
@@ -786,6 +865,85 @@ const TRANSLATIONS = {
     "gbWithdrawalSub": "Annual shortfall not covered by pension income",
     "gbWorkplacePensionLabel": "Workplace Pension",
     "disclaimerBanner": "Disclaimer: This app is provided for information and simulation purposes only. It does not constitute tax, investment, or legal advice. Rules and tax rates can change, and all figures are estimates based on the assumptions you enter. Please consult a qualified professional before acting on any result.",
+    "caAccountBreakdownChartTitle": "Account Breakdown at Retirement ({age})",
+    "caAccountBreakdownNote": "Projected balance of each account — TFSA, RRSP, non-registered and cash savings — at your retirement age.",
+    "caAdditionalPensionLabel": "Additional Pension Income (Annual, e.g. workplace pension)",
+    "caAnnualContributionLabel": "Annual Contribution",
+    "caAnnualIncomeLabel": "Total Annual Income (salary, pension, etc.)",
+    "caBasicHealthLabel": "Core Healthcare Costs (assuming provincial coverage, Annual)",
+    "caCapitalGainLabel": "Estimated Annual Capital Gains (outside TFSA and RRSP)",
+    "caCashSavingsLabel": "Cash Savings",
+    "caCgtLabel": "Tax on Capital Gains (Estimate)",
+    "caCgtSub": "{pct}% of the gain is included in taxable income and taxed at your marginal rate",
+    "caContributionEndAgeLabel": "Contributions End at Age",
+    "caCppAnnualLabel": "CPP (Annual)",
+    "caCppAnnualSub": "Adjusted for the age you start receiving it",
+    "caCppEstimateLabel": "Estimated Annual CPP at 65 (from My Service Canada Account)",
+    "caCppFactorNote": "Starting at {age} gives you {pct}% of the amount payable at 65 (reduced {early}% per month before 65, increased {late}% per month after).",
+    "caCppFullNote": "For reference, the maximum CPP starting at 65 in {taxYear} is {amount} a year. What you actually receive depends heavily on your contribution history, so please replace this with the figure from My Service Canada Account.",
+    "caCppStartAgeLabel": "Age You Start CPP ({min}–{max})",
+    "caCurrentValueLabel": "Current Balance",
+    "caDentalLabel": "Dental Costs (Annual)",
+    "caExpensesMonthlyLabel": "Estimated Monthly Living Costs in Retirement",
+    "caExpensesTotalLabel": "Total Outgoings (Living + Healthcare)",
+    "caExpensesTotalSub": "Annual living costs plus healthcare costs",
+    "caFederalTaxLabel": "Federal Income Tax (Estimate)",
+    "caFederalTaxSub": "After the Basic Personal Amount credit ({amount}) at the lowest rate",
+    "caHealthcareSourceNote": "This assumes core healthcare is covered by your provincial or territorial plan, and asks you to enter only the annual costs you expect to pay yourself. Prescription, dental and vision coverage varies widely by province, so these are not calculated automatically.",
+    "caHealthcareTotalLabel": "Total Healthcare Costs (Annual)",
+    "caHealthcareTotalSub": "Core costs + private cover + prescriptions + dental + vision + long-term care + other",
+    "caInvestmentSourceNote": "Limits and rates shown are the canada.ca (CRA / Service Canada) figures for the {taxYear} tax year. {region}. Please consult a qualified professional for your own tax position.",
+    "caLiquidAssetsLabel": "Liquid / Accessible Assets",
+    "caLiquidAssetsSub": "TFSA, non-registered account and cash savings (withdrawals are tax-free or already taxed)",
+    "caLongTermCareLabel": "Long-term Care Costs (Annual)",
+    "caNonRegisteredLabel": "Non-Registered Account",
+    "caOasAnnualLabel": "OAS (Annual, after clawback)",
+    "caOasAnnualSub": "Reflecting residence years and deferral, net of the recovery tax",
+    "caOasClawbackLabel": "OAS Recovery Tax (Clawback)",
+    "caOasClawbackNote": "Your net income is above {threshold}, so {pct}% of the excess ({amount}) is recovered from your OAS. TFSA withdrawals do not count as net income and never trigger the clawback.",
+    "caOasClawbackSub": "{pct}% of net income above {threshold} is recovered",
+    "caOasEnhancedNote": "OAS is indexed quarterly to inflation. It increases by 10% from age 75 (current maximums: {base} a year at 65–74, {enhanced} a year from 75).",
+    "caOasNoEarlyNote": "OAS cannot be claimed before 65. Your OAS will actually start at {age}.",
+    "caOasResidenceLabel": "Years Lived in Canada After 18 ({full} years for the full amount)",
+    "caOasResidenceSub": "{years} years gives you {pct}% of the full amount (no entitlement below {min} years)",
+    "caOasStartAgeLabel": "Age You Start OAS ({min}–{max}, no early claim)",
+    "caOtherOutOfPocketLabel": "Other Out-of-Pocket Healthcare Costs (Annual)",
+    "caPrescriptionLabel": "Prescription Costs (Annual)",
+    "caPrivateHealthLabel": "Private Health Insurance (Monthly)",
+    "caPriorEarnedIncomeLabel": "Prior Year Earned Income (for RRSP room — leave blank to use your total income)",
+    "caRestrictedAssetsLabel": "Restricted Assets",
+    "caRestrictedAssetsSub": "RRSP (withdrawals are possible but fully taxable, and it must convert to a RRIF at {age})",
+    "caRetirementIncomeLabel": "Retirement Income",
+    "caRetirementIncomeSub": "Annual CPP + OAS (after clawback) + any additional pension",
+    "caRrifNote": "Your RRSP must convert to a RRIF by the end of the year you turn {age}, after which minimum withdrawals apply ({pct}% at {age}, {pct80}% at 80, {pct95}% from 95). These mandatory withdrawals are included in the projection.",
+    "caRrspLabel": "RRSP",
+    "caRrspRoomLabel": "Annual RRSP Room",
+    "caRrspRoomSub": "The lesser of {pct}% of last year's earned income and the {cap} cap",
+    "caRrspOverLabel": "You are {amount} over your RRSP room",
+    "caRrspRemainingLabel": "Remaining RRSP Room",
+    "caRrspTaxSavingLabel": "RRSP Tax Saving (Estimate)",
+    "caRrspTaxSavingSub": "Contributions are deductible — worth about {pct}% at your marginal rate",
+    "caSurplusLabel": "Income Surplus",
+    "caSurplusSub": "Annual amount by which pension income exceeds your outgoings",
+    "caTaxAdvantagedLabel": "Tax-Advantaged Accounts",
+    "caTaxAdvantagedSub": "TFSA + RRSP (a cross-cutting view that overlaps the two categories above)",
+    "caTaxHandledInInvestmentNote": "Canadian tax — federal income tax, capital gains and RRSP tax savings — is calculated together in section 02 (TFSA).",
+    "caTaxSectionLabel": "Tax ({taxYear} — federal only)",
+    "caTaxSourceNote": "Federal income tax and capital gains are estimates based on CRA figures for the {taxYear} tax year. Provincial and territorial income tax (all 13 differ), dividend tax credits, CPP and EI contributions, and AMT are not implemented.",
+    "caTfsaLabel": "TFSA",
+    "caTfsaLimitLabel": "Annual TFSA Limit ({taxYear})",
+    "caTfsaOverLabel": "You are {amount} over the annual TFSA limit",
+    "caTfsaRemainingLabel": "Remaining TFSA Room",
+    "caTfsaRemainingSub": "Up to {amount} a year. Your cumulative room depends on your own circumstances",
+    "caTfsaTaxFreeNote": "Growth and withdrawals inside a TFSA are entirely tax-free. Withdrawals do not count as net income, so they never trigger the OAS clawback.",
+    "caTotalAssetsLabel": "Total Assets (all four accounts)",
+    "caTotalAssetsSub": "TFSA + RRSP + non-registered account + cash savings combined",
+    "caTotalTaxLabel": "Total Tax (Estimate, after RRSP saving)",
+    "caTotalTaxSub": "Federal income tax + capital gains tax − RRSP tax saving",
+    "caVisionLabel": "Vision Care Costs (Annual)",
+    "caWithdrawalLabel": "Withdrawal Needed from Your Accounts",
+    "caWithdrawalSub": "Annual shortfall not covered by pension income",
+    "caYearsUnit": "years",
     "advancedMedicalLabel": "Advanced medical care",
     "ageYM": "{years}y {months}m",
     "ageYMD": "{years} years {months} months {days} days",
@@ -2142,10 +2300,420 @@ export const GB_COUNTRY_RULES = {
   defaults: {},
 };
 
+// ---------- countryRules/CA.js 相当（カナダ版：実装済み） ----------
+// country: CA
+// lastUpdated: 2026-07-13
+// source: canada.ca（CRA / Service Canada / ESDC）
+// 対象年度：2026課税年度（暦年）。CPP・OASの給付額は四半期ごとに物価連動で改定される。
+// 制度上限・税率はすべて CA_COUNTRY_RULES 内に集約し、画面や共通計算関数へ直接書かない。
+// 各セクションは effectiveTaxYear / lastUpdated / sourceName / sourceUrl を持つ。
+// 根拠が確認できない数値は推測で入れず、未実装項目は notImplemented に明示する。
+// 【重要】このオブジェクトは JP / US / GB のルールを一切参照せず、逆に参照もされない。
+export const CA_COUNTRY_RULES = {
+  investment: {
+    implemented: true,
+    effectiveTaxYear: "2026",
+    lastUpdated: "2026-07-13",
+    sourceName: "Government of Canada (CRA) — TFSA / RRSP contribution limits, RRIF minimum withdrawals",
+    sourceUrl: "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/tax-free-savings-account.html",
+    sourceUrls: {
+      tfsa: "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/tax-free-savings-account.html",
+      rrsp: "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/rrsps-related-plans.html",
+      limitsTable: "https://www.canada.ca/en/revenue-agency/services/tax/registered-plans-administrators/pspa/mp-rrsp-dpsp-tfsa-limits-ympe.html",
+      rrif: "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/rrsps-related-plans/registered-retirement-income-fund-rrif.html",
+    },
+    // カナダ版で別々に管理・計算する口座
+    accountTypes: ["tfsa", "rrsp", "nonRegistered", "cashSavings"],
+    taxAdvantagedAccounts: ["tfsa", "rrsp"],
+    limits: {
+      // TFSA：2026年の年間拠出上限（2024・2025年と同額）
+      tfsaAnnualLimit: 7000,
+      // 2009年から一度も拠出していない場合の累積上限（2026年1月1日時点）
+      tfsaCumulativeRoom2026: 109000,
+      // RRSP：前年の稼得所得の18% と 年間上限額 の低い方
+      rrspAnnualDollarLimit: 33810,
+      rrspIncomePercent: 0.18,
+    },
+    // RRSPは71歳の年末までにRRIF（またはアニュイティ）へ強制転換され、
+    // 翌年から年齢別の最低取崩し率に従って引き出さなければならない。
+    rrifConversionAge: 71,
+    // RRIF最低取崩し率（CRA公表テーブル。71歳以降が強制、65〜70歳は任意のRRIF開始時に適用）
+    rrifMinimumFactors: {
+      65: 0.0400, 66: 0.0417, 67: 0.0435, 68: 0.0455, 69: 0.0476, 70: 0.0500,
+      71: 0.0528, 72: 0.0540, 73: 0.0553, 74: 0.0567, 75: 0.0582, 76: 0.0598,
+      77: 0.0617, 78: 0.0636, 79: 0.0658, 80: 0.0682, 81: 0.0708, 82: 0.0738,
+      83: 0.0771, 84: 0.0808, 85: 0.0851, 86: 0.0899, 87: 0.0955, 88: 0.1021,
+      89: 0.1099, 90: 0.1192, 91: 0.1306, 92: 0.1449, 93: 0.1634, 94: 0.1879,
+    },
+    rrifMinimumFactorAt95Plus: 0.2000,
+
+    // ---------- 計算関数（すべて純関数） ----------
+    _num(v) { return Number(v) || 0; },
+    getTfsaAnnualLimit() { return this.limits.tfsaAnnualLimit; },
+    getTfsaRemaining(accounts) {
+      return this.limits.tfsaAnnualLimit - this._num((accounts.tfsa || {}).annualContribution);
+    },
+    // RRSPの拠出枠：前年の稼得所得の18% と 年間上限額（$33,810）の低い方。
+    // （職域年金がある場合の pension adjustment は未実装）
+    getRrspRoom(priorEarnedIncome) {
+      const l = this.limits;
+      return Math.min(this._num(priorEarnedIncome) * l.rrspIncomePercent, l.rrspAnnualDollarLimit);
+    },
+    getRrspRemaining(accounts, priorEarnedIncome) {
+      return this.getRrspRoom(priorEarnedIncome) - this._num((accounts.rrsp || {}).annualContribution);
+    },
+    // RRIFの年齢別最低取崩し率。95歳以上は一律20%。
+    getRrifMinimumFactor(age) {
+      const a = Math.floor(Number(age) || 0);
+      if (a >= 95) return this.rrifMinimumFactorAt95Plus;
+      return this.rrifMinimumFactors[a] || 0;
+    },
+    getRrifMinimumWithdrawal(age, rrspBalance) {
+      return (Number(rrspBalance) || 0) * this.getRrifMinimumFactor(age);
+    },
+
+    // 4口座の残高を、現在の年齢から死亡想定年齢まで年単位で積み上げる。
+    // 口座ごとに「現在額・年間積立額・想定利回り・積立終了年齢」を個別に持つ。
+    // 取崩し順：Non-Registered → Cash Savings → TFSA → RRSP
+    // （課税口座から先に取り崩し、非課税のTFSAとRRSPは後回しにする）
+    // ただし rrifConversionAge 以降は、RRSPからの最低取崩し額が強制的に発生する。
+    simulateGrowth({ currentAge, retireAge, deathAge, accounts, annualWithdrawalNeeded }) {
+      const keys = this.accountTypes;
+      const balances = {}, contributions = {}, rates = {}, endAges = {};
+      keys.forEach((k) => {
+        const a = accounts[k] || {};
+        balances[k] = Number(a.currentValue) || 0;
+        contributions[k] = Number(a.annualContribution) || 0;
+        rates[k] = (Number(a.expectedReturnPct) || 0) / 100;
+        endAges[k] = Number(a.contributionEndAge) || 0;
+      });
+      const withdrawalOrder = ["nonRegistered", "cashSavings", "tfsa", "rrsp"];
+      const totalOf = (b) => keys.reduce((s, k) => s + b[k], 0);
+      const startAge = Math.round(currentAge);
+      const endAge = Math.round(deathAge);
+      const yearly = [{ age: startAge, value: totalOf(balances), accounts: { ...balances }, rrifMinimum: 0 }];
+      for (let age = startAge + 1; age <= endAge; age++) {
+        keys.forEach((k) => { balances[k] = balances[k] * (1 + rates[k]); });
+        keys.forEach((k) => { if (age <= endAges[k]) balances[k] += contributions[k]; });
+
+        // RRIF強制取崩し（71歳以降）。引き出した額は非登録口座へ移し、生活費に充てられる状態にする。
+        let rrifMinimum = 0;
+        if (age >= this.rrifConversionAge && balances.rrsp > 0) {
+          rrifMinimum = Math.min(balances.rrsp, this.getRrifMinimumWithdrawal(age, balances.rrsp));
+          balances.rrsp -= rrifMinimum;
+          balances.nonRegistered += rrifMinimum;
+        }
+
+        if (age > retireAge) {
+          let remaining = Number(annualWithdrawalNeeded) || 0;
+          for (const key of withdrawalOrder) {
+            if (remaining <= 0) break;
+            const take = Math.min(balances[key], remaining);
+            balances[key] -= take;
+            remaining -= take;
+          }
+        }
+        yearly.push({ age, value: totalOf(balances), accounts: { ...balances }, rrifMinimum });
+      }
+      return { yearly, finalValue: totalOf(balances), finalAccounts: { ...balances } };
+    },
+
+    // 資産区分。
+    // ・Liquid / Accessible：TFSA・非登録口座・現金（いつでも引き出せ、引出しに課税されない or 既に課税済み）
+    // ・Restricted：RRSP（引き出し自体は可能だが全額が課税所得となり源泉徴収もあるため、
+    //                実質的に自由に使える資産ではない。71歳でRRIFへ強制転換される）
+    // ・Tax-Advantaged：TFSA + RRSP（上2区分と重なる横断的な内訳）
+    // 総資産（total）は4口座の単純合計であり、Liquid + Restricted と必ず一致する。
+    splitAssets(age, accounts) {
+      const v = {};
+      this.accountTypes.forEach((k) => { v[k] = Number((accounts[k] || {}).currentValue) || 0; });
+      const liquid = v.tfsa + v.nonRegistered + v.cashSavings;
+      const restricted = v.rrsp;
+      const taxAdvantaged = v.tfsa + v.rrsp;
+      return {
+        liquid, restricted, taxAdvantaged,
+        total: liquid + restricted,
+        isRrifPhase: age >= this.rrifConversionAge,
+        accounts: v,
+      };
+    },
+    notImplemented: [
+      "職域年金加入者のPension Adjustment（PA）によるRRSP枠の減額",
+      "RRSP・TFSAの未使用枠の繰越（キャリーフォワード）",
+      "FHSA（First Home Savings Account）／RESP／RDSP",
+      "RRSPからの引出し時の源泉徴収税（withholding tax）",
+      "ケベック州のQPP（CPPと拠出率・給付が異なる）",
+    ],
+  },
+
+  retirement: {
+    implemented: true,
+    effectiveTaxYear: "2026",
+    lastUpdated: "2026-07-13",
+    sourceName: "Service Canada / ESDC — Canada Pension Plan, Old Age Security",
+    sourceUrl: "https://www.canada.ca/en/services/benefits/publicpensions.html",
+    sourceUrls: {
+      cpp: "https://www.canada.ca/en/services/benefits/publicpensions/cpp.html",
+      cppAmounts: "https://www.canada.ca/en/services/benefits/publicpensions/cpp/cpp-benefit/amount.html",
+      oas: "https://www.canada.ca/en/services/benefits/publicpensions/cpp/old-age-security.html",
+      oasRecoveryTax: "https://www.canada.ca/en/services/benefits/publicpensions/cpp/old-age-security/recovery-tax.html",
+    },
+    accountTypes: ["cpp", "oas"],
+    cpp: {
+      // 2026年に65歳で受給を開始した場合の満額（月額）。実際の受給額は拠出履歴により大きく異なるため、
+      // 利用者が My Service Canada Account で確認した見込額で上書きできるようにする。
+      maxMonthlyAt65: 1507.65,
+      standardAge: 65,
+      earliestAge: 60,
+      latestAge: 70,
+      // 繰上げ：65歳より前は1か月あたり0.6%減額（60歳で -36%）
+      earlyReductionPerMonth: 0.006,
+      // 繰下げ：65歳より後は1か月あたり0.7%増額（70歳で +42%）
+      lateIncreasePerMonth: 0.007,
+    },
+    oas: {
+      // 2026年4〜6月期の満額（月額）。OASは四半期ごとに物価連動で改定される。
+      maxMonthly65to74: 743.05,
+      maxMonthly75plus: 817.36,
+      enhancedAge: 75,   // 75歳以降は10%上乗せ
+      standardAge: 65,
+      latestAge: 70,
+      earlyClaimAllowed: false, // OASは65歳より前には受給できない
+      // 繰下げ：1か月あたり0.6%増額（70歳で +36%）
+      lateIncreasePerMonth: 0.006,
+      // 回収（クローバック）：2026課税年度、純所得がこの額を超えると超過分の15%が回収される
+      recoveryTaxThreshold2026: 95323,
+      recoveryTaxRate: 0.15,
+      // 満額受給には18歳以降40年のカナダ居住が必要（10年で最低受給資格）
+      fullResidenceYears: 40,
+      minimumResidenceYears: 10,
+    },
+
+    // CPPの受給開始年齢による増減率。65歳が基準（=1.0）。
+    getCppFactor(startAge) {
+      const c = this.cpp;
+      const a = Math.min(Math.max(Number(startAge) || c.standardAge, c.earliestAge), c.latestAge);
+      const months = (a - c.standardAge) * 12;
+      if (months < 0) return 1 + months * c.earlyReductionPerMonth;  // months負 → 減額
+      return 1 + months * c.lateIncreasePerMonth;
+    },
+    getCppMaxAnnualAt65() { return this.cpp.maxMonthlyAt65 * 12; },
+    // 年間受給額 ＝ 利用者が入力した「65歳時点の見込み年額」× 受給開始年齢による増減率
+    getCppAnnualBenefit(estimatedAnnualAt65, startAge) {
+      return (Number(estimatedAnnualAt65) || 0) * this.getCppFactor(startAge);
+    },
+
+    // OASの受給開始年齢による増額率。65歳が基準（=1.0）。繰上げ受給はできない。
+    getOasFactor(startAge) {
+      const o = this.oas;
+      const a = Math.min(Math.max(Number(startAge) || o.standardAge, o.standardAge), o.latestAge);
+      const months = (a - o.standardAge) * 12;
+      return 1 + months * o.lateIncreasePerMonth;
+    },
+    getOasEffectiveStartAge(startAge) {
+      const o = this.oas;
+      return Math.min(Math.max(Number(startAge) || o.standardAge, o.standardAge), o.latestAge);
+    },
+    // 年齢に応じたOAS満額（年額）。75歳以降は10%上乗せされる。
+    getOasMaxAnnual(age) {
+      const o = this.oas;
+      const monthly = (Number(age) || 0) >= o.enhancedAge ? o.maxMonthly75plus : o.maxMonthly65to74;
+      return monthly * 12;
+    },
+    // 居住年数による按分（40年で満額、10年未満は受給資格なし）
+    getOasResidenceFraction(residenceYears) {
+      const o = this.oas;
+      const y = Number(residenceYears) || 0;
+      if (y < o.minimumResidenceYears) return 0;
+      return Math.min(1, y / o.fullResidenceYears);
+    },
+    // クローバック前のOAS年額
+    getOasAnnualBeforeClawback(age, startAge, residenceYears) {
+      return this.getOasMaxAnnual(age)
+        * this.getOasFactor(startAge)
+        * this.getOasResidenceFraction(residenceYears);
+    },
+    // OAS回収税（クローバック）：純所得が閾値を超えた分の15%を、OAS年額を上限として回収する
+    getOasClawback(netIncome, oasAnnualBeforeClawback) {
+      const o = this.oas;
+      const excess = Math.max(0, (Number(netIncome) || 0) - o.recoveryTaxThreshold2026);
+      return Math.min(Math.max(0, Number(oasAnnualBeforeClawback) || 0), excess * o.recoveryTaxRate);
+    },
+    getOasAnnualAfterClawback(netIncome, oasAnnualBeforeClawback) {
+      const before = Math.max(0, Number(oasAnnualBeforeClawback) || 0);
+      return before - this.getOasClawback(netIncome, before);
+    },
+    notImplemented: [
+      "GIS（Guaranteed Income Supplement）およびAllowance",
+      "ケベック州のQPP（受給額・拠出率がCPPと異なる）",
+      "CPP拠出履歴からの受給見込額の自動算出（利用者が見込額を入力する方式）",
+      "CPP post-retirement benefit（受給開始後も就労を続けた場合の増額）",
+      "配偶者との年金分割（pension income splitting / CPP sharing）",
+    ],
+  },
+
+  healthcare: {
+    implemented: true,
+    // 州・準州の公的医療保険（Medicare）でカバーされることを前提に、
+    // 自己負担が生じうる費目のみ年間費用を入力する簡易モデル。
+    model: "selfInputAnnualCostsWithProvincialCoverage",
+    effectiveTaxYear: "2026",
+    lastUpdated: "2026-07-13",
+    sourceName: "Government of Canada — Canada's health care system",
+    sourceUrl: "https://www.canada.ca/en/health-canada/services/canada-health-care-system.html",
+    costItems: [
+      "basicAnnual",
+      "privateHealthInsuranceMonthly",
+      "prescriptionAnnual",
+      "dentalAnnual",
+      "visionAnnual",
+      "longTermCareAnnual",
+      "otherOutOfPocketAnnual",
+    ],
+    getAnnualTotal(healthcare) {
+      const h = healthcare || {};
+      const n = (v) => Number(v) || 0;
+      return n(h.basicAnnual)
+        + n(h.privateHealthInsuranceMonthly) * 12
+        + n(h.prescriptionAnnual)
+        + n(h.dentalAnnual)
+        + n(h.visionAnnual)
+        + n(h.longTermCareAnnual)
+        + n(h.otherOutOfPocketAnnual);
+    },
+    notImplemented: [
+      "州・準州ごとの医療保険料（British Columbia の MSP など）の自動計算",
+      "処方薬・歯科・視力の公的補助（州により制度が大きく異なるため、金額は利用者入力）",
+      "長期介護（Long-term care）の州別自己負担額",
+    ],
+  },
+
+  tax: {
+    implemented: true,
+    model: "canadaFederalIncomeTax",
+    effectiveTaxYear: "2026",
+    lastUpdated: "2026-07-13",
+    sourceName: "Canada Revenue Agency (CRA) — Federal tax rates and income brackets",
+    sourceUrl: "https://www.canada.ca/en/revenue-agency/services/tax/individuals/tax-rates-brackets/current-year.html",
+    sourceUrls: {
+      brackets: "https://www.canada.ca/en/revenue-agency/services/tax/individuals/tax-rates-brackets/current-year.html",
+      bpa: "https://www.canada.ca/en/revenue-agency/services/tax/individuals/frequently-asked-questions-individuals/basic-personal-amount.html",
+      capitalGains: "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/personal-income/line-12700-capital-gains.html",
+    },
+    // 【重要】連邦税のみ実装。州・準州（13地域）はそれぞれ独自の税率・バンド・控除を持つため未実装。
+    region: "Federal only (provincial / territorial tax not included)",
+    province: { implemented: false, brackets: null, rates: null, basicPersonalAmount: null },
+
+    // 2026課税年度の連邦税バンド（最低税率は2025年7月に15%→14%へ引下げ済み）
+    incomeTax: {
+      bands: [
+        { upTo: 58523, rate: 0.14 },
+        { upTo: 117045, rate: 0.205 },
+        { upTo: 181440, rate: 0.26 },
+        { upTo: 258482, rate: 0.29 },
+        { upTo: Infinity, rate: 0.33 },
+      ],
+      // Basic Personal Amount（基礎控除）。「所得控除」ではなく「最低税率で計算される税額控除」。
+      // 高所得者は逓減し、最上位バンドで下限額になる。
+      basicPersonalAmount: 16452,
+      basicPersonalAmountMinimum: 14829,
+      bpaTaperStart: 181440,
+      bpaTaperEnd: 258482,
+      bpaCreditRate: 0.14, // BPAは最低税率で税額控除される
+    },
+    // 譲渡益の課税所得算入率（2026年時点で50%）
+    capitalGains: { inclusionRate: 0.50 },
+    // TFSA内の運用益・引出しは完全非課税
+    tfsaTaxFree: true,
+    // RRSPは拠出時に所得控除、引出し時に全額が課税所得
+    rrspModel: "deductOnContributionTaxOnWithdrawal",
+
+    // BPA（高所得で逓減）
+    getBasicPersonalAmount(income) {
+      const it = this.incomeTax;
+      const g = Number(income) || 0;
+      if (g <= it.bpaTaperStart) return it.basicPersonalAmount;
+      if (g >= it.bpaTaperEnd) return it.basicPersonalAmountMinimum;
+      const range = it.bpaTaperEnd - it.bpaTaperStart;
+      const reduction = (it.basicPersonalAmount - it.basicPersonalAmountMinimum) * ((g - it.bpaTaperStart) / range);
+      return it.basicPersonalAmount - reduction;
+    },
+    // 連邦所得税（BPAの税額控除適用後）
+    calculateFederalTax(taxableIncome) {
+      const it = this.incomeTax;
+      const income = Math.max(0, Number(taxableIncome) || 0);
+      let grossTax = 0;
+      let lower = 0;
+      for (const b of it.bands) {
+        if (income > lower) {
+          grossTax += (Math.min(income, b.upTo) - lower) * b.rate;
+          lower = b.upTo;
+        } else break;
+      }
+      const bpa = this.getBasicPersonalAmount(income);
+      const bpaCredit = bpa * it.bpaCreditRate;
+      return {
+        taxableIncome: income,
+        grossTax,
+        basicPersonalAmount: bpa,
+        bpaCredit,
+        tax: Math.max(0, grossTax - bpaCredit),
+      };
+    },
+    getMarginalRate(income) {
+      const it = this.incomeTax;
+      const g = Math.max(0, Number(income) || 0);
+      for (const b of it.bands) {
+        if (g <= b.upTo) return b.rate;
+      }
+      return it.bands[it.bands.length - 1].rate;
+    },
+    // 譲渡益課税：利益の50%が課税所得に算入され、限界税率で課税される
+    calculateCapitalGainsTax(gain, otherIncome) {
+      const g = Math.max(0, Number(gain) || 0);
+      if (g <= 0) return 0;
+      const taxableGain = g * this.capitalGains.inclusionRate;
+      const base = this.calculateFederalTax(otherIncome).tax;
+      const withGain = this.calculateFederalTax((Number(otherIncome) || 0) + taxableGain).tax;
+      return Math.max(0, withGain - base);
+    },
+    // RRSP拠出による所得税の軽減額。拠出は所得控除なので、課税所得そのものが減る。
+    calculateRrspTaxSaving(contribution, income, rrspRoom) {
+      const cap = (rrspRoom === undefined || rrspRoom === null) ? Infinity : Math.max(0, Number(rrspRoom) || 0);
+      const c = Math.min(Math.max(0, Number(contribution) || 0), cap);
+      if (c <= 0) return 0;
+      const g = Math.max(0, Number(income) || 0);
+      const base = this.calculateFederalTax(g).tax;
+      const reduced = this.calculateFederalTax(Math.max(0, g - c)).tax;
+      return Math.max(0, base - reduced);
+    },
+    notImplemented: [
+      "州・準州の所得税（13地域すべてで税率・バンド・控除が異なる）",
+      "オンタリオ州などのサータックス（surtax）",
+      "ケベック州の連邦税減額（Quebec abatement 16.5%）",
+      "配当税額控除（eligible / non-eligible dividend tax credit）",
+      "CPP拠出金・EI保険料（所得税とは別の天引き）",
+      "Alternative Minimum Tax（AMT）",
+      "年金所得の分割（pension income splitting）",
+    ],
+  },
+
+  labels: {
+    // カナダ版は投資・年金・医療費・税制のすべてを実装済みのため、未実装の注記は使用しない。
+    // ただしiDeCoセクション（JP専用）内の税制表示だけはカナダ向けの案内文へ差し替える。
+    investmentNote: null,
+    retirementNote: null,
+    healthcareNote: null,
+    taxNote: "caTaxHandledInInvestmentNote",
+  },
+  defaults: {},
+};
+
 const COUNTRY_RULES = {
   JP: JP_COUNTRY_RULES,
   US: US_COUNTRY_RULES,
   GB: GB_COUNTRY_RULES,
+  CA: CA_COUNTRY_RULES,
   // CA / AU: SUPPORTED_COUNTRIES 側でまだ enabled:false（Coming Soon）のため、
   // ここに追加しなくても getCountryRules() は自動的に JP へフォールバック値を
   // 返さず、下記の通り「未定義国は最も安全側の＝未実装として扱う」ようにしてある。
@@ -2803,6 +3371,7 @@ export function runIdecoSimulation({ currentAge, deathAge, ideco }) {
 const DEFAULT_WATCHLIST_JP = [];
 const DEFAULT_WATCHLIST_US = [];
 const DEFAULT_WATCHLIST_GB = [];
+const DEFAULT_WATCHLIST_CA = [];
 
 // 既存の呼び出し箇所（初期状態の既定値）との後方互換のための別名。
 const DEFAULT_WATCHLIST = DEFAULT_WATCHLIST_JP;
@@ -2810,6 +3379,7 @@ const DEFAULT_WATCHLIST = DEFAULT_WATCHLIST_JP;
 function defaultWatchlistFor(country) {
   if (country === "US") return DEFAULT_WATCHLIST_US;
   if (country === "GB") return DEFAULT_WATCHLIST_GB;
+  if (country === "CA") return DEFAULT_WATCHLIST_CA;
   return DEFAULT_WATCHLIST_JP;
 }
 
@@ -3631,6 +4201,307 @@ function GBHealthcarePanel({ gbInvestment, onUpdate, totalAnnual }) {
   );
 }
 
+// ---------- カナダ選択時：1口座分の入力欄（現在額・年間積立額・想定利回り・積立終了年齢） ----------
+function CAAccountFields({ accountKey, title, account, onUpdateAccount, borderColor, note }) {
+  const { t } = useContext(LocaleContext);
+  return (
+    <div className="section-block" style={{ borderColor, marginTop: 12 }}>
+      <div className="field-label" style={{ marginBottom: 6 }}>{title}</div>
+      <Field label={t("caCurrentValueLabel")} unit="C$" step={500} value={account.currentValue} onChange={(v) => onUpdateAccount(accountKey, "currentValue", v)} />
+      <Field label={t("caAnnualContributionLabel")} unit="C$" step={100} value={account.annualContribution} onChange={(v) => onUpdateAccount(accountKey, "annualContribution", v)} />
+      <Field label={t("expectedAnnualReturnLabel")} unit="%" step={0.5} value={account.expectedReturnPct} onChange={(v) => onUpdateAccount(accountKey, "expectedReturnPct", v)} />
+      <AgeField label={t("caContributionEndAgeLabel")} value={account.contributionEndAge} onChange={(v) => onUpdateAccount(accountKey, "contributionEndAge", v)} />
+      {note && <div className="stat-sub">{note}</div>}
+    </div>
+  );
+}
+
+// ---------- カナダ選択時：投資口座パネル（TFSA / RRSP / 非登録口座 / 現金 ＋ 税制） ----------
+// 他国のUIとは完全に独立しており、CA_COUNTRY_RULES の関数のみを使用する。
+function CAInvestmentAccountsPanel({ caInvestment, onUpdate, onUpdateAccount, age, investmentRules, taxRules, taxResult, rrspRoom }) {
+  const { t, money } = useContext(LocaleContext);
+  // 画面に出す数値・年度・税率はすべて CA_COUNTRY_RULES から取り出す（表示文にリテラルを書かない）。
+  const pct = (rate) => `${Number((rate * 100).toFixed(2))}`;
+
+  const tfsaLimit = investmentRules.getTfsaAnnualLimit();
+  const tfsaRemaining = investmentRules.getTfsaRemaining(caInvestment);
+  const rrspRemaining = rrspRoom - (Number(caInvestment.rrsp.annualContribution) || 0);
+  const split = investmentRules.splitAssets(age, caInvestment);
+  const rrifAge = investmentRules.rrifConversionAge;
+
+  return (
+    <div>
+      <div className="note" style={{ marginBottom: 14 }}>
+        <Info size={13} />
+        <span>{t("caInvestmentSourceNote", { taxYear: investmentRules.effectiveTaxYear, region: taxRules.region })}</span>
+      </div>
+
+      <Field label={t("caAnnualIncomeLabel")} unit="C$" step={1000} value={caInvestment.annualIncome} onChange={(v) => onUpdate("annualIncome", v)} />
+      <Field label={t("caPriorEarnedIncomeLabel")} unit="C$" step={1000} value={caInvestment.priorEarnedIncome} onChange={(v) => onUpdate("priorEarnedIncome", v)} />
+
+      <CAAccountFields
+        accountKey="tfsa" title={t("caTfsaLabel")} account={caInvestment.tfsa}
+        onUpdateAccount={onUpdateAccount} borderColor="#8FBF7F"
+      />
+      <div className="stat-grid" style={{ marginTop: 12 }}>
+        <StatCard
+          label={t("caTfsaLimitLabel", { taxYear: investmentRules.effectiveTaxYear })}
+          value={money(tfsaLimit)}
+          sub={t("caTfsaRemainingSub", { amount: money(tfsaLimit) })}
+        />
+        <StatCard
+          label={t("caTfsaRemainingLabel")}
+          value={money(Math.max(0, tfsaRemaining))}
+          sub={t("caTfsaTaxFreeNote")}
+          tone={tfsaRemaining < 0 ? "danger" : "good"}
+        />
+      </div>
+      {tfsaRemaining < 0 && (
+        <div className="note" style={{ borderLeftColor: "#C2694F", marginTop: 10 }}>
+          <Info size={13} style={{ color: "#C2694F" }} />
+          <span>{t("caTfsaOverLabel", { amount: money(-tfsaRemaining) })}</span>
+        </div>
+      )}
+
+      <CAAccountFields
+        accountKey="rrsp" title={t("caRrspLabel")} account={caInvestment.rrsp}
+        onUpdateAccount={onUpdateAccount} borderColor="#B08FD6"
+      />
+      <div className="stat-grid" style={{ marginTop: 12 }}>
+        <StatCard
+          label={t("caRrspRoomLabel")}
+          value={money(rrspRoom)}
+          sub={t("caRrspRoomSub", {
+            pct: pct(investmentRules.limits.rrspIncomePercent),
+            cap: money(investmentRules.limits.rrspAnnualDollarLimit),
+          })}
+        />
+        <StatCard
+          label={t("caRrspRemainingLabel")}
+          value={money(Math.max(0, rrspRemaining))}
+          sub={t("caRrspTaxSavingSub", { pct: pct(taxResult.marginalRate) })}
+          tone={rrspRemaining < 0 ? "danger" : "good"}
+        />
+      </div>
+      {rrspRemaining < 0 && (
+        <div className="note" style={{ borderLeftColor: "#C2694F", marginTop: 10 }}>
+          <Info size={13} style={{ color: "#C2694F" }} />
+          <span>{t("caRrspOverLabel", { amount: money(-rrspRemaining) })}</span>
+        </div>
+      )}
+      <div className="note" style={{ marginTop: 10 }}>
+        <Info size={13} />
+        <span>{t("caRrifNote", {
+          age: rrifAge,
+          pct: pct(investmentRules.getRrifMinimumFactor(rrifAge)),
+          pct80: pct(investmentRules.getRrifMinimumFactor(80)),
+          pct95: pct(investmentRules.rrifMinimumFactorAt95Plus),
+        })}</span>
+      </div>
+
+      <CAAccountFields
+        accountKey="nonRegistered" title={t("caNonRegisteredLabel")} account={caInvestment.nonRegistered}
+        onUpdateAccount={onUpdateAccount} borderColor="#D9A54F"
+      />
+      <CAAccountFields
+        accountKey="cashSavings" title={t("caCashSavingsLabel")} account={caInvestment.cashSavings}
+        onUpdateAccount={onUpdateAccount} borderColor="#7BC9E0"
+      />
+
+      <div className="stat-grid" style={{ marginTop: 16 }}>
+        <StatCard label={t("caTotalAssetsLabel")} value={money(split.total)} sub={t("caTotalAssetsSub")} />
+      </div>
+      <div className="stat-grid" style={{ marginTop: 10 }}>
+        <StatCard label={t("caLiquidAssetsLabel")} value={money(split.liquid)} sub={t("caLiquidAssetsSub")} tone="good" />
+        <StatCard label={t("caRestrictedAssetsLabel")} value={money(split.restricted)} sub={t("caRestrictedAssetsSub", { age: rrifAge })} />
+        <StatCard label={t("caTaxAdvantagedLabel")} value={money(split.taxAdvantaged)} sub={t("caTaxAdvantagedSub")} />
+      </div>
+
+      <div className="section-block" style={{ borderColor: "#5FB0A0", marginTop: 16 }}>
+        <div className="field-label" style={{ marginBottom: 6 }}>
+          {t("caTaxSectionLabel", { taxYear: taxRules.effectiveTaxYear })}
+        </div>
+        <div className="note" style={{ marginBottom: 12 }}>
+          <Info size={13} />
+          <span>{t("caTaxSourceNote", { taxYear: taxRules.effectiveTaxYear })}</span>
+        </div>
+        <Field label={t("caCapitalGainLabel")} unit="C$" step={500} value={caInvestment.estimatedCapitalGainAnnual} onChange={(v) => onUpdate("estimatedCapitalGainAnnual", v)} />
+        <div className="stat-grid" style={{ marginTop: 10 }}>
+          <StatCard
+            label={t("caFederalTaxLabel")}
+            value={money(taxResult.federalTax)}
+            sub={t("caFederalTaxSub", { amount: money(taxResult.basicPersonalAmount) })}
+          />
+          <StatCard
+            label={t("caCgtLabel")}
+            value={money(taxResult.capitalGainsTax)}
+            sub={t("caCgtSub", { pct: pct(taxRules.capitalGains.inclusionRate) })}
+          />
+          <StatCard
+            label={t("caRrspTaxSavingLabel")}
+            value={money(taxResult.rrspTaxSaving)}
+            sub={t("caRrspTaxSavingSub", { pct: pct(taxResult.marginalRate) })}
+            tone="good"
+          />
+        </div>
+        <div className="stat-grid" style={{ marginTop: 10 }}>
+          <StatCard label={t("caTotalTaxLabel")} value={money(taxResult.totalTax)} sub={t("caTotalTaxSub")} tone="danger" />
+        </div>
+        <div className="note" style={{ marginTop: 10 }}>
+          <Info size={13} />
+          <span>{t("caTfsaTaxFreeNote")}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------- カナダ選択時：退職後パネル（CPP → OAS → Expenses → Withdrawal） ----------
+function CARetirementPanel({
+  caInvestment, onUpdateCpp, onUpdateOas, onUpdate, retirementRules,
+  cppStartAge, cppFactor, cppAnnual, cppMaxAnnual,
+  oasStartAge, oasEffectiveStartAge, oasResidenceFraction,
+  oasBeforeClawback, oasClawback, oasAnnual,
+  retirementIncomeAnnual, expensesAnnual, healthcareAnnual, withdrawalNeeded, incomeSurplus,
+}) {
+  const { t, money } = useContext(LocaleContext);
+  const cpp = retirementRules.cpp;
+  const oas = retirementRules.oas;
+  const pct = (rate) => `${Number((rate * 100).toFixed(2))}`;
+  const residenceYears = Number(caInvestment.oas.residenceYears) || 0;
+
+  return (
+    <div>
+      {/* ---- CPP ---- */}
+      <div className="field-label" style={{ marginBottom: 6 }}>{t("caCppAnnualLabel")}</div>
+      <Field
+        label={t("caCppEstimateLabel")} unit="C$" step={100}
+        value={caInvestment.cpp.estimatedAnnualAt65}
+        onChange={(v) => onUpdateCpp("estimatedAnnualAt65", v)}
+      />
+      <div className="stat-sub" style={{ marginBottom: 8 }}>
+        {t("caCppFullNote", { taxYear: retirementRules.effectiveTaxYear, amount: money(cppMaxAnnual) })}
+      </div>
+      <AgeField
+        label={t("caCppStartAgeLabel", { min: cpp.earliestAge, max: cpp.latestAge })}
+        value={cppStartAge}
+        onChange={(v) => onUpdateCpp("startAge", Math.round(v))}
+      />
+      {cppFactor !== 1 && (
+        <div className="note" style={{ marginTop: -8 }}>
+          <Info size={13} />
+          <span>{t("caCppFactorNote", {
+            age: cppStartAge,
+            pct: Number((cppFactor * 100).toFixed(1)),
+            early: pct(cpp.earlyReductionPerMonth),
+            late: pct(cpp.lateIncreasePerMonth),
+          })}</span>
+        </div>
+      )}
+
+      {/* ---- OAS ---- */}
+      <div className="field-label" style={{ marginTop: 16, marginBottom: 6 }}>{t("caOasAnnualLabel")}</div>
+      <AgeField
+        label={t("caOasStartAgeLabel", { min: oas.standardAge, max: oas.latestAge })}
+        value={oasStartAge}
+        onChange={(v) => onUpdateOas("startAge", Math.round(v))}
+      />
+      {oasEffectiveStartAge > oasStartAge && (
+        <div className="note" style={{ marginTop: -8, borderLeftColor: "#D9A54F" }}>
+          <Info size={13} style={{ color: "#D9A54F" }} />
+          <span>{t("caOasNoEarlyNote", { age: oasEffectiveStartAge })}</span>
+        </div>
+      )}
+      <Field
+        label={t("caOasResidenceLabel", { full: oas.fullResidenceYears })}
+        unit={t("caYearsUnit")} step={1}
+        value={caInvestment.oas.residenceYears}
+        onChange={(v) => onUpdateOas("residenceYears", v)}
+      />
+      <div className="stat-sub" style={{ marginBottom: 8 }}>
+        {t("caOasResidenceSub", {
+          years: residenceYears,
+          pct: Number((oasResidenceFraction * 100).toFixed(1)),
+          min: oas.minimumResidenceYears,
+        })}
+      </div>
+      <div className="note" style={{ marginBottom: 8 }}>
+        <Info size={13} />
+        <span>{t("caOasEnhancedNote", {
+          base: money(oas.maxMonthly65to74 * 12),
+          enhanced: money(oas.maxMonthly75plus * 12),
+        })}</span>
+      </div>
+      {oasClawback > 0 && (
+        <div className="note" style={{ borderLeftColor: "#C2694F", marginBottom: 8 }}>
+          <Info size={13} style={{ color: "#C2694F" }} />
+          <span>{t("caOasClawbackNote", {
+            threshold: money(oas.recoveryTaxThreshold2026),
+            pct: pct(oas.recoveryTaxRate),
+            amount: money(oasClawback),
+          })}</span>
+        </div>
+      )}
+
+      <Field
+        label={t("caAdditionalPensionLabel")} unit="C$" step={100}
+        value={caInvestment.additionalPensionAnnual}
+        onChange={(v) => onUpdate("additionalPensionAnnual", v)}
+      />
+
+      <div className="stat-grid" style={{ marginTop: 10, marginBottom: 14 }}>
+        <StatCard label={t("caCppAnnualLabel")} value={money(cppAnnual)} sub={t("caCppAnnualSub")} />
+        <StatCard label={t("caOasAnnualLabel")} value={money(oasAnnual)} sub={t("caOasAnnualSub")} />
+        <StatCard
+          label={t("caOasClawbackLabel")}
+          value={money(oasClawback)}
+          sub={t("caOasClawbackSub", { threshold: money(oas.recoveryTaxThreshold2026), pct: pct(oas.recoveryTaxRate) })}
+          tone={oasClawback > 0 ? "danger" : undefined}
+        />
+        <StatCard label={t("caRetirementIncomeLabel")} value={money(retirementIncomeAnnual)} sub={t("caRetirementIncomeSub")} tone="good" />
+      </div>
+
+      <Field
+        label={t("caExpensesMonthlyLabel")} unit="C$" step={50}
+        value={caInvestment.expensesMonthly}
+        onChange={(v) => onUpdate("expensesMonthly", v)}
+      />
+      <div className="stat-grid" style={{ marginTop: 10 }}>
+        <StatCard label={t("caExpensesTotalLabel")} value={money(expensesAnnual + healthcareAnnual)} sub={t("caExpensesTotalSub")} />
+        {withdrawalNeeded > 0 ? (
+          <StatCard label={t("caWithdrawalLabel")} value={money(withdrawalNeeded)} sub={t("caWithdrawalSub")} tone="danger" />
+        ) : (
+          <StatCard label={t("caSurplusLabel")} value={money(incomeSurplus)} sub={t("caSurplusSub")} tone="good" />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---------- カナダ選択時：医療費パネル（州の公的医療保険を前提とした簡易モデル） ----------
+function CAHealthcarePanel({ caInvestment, onUpdate, totalAnnual }) {
+  const { t, money } = useContext(LocaleContext);
+  const h = caInvestment.healthcare;
+  return (
+    <div>
+      <div className="note" style={{ marginBottom: 12 }}>
+        <Info size={13} />
+        <span>{t("caHealthcareSourceNote")}</span>
+      </div>
+      <Field label={t("caBasicHealthLabel")} unit="C$" step={50} value={h.basicAnnual} onChange={(v) => onUpdate("basicAnnual", v)} />
+      <Field label={t("caPrivateHealthLabel")} unit="C$" step={10} value={h.privateHealthInsuranceMonthly} onChange={(v) => onUpdate("privateHealthInsuranceMonthly", v)} />
+      <Field label={t("caPrescriptionLabel")} unit="C$" step={50} value={h.prescriptionAnnual} onChange={(v) => onUpdate("prescriptionAnnual", v)} />
+      <Field label={t("caDentalLabel")} unit="C$" step={50} value={h.dentalAnnual} onChange={(v) => onUpdate("dentalAnnual", v)} />
+      <Field label={t("caVisionLabel")} unit="C$" step={50} value={h.visionAnnual} onChange={(v) => onUpdate("visionAnnual", v)} />
+      <Field label={t("caLongTermCareLabel")} unit="C$" step={500} value={h.longTermCareAnnual} onChange={(v) => onUpdate("longTermCareAnnual", v)} />
+      <Field label={t("caOtherOutOfPocketLabel")} unit="C$" step={50} value={h.otherOutOfPocketAnnual} onChange={(v) => onUpdate("otherOutOfPocketAnnual", v)} />
+      <div className="stat-grid" style={{ marginTop: 10 }}>
+        <StatCard label={t("caHealthcareTotalLabel")} value={money(totalAnnual)} sub={t("caHealthcareTotalSub")} tone="danger" />
+      </div>
+    </div>
+  );
+}
+
 function SectionTitle({ index, title, icon: Icon }) {
   return (
     <div className="section-title">
@@ -3812,6 +4683,43 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       // ⑤ 退職後の生活費。JPのlivingCostMonthly・USのusInvestment.expensesMonthlyとは別データ
       expensesMonthly: 0,
     },
+    // カナダ選択時の投資口座・年金・医療費。
+    // JP（NISA/iDeCo）・US（usInvestment）・GB（gbInvestment）とは完全に独立した専用データ。
+    // 4口座それぞれが「現在額・年間積立額・想定利回り・積立終了年齢」を個別に持つ。
+    caInvestment: {
+      annualIncome: 0,        // 年間総所得（連邦所得税・RRSP税軽減・OASクローバックの判定に使用）
+      priorEarnedIncome: 0,   // 前年の稼得所得（RRSP拠出枠 = この18% と $33,810 の低い方）
+      estimatedCapitalGainAnnual: 0,
+      tfsa:          { currentValue: 0, annualContribution: 0, expectedReturnPct: 5, contributionEndAge: 65 },
+      rrsp:          { currentValue: 0, annualContribution: 0, expectedReturnPct: 5, contributionEndAge: 65 },
+      nonRegistered: { currentValue: 0, annualContribution: 0, expectedReturnPct: 5, contributionEndAge: 65 },
+      cashSavings:   { currentValue: 0, annualContribution: 0, expectedReturnPct: 2, contributionEndAge: 65 },
+      // CPP（拠出型の公的年金）
+      cpp: {
+        startAge: 65,           // 60〜70歳で選択可
+        // 初期値は2026年の満額（参考値）。実際の受給額は拠出履歴により大きく異なるため、
+        // My Service Canada Account で確認した見込額で必ず上書きできる。
+        estimatedAnnualAt65: Math.round(CA_COUNTRY_RULES.retirement.getCppMaxAnnualAt65()),
+      },
+      // OAS（居住年数ベースの公的年金）
+      oas: {
+        startAge: 65,           // 65〜70歳（繰上げ不可）
+        residenceYears: 40,     // 18歳以降のカナダ居住年数（40年で満額）
+      },
+      additionalPensionAnnual: 0, // 職域年金など、任意の追加年金収入（年額）
+      // 医療費（州の公的医療保険でカバーされる前提の簡易モデル）
+      healthcare: {
+        basicAnnual: 0,
+        privateHealthInsuranceMonthly: 0,
+        prescriptionAnnual: 0,
+        dentalAnnual: 0,
+        visionAnnual: 0,
+        longTermCareAnnual: 0,
+        otherOutOfPocketAnnual: 0,
+      },
+      // 退職後の生活費。他国のデータとは別項目
+      expensesMonthly: 0,
+    },
   });
   const [watchlist, setWatchlist] = useState(DEFAULT_WATCHLIST);
 
@@ -3925,6 +4833,64 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const gbExpensesAnnual = (Number(gbInvestment.expensesMonthly) || 0) * 12;
   const gbWithdrawalNeeded = Math.max(0, gbExpensesAnnual + gbHealthcareAnnual - gbRetirementIncomeAnnual);
   const gbIncomeSurplus = Math.max(0, gbRetirementIncomeAnnual - (gbExpensesAnnual + gbHealthcareAnnual));
+
+  // ---------- カナダ選択時の派生計算（すべて CA_COUNTRY_RULES の関数のみを使用） ----------
+  // country !== "CA" のときは各ルール関数を呼び出さない（他国のルールには同名メソッドが存在しないため）。
+  const caInvestment = inputs.caInvestment;
+  const caIsCA = country === "CA";
+  const caGrossIncome = Number(caInvestment.annualIncome) || 0;
+  const caPriorEarnedIncome = Number(caInvestment.priorEarnedIncome) || caGrossIncome;
+
+  const caFederalTaxResult = (caIsCA && rules.tax.implemented)
+    ? rules.tax.calculateFederalTax(caGrossIncome)
+    : { taxableIncome: 0, grossTax: 0, basicPersonalAmount: 0, bpaCredit: 0, tax: 0 };
+  const caCapitalGainsTax = (caIsCA && rules.tax.implemented)
+    ? rules.tax.calculateCapitalGainsTax(caInvestment.estimatedCapitalGainAnnual, caGrossIncome)
+    : 0;
+  const caMarginalRate = (caIsCA && rules.tax.implemented) ? rules.tax.getMarginalRate(caGrossIncome) : 0;
+  const caRrspRoom = (caIsCA && rules.investment.implemented)
+    ? rules.investment.getRrspRoom(caPriorEarnedIncome)
+    : 0;
+  const caRrspTaxSaving = (caIsCA && rules.tax.implemented)
+    ? rules.tax.calculateRrspTaxSaving(caInvestment.rrsp.annualContribution, caGrossIncome, caRrspRoom)
+    : 0;
+  // 税額合計（RRSP拠出による軽減後）。軽減が税額を上回ってもマイナス表示にはしない。
+  const caTotalTax = Math.max(0, caFederalTaxResult.tax + caCapitalGainsTax - caRrspTaxSaving);
+
+  const caHealthcareAnnual = (caIsCA && rules.healthcare.implemented)
+    ? rules.healthcare.getAnnualTotal(caInvestment.healthcare)
+    : 0;
+
+  const caCppStartAge = Number(caInvestment.cpp.startAge) || 65;
+  const caCppFactor = (caIsCA && rules.retirement.implemented) ? rules.retirement.getCppFactor(caCppStartAge) : 1;
+  const caCppAnnual = (caIsCA && rules.retirement.implemented)
+    ? rules.retirement.getCppAnnualBenefit(caInvestment.cpp.estimatedAnnualAt65, caCppStartAge)
+    : 0;
+  const caCppMaxAnnual = (caIsCA && rules.retirement.implemented) ? rules.retirement.getCppMaxAnnualAt65() : 0;
+
+  const caOasStartAge = Number(caInvestment.oas.startAge) || 65;
+  const caOasEffectiveStartAge = (caIsCA && rules.retirement.implemented)
+    ? rules.retirement.getOasEffectiveStartAge(caOasStartAge)
+    : caOasStartAge;
+  const caOasFactor = (caIsCA && rules.retirement.implemented) ? rules.retirement.getOasFactor(caOasStartAge) : 1;
+  const caOasResidenceFraction = (caIsCA && rules.retirement.implemented)
+    ? rules.retirement.getOasResidenceFraction(caInvestment.oas.residenceYears)
+    : 0;
+  // 退職時点の年齢でOAS満額を評価する（75歳以降は10%上乗せ）
+  const caOasBeforeClawback = (caIsCA && rules.retirement.implemented)
+    ? rules.retirement.getOasAnnualBeforeClawback(caOasEffectiveStartAge, caOasStartAge, caInvestment.oas.residenceYears)
+    : 0;
+  // クローバックの判定に使う純所得＝年間総所得（利用者が退職後の想定所得を入力する）
+  const caOasClawback = (caIsCA && rules.retirement.implemented)
+    ? rules.retirement.getOasClawback(caGrossIncome, caOasBeforeClawback)
+    : 0;
+  const caOasAnnual = caOasBeforeClawback - caOasClawback;
+
+  const caAdditionalPensionAnnual = Number(caInvestment.additionalPensionAnnual) || 0;
+  const caRetirementIncomeAnnual = caCppAnnual + caOasAnnual + caAdditionalPensionAnnual;
+  const caExpensesAnnual = (Number(caInvestment.expensesMonthly) || 0) * 12;
+  const caWithdrawalNeeded = Math.max(0, caExpensesAnnual + caHealthcareAnnual - caRetirementIncomeAnnual);
+  const caIncomeSurplus = Math.max(0, caRetirementIncomeAnnual - (caExpensesAnnual + caHealthcareAnnual));
 
   const money = useCallback((n) => formatMoneyFor(baseCurrency, n), [baseCurrency]);
   const label = useCallback((key) => getCategoryLabel(key, country), [country]);
@@ -4174,6 +5140,19 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   // statePension / healthcare も同じ入れ子構造なので同じ更新関数を流用できる
   const updateGbInvestmentNested = updateGbInvestmentAccount;
 
+  const updateCaInvestment = (key, val) =>
+    setInputs((prev) => ({ ...prev, caInvestment: { ...prev.caInvestment, [key]: val } }));
+  const updateCaInvestmentAccount = (accountKey, field, val) =>
+    setInputs((prev) => ({
+      ...prev,
+      caInvestment: {
+        ...prev.caInvestment,
+        [accountKey]: { ...prev.caInvestment[accountKey], [field]: val },
+      },
+    }));
+  // cpp / oas / healthcare も同じ入れ子構造なので同じ更新関数を流用できる
+  const updateCaInvestmentNested = updateCaInvestmentAccount;
+
   // 積立・成長投資枠・一括投資の銘柄別内訳、および「つみたて/成長投資枠：実際の残高」に入力された銘柄を集約して、
   // そのままスライダー（自動計算・操作不可）として表示する
   const allBreakdownItems = [
@@ -4219,6 +5198,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const gbAssetSplit = (country === "GB" && rules.investment.implemented)
     ? rules.investment.splitAssets(effectiveCurrentAge, inputs.gbInvestment)
     : { liquid: 0, restricted: 0, taxAdvantaged: 0, total: 0, isAccessibleAge: false };
+
+  // カナダ選択時：4口座を Liquid / Restricted / Tax-Advantaged に分ける。
+  // total は4口座の単純合計（＝ Liquid + Restricted）。
+  const caAssetSplit = (country === "CA" && rules.investment.implemented)
+    ? rules.investment.splitAssets(effectiveCurrentAge, inputs.caInvestment)
+    : { liquid: 0, restricted: 0, taxAdvantaged: 0, total: 0, isRrifPhase: false };
 
   // 銘柄名から、その銘柄の想定年率（利回り）を取得する（銘柄別内訳のスライダーで手動調整した値があればそちらを優先）
   const getFundReturnPct = (name) =>
@@ -4420,6 +5405,22 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     });
   }, [country, rules, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, inputs.gbInvestment, gbWithdrawalNeeded]);
 
+  // カナダ選択時：TFSA / RRSP / 非登録口座 / 現金 の残高推移シミュレーション。
+  // CA_COUNTRY_RULES.investment.simulateGrowth のみを使用し、他国とは完全に独立している。
+  // country !== "CA" のときは計算自体を行わない（空データを返すだけ）。
+  const caInvestmentSim = useMemo(() => {
+    if (country !== "CA" || !rules.investment.implemented) {
+      return { yearly: [], finalValue: 0 };
+    }
+    return rules.investment.simulateGrowth({
+      currentAge: effectiveCurrentAge,
+      retireAge: inputs.retireAge,
+      deathAge: inputs.deathAge,
+      accounts: inputs.caInvestment,
+      annualWithdrawalNeeded: caWithdrawalNeeded,
+    });
+  }, [country, rules, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, inputs.caInvestment, caWithdrawalNeeded]);
+
   // iDeCo 自動計算項目
   const idecoAnnualContribution = (inputs.ideco.monthlyContribution || 0) * 12;
   const idecoRemainingContribYears = Math.max(0, inputs.ideco.endAge - Math.max(inputs.ideco.startAge, effectiveCurrentAge));
@@ -4449,17 +5450,21 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       // イギリス選択時のみ：ISA/SIPP/職域年金/GIA/Cash Savingsの残高推移をnetWorthへ合算する
       // （country!=="GB"のときはgbInvestmentSim.yearlyが空のため常に0＝JP版・アメリカ版の計算結果に一切影響しない）。
       const gbInvestmentValue = gbInvestmentSim.yearly[i]?.value ?? gbInvestmentSim.finalValue ?? 0;
-      const spendableNetWorth = row.total + goldValue + bankValue + stockValue + pensionValue + usInvestmentValue + gbInvestmentValue - loanValue - insuranceValue;
+      // カナダ選択時のみ：TFSA/RRSP/非登録口座/現金の残高推移をnetWorthへ合算する
+      // （country!=="CA"のときはcaInvestmentSim.yearlyが空のため常に0＝他国の計算結果に一切影響しない）。
+      const caInvestmentValue = caInvestmentSim.yearly[i]?.value ?? caInvestmentSim.finalValue ?? 0;
+      const spendableNetWorth = row.total + goldValue + bankValue + stockValue + pensionValue + usInvestmentValue + gbInvestmentValue + caInvestmentValue - loanValue - insuranceValue;
       return {
         ...row, goldValue, bankValue, stockValue, loanValue, insuranceValue, pensionValue,
         idecoLockedValue,
         usInvestmentValue,
         gbInvestmentValue,
+        caInvestmentValue,
         spendableNetWorth,
         netWorth: spendableNetWorth + idecoLockedValue,
       };
     });
-  }, [sim, goldSim, bankSim, stockSim, loanSim, insuranceSim, pensionSim, idecoSim, usInvestmentSim, gbInvestmentSim]);
+  }, [sim, goldSim, bankSim, stockSim, loanSim, insuranceSim, pensionSim, idecoSim, usInvestmentSim, gbInvestmentSim, caInvestmentSim]);
   const netWorthFinal = netWorthYearly.length ? netWorthYearly[netWorthYearly.length - 1].netWorth : sim.finalAssets;
   const inheritanceTotal = inputs.inheritancePlans.reduce((s, p) => s + (p.amount || 0), 0);
   const effectiveInheritanceTarget = inputs.inheritancePlans.length > 0 ? inheritanceTotal : inputs.inheritanceTarget;
@@ -4547,6 +5552,24 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       color: PIE_COLORS[i % PIE_COLORS.length],
     }));
   }, [country, rules, gbInvestmentSim, inputs.retireAge, t]);
+
+  // カナダ選択時：退職時点の TFSA / RRSP / 非登録口座 / 現金 の口座別内訳。
+  const caAccountBreakdownAtRetire = useMemo(() => {
+    if (country !== "CA" || !rules.investment.implemented) return [];
+    const row = caInvestmentSim.yearly.find((y) => y.age >= inputs.retireAge) || caInvestmentSim.yearly[caInvestmentSim.yearly.length - 1];
+    if (!row || !row.accounts) return [];
+    const labels = [
+      { key: "tfsa", label: t("caTfsaLabel") },
+      { key: "rrsp", label: t("caRrspLabel") },
+      { key: "nonRegistered", label: t("caNonRegisteredLabel") },
+      { key: "cashSavings", label: t("caCashSavingsLabel") },
+    ];
+    return labels.map((l, i) => ({
+      name: l.label,
+      value: Math.round(row.accounts[l.key] || 0),
+      color: PIE_COLORS[i % PIE_COLORS.length],
+    }));
+  }, [country, rules, caInvestmentSim, inputs.retireAge, t]);
 
   const addBank = () => {
     const balance = Number(newBank.balance) || 0;
@@ -5480,7 +6503,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 const isUntouchedDefault =
                   currentJson === JSON.stringify(DEFAULT_WATCHLIST_JP) ||
                   currentJson === JSON.stringify(DEFAULT_WATCHLIST_US) ||
-                  currentJson === JSON.stringify(DEFAULT_WATCHLIST_GB);
+                  currentJson === JSON.stringify(DEFAULT_WATCHLIST_GB) ||
+                  currentJson === JSON.stringify(DEFAULT_WATCHLIST_CA);
                 if (isUntouchedDefault) {
                   setWatchlist(defaultWatchlistFor(nextCountry));
                 }
@@ -6047,6 +7071,24 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 totalTax: gbTotalTax,
               }}
             />
+          ) : country === "CA" && rules.investment.implemented ? (
+            <CAInvestmentAccountsPanel
+              caInvestment={inputs.caInvestment}
+              onUpdate={updateCaInvestment}
+              onUpdateAccount={updateCaInvestmentAccount}
+              age={effectiveCurrentAge}
+              investmentRules={rules.investment}
+              taxRules={rules.tax}
+              rrspRoom={caRrspRoom}
+              taxResult={{
+                federalTax: caFederalTaxResult.tax,
+                basicPersonalAmount: caFederalTaxResult.basicPersonalAmount,
+                capitalGainsTax: caCapitalGainsTax,
+                rrspTaxSaving: caRrspTaxSaving,
+                marginalRate: caMarginalRate,
+                totalTax: caTotalTax,
+              }}
+            />
           ) : (
             <div className="note" style={{ borderLeftColor: "#D9A54F" }}>
               <Info size={13} style={{ color: "#D9A54F" }} />
@@ -6182,10 +7224,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             </div>
           )}
 
-          {country === "GB" ? (
+          {country === "GB" || country === "CA" ? (
             <div className="note" style={{ borderLeftColor: "#5FB0A0" }}>
               <Info size={13} style={{ color: "#5FB0A0" }} />
-              <span>{t("gbTaxHandledInInvestmentNote")}</span>
+              <span>{t(rules.labels.taxNote)}</span>
             </div>
           ) : rules.tax.implemented ? (
             <>
@@ -6304,6 +7346,29 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               withdrawalNeeded={gbWithdrawalNeeded}
               incomeSurplus={gbIncomeSurplus}
             />
+          ) : country === "CA" && rules.retirement.implemented ? (
+            <CARetirementPanel
+              caInvestment={inputs.caInvestment}
+              onUpdateCpp={(field, val) => updateCaInvestmentNested("cpp", field, val)}
+              onUpdateOas={(field, val) => updateCaInvestmentNested("oas", field, val)}
+              onUpdate={updateCaInvestment}
+              retirementRules={rules.retirement}
+              cppStartAge={caCppStartAge}
+              cppFactor={caCppFactor}
+              cppAnnual={caCppAnnual}
+              cppMaxAnnual={caCppMaxAnnual}
+              oasStartAge={caOasStartAge}
+              oasEffectiveStartAge={caOasEffectiveStartAge}
+              oasResidenceFraction={caOasResidenceFraction}
+              oasBeforeClawback={caOasBeforeClawback}
+              oasClawback={caOasClawback}
+              oasAnnual={caOasAnnual}
+              retirementIncomeAnnual={caRetirementIncomeAnnual}
+              expensesAnnual={caExpensesAnnual}
+              healthcareAnnual={caHealthcareAnnual}
+              withdrawalNeeded={caWithdrawalNeeded}
+              incomeSurplus={caIncomeSurplus}
+            />
           ) : (
             <div className="note" style={{ borderLeftColor: "#D9A54F" }}>
               <Info size={13} style={{ color: "#D9A54F" }} />
@@ -6338,6 +7403,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               gbInvestment={inputs.gbInvestment}
               onUpdate={(field, val) => updateGbInvestmentNested("healthcare", field, val)}
               totalAnnual={gbHealthcareAnnual}
+            />
+          ) : country === "CA" && rules.healthcare.implemented ? (
+            <CAHealthcarePanel
+              caInvestment={inputs.caInvestment}
+              onUpdate={(field, val) => updateCaInvestmentNested("healthcare", field, val)}
+              totalAnnual={caHealthcareAnnual}
             />
           ) : (
             <div className="note" style={{ borderLeftColor: "#D9A54F" }}>
@@ -6752,6 +7823,17 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                   sub={t("gbTotalAssetsSub")}
                 />
               </>
+            ) : country === "CA" ? (
+              <>
+                <StatCard label={t("caLiquidAssetsLabel")} value={money(caAssetSplit.liquid)} sub={t("caLiquidAssetsSub")} tone="good" />
+                <StatCard
+                  label={t("caRestrictedAssetsLabel")}
+                  value={money(caAssetSplit.restricted)}
+                  sub={t("caRestrictedAssetsSub", { age: rules.investment.rrifConversionAge })}
+                />
+                <StatCard label={t("caTaxAdvantagedLabel")} value={money(caAssetSplit.taxAdvantaged)} sub={t("caTaxAdvantagedSub")} />
+                <StatCard label={t("caTotalAssetsLabel")} value={money(caAssetSplit.total)} sub={t("caTotalAssetsSub")} />
+              </>
             ) : (
               <>
                 <StatCard label={t("statNisaAssetsLabel")} value={money(effectiveCurrentAssets)} sub={t("statNisaAssetsSub")} />
@@ -6898,6 +7980,25 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 sub={t("gbTotalTaxSub")}
                 tone="danger"
               />
+            </div>
+          ) : country === "CA" && rules.investment.implemented ? (
+            <div className="stat-grid" style={{ marginBottom: 22 }}>
+              <StatCard
+                label={t("caTfsaRemainingLabel")}
+                value={money(Math.max(0, rules.investment.getTfsaRemaining(inputs.caInvestment)))}
+                sub={t("caTfsaRemainingSub", { amount: money(rules.investment.getTfsaAnnualLimit()) })}
+                tone={rules.investment.getTfsaRemaining(inputs.caInvestment) < 0 ? "danger" : "good"}
+              />
+              <StatCard
+                label={t("caRrspRemainingLabel")}
+                value={money(Math.max(0, caRrspRoom - (Number(inputs.caInvestment.rrsp.annualContribution) || 0)))}
+                sub={t("caRrspRoomSub", {
+                  pct: Number((rules.investment.limits.rrspIncomePercent * 100).toFixed(2)),
+                  cap: money(rules.investment.limits.rrspAnnualDollarLimit),
+                })}
+                tone={(caRrspRoom - (Number(inputs.caInvestment.rrsp.annualContribution) || 0)) < 0 ? "danger" : "good"}
+              />
+              <StatCard label={t("caTotalTaxLabel")} value={money(caTotalTax)} sub={t("caTotalTaxSub")} tone="danger" />
             </div>
           ) : (
             <div className="note" style={{ borderLeftColor: "#D9A54F", marginBottom: 22 }}>
@@ -7053,16 +8154,18 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                   ? t("usAccountBreakdownChartTitle", { age: t("ageYears", { age: inputs.retireAge }) })
                   : country === "GB"
                     ? t("gbAccountBreakdownChartTitle", { age: t("ageYears", { age: inputs.retireAge }) })
-                    : t("fundBreakdownChartTitle", { age: t("ageYears", { age: inputs.retireAge }) })}
+                    : country === "CA"
+                      ? t("caAccountBreakdownChartTitle", { age: t("ageYears", { age: inputs.retireAge }) })
+                      : t("fundBreakdownChartTitle", { age: t("ageYears", { age: inputs.retireAge }) })}
               </div>
               <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={country === "US" ? usAccountBreakdownAtRetire : country === "GB" ? gbAccountBreakdownAtRetire : fundBreakdownAtRetire} layout="vertical" margin={{ left: 8, right: 16 }}>
+                <BarChart data={country === "US" ? usAccountBreakdownAtRetire : country === "GB" ? gbAccountBreakdownAtRetire : country === "CA" ? caAccountBreakdownAtRetire : fundBreakdownAtRetire} layout="vertical" margin={{ left: 8, right: 16 }}>
                   <CartesianGrid stroke="#2A363C" strokeDasharray="3 3" horizontal={false} />
                   <XAxis type="number" stroke="#7C8A90" fontSize={11} tickFormatter={(v) => money(v)} />
                   <YAxis type="category" dataKey="name" stroke="#7C8A90" fontSize={11} width={90} />
                   <Tooltip contentStyle={{ background: "#151C20", border: "1px solid #2A363C", fontSize: 12 }} formatter={(v) => money(v)} />
                   <Bar dataKey="value" radius={[0, 3, 3, 0]}>
-                    {(country === "US" ? usAccountBreakdownAtRetire : country === "GB" ? gbAccountBreakdownAtRetire : fundBreakdownAtRetire).map((f, i) => (
+                    {(country === "US" ? usAccountBreakdownAtRetire : country === "GB" ? gbAccountBreakdownAtRetire : country === "CA" ? caAccountBreakdownAtRetire : fundBreakdownAtRetire).map((f, i) => (
                       <Cell key={i} fill={f.color} />
                     ))}
                   </Bar>
@@ -7078,6 +8181,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 <div className="note" style={{ marginTop: 8 }}>
                   <Info size={13} />
                   <span>{t("gbAccountBreakdownNote")}</span>
+                </div>
+              )}
+              {country === "CA" && (
+                <div className="note" style={{ marginTop: 8 }}>
+                  <Info size={13} />
+                  <span>{t("caAccountBreakdownNote")}</span>
                 </div>
               )}
             </div>
