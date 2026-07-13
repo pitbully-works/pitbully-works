@@ -393,6 +393,231 @@ test("J: deathAge までの残り期間が実際に計算されている", () =>
 });
 
 // ---------------------------------------------------------------------------
+// K. 取り崩し順序（現金 → 課税 → 非課税 → 引出制限 → 現物）
+// ---------------------------------------------------------------------------
+// 標準順序に沿った5つのプール。すべて利回り0で、金額だけを追う。
+const orderPools = () => ([
+  { id: "cash",     group: "bank",       balance: 1000000, annualReturnPct: 0, drawOrder: 0 },
+  { id: "taxable",  group: "stock",      balance: 1000000, annualReturnPct: 0, drawOrder: 100 },
+  { id: "taxFree",  group: "investment", balance: 1000000, annualReturnPct: 0, drawOrder: 200 },
+  { id: "locked",   group: "investment", balance: 1000000, annualReturnPct: 0, drawOrder: 300, accessAge: 70 },
+  { id: "gold",     group: "gold",       balance: 1000000, annualReturnPct: 0, drawOrder: 400 },
+]);
+const orderBase = {
+  ...base, currentAge: 60, retireAge: 60, deathAge: 95,
+  livingCostMonthly: 100000, publicPensions: [], surplusTargetId: "cash",
+};
+
+test("K: 銀行預金が残っている間は投資口座を取り崩さない", () => {
+  const res = runIntegratedPlan({ ...orderBase, pools: orderPools() });
+  // 月10万 → 現金100万は10ヶ月で尽きる。61歳時点では現金だけが減っている。
+  const at61 = res.yearly.find((r) => r.age === 61);
+  assert.equal(at61.pool_cash, 0, "現金は尽きているはず");
+  // 現金が尽きるまでの10ヶ月は、投資口座に一切手を付けていない
+  const at60 = res.yearly[0];
+  assert.equal(at60.pool_taxFree, 1000000);
+  const zeroCash = res.yearly.find((r) => r.pool_cash === 0);
+  assert.equal(zeroCash.pool_taxFree, 1000000, "現金が尽きた時点でも非課税口座は満額");
+  assert.equal(zeroCash.pool_gold, 1000000, "金も満額");
+  assertInvariants(res, "K1");
+});
+
+test("K: 課税口座が残っている間は非課税口座を取り崩さない", () => {
+  const res = runIntegratedPlan({ ...orderBase, pools: orderPools() });
+  // 現金(100万) → 課税(100万) の順。合計200万 ＝ 20ヶ月ぶん。61歳(12ヶ月)時点では
+  // 現金0・課税は残っており、非課税は満額のまま。
+  const at61 = res.yearly.find((r) => r.age === 61);
+  assert.equal(at61.pool_cash, 0);
+  assert.ok(at61.pool_taxable > 0 && at61.pool_taxable < 1000000, `課税口座が取り崩し中: ${at61.pool_taxable}`);
+  assert.equal(at61.pool_taxFree, 1000000, "非課税口座は1円も減っていないはず");
+  assert.equal(at61.pool_gold, 1000000, "金も減っていないはず");
+  assertInvariants(res, "K2");
+});
+
+test("K: 引出制限口座はaccessAge未満では取り崩さない（先に金へ回る）", () => {
+  const res = runIntegratedPlan({ ...orderBase, pools: orderPools() });
+  // 70歳になるまで locked は使えないので、非課税が尽きたら金へ回る。
+  res.yearly.filter((r) => r.age < 70).forEach((r) => {
+    assert.equal(r.pool_locked, 1000000, `age ${r.age}: 制限口座が取り崩されている`);
+  });
+  const at69 = res.yearly.find((r) => r.age === 69);
+  assert.ok(at69.pool_gold < 1000000, "制限中は金が先に取り崩されるはず");
+  assertInvariants(res, "K3");
+});
+
+test("K: 先順位資産が0になった後に次順位へ移る（枯渇の順番が守られる）", () => {
+  const res = runIntegratedPlan({ ...orderBase, pools: orderPools() });
+  const zeroAge = (key) => {
+    const hit = res.yearly.find((r) => r[key] === 0);
+    return hit ? hit.age : Infinity;
+  };
+  const cash = zeroAge("pool_cash");
+  const taxable = zeroAge("pool_taxable");
+  const taxFree = zeroAge("pool_taxFree");
+  const gold = zeroAge("pool_gold");
+  const locked = zeroAge("pool_locked");
+  assert.ok(cash <= taxable, `現金(${cash}) → 課税(${taxable})`);
+  assert.ok(taxable <= taxFree, `課税(${taxable}) → 非課税(${taxFree})`);
+  // 制限口座は70歳まで使えないので、金より後に尽きる
+  assert.ok(gold <= locked, `金(${gold}) → 制限口座(${locked})`);
+  assertInvariants(res, "K4");
+});
+
+// ---------------------------------------------------------------------------
+// L. 引出時課税
+// ---------------------------------------------------------------------------
+test("L: 引出時課税があると、手取り必要額より多く口座から引き出される", () => {
+  const res = runIntegratedPlan({
+    ...base,
+    currentAge: 65, retireAge: 65, deathAge: 66,
+    livingCostMonthly: 75000, publicPensions: [],
+    pools: [{
+      id: "rrsp", group: "investment", balance: 10000000,
+      annualReturnPct: 0, drawOrder: 1, withdrawalTaxPct: 25,
+    }],
+  });
+  const last = res.yearly[res.yearly.length - 1];
+  // 手取り年90万が必要。税率25%なら 90万 ÷ 0.75 = 120万を引き出す。
+  const drawn = 10000000 - last.investmentValue;
+  assert.ok(Math.abs(drawn - 1200000) < 1, `引出額=${drawn}（期待 1,200,000）`);
+  assert.ok(Math.abs(res.cumulativeWithdrawalTax - 300000) < 1, `税額=${res.cumulativeWithdrawalTax}`);
+  assertInvariants(res, "L1");
+});
+
+test("L: 非課税口座（0%）は必要額ちょうどしか減らない", () => {
+  const res = runIntegratedPlan({
+    ...base,
+    currentAge: 65, retireAge: 65, deathAge: 66,
+    livingCostMonthly: 75000, publicPensions: [],
+    pools: [{
+      id: "tfsa", group: "investment", balance: 10000000,
+      annualReturnPct: 0, drawOrder: 1, withdrawalTaxPct: 0,
+    }],
+  });
+  const last = res.yearly[res.yearly.length - 1];
+  assert.ok(Math.abs((10000000 - last.investmentValue) - 900000) < 1);
+  assert.equal(res.cumulativeWithdrawalTax, 0);
+  assertInvariants(res, "L2");
+});
+
+// ---------------------------------------------------------------------------
+// M. 境界年齢でのステップ分割（終了年齢ちょうどから余分な1ヶ月が出ない）
+// ---------------------------------------------------------------------------
+test("M: 保険料の払込終了年齢ちょうどで止まり、1ヶ月分よけいに払わない", () => {
+  // 現在58.5歳（誕生日と月の区切りがずれる）。保険料は58.5〜70.25歳の141ヶ月ぶん。
+  const currentAge = 58.5;
+  const res = runIntegratedPlan({
+    ...base,
+    currentAge, retireAge: 58.5, deathAge: 95,
+    livingCostMonthly: 0, publicPensions: [],
+    boundaries: [70.25],
+    pools: [{ id: "bank", group: "bank", balance: 100000000, annualReturnPct: 0, drawOrder: 1 }],
+    insurancePolicies: [{ monthlyPremium: 10000, premiumFromAge: 0, premiumToAge: 70.25 }],
+  });
+  const expected = 10000 * (70.25 - currentAge) * 12; // 141ヶ月 × 1万円
+  assert.ok(Math.abs(res.cumulativePremiums - expected) < 1,
+    `保険料累計=${res.cumulativePremiums} 期待=${expected}`);
+  assertInvariants(res, "M1");
+});
+
+test("M: 民間年金の受給終了年齢ちょうどで止まる（境界なしだと1ヶ月ぶれる）", () => {
+  const res = runIntegratedPlan({
+    ...base,
+    currentAge: 60.5, retireAge: 60.5, deathAge: 90,
+    livingCostMonthly: 0, publicPensions: [],
+    boundaries: [65.25, 75.75],
+    pools: [
+      { id: "bank", group: "bank", balance: 0, annualReturnPct: 0, drawOrder: 1 },
+      { id: "pp", group: "privatePension", balance: 100000000, annualReturnPct: 0, accessAge: NOT_DRAWABLE },
+    ],
+    privatePensionPlans: [
+      { poolId: "pp", monthlyPayout: 50000, payoutFromAge: 65.25, payoutToAge: 75.75 },
+    ],
+  });
+  const last = res.yearly[res.yearly.length - 1];
+  // 受給期間は 65.25〜75.75 の 126ヶ月ちょうど。全額が余剰として銀行へ移る。
+  const expected = 50000 * (75.75 - 65.25) * 12;
+  assert.ok(Math.abs(last.bankValue - expected) < 1,
+    `受給総額=${last.bankValue} 期待=${expected}`);
+  assertInvariants(res, "M2");
+});
+
+test("M: 積立終了年齢ちょうどで拠出が止まる", () => {
+  const res = runIntegratedPlan({
+    ...base,
+    currentAge: 40.25, retireAge: 65, deathAge: 66,
+    livingCostMonthly: 0, publicPensions: [],
+    boundaries: [60.75],
+    pools: [{
+      id: "bank", group: "bank", balance: 0, annualReturnPct: 0,
+      monthlyContribution: 10000, contribEndAge: 60.75, drawOrder: 1,
+    }],
+  });
+  const last = res.yearly[res.yearly.length - 1];
+  const expected = 10000 * (60.75 - 40.25) * 12; // 246ヶ月
+  assert.ok(Math.abs(last.bankValue - expected) < 1,
+    `積立累計=${last.bankValue} 期待=${expected}`);
+  assertInvariants(res, "M3");
+});
+
+// ---------------------------------------------------------------------------
+// N. 内訳の合計 ＝ 総資産帯の各グループ残高
+// ---------------------------------------------------------------------------
+test("N: 各年齢で、口座別内訳の合計がグループ残高と一致する", () => {
+  const res = runIntegratedPlan({
+    ...base,
+    currentAge: 58.66478859472867, retireAge: 65, deathAge: 95,
+    livingCostMonthly: 300000,
+    healthCostAnnual: (age) => (age >= 75 ? 300000 : 120000),
+    pools: [
+      { id: "bank_0", group: "bank", balance: 3000000, annualReturnPct: 0.1, drawOrder: 0 },
+      { id: "bank_1", group: "bank", balance: 2000000, annualReturnPct: 0.1, drawOrder: 1 },
+      { id: "brokerage", group: "investment", balance: 4000000, annualReturnPct: 5, drawOrder: 100, withdrawalTaxPct: 15 },
+      { id: "rothIra", group: "investment", balance: 3000000, annualReturnPct: 5, drawOrder: 200, accessAge: 59.5 },
+      { id: "k401", group: "investment", balance: 8000000, annualReturnPct: 5, drawOrder: 300, accessAge: 59.5, withdrawalTaxPct: 22 },
+      { id: "stock", group: "stock", balance: 2000000, annualReturnPct: 6, drawOrder: 150 },
+      { id: "gold", group: "gold", balance: 3000000, annualReturnPct: 4, drawOrder: 400 },
+    ],
+    loans: [{ principal: 5000000, annualRatePct: 1.2, monthlyPayment: 40000 }],
+    insurancePolicies: [{ monthlyPremium: 15000, premiumFromAge: 0, premiumToAge: 80 }],
+  });
+  res.yearly.forEach((r) => {
+    const bank = r.pool_bank_0 + r.pool_bank_1;
+    const investment = r.pool_brokerage + r.pool_rothIra + r.pool_k401;
+    assert.ok(Math.abs(bank - r.bankValue) < 1e-6, `age ${r.age}: 銀行内訳の合計≠bankValue`);
+    assert.ok(Math.abs(investment - r.investmentValue) < 1e-6, `age ${r.age}: 口座内訳の合計≠investmentValue`);
+    assert.ok(Math.abs(r.pool_stock - r.stockValue) < 1e-6, `age ${r.age}: 個別株`);
+    assert.ok(Math.abs(r.pool_gold - r.goldValue) < 1e-6, `age ${r.age}: 金`);
+    assert.ok(Math.abs(r.loan_0 - r.loanBalance) < 1e-6, `age ${r.age}: 借入内訳の合計≠loanBalance`);
+  });
+  assertInvariants(res, "N1");
+});
+
+test("I: 日本モデル — 退職60歳・年金開始65歳なら60〜64歳は公的年金0", () => {
+  const res = runIntegratedPlan({
+    ...base,
+    currentAge: 60, retireAge: 60, deathAge: 90,
+    livingCostMonthly: 200000,
+    // 未入力時の既定は65歳（退職年齢からは始まらない）
+    publicPensions: [{ monthlyAmount: 200000, startAge: 65 }],
+    pools: [{ id: "bank", group: "bank", balance: 12000000, annualReturnPct: 0, drawOrder: 1 }],
+  });
+  // 60〜64歳の5年間 × 月20万 = 1,200万をちょうど取り崩す
+  const at65 = res.yearly.find((r) => r.age === 65);
+  assert.ok(Math.abs(at65.bankValue) < 1, `65歳で資産を使い切るはず: ${at65.bankValue}`);
+  // 60〜64歳は年金が1円も入っていない（＝毎年ちょうど240万ずつ減る）
+  for (let a = 61; a <= 65; a++) {
+    const cur = res.yearly.find((r) => r.age === a);
+    const prev = res.yearly.find((r) => r.age === a - 1);
+    assert.ok(Math.abs((prev.bankValue - cur.bankValue) - 2400000) < 1,
+      `age ${a}: 年金が入ってしまっている（減少額 ${prev.bankValue - cur.bankValue}）`);
+  }
+  // 65歳以降は年金と生活費が釣り合い、不足も出ない
+  assert.ok(res.cumulativeUnmet < 1, `年金開始後の不足=${res.cumulativeUnmet}`);
+  assertInvariants(res, "I-JP");
+});
+
+// ---------------------------------------------------------------------------
 // 各国モデル
 // ---------------------------------------------------------------------------
 const commonSide = {
