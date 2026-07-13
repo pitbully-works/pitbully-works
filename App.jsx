@@ -3,7 +3,7 @@ import {
   ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ReferenceLine, ResponsiveContainer, BarChart, Bar, Legend, Cell, PieChart, Pie, LabelList
 } from "recharts";
-import { Plus, Trash2, TrendingUp, HeartPulse, Landmark, Users, Ruler, Info, Coins, PiggyBank } from "lucide-react";
+import { Plus, Trash2, TrendingUp, HeartPulse, Landmark, Users, Ruler, Info, Coins, PiggyBank, ChevronUp } from "lucide-react";
 import "./storageShim.js";
 // 総資産推移・純資産の唯一の計算源（全資産・負債・収支を1本の月次ループで扱う統合エンジン）。
 // 各パネル個別のシミュレーション（runSimulation / runGoldSimulation など）は表示用にそのまま残す。
@@ -497,6 +497,7 @@ const TRANSLATIONS = {
     "appSubtitle": "総合シミュレーション",
     "appTitle": "資産形成 総合ライフプラン",
     "sectionNavTitle": "入力する項目を選ぶ",
+    "backToNavLabel": "項目一覧へ",
     "appTitleWithName": "（{name}様）",
     "asOfAgePlaceholder": "基準年齢",
     "asOfAgeRequired": "この残高時点の基準年齢（必須）",
@@ -1309,6 +1310,7 @@ const TRANSLATIONS = {
     "appSubtitle": "Integrated Simulation",
     "appTitle": "Comprehensive Financial Life Planner",
     "sectionNavTitle": "Jump to a section",
+    "backToNavLabel": "Back to list",
     "appTitleWithName": "({name})",
     "asOfAgePlaceholder": "Reference age",
     "asOfAgeRequired": "Reference age for this balance (required)",
@@ -6016,6 +6018,13 @@ function WithdrawalTaxPanel({ accounts, onUpdateAccount }) {
 }
 
 function SectionTitle({ index, title, icon: Icon }) {
+  const { t } = useContext(LocaleContext);
+  const backToNav = () => {
+    // 項目一覧（ショートカットボタン群）へ戻る。無ければページ先頭へ。
+    const el = document.getElementById("section-nav");
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    else window.scrollTo({ top: 0, behavior: "smooth" });
+  };
   return (
     // id を付けて、上部のショートカットボタンからここへ飛べるようにする
     <div className="section-title" id={`section-${index}`}>
@@ -6023,6 +6032,11 @@ function SectionTitle({ index, title, icon: Icon }) {
 
       <Icon size={15} strokeWidth={1.75} />
       <h2>{title}</h2>
+      {/* 各項目から項目一覧へ戻る */}
+      <button className="back-to-nav no-print" onClick={backToNav} title={t("backToNavLabel")}>
+        <ChevronUp size={13} strokeWidth={2} />
+        <span>{t("backToNavLabel")}</span>
+      </button>
     </div>
   );
 }
@@ -6035,7 +6049,8 @@ function SectionNav({ items }) {
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   };
   return (
-    <div className="card no-print" style={{ marginBottom: 18 }}>
+    // id="section-nav" は、各セクションの「一覧へ戻る」ボタンの戻り先
+    <div className="card no-print" id="section-nav" style={{ marginBottom: 18 }}>
       <div className="chart-label">{t("sectionNavTitle")}</div>
       <div className="section-nav">
         {items.map(({ index, title, icon: Icon }) => (
@@ -8123,6 +8138,28 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           border-color: #4FA8D8;
           background: #1B262B;
         }
+        /* 各セクションの見出し右端に置く「項目一覧へ戻る」ボタン */
+        .back-to-nav {
+          margin-left: auto;
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 5px 9px;
+          border-radius: 6px;
+          border: 1px solid #2A3439;
+          background: transparent;
+          color: #7C8A90;
+          font-size: 11px;
+          font-weight: 500;
+          cursor: pointer;
+          white-space: nowrap;
+          transition: color .15s, border-color .15s;
+        }
+        .back-to-nav:hover, .back-to-nav:active {
+          color: #4FA8D8;
+          border-color: #4FA8D8;
+        }
+
         /* 上部固定ヘッダーに隠れないよう、ジャンプ先に余白を確保する */
         .section-title { scroll-margin-top: 16px; }
 
