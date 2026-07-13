@@ -14,6 +14,7 @@ import {
   US_COUNTRY_RULES,
   GB_COUNTRY_RULES,
   CA_COUNTRY_RULES,
+  AU_COUNTRY_RULES,
   NISA_LIMITS,
 } from "./App.jsx";
 
@@ -629,3 +630,208 @@ describe("Canada stays independent of the other countries", () => {
     expect(CA_COUNTRY_RULES.tax.implemented).toBe(true);
   });
 });
+describe("Australia (AU) core calculations", () => {
+  const inv = AU_COUNTRY_RULES.investment;
+  const ret = AU_COUNTRY_RULES.retirement;
+  const tax = AU_COUNTRY_RULES.tax;
+
+  it("every rule carries its tax year, last updated date and source", () => {
+    [inv, ret, tax, AU_COUNTRY_RULES.healthcare].forEach((rule) => {
+      expect(rule.effectiveTaxYear).toBe("2026-27");
+      expect(rule.lastUpdated).toBe("2026-07-13");
+      expect(rule.sourceName).toBeTruthy();
+      expect(rule.sourceUrl).toBeTruthy();
+    });
+  });
+
+  it("contribution caps from 1 July 2026", () => {
+    expect(inv.getConcessionalCap()).toBe(32_500);
+    expect(inv.getNonConcessionalCap()).toBe(130_000);
+    expect(inv.limits.transferBalanceCap).toBe(2_100_000);
+  });
+
+  it("Super Guarantee is 12% and capped by the maximum contribution base", () => {
+    expect(inv.getSuperGuaranteeRate()).toBe(0.12);
+    expect(inv.getEmployerSgContribution(100_000)).toBeCloseTo(12_000, 2);
+    expect(inv.getEmployerSgContribution(300_000)).toBeCloseTo(270_830 * 0.12, 2);
+    expect(inv.getTotalConcessional(100_000, 10_000)).toBeCloseTo(22_000, 2);
+    expect(inv.getConcessionalRemaining(100_000, 10_000)).toBeCloseTo(10_500, 2);
+  });
+
+  it("preservation age is 60 with unrestricted access at 65", () => {
+    expect(inv.preservationAge).toBe(60);
+    expect(inv.unrestrictedAccessAge).toBe(65);
+    expect(inv.canAccessSuper(59)).toBe(false);
+    expect(inv.canAccessSuper(60)).toBe(true);
+  });
+  it("minimum drawdown factors follow the ATO age table", () => {
+    expect(inv.getMinimumDrawdownFactor(64)).toBeCloseTo(0.04, 6);
+    expect(inv.getMinimumDrawdownFactor(65)).toBeCloseTo(0.05, 6);
+    expect(inv.getMinimumDrawdownFactor(75)).toBeCloseTo(0.06, 6);
+    expect(inv.getMinimumDrawdownFactor(80)).toBeCloseTo(0.07, 6);
+    expect(inv.getMinimumDrawdownFactor(85)).toBeCloseTo(0.09, 6);
+    expect(inv.getMinimumDrawdownFactor(90)).toBeCloseTo(0.11, 6);
+    expect(inv.getMinimumDrawdownFactor(95)).toBeCloseTo(0.14, 6);
+    expect(inv.getMinimumDrawdown(65, 100_000)).toBeCloseTo(5_000, 2);
+  });
+
+  it("income tax matches the ATO worked example", () => {
+    expect(tax.calculateIncomeTax(18_200)).toBe(0);
+    expect(tax.calculateIncomeTax(80_000)).toBeCloseTo(14_520, 2);
+    expect(tax.calculateMedicareLevy(80_000)).toBeCloseTo(1_600, 2);
+    expect(tax.calculateTotalTax(80_000).total).toBeCloseTo(16_120, 2);
+  });
+
+  it("tax brackets and the Medicare levy", () => {
+    expect(tax.incomeTax.taxFreeThreshold).toBe(18_200);
+    expect(tax.medicareLevy.rate).toBe(0.02);
+    expect(tax.getMarginalRate(30_000)).toBe(0.15);
+    expect(tax.getMarginalRate(100_000)).toBe(0.30);
+    expect(tax.getMarginalRate(150_000)).toBe(0.37);
+    expect(tax.getMarginalRate(200_000)).toBe(0.45);
+    expect(tax.getMarginalRateWithLevy(100_000)).toBeCloseTo(0.32, 6);
+  });
+  it("super contributions are taxed at 15%, or 30% under Division 293", () => {
+    expect(tax.superannuation.contributionsTaxRate).toBe(0.15);
+    expect(tax.superannuation.div293Threshold).toBe(250_000);
+    const normal = tax.calculateSuperContributionTax(20_000, 100_000);
+    expect(normal.total).toBeCloseTo(3_000, 2);
+    expect(normal.div293Applies).toBe(false);
+    const div293 = tax.calculateSuperContributionTax(30_000, 250_000);
+    expect(div293.div293Applies).toBe(true);
+    expect(div293.effectiveRate).toBeCloseTo(0.30, 6);
+    expect(div293.total).toBeCloseTo(9_000, 2);
+  });
+
+  it("salary sacrifice saves the gap between the marginal rate and 15%", () => {
+    expect(tax.calculateSalarySacrificeSaving(10_000, 100_000)).toBeCloseTo(1_700, 2);
+    expect(tax.calculateSalarySacrificeSaving(0, 100_000)).toBe(0);
+  });
+
+  it("capital gains get a 50% discount when held over 12 months", () => {
+    expect(tax.capitalGains.discountRate).toBe(0.50);
+    const discounted = tax.calculateCapitalGainsTax(20_000, 80_000, true);
+    const full = tax.calculateCapitalGainsTax(20_000, 80_000, false);
+    expect(discounted).toBeCloseTo(3_200, 2);
+    expect(full).toBeCloseTo(6_400, 2);
+    expect(discounted).toBeLessThan(full);
+    expect(tax.calculateCapitalGainsTax(0, 80_000, true)).toBe(0);
+  });
+
+  it("earnings inside super are taxed at 15% and are tax-free in retirement", () => {
+    expect(tax.superannuation.earningsTaxAccumulation).toBe(0.15);
+    expect(tax.superannuation.earningsTaxRetirementPhase).toBe(0);
+    expect(tax.superannuation.withdrawalTaxAfter60).toBe(0);
+  });
+  it("Age Pension qualifying age is 67 and the maximum rate is indexed fortnightly", () => {
+    expect(ret.getQualifyingAge()).toBe(67);
+    expect(ret.getMaxAnnual("single")).toBeCloseTo(1200.90 * 26, 2);
+    expect(ret.getMaxAnnual("couple")).toBeCloseTo(905.20 * 26, 2);
+    expect(ret.getAssetsFreeArea("single", true)).toBe(333_000);
+    expect(ret.getAssetsFreeArea("single", false)).toBe(600_000);
+    expect(ret.getAssetsFreeArea("couple", true)).toBe(499_000);
+  });
+
+  it("Age Pension pays zero before the qualifying age", () => {
+    const p = ret.getAgePension({ age: 66, annualIncome: 0, assessableAssets: 100_000, status: "single", homeowner: true });
+    expect(p).toBe(0);
+  });
+
+  it("Age Pension assets test reduces by $3 a fortnight per $1,000 above the threshold", () => {
+    const max = ret.getMaxAnnual("single");
+    expect(ret.getAgePensionByAssetsTest(300_000, "single", true)).toBeCloseTo(max, 2);
+    const expected = max - ((500_000 - 333_000) / 1000) * 3 * 26;
+    expect(ret.getAgePensionByAssetsTest(500_000, "single", true)).toBeCloseTo(expected, 2);
+    expect(ret.getAgePensionByAssetsTest(800_000, "single", true)).toBe(0);
+  });
+
+  it("Age Pension income test reduces by 50c per dollar above the free area", () => {
+    const max = ret.getMaxAnnual("single");
+    expect(ret.getAgePensionByIncomeTest(0, "single")).toBeCloseTo(max, 2);
+    const freeArea = ret.getIncomeFreeAreaAnnual("single");
+    expect(freeArea).toBeCloseTo(226 * 26, 2);
+    const expected = max - (40_000 - freeArea) * 0.5;
+    expect(ret.getAgePensionByIncomeTest(40_000, "single")).toBeCloseTo(expected, 2);
+  });
+
+  it("Age Pension pays the lower of the two tests", () => {
+    const byBoth = ret.getAgePension({ age: 70, annualIncome: 40_000, assessableAssets: 500_000, status: "single", homeowner: true });
+    const byIncome = ret.getAgePensionByIncomeTest(40_000, "single");
+    const byAssets = ret.getAgePensionByAssetsTest(500_000, "single", true);
+    expect(byBoth).toBeCloseTo(Math.min(byIncome, byAssets), 2);
+  });
+  it("liquid plus restricted equals total, and super unlocks at 60", () => {
+    const a = {
+      superannuation: { currentValue: 200_000 },
+      investmentAccount: { currentValue: 100_000 },
+      cashSavings: { currentValue: 30_000 },
+    };
+    const total = 200_000 + 100_000 + 30_000;
+    [30, 50, 59, 60, 70, 90].forEach((age) => {
+      const s = inv.splitAssets(age, a);
+      expect(s.liquid + s.restricted).toBe(s.total);
+      expect(s.total).toBe(total);
+    });
+    const under = inv.splitAssets(59, a);
+    expect(under.liquid).toBe(130_000);
+    expect(under.restricted).toBe(200_000);
+    expect(under.isAccessibleAge).toBe(false);
+    const over = inv.splitAssets(60, a);
+    expect(over.liquid).toBe(total);
+    expect(over.restricted).toBe(0);
+    expect(over.isAccessibleAge).toBe(true);
+    expect(inv.splitAssets(50, a).taxAdvantaged).toBe(200_000);
+  });
+
+  it("the projection forces minimum drawdowns in the retirement phase", () => {
+    const accounts = {
+      superannuation: { currentValue: 200_000, annualContribution: 0, expectedReturnPct: 7, contributionEndAge: 65 },
+      investmentAccount: { currentValue: 100_000, annualContribution: 10_000, expectedReturnPct: 7, contributionEndAge: 65 },
+      cashSavings: { currentValue: 30_000, annualContribution: 2_000, expectedReturnPct: 2, contributionEndAge: 65 },
+    };
+    const sim = inv.simulateGrowth({
+      currentAge: 40, retireAge: 65, deathAge: 90, accounts, annualWithdrawalNeeded: 50_000,
+      annualSalary: 100_000, voluntaryConcessional: 0,
+      contributionsTaxRate: 0.15, earningsTaxAccumulation: 0.15,
+    });
+    expect(sim.yearly).toHaveLength(51);
+    expect(sim.yearly.find((y) => y.age === 65).minimumDrawdown).toBe(0);
+    expect(sim.yearly.find((y) => y.age === 66).minimumDrawdown).toBeGreaterThan(0);
+    expect(sim.yearly.every((y) => Object.values(y.accounts).every((v) => v >= -0.01))).toBe(true);
+  });
+    it("healthcare model multiplies monthly private cover by 12", () => {
+    const total = AU_COUNTRY_RULES.healthcare.getAnnualTotal({
+      gapAnnual: 100, privateHealthInsuranceMonthly: 200, pharmaceuticalAnnual: 300,
+      dentalAnnual: 400, opticalAnnual: 150, agedCareAnnual: 0, otherOutOfPocketAnnual: 50,
+    });
+    expect(total).toBe(100 + 2400 + 300 + 400 + 150 + 0 + 50);
+  });
+});
+describe("Australia stays independent of the other countries", () => {
+  it("Australia has no methods from the other four countries", () => {
+    expect(AU_COUNTRY_RULES.investment.get401kEmployeeLimit).toBeUndefined();
+    expect(AU_COUNTRY_RULES.investment.getIsaAnnualAllowance).toBeUndefined();
+    expect(AU_COUNTRY_RULES.investment.getTfsaAnnualLimit).toBeUndefined();
+    expect(AU_COUNTRY_RULES.retirement.getClaimingFactor).toBeUndefined();
+    expect(AU_COUNTRY_RULES.retirement.getCppFactor).toBeUndefined();
+    expect(AU_COUNTRY_RULES.retirement.getOasClawback).toBeUndefined();
+  });
+
+  it("the other four countries have no Australian methods", () => {
+    [JP_COUNTRY_RULES, US_COUNTRY_RULES, GB_COUNTRY_RULES, CA_COUNTRY_RULES].forEach((rules) => {
+      expect(rules.investment.getConcessionalCap).toBeUndefined();
+      expect(rules.investment.getSuperGuaranteeRate).toBeUndefined();
+      expect(rules.retirement.getAgePension).toBeUndefined();
+    });
+  });
+
+  it("all five countries implement investment, retirement, healthcare and tax", () => {
+    [JP_COUNTRY_RULES, US_COUNTRY_RULES, GB_COUNTRY_RULES, CA_COUNTRY_RULES, AU_COUNTRY_RULES].forEach((rules) => {
+      expect(rules.investment.implemented).toBe(true);
+      expect(rules.retirement.implemented).toBe(true);
+      expect(rules.healthcare.implemented).toBe(true);
+      expect(rules.tax.implemented).toBe(true);
+    });
+  });
+});
+
