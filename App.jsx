@@ -7309,55 +7309,6 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     : country === "AU" ? "legendAuInvestment"
     : "legendNisaAssets";
 
-  // 画面に表示する取り崩し順序。実装（ACCOUNT_DRAW_CATEGORY / drawOrderOf）から
-  // 生成するので、コメントや表示と実際の順序が食い違うことがない。
-  const drawdownAccountsByCategory = useMemo(() => {
-    const catMap = ACCOUNT_DRAW_CATEGORY[country] || ACCOUNT_DRAW_CATEGORY.JP;
-    const nameOf = (key) => {
-      const defs = accountBreakdownDefs[country] || [];
-      const hit = defs.find((d) => d.key === key);
-      if (hit) return hit.label;
-      if (key === "nisa") return t("legendNisaAssets");
-      if (key === "ideco") return t("legendIdecoAssets");
-      if (key === "stock") return t("legendStocks");
-      if (key === "gold") return t("legendGoldAssets");
-      if (key === "bank") return t("legendBankDeposits");
-      return key;
-    };
-    const out = {};
-    DRAWDOWN_CATEGORIES.forEach((c) => { out[c] = []; });
-    Object.entries(catMap).forEach(([key, cat]) => {
-      if (!out[cat]) out[cat] = [];
-      out[cat].push(nameOf(key));
-    });
-    // 銀行預金・個別株・金は全ての国で共通
-    if (!out.cash.includes(t("legendBankDeposits"))) out.cash.push(t("legendBankDeposits"));
-    if (!out.taxable.includes(t("legendStocks"))) out.taxable.push(t("legendStocks"));
-    if (!out.physical.includes(t("legendGoldAssets"))) out.physical.push(t("legendGoldAssets"));
-    return out;
-  }, [country, accountBreakdownDefs, t]);
-
-  // 引出時課税を編集できる口座一覧（国別）
-  const withdrawalTaxAccounts = useMemo(() => {
-    const defs = accountBreakdownDefs[country] || [];
-    const src = country === "US" ? inputs.usInvestment
-      : country === "GB" ? inputs.gbInvestment
-      : country === "CA" ? inputs.caInvestment
-      : country === "AU" ? inputs.auInvestment : null;
-    if (!src) return [];
-    return defs.map((d) => ({
-      key: d.key, label: d.label,
-      withdrawalTaxPct: Number((src[d.key] || {}).withdrawalTaxPct) || 0,
-    }));
-  }, [country, accountBreakdownDefs, inputs.usInvestment, inputs.gbInvestment, inputs.caInvestment, inputs.auInvestment]);
-
-  const updateWithdrawalTaxAccount = useCallback((key, field, val) => {
-    if (country === "US") updateUsInvestmentAccount(key, field, val);
-    else if (country === "GB") updateGbInvestmentAccount(key, field, val);
-    else if (country === "CA") updateCaInvestmentAccount(key, field, val);
-    else if (country === "AU") updateAuInvestmentAccount(key, field, val);
-  }, [country, updateUsInvestmentAccount, updateGbInvestmentAccount, updateCaInvestmentAccount, updateAuInvestmentAccount]);
-
   const netWorthFinal = integrated.finalNetWorth;
   const inheritanceTotal = inputs.inheritancePlans.reduce((s, p) => s + (p.amount || 0), 0);
   const effectiveInheritanceTarget = inputs.inheritancePlans.length > 0 ? inheritanceTotal : inputs.inheritanceTarget;
@@ -7458,6 +7409,56 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const gbAccountBreakdownAtRetire = useMemo(() => buildAccountBreakdown("GB"), [buildAccountBreakdown]);
   const caAccountBreakdownAtRetire = useMemo(() => buildAccountBreakdown("CA"), [buildAccountBreakdown]);
   const auAccountBreakdownAtRetire = useMemo(() => buildAccountBreakdown("AU"), [buildAccountBreakdown]);
+
+  // 画面に表示する取り崩し順序。実装（ACCOUNT_DRAW_CATEGORY / drawOrderOf）から
+  // 生成するので、コメントや表示と実際の順序が食い違うことがない。
+  const drawdownAccountsByCategory = useMemo(() => {
+    const catMap = ACCOUNT_DRAW_CATEGORY[country] || ACCOUNT_DRAW_CATEGORY.JP;
+    const nameOf = (key) => {
+      const defs = accountBreakdownDefs[country] || [];
+      const hit = defs.find((d) => d.key === key);
+      if (hit) return hit.label;
+      if (key === "nisa") return t("legendNisaAssets");
+      if (key === "ideco") return t("legendIdecoAssets");
+      if (key === "stock") return t("legendStocks");
+      if (key === "gold") return t("legendGoldAssets");
+      if (key === "bank") return t("legendBankDeposits");
+      return key;
+    };
+    const out = {};
+    DRAWDOWN_CATEGORIES.forEach((c) => { out[c] = []; });
+    Object.entries(catMap).forEach(([key, cat]) => {
+      if (!out[cat]) out[cat] = [];
+      out[cat].push(nameOf(key));
+    });
+    // 銀行預金・個別株・金は全ての国で共通
+    if (!out.cash.includes(t("legendBankDeposits"))) out.cash.push(t("legendBankDeposits"));
+    if (!out.taxable.includes(t("legendStocks"))) out.taxable.push(t("legendStocks"));
+    if (!out.physical.includes(t("legendGoldAssets"))) out.physical.push(t("legendGoldAssets"));
+    return out;
+  }, [country, accountBreakdownDefs, t]);
+
+  // 引出時課税を編集できる口座一覧（国別）
+  const withdrawalTaxAccounts = useMemo(() => {
+    const defs = accountBreakdownDefs[country] || [];
+    const src = country === "US" ? inputs.usInvestment
+      : country === "GB" ? inputs.gbInvestment
+      : country === "CA" ? inputs.caInvestment
+      : country === "AU" ? inputs.auInvestment : null;
+    if (!src) return [];
+    return defs.map((d) => ({
+      key: d.key, label: d.label,
+      withdrawalTaxPct: Number((src[d.key] || {}).withdrawalTaxPct) || 0,
+    }));
+  }, [country, accountBreakdownDefs, inputs.usInvestment, inputs.gbInvestment, inputs.caInvestment, inputs.auInvestment]);
+
+  const updateWithdrawalTaxAccount = useCallback((key, field, val) => {
+    if (country === "US") updateUsInvestmentAccount(key, field, val);
+    else if (country === "GB") updateGbInvestmentAccount(key, field, val);
+    else if (country === "CA") updateCaInvestmentAccount(key, field, val);
+    else if (country === "AU") updateAuInvestmentAccount(key, field, val);
+  }, [country, updateUsInvestmentAccount, updateGbInvestmentAccount, updateCaInvestmentAccount, updateAuInvestmentAccount]);
+
 
   const addBank = () => {
     const balance = Number(newBank.balance) || 0;
