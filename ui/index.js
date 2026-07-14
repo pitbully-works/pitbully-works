@@ -20,3 +20,5 @@ export {
 } from "./inputs.jsx";
 export { PIE_COLORS, AllocationCharts, AllocationBreakdown } from "./charts.jsx";
 export { StatCard } from "./cards.jsx";
+// シナリオ比較カード（総資産推移グラフの上に置く）。state を持たない表示専用部品。
+export { ScenarioComparisonCard } from "./comparison.jsx";
