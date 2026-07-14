@@ -21,6 +21,8 @@ import {
 // 画面文言（翻訳辞書）は translations/ 配下に言語別で分離。
 // JP→ja / US・CA・AU→en / GB→en-GB（en + EN_GB_OVERRIDES）。取得は従来どおり translateWith()。
 import { translateWith } from "./translations/index.js";
+// 診断コメント：既存の計算結果だけを見てルールで判定する純粋関数（外部AIは使わない）。
+import { generateAdvice } from "./utils/generateAdvice.js";
 // 国に依存しない共通UI部品（入力欄・ガイド・内訳グラフ）と表示基盤（LocaleContext等）は ui/ 配下へ分離。
 import {
   yen,
@@ -3576,6 +3578,36 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
   const netMonthlyGap = inputs.livingCostMonthly - inputs.pensionMonthly;
 
+  // ---------- 診断コメント ----------
+  // 新しい計算は一切せず、すでに算出済みの値だけを generateAdvice に渡す。
+  // retirementMonthlyGap は「退職後に毎月いくら足りないか」。日本版は netMonthlyGap をそのまま使う。
+  // 米英加豪は各パネルが独自の不足額を持つため、いまは null（＝老後収支の判定を出さない）。
+  // 将来その値を渡すだけで、generateAdvice 側は無変更のまま5か国に対応できる。
+  const advice = useMemo(
+    () =>
+      generateAdvice({
+        currentAge: effectiveCurrentAge,
+        retireAge: inputs.retireAge,
+        deathAge: inputs.deathAge,
+        depletionAge: integrated.depletionAge,
+        netWorthNow: netWorthYearly[0]?.netWorth,
+        netWorthAtRetire: integratedRowAt(inputs.retireAge)?.netWorth,
+        netWorthFinal,
+        inheritanceTarget: effectiveInheritanceTarget,
+        retirementMonthlyGap: country === "JP" ? netMonthlyGap : null,
+      }),
+    [
+      effectiveCurrentAge, inputs.retireAge, inputs.deathAge,
+      integrated.depletionAge, netWorthYearly, integratedRowAt,
+      netWorthFinal, effectiveInheritanceTarget, country, netMonthlyGap,
+    ]
+  );
+  // 総合評価（配列の先頭）の重さで、カードの枠線の色を決める
+  const adviceBorderColor =
+    advice[0]?.severity === "danger" ? "#C2694F"
+    : advice[0]?.severity === "warning" ? "#D9A54F"
+    : "#6FA88A";
+
   // つみたて枠・成長投資枠の「これまでの使用累計」は、手入力の基準額に加えて
   // スケジュール（過去分）・一括投資（実行済み分）から自動集計した金額を合算する
   const tsumitateElapsed = elapsedScheduleAmount(inputs.tsumitateSchedule, effectiveCurrentAge);
@@ -6130,6 +6162,39 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               sub={inputs.privatePensionPlans.length ? t("statPensionPlanCountSub", { count: inputs.privatePensionPlans.length }) : t("statNotRegisteredSub")}
               tone="good"
             />
+          </div>
+
+          {/* 診断コメント：グラフを見る前に、いまの状況が良いのか悪いのかが一目で分かるようにする。
+              色だけに頼らず、アイコン（🟢🟡🔴✅⚠️💰💡）と文章の両方で伝える。 */}
+          <div className="section-block" style={{ borderColor: adviceBorderColor }}>
+            <div className="field-label-row">
+              <span className="field-label">{t("adviceCardTitle")}</span>
+            </div>
+            {advice.map((a) => (
+              <div
+                key={a.id}
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  alignItems: "flex-start",
+                  margin: a.id === "overall" ? "6px 0 12px" : "8px 0",
+                  flexWrap: "wrap",
+                }}
+              >
+                <span aria-hidden="true" style={{ fontSize: 16, lineHeight: "20px" }}>{a.icon}</span>
+                {/* minWidth:0 と flexWrap で、スマホの狭い幅でも横にはみ出さず折り返す */}
+                <div style={{ flex: "1 1 200px", minWidth: 0 }}>
+                  <div className="field-label" style={{ fontWeight: a.id === "overall" ? 700 : 600 }}>
+                    {t(a.titleKey)}
+                    {a.id === "overall" && `：${t(a.valueKey)}`}
+                  </div>
+                  <div className="guide-text" style={{ marginTop: 2 }}>
+                    {t(a.messageKey, a.vars)}
+                  </div>
+                </div>
+              </div>
+            ))}
+            <div className="guide-text" style={{ marginTop: 4 }}>{t("adviceNote")}</div>
           </div>
 
           <SectionGuide guide={t("netWorthChartGuide")} />
