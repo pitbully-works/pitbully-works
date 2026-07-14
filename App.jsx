@@ -1716,6 +1716,9 @@ export function mergeSavedInputs(defaults, saved) {
 }
 
 const STORAGE_KEY = "nisa-lifeplan-inputs-v1";
+// 使い方ガイドを一度閉じたかどうかだけを覚えるキー。入力データ（STORAGE_KEY）とは完全に別枠で、
+// 読めなくても書けなくても、シミュレーションの計算・保存には一切影響しない。
+const GUIDE_SEEN_KEY = "nisa-lifeplan-guide-seen-v1";
 const SNAPSHOT_PREFIX = "snapshot:";
 const todayKey = () => new Date().toISOString().slice(0, 10);
 const formatDateLabel = (d) => {
@@ -1945,6 +1948,25 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const language = inputs.language || "ja";
   // 国別計算エンジンのルールセット。投資/年金/医療費/税制それぞれの implemented フラグを
   // 見て、未実装の国では日本の数値をそのまま見せないよう画面側で分岐する。
+  // 使い方ガイド：初回は開いた状態で始まり、「閉じる」を押すと次回以降は折りたたまれた状態で始まる。
+  const [showGettingStarted, setShowGettingStarted] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await window.storage.get(GUIDE_SEEN_KEY, false);
+        if (!cancelled && res && res.value) setShowGettingStarted(false);
+      } catch {
+        // 未読（または保存領域が使えない）とみなし、開いたままにする
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+  const closeGettingStarted = () => {
+    setShowGettingStarted(false);
+    try { window.storage.set(GUIDE_SEEN_KEY, "1", false); } catch { /* 保存できなくても表示上は閉じる */ }
+  };
+
   const rules = useMemo(() => getCountryRules(country), [country]);
   const countryDisplayName = useMemo(
     () => SUPPORTED_COUNTRIES.find((c) => c.code === country)?.name || country,
@@ -4432,6 +4454,35 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           </button>
         </div>
       </div>
+      {/* 使い方ガイド：初回だけ自動で開く。閉じると次回以降は「?」を押したときだけ開く。 */}
+      <div className="disclaimer-banner no-print" style={{ display: "block" }}>
+        <div className="field-label-row">
+          <span className="field-label">{t("gettingStartedTitle")}</span>
+          <GuideButton
+            open={showGettingStarted}
+            onToggle={() => (showGettingStarted ? closeGettingStarted() : setShowGettingStarted(true))}
+          />
+        </div>
+        {showGettingStarted && (
+          <div className="guide-text">
+            <p style={{ margin: "6px 0" }}>{t("gettingStartedIntro")}</p>
+            <p style={{ margin: "10px 0 4px", fontWeight: 600 }}>{t("gettingStartedFlowTitle")}</p>
+            <ol style={{ margin: "0 0 8px", paddingLeft: 20 }}>
+              <li>{t("gettingStartedStep1")}</li>
+              <li>{t("gettingStartedStep2")}</li>
+              <li>{t("gettingStartedStep3")}</li>
+              <li>{t("gettingStartedStep4")}</li>
+              <li>{t("gettingStartedStep5")}</li>
+              <li>{t("gettingStartedStep6")}</li>
+              <li>{t("gettingStartedStep7")}</li>
+            </ol>
+            <p style={{ margin: "8px 0 6px" }}>💡 {t("gettingStartedTip")}</p>
+            <button type="button" className="history-toggle" onClick={closeGettingStarted}>
+              {t("gettingStartedClose")}
+            </button>
+          </div>
+        )}
+      </div>
       {/* 免責表示：国・言語を問わず常時表示する（印刷・PDFにも残す） */}
       <div className="disclaimer-banner">
         <Info size={13} />
@@ -4575,6 +4626,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           </div>
           <div className="section-block" style={{ borderColor: "#8FBF7F" }}>
           <SectionTitle index="02" title={label("investmentTaxAdvantaged")} icon={TrendingUp} />
+          <SectionGuide guide={t("nisaSectionGuide")} />
 
           {country === "JP" ? (
           <>
@@ -4883,9 +4935,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           />
           </div>
 
-          <div className="field-label" style={{ marginTop: 16, marginBottom: 6 }}>
+          <GuideLabel guide={t("expectedReturnGuide")} style={{ marginTop: 16 }}>
             {t("nisaAllocationSlidersLabel")}
-          </div>
+          </GuideLabel>
           {dynamicFunds.length > 0 ? (
             <>
               {dynamicFunds.map((f, i) => (
@@ -6066,6 +6118,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             />
           </div>
 
+          <SectionGuide guide={t("netWorthChartGuide")} />
           <div className="chart-frame">
             {/* 【修正】年齢に端数があると「57.66478859472867歳」と表示されていたため、整数に丸める。 */}
             <div className="chart-label">{t("netWorthChartTitle", { currentAge: t("ageYears", { age: Math.round(effectiveCurrentAge) }), deathAge: t("ageYears", { age: Math.round(inputs.deathAge) }) })}</div>
