@@ -3580,9 +3580,21 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
   // ---------- 診断コメント ----------
   // 新しい計算は一切せず、すでに算出済みの値だけを generateAdvice に渡す。
-  // retirementMonthlyGap は「退職後に毎月いくら足りないか」。日本版は netMonthlyGap をそのまま使う。
-  // 米英加豪は各パネルが独自の不足額を持つため、いまは null（＝老後収支の判定を出さない）。
-  // 将来その値を渡すだけで、generateAdvice 側は無変更のまま5か国に対応できる。
+  //
+  // 【retirementMonthlyGap を全ての国で null にしている理由】
+  // これは「退職後に毎月いくら足りないか」を表す値。
+  // 当初は日本版に netMonthlyGap（= livingCostMonthly - pensionMonthly）を渡していたが、
+  // 統合シミュレーション（runIntegratedPlan）は医療費・民間年金収入・iDeCoの年金受取なども
+  // 織り込んで資産推移を出しているため、この簡易な引き算とは前提が食い違う。
+  // 「グラフでは足りているのに診断は赤字」といった矛盾が起きうるので採用しない。
+  //
+  // 統合計算の結果（integrated.yearly の各行）が持つのは残高系の値だけで、
+  // 「その年の収入・支出」に当たるフィールドは無い。純資産の増減から逆算する方法もあるが、
+  // それには運用益が混ざるため“収支”にはならず、新しい計算式を作ることになってしまう。
+  //
+  // 根拠のない数字で断定するくらいなら黙るほうが正しいので、いまは null を渡して
+  // 「老後収支」の診断項目そのものを出さない。将来、統合エンジンが退職後の月次収支を
+  // 返すようになったら、ここに渡すだけで generateAdvice 側は無変更のまま5か国に対応できる。
   const advice = useMemo(
     () =>
       generateAdvice({
@@ -3594,12 +3606,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         netWorthAtRetire: integratedRowAt(inputs.retireAge)?.netWorth,
         netWorthFinal,
         inheritanceTarget: effectiveInheritanceTarget,
-        retirementMonthlyGap: country === "JP" ? netMonthlyGap : null,
+        retirementMonthlyGap: null, // 上記の理由により、いまは全ての国で判定しない
       }),
     [
       effectiveCurrentAge, inputs.retireAge, inputs.deathAge,
       integrated.depletionAge, netWorthYearly, integratedRowAt,
-      netWorthFinal, effectiveInheritanceTarget, country, netMonthlyGap,
+      netWorthFinal, effectiveInheritanceTarget,
     ]
   );
   // 総合評価（配列の先頭）の重さで、カードの枠線の色を決める
