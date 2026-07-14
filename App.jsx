@@ -24,6 +24,7 @@ import { translateWith } from "./translations/index.js";
 // 国に依存しない共通UI部品（入力欄・ガイド・内訳グラフ）と表示基盤（LocaleContext等）は ui/ 配下へ分離。
 import {
   yen,
+  CURRENCY_BY_CODE,
   getCategoryLabel,
   LocaleContext,
   GuideButton,
@@ -75,13 +76,6 @@ export const SUPPORTED_COUNTRIES = [
 // 通貨（コード・記号・ロケール）。キーは通貨コード（ISO 4217）そのものにし、
 // 「表示国」からは独立したデータとして管理する（例：日本在住でもUSD表示、海外在住の日本人でもJPY表示、が将来可能）。
 // 将来通貨を追加する場合もここに1行追加するだけでよい。
-const CURRENCY_BY_CODE = {
-  JPY: { symbol: "¥", locale: "ja-JP" },
-  USD: { symbol: "$", locale: "en-US" },
-  GBP: { symbol: "£", locale: "en-GB" },
-  CAD: { symbol: "C$", locale: "en-CA" },
-  AUD: { symbol: "A$", locale: "en-AU" },
-};
 
 // 国を選んだ際に「初期値として」自動設定する基準通貨・表示言語。
 // あくまで初期値であり、保存データ上は country / baseCurrency / language は別項目として保持される
