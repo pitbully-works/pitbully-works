@@ -2953,6 +2953,37 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           border-color: #4FA8D8;
         }
 
+        /* 右下に常駐する「トップへ戻る」ボタン。着地先は #simulator（入力フォーム先頭）。 */
+        .back-to-top {
+          position: fixed;
+          right: 16px;
+          bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+          z-index: 50;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 11px 15px;
+          border-radius: 999px;
+          border: 1px solid #2A363C;
+          background: rgba(21, 28, 32, 0.92);
+          backdrop-filter: blur(6px);
+          -webkit-backdrop-filter: blur(6px);
+          color: #E7ECEE;
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+          transition: color .15s, border-color .15s, background .15s;
+        }
+        .back-to-top:hover, .back-to-top:active {
+          color: #4FA8D8;
+          border-color: #4FA8D8;
+          background: rgba(21, 28, 32, 0.98);
+        }
+
+        /* 上部固定ヘッダーに隠れないよう、ジャンプ先に余白を確保する */
+        #simulator { scroll-margin-top: 12px; }
+
         /* 上部固定ヘッダーに隠れないよう、ジャンプ先に余白を確保する */
         .section-title { scroll-margin-top: 16px; }
 
@@ -5540,6 +5571,25 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       <div className="footer-note">
         {t("footerDisclaimer")}
       </div>
+
+      {/* 画面右下に常駐する「トップへ戻る」ボタン。
+          着地先はアプリ紹介ではなく入力フォームの先頭（#simulator）。
+          普段使う人が毎回アプリ紹介まで戻らずに済むようにするのが目的。
+          紹介文自体は残す（初回利用者向けなので削除しない）。 */}
+      <button
+        type="button"
+        className="back-to-top no-print"
+        aria-label={t("backToTopLabel")}
+        title={t("backToTopLabel")}
+        onClick={() => {
+          const el = document.getElementById("simulator");
+          if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+          else window.scrollTo({ top: 0, behavior: "smooth" });
+        }}
+      >
+        <ChevronUp size={18} strokeWidth={2.25} />
+        <span>{t("backToTopLabel")}</span>
+      </button>
     </div>
     </LocaleContext.Provider>
   );
