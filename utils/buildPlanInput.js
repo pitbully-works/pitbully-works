@@ -27,13 +27,17 @@
 //   ✓ 対象  banks[].monthlyDeposit（第2段階で追加）
 //           銀行は残高を入力値からそのまま使い、遡及計算を持たないため、
 //           月々の入金に倍率を掛けても現在残高は変わらない。
+//   ✓ 対象  gold.monthlyYen（第3段階で追加）
+//           金の現在評価額は App 側が「倍率をかけていない入力」から算出し、
+//           goldCurrentValue として渡してくる。ここでは再計算しないため、
+//           月々の積立に倍率を掛けても現在の保有グラム数・評価額は変わらない。
 //
-//   ✗ 対象外 gold.monthlyYen / ideco.monthlyContribution
-//           この2つは「現在残高の遡及計算（基準年齢から今日までの積み上げ）」にも
-//           使われている。素直に倍率を掛けると、過去に積み立てた額まで書き換わり、
-//           現在の資産額そのものが変わってしまう（＝比較の前提が壊れる）。
-//           将来分だけに掛けるには、遡及計算と将来計算を分離する必要があるため、
-//           第3段階（金）・第4段階（iDeCo）で個別に対応する。
+//   ✗ 対象外 ideco.monthlyContribution
+//           runIdecoSimulation は同じ monthlyContribution を「基準年齢から今日までの
+//           遡及計算」と「将来の積立」の両方に使っている。素直に倍率を掛けると、
+//           過去に積み立てた額まで書き換わって現在のiDeCo残高そのものが変わり、
+//           さらに一時金・受取額まで狂う。遡及計算と将来計算を分離する必要があるため、
+//           第4段階で個別に対応する。
 //
 // NISAの年間上限・生涯上限は倍率を掛けたあとに再判定される（buildNisaContributionPlan
 // をスケジュールごと作り直しているため）。1.5倍にしても上限を超えて積み立てられない。
@@ -411,9 +415,17 @@ export function buildPlanInput(ctx, overrides = {}) {
   });
   pools.push({
     id: "gold", group: "gold", drawCategory: "physical",
-    balance: goldCurrentValue,
+    // 【第3段階：金積立にも倍率を掛ける】
+    // 金の現在評価額（goldCurrentValue）は App 側が runGoldSimulation で
+    // 「倍率をかけていない入力」から算出し、ctx 経由で渡している。
+    // buildPlanInput の中で再計算していないため、monthlyYen に倍率を掛けても
+    // 基準年齢から今日までの遡及計算＝現在の保有グラム数・評価額には一切影響しない。
+    // 動くのは accumulateUntilAge までの「これから買う分」だけ。
+    balance: goldCurrentValue, // 現在評価額：倍率の対象外（過去は変えない）
     annualReturnPct: effectiveGoldReturnPct,
-    monthlyContribution: Number(inputs.gold.monthlyYen) || 0,
+    monthlyContribution: scale(inputs.gold.monthlyYen, m), // これから積み立てる分だけ倍率
+    // 金の積立終了は退職年齢ではなく、金専用の accumulateUntilAge で決まる。
+    // 比較プランで退職年齢を変えても、この年齢が設定されていればそちらが優先される。
     contribEndAge: Number(inputs.gold.accumulateUntilAge) || retireAge,
     withdrawalTaxPct: 0,
     drawOrder: drawOrderOf("physical", 0, drawdownOrder),
