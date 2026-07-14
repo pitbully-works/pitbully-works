@@ -32,12 +32,15 @@
 //           goldCurrentValue として渡してくる。ここでは再計算しないため、
 //           月々の積立に倍率を掛けても現在の保有グラム数・評価額は変わらない。
 //
-//   ✗ 対象外 ideco.monthlyContribution
+//   ✓ 対象  ideco.monthlyContribution（第4段階で追加）
 //           runIdecoSimulation は同じ monthlyContribution を「基準年齢から今日までの
 //           遡及計算」と「将来の積立」の両方に使っている。素直に倍率を掛けると、
 //           過去に積み立てた額まで書き換わって現在のiDeCo残高そのものが変わり、
-//           さらに一時金・受取額まで狂う。遡及計算と将来計算を分離する必要があるため、
-//           第4段階で個別に対応する。
+//           さらに一時金・受取額まで狂う。そのため runIdecoSimulation を2回呼び、
+//           1回目（倍率なし）で今日の残高を確定させてから、2回目で将来の掛金にだけ
+//           倍率を掛ける（詳細は下の iDeCo セクションのコメントを参照）。
+//
+// 倍率が1.0のときは、どの資産についても移設前と1円も違わない結果になる（恒等性）。
 //
 // NISAの年間上限・生涯上限は倍率を掛けたあとに再判定される（buildNisaContributionPlan
 // をスケジュールごと作り直しているため）。1.5倍にしても上限を超えて積み立てられない。
@@ -251,20 +254,56 @@ export function buildPlanInput(ctx, overrides = {}) {
   });
 
   // ==========================================================================
-  // iDeCo（日本のみ）。倍率は掛けない（上のヘッダコメントの理由による）。
-  // 退職年齢を変えても iDeCo は自身の endAge / payoutStartAge に従うため、
-  // 移設前と同じ入力で同じ結果になる。
+  // iDeCo（日本のみ）
+  //
+  // 【第4段階：iDeCo積立にも倍率を掛ける — なぜ2回呼ぶのか】
+  // runIdecoSimulation は、同じ monthlyContribution を2つの用途に使っている。
+  //   ① 基準年齢（asOfAge）→ 今日 までの遡及計算（＝currentValueAdjusted の算出）
+  //   ② 今日 → 受取開始 までの将来の積立
+  // 素直に倍率を掛けると①まで1.5倍になり、現在のiDeCo残高そのものが書き換わる。
+  // さらに lumpAmount（一時金）や annualPayout もそこから導かれるため、受取額まで狂う。
+  //
+  // そこで2段階に分ける。
+  //   1回目：倍率なしで実行し、正しい「今日のiDeCo残高」を確定させる
+  //   2回目：その残高を currentValue として渡し、asOfAge を null にして遡及計算を止め、
+  //          将来の掛金にだけ倍率を掛けて実行する
+  // これで過去は1回目の結果で固定され、将来だけが倍率で動く。
+  // lifePlanEngine.js にも runIdecoSimulation 自体にも手を入れていない。
+  //
+  // 倍率が1.0のときは2回目を行わず1回目の結果をそのまま使うので、
+  // 移設前と1円も違わない（恒等性）。
+  //
+  // なお退職年齢を変えても iDeCo は自身の endAge / payoutStartAge に従うため、
+  // 比較プランで退職を早めても掛金の終了年齢は動かない（制度どおりの挙動）。
   // ==========================================================================
   const effectiveIdecoReturn = inputs.ideco.returnPctAuto
     ? guessDefaultReturn(inputs.ideco.productName) : inputs.ideco.returnPct;
   const idecoAsOfAge = (inputs.ideco.asOfYears !== "" && inputs.ideco.asOfYears !== undefined && inputs.ideco.asOfYears !== null)
     ? Number(inputs.ideco.asOfYears || 0) + Number(inputs.ideco.asOfMonths || 0) / 12
     : null;
-  const idecoSim = runIdecoSimulation({
+
+  // 1回目：倍率をかけない実際の掛金で、今日のiDeCo残高を確定させる
+  const idecoBase = runIdecoSimulation({
     currentAge: effectiveCurrentAge,
     deathAge: inputs.deathAge,
     ideco: { ...inputs.ideco, returnPct: effectiveIdecoReturn, asOfAge: idecoAsOfAge },
   });
+
+  const idecoMonthlyContribution = scale(inputs.ideco.monthlyContribution, m);
+
+  // 2回目：確定した今日の残高を起点に、将来の掛金だけ倍率を掛けて再計算する
+  const idecoSim = m === 1 ? idecoBase : runIdecoSimulation({
+    currentAge: effectiveCurrentAge,
+    deathAge: inputs.deathAge,
+    ideco: {
+      ...inputs.ideco,
+      returnPct: effectiveIdecoReturn,
+      currentValue: idecoBase.currentValueAdjusted, // 過去はここで凍結する
+      asOfAge: null,                                // 遡及計算をもう一度走らせない
+      monthlyContribution: idecoMonthlyContribution, // 将来の掛金だけ倍率
+    },
+  });
+
   const idecoPayoutMethod = inputs.ideco.payoutMethod;
   const getIdecoMonthlyIncome = (idecoPayoutMethod === "pension" || idecoPayoutMethod === "both")
     ? (age) => ((age >= idecoSim.payoutStartAge && age < idecoSim.payoutEndAge) ? idecoSim.annualPayout / 12 : 0)
@@ -464,9 +503,11 @@ export function buildPlanInput(ctx, overrides = {}) {
     idecoPoolId = "ideco";
     pools.push({
       id: "ideco", group: "ideco", drawCategory: "restricted",
+      // 今日のiDeCo残高。1回目（倍率なし）の遡及計算で確定させた値なので、
+      // 倍率をどう変えてもこの値は動かない。
       balance: idecoSim.currentValueAdjusted ?? (inputs.ideco.currentValue || 0),
       annualReturnPct: inputs.ideco.expectedReturnPct,
-      monthlyContribution: Number(inputs.ideco.monthlyContribution) || 0,
+      monthlyContribution: idecoMonthlyContribution, // これから拠出する分だけ倍率
       contribEndAge: inputs.ideco.endAge,
       accessAge: NOT_DRAWABLE, // 受取ルール（一時金・年金）でのみ払い出される
     });
