@@ -1949,22 +1949,36 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   // 国別計算エンジンのルールセット。投資/年金/医療費/税制それぞれの implemented フラグを
   // 見て、未実装の国では日本の数値をそのまま見せないよう画面側で分岐する。
   // 使い方ガイド：初回は開いた状態で始まり、「閉じる」を押すと次回以降は折りたたまれた状態で始まる。
-  const [showGettingStarted, setShowGettingStarted] = useState(true);
+  // 既読判定が終わるまでは null（＝折りたたみ表示）にしておく。判定後に true/false が入る。
+  // これにより、2回目以降の利用者に「一瞬開いてから閉じる」ちらつきが出ない。
+  const [showGettingStarted, setShowGettingStarted] = useState(null);
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      // 保存領域が使えない環境（プライベートブラウズ等）では、毎回「初回」として開く
+      if (!window.storage) {
+        if (!cancelled) setShowGettingStarted(true);
+        return;
+      }
       try {
         const res = await window.storage.get(GUIDE_SEEN_KEY, false);
-        if (!cancelled && res && res.value) setShowGettingStarted(false);
+        // 既読フラグがあれば折りたたみ、無ければ（＝キーが無く例外になる場合も含め）開く
+        if (!cancelled) setShowGettingStarted(!(res && res.value));
       } catch {
-        // 未読（または保存領域が使えない）とみなし、開いたままにする
+        if (!cancelled) setShowGettingStarted(true); // 未読とみなして開く
       }
     })();
     return () => { cancelled = true; };
   }, []);
   const closeGettingStarted = () => {
     setShowGettingStarted(false);
-    try { window.storage.set(GUIDE_SEEN_KEY, "1", false); } catch { /* 保存できなくても表示上は閉じる */ }
+    // 保存に失敗しても表示上は閉じる。await せず投げっぱなしにすると未処理の Promise 拒否に
+    // なるため、必ず catch でつぶす（既存の入力データの保存処理には一切影響しない）。
+    try {
+      Promise.resolve(window.storage?.set(GUIDE_SEEN_KEY, "1", false)).catch(() => {});
+    } catch {
+      /* 保存領域が使えない環境では何もしない */
+    }
   };
 
   const rules = useMemo(() => getCountryRules(country), [country]);
@@ -4459,11 +4473,11 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         <div className="field-label-row">
           <span className="field-label">{t("gettingStartedTitle")}</span>
           <GuideButton
-            open={showGettingStarted}
-            onToggle={() => (showGettingStarted ? closeGettingStarted() : setShowGettingStarted(true))}
+            open={showGettingStarted === true}
+            onToggle={() => (showGettingStarted === true ? closeGettingStarted() : setShowGettingStarted(true))}
           />
         </div>
-        {showGettingStarted && (
+        {showGettingStarted === true && (
           <div className="guide-text">
             <p style={{ margin: "6px 0" }}>{t("gettingStartedIntro")}</p>
             <p style={{ margin: "10px 0 4px", fontWeight: 600 }}>{t("gettingStartedFlowTitle")}</p>
