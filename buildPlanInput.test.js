@@ -127,6 +127,80 @@ describe("buildPlanInput（App.jsx からの切り出し）", () => {
 });
 
 // ============================================================================
+// 第2段階：銀行積立にも倍率が掛かる。
+// 銀行は「基準年齢からの遡及計算」を持たず、残高を入力値からそのまま使うため、
+// 月々の入金に倍率を掛けても現在残高は絶対に変わらない。
+// ============================================================================
+describe("第2段階：銀行積立の倍率", () => {
+  const bankPools = (plan) => plan.pools.filter((p) => p.group === "bank");
+
+  it.each(COUNTRIES)("%s：これから入金する分にだけ倍率が掛かる", (country) => {
+    const ctx = ctxFor(country);
+    const base = bankPools(buildPlanInput(ctx))[0];
+    const boosted = bankPools(buildPlanInput(ctx, { contributionMultiplier: 1.5 }))[0];
+    const reduced = bankPools(buildPlanInput(ctx, { contributionMultiplier: 0.8 }))[0];
+
+    expect(base.monthlyContribution).toBeCloseTo(20000, 6);
+    expect(boosted.monthlyContribution).toBeCloseTo(30000, 6);
+    expect(reduced.monthlyContribution).toBeCloseTo(16000, 6);
+  });
+
+  it.each(COUNTRIES)("%s：現在の預金残高は倍率をどう変えても1円も動かない", (country) => {
+    const ctx = ctxFor(country);
+    for (const m of [0.8, 1.0, 1.2, 1.5]) {
+      const pool = bankPools(buildPlanInput(ctx, { contributionMultiplier: m }))[0];
+      expect(pool.balance).toBe(5000000); // 入力値そのまま。遡及計算は存在しない
+    }
+  });
+
+  it("銀行の入金だけがある構成でも、倍率を上げれば退職時の資産が増える", () => {
+    // 銀行以外の積立をすべて止め、銀行の効果だけを取り出す
+    const ctx = ctxFor("JP");
+    ctx.inputs.tsumitateSchedule = [];
+    ctx.inputs.growthSchedule = [];
+    ctx.inputs.gold.monthlyYen = 0;
+    ctx.inputs.ideco.monthlyContribution = 0;
+
+    const at = (m) => {
+      const r = runIntegratedPlan(buildPlanInput(ctx, { contributionMultiplier: m }));
+      return r.yearly.find((y) => y.age >= 65).netWorth;
+    };
+    expect(at(1.5)).toBeGreaterThan(at(1.0));
+    expect(at(0.8)).toBeLessThan(at(1.0));
+  });
+
+  it("銀行口座が複数あっても、すべての口座に倍率が掛かる", () => {
+    const ctx = ctxFor("JP");
+    ctx.inputs.banks = [
+      { name: "A", balance: 3000000, monthlyDeposit: 30000, interestPct: 0.1 },
+      { name: "B", balance: 1000000, monthlyDeposit: 10000, interestPct: 0.02 },
+    ];
+    const pools = bankPools(buildPlanInput(ctx, { contributionMultiplier: 1.5 }));
+    expect(pools).toHaveLength(2);
+    expect(pools[0].monthlyContribution).toBeCloseTo(45000, 6);
+    expect(pools[1].monthlyContribution).toBeCloseTo(15000, 6);
+    expect(pools[0].balance).toBe(3000000); // 残高は両方とも不変
+    expect(pools[1].balance).toBe(1000000);
+  });
+
+  it("元の inputs.banks は書き換えられない", () => {
+    const ctx = ctxFor("JP");
+    const before = JSON.stringify(ctx.inputs.banks);
+    buildPlanInput(ctx, { contributionMultiplier: 1.5 });
+    expect(JSON.stringify(ctx.inputs.banks)).toBe(before);
+  });
+
+  it("金とiDeCoの積立には、まだ倍率が掛からない（第3・第4段階で対応）", () => {
+    // ここを守らないと、金・iDeCoの「現在残高の遡及計算」が壊れ、
+    // 現在の資産額そのものが変わってしまう。段階を分けている理由そのもの。
+    const ctx = ctxFor("JP");
+    const plan = buildPlanInput(ctx, { contributionMultiplier: 1.5 });
+    expect(plan.pools.find((p) => p.id === "gold").monthlyContribution).toBe(10000);
+    expect(plan.pools.find((p) => p.id === "ideco").monthlyContribution).toBe(23000);
+  });
+});
+
+// ============================================================================
 // 積立倍率は「これから積み立てる分」にだけ掛かること。
 // 現在年齢より前の積立・既に使ったNISA枠・現在資産は絶対に変わってはいけない。
 // ============================================================================
