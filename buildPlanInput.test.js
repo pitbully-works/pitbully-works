@@ -190,12 +190,117 @@ describe("第2段階：銀行積立の倍率", () => {
     expect(JSON.stringify(ctx.inputs.banks)).toBe(before);
   });
 
-  it("iDeCoの積立には、まだ倍率が掛からない（第4段階で対応）", () => {
-    // ここを守らないと、iDeCoの「現在残高の遡及計算」が壊れ、
-    // 現在のiDeCo残高そのものが変わってしまう。段階を分けている理由そのもの。
+});
+
+// ============================================================================
+// 第4段階：iDeCo積立にも倍率が掛かる。
+//
+// runIdecoSimulation は同じ monthlyContribution を「基準年齢→今日の遡及計算」と
+// 「将来の積立」の両方に使っている。素直に倍率を掛けると現在のiDeCo残高そのものが
+// 書き換わり、一時金・受取額まで狂う。そこで2回呼び、1回目で今日の残高を確定させ、
+// 2回目で将来の掛金にだけ倍率を掛ける。ここではその境界を厳密に守らせる。
+// ============================================================================
+describe("第4段階：iDeCo積立の倍率", () => {
+  const idecoPool = (plan) => plan.pools.find((p) => p.id === "ideco");
+
+  // 基準年齢30歳（＝過去10年ぶんの遡及計算が発生する）iDeCo
+  const withPastContributions = (ctx) => {
+    ctx.inputs.ideco.asOfYears = 30;
+    ctx.inputs.ideco.asOfMonths = 0;
+    ctx.inputs.ideco.currentValue = 2000000; // 30歳時点の評価額
+    ctx.inputs.ideco.startAge = 30;
+    ctx.inputs.ideco.endAge = 60;
+    ctx.inputs.ideco.monthlyContribution = 23000;
+    return ctx;
+  };
+
+  it("これから拠出する分にだけ倍率が掛かる", () => {
     const ctx = ctxFor("JP");
+    expect(idecoPool(buildPlanInput(ctx)).monthlyContribution).toBeCloseTo(23000, 6);
+    expect(idecoPool(buildPlanInput(ctx, { contributionMultiplier: 1.5 })).monthlyContribution).toBeCloseTo(34500, 6);
+    expect(idecoPool(buildPlanInput(ctx, { contributionMultiplier: 0.8 })).monthlyContribution).toBeCloseTo(18400, 6);
+  });
+
+  it("【最重要】基準年齢からの遡及計算で求めた「今日のiDeCo残高」が、倍率で1円も動かない", () => {
+    // 30歳→40歳の10年ぶんを遡及計算した結果が、そのまま現在残高になる。
+    // 倍率を掛けてしまうと、この過去10年の拠出まで1.5倍になって残高が跳ね上がる。
+    const ctx = withPastContributions(ctxFor("JP"));
+    const baseline = idecoPool(buildPlanInput(ctx)).balance;
+
+    // 遡及計算が実際に効いていること（＝このテストが意味を持つこと）を先に確認する
+    expect(baseline).toBeGreaterThan(2000000);
+
+    for (const m of [0.8, 1.0, 1.2, 1.5]) {
+      const balance = idecoPool(buildPlanInput(ctx, { contributionMultiplier: m })).balance;
+      expect(balance).toBeCloseTo(baseline, 6);
+    }
+  });
+
+  it("倍率1.0は、2回目を呼ばない1回目そのものと完全に一致する（恒等性）", () => {
+    const ctx = withPastContributions(ctxFor("JP"));
+    const a = runIntegratedPlan(buildPlanInput(ctx));
+    const b = runIntegratedPlan(buildPlanInput(ctx, { contributionMultiplier: 1 }));
+    expect(b.finalNetWorth).toBeCloseTo(a.finalNetWorth, 6);
+
+    const pa = buildPlanInput(ctx);
+    const pb = buildPlanInput(ctx, { contributionMultiplier: 1 });
+    expect(pb.idecoLumpAmount).toBeCloseTo(pa.idecoLumpAmount, 6);
+    expect(pb.idecoLumpAge).toBe(pa.idecoLumpAge);
+  });
+
+  it("将来の拠出が増えるので、一時金（受取額）は倍率を上げると増える", () => {
+    const ctx = withPastContributions(ctxFor("JP"));
+    ctx.inputs.ideco.payoutMethod = "lump";
+    const lumpAt = (m) => buildPlanInput(ctx, { contributionMultiplier: m }).idecoLumpAmount;
+
+    expect(lumpAt(1.5)).toBeGreaterThan(lumpAt(1.0));
+    expect(lumpAt(0.8)).toBeLessThan(lumpAt(1.0));
+    // 受取開始年齢は倍率で動かない（制度で決まる年齢のため）
+    expect(buildPlanInput(ctx, { contributionMultiplier: 1.5 }).idecoLumpAge)
+      .toBe(buildPlanInput(ctx).idecoLumpAge);
+  });
+
+  it("過去分が無い（基準年齢が未設定の）iDeCoでも、現在残高は倍率で動かない", () => {
+    const ctx = ctxFor("JP");
+    ctx.inputs.ideco.asOfYears = "";  // 遡及計算なし
+    ctx.inputs.ideco.asOfMonths = "";
+    ctx.inputs.ideco.currentValue = 2000000;
+    for (const m of [0.8, 1.0, 1.5]) {
+      expect(idecoPool(buildPlanInput(ctx, { contributionMultiplier: m })).balance).toBeCloseTo(2000000, 6);
+    }
+  });
+
+  it("iDeCoの拠出終了年齢は、比較プランで退職年齢を変えても動かない", () => {
+    // iDeCoは制度上、自身の endAge に従う。退職を早めても掛金の終了は早まらない。
+    const ctx = withPastContributions(ctxFor("JP"));
+    const plan = buildPlanInput(ctx, { retireAge: 55, contributionMultiplier: 1.5 });
+    expect(idecoPool(plan).contribEndAge).toBe(60);
+  });
+
+  it("iDeCoの積立だけがある構成でも、倍率を上げれば想定寿命時点の資産が増える", () => {
+    const ctx = withPastContributions(ctxFor("JP"));
+    ctx.inputs.tsumitateSchedule = [];
+    ctx.inputs.growthSchedule = [];
+    ctx.inputs.gold.monthlyYen = 0;
+    ctx.inputs.banks = [{ name: "main", balance: 5000000, monthlyDeposit: 0, interestPct: 0.1 }];
+
+    const at = (m) => runIntegratedPlan(buildPlanInput(ctx, { contributionMultiplier: m })).finalNetWorth;
+    expect(at(1.5)).toBeGreaterThan(at(1.0));
+    expect(at(0.8)).toBeLessThan(at(1.0));
+  });
+
+  it("元の inputs.ideco は書き換えられない", () => {
+    const ctx = withPastContributions(ctxFor("JP"));
+    const before = JSON.stringify(ctx.inputs.ideco);
+    buildPlanInput(ctx, { contributionMultiplier: 1.5 });
+    expect(JSON.stringify(ctx.inputs.ideco)).toBe(before);
+  });
+
+  it.each(["US", "GB", "CA", "AU"])("%s：iDeCoプールは作られない（日本専用）", (country) => {
+    const ctx = ctxFor(country);
     const plan = buildPlanInput(ctx, { contributionMultiplier: 1.5 });
-    expect(plan.pools.find((p) => p.id === "ideco").monthlyContribution).toBe(23000);
+    expect(idecoPool(plan)).toBe(undefined);
+    expect(plan.idecoPoolId).toBe(null);
   });
 });
 
