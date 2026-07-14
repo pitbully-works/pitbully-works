@@ -167,11 +167,18 @@ function ScenarioComparisonCard({
 
           <button
             type="button"
-            className="del-btn"
-            style={{ width: "100%", padding: "10px 0", fontSize: 13, borderRadius: 4 }}
+            className="add-btn"
+            style={{
+              width: "100%",
+              padding: "13px 0",
+              fontSize: 14,
+              fontWeight: 600,
+              borderRadius: 6,
+              marginTop: 4,
+            }}
             onClick={onEnd}
           >
-            {t("scenarioCompareEnd")}
+            {t("scenarioCompareEndFull")}
           </button>
 
           <div className="guide-text" style={{ marginTop: 8 }}>
