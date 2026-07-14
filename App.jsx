@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback, useContext } from "react";
+import { createPortal } from "react-dom";
 import {
   ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ReferenceLine, ResponsiveContainer, BarChart, Bar, Legend, Cell
@@ -2981,6 +2982,29 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           background: rgba(21, 28, 32, 0.98);
         }
 
+        /* 入力フォーム末尾に置く、通常フローの「トップへ戻る」ボタン（全幅）。 */
+        .back-to-top-inline {
+          width: 100%;
+          margin-top: 18px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          padding: 13px 0;
+          border-radius: 8px;
+          border: 1px solid #2A363C;
+          background: var(--panel-2);
+          color: #E7ECEE;
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: color .15s, border-color .15s, background .15s;
+        }
+        .back-to-top-inline:hover, .back-to-top-inline:active {
+          color: #4FA8D8;
+          border-color: #4FA8D8;
+        }
+
         /* 上部固定ヘッダーに隠れないよう、ジャンプ先に余白を確保する */
         #simulator { scroll-margin-top: 12px; }
 
@@ -4957,6 +4981,22 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <span>{t("privatePensionNote")}</span>
           </div>
           </div>
+
+          {/* 入力フォームの最後にも「トップへ戻る」を置く。
+              民間年金まで入力し終えた人が、右下の常駐ボタンを探さずに
+              その場で入力フォーム先頭（#simulator）へ戻れるようにする。 */}
+          <button
+            type="button"
+            className="back-to-top-inline no-print"
+            onClick={() => {
+              const el = document.getElementById("simulator");
+              if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+              else window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+          >
+            <ChevronUp size={16} strokeWidth={2.25} />
+            <span>{t("backToTopLabel")}</span>
+          </button>
         </div>
 
         {/* -------- RIGHT: DASHBOARD -------- */}
@@ -5575,14 +5615,14 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
     {/* 画面右下に常駐する「トップへ戻る」ボタン。
         着地先はアプリ紹介ではなく入力フォームの先頭（#simulator）。
-        普段使う人が毎回アプリ紹介まで戻らずに済むようにするのが目的。
-        紹介文自体は残す（初回利用者向けなので削除しない）。
 
-        【なぜ .app の外に置くか】
-        .app には overflow-x: hidden が指定されている。overflow が visible 以外の
-        要素は、その内側の position: fixed の基準枠になってしまい、fixed が
-        「画面に固定」ではなく「.app 内でスクロール追従」に化けて流れてしまう。
-        そのため .app の外（Provider 直下）に置き、確実に画面へ固定する。 */}
+        【なぜ Portal で body 直下に描くか】
+        .app には overflow-x: hidden があり、祖先に overflow や transform が
+        あると、その内側の position: fixed は「画面」ではなく祖先の枠を基準にして
+        しまい、固定されずに一緒にスクロールして流れる。
+        createPortal で document.body の直下に出すことで、いかなる祖先の
+        overflow / transform の影響も受けず、確実に画面へ固定する。 */}
+    {typeof document !== "undefined" && createPortal(
       <button
         type="button"
         className="back-to-top no-print"
@@ -5596,7 +5636,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       >
         <ChevronUp size={18} strokeWidth={2.25} />
         <span>{t("backToTopLabel")}</span>
-      </button>
+      </button>,
+      document.body
+    )}
     </LocaleContext.Provider>
   );
 }
