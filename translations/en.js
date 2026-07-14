@@ -859,4 +859,33 @@ export const EN_TRANSLATIONS = {
     "adviceTipTitle": "One thing to try",
     "adviceTipGeneric": "Try changing your living costs, the age you retire, how much you put aside each month, or the age you start taking your pension, and compare the results. Moving the numbers around is the surest way to see what would close the gap.",
 
+    // ---------- Scenario comparison (current plan vs comparison plan) ----------
+    // Wording for the comparison card: a plan that changes only three things —
+    // contributions, retirement age, and post-retirement living costs.
+    "scenarioCompareTitle": "Scenario Comparison",
+    "scenarioCompareGuide": "Treats what you have entered as your \"Current Plan\", then builds a \"Comparison Plan\" that changes only your contributions, your retirement age, and your living costs in retirement, so you can see the two side by side. The comparison plan is temporary — it is not saved, and none of your entries are changed.",
+    "scenarioCompareCreate": "Create comparison plan",
+    "scenarioCompareEnd": "End comparison",
+    "scenarioCompareRetireAge": "Retirement age (comparison plan)",
+    "scenarioCompareRetireAgeGuide": "Simulates retiring at this age. Contributions continue until you retire, and drawing on your assets for living costs begins afterwards. Social Security has its own claim age, so retiring earlier does not start those benefits earlier.",
+    "scenarioCompareLivingCost": "Monthly living costs in retirement (comparison plan)",
+    "scenarioCompareLivingCostGuide": "What you expect to spend each month once you have retired. Healthcare costs are worked out separately, so do not include them here.",
+    "scenarioCompareMultiplier": "Contributions (comparison plan)",
+    "scenarioCompareMultiplierValue": "{value}\u00d7",
+    "scenarioCompareMultiplierNote": "A multiplier applied to your current contributions. It affects only what you have yet to put in — what you have already invested, your current balances, and any allowance you have already used all stay exactly as they are. Annual and lifetime limits still apply after the multiplier, so if you are already at the cap, raising it will not add anything.",
+    "scenarioCompareCurrentPlan": "Current plan",
+    "scenarioCompareDiff": "Difference",
+    "scenarioCompareNoChange": "No change",
+    "scenarioCompareAtRetire": "Net worth at retirement ({age})",
+    "scenarioCompareAtDeath": "Net worth at life expectancy",
+    "scenarioCompareDepletion": "Age assets run out",
+    "scenarioCompareNoDepletion": "Never runs out",
+    "scenarioCompareInheritance": "Inheritance goal",
+    "scenarioCompareAchieved": "Met ({amount} above goal)",
+    "scenarioCompareNotAchieved": "Not met ({amount} short)",
+    "scenarioCompareNoTarget": "No goal set",
+    "scenarioCompareRetireMarker": "Retirement (comparison)",
+    "scenarioCompareNote": "The comparison plan is not saved. Select \"End comparison\" to return to your original view.",
+    "legendComparisonNetWorth": "Net worth (comparison plan)",
+
 };
