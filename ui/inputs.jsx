@@ -4,6 +4,10 @@
 // App.jsx から MAN / useMoneyScale / MoneyInput / MoneyField / Field / AgeField /
 // AgeYMInput / LabeledMiniInput / CustomBenefitEditor をそのまま切り出したもので、
 // JSX・スタイル・入力挙動・単位換算（円↔万円）は一切変更していない。
+//
+// 【2026-07 修正】AgeField だけ「フォーカス時に先頭の0を消す」処理が入っておらず、
+// 65歳と入れたつもりが `065` と表示される不具合が残っていた（下記 AgeField 参照）。
+// Field で既に解決済みの方法をそのまま適用した。計算・保存データ構造は変更していない。
 // ============================================================================
 
 import { useState, useEffect, useContext } from "react";
@@ -177,17 +181,40 @@ function Field({ label, unit, value, onChange, step = 1, min = 0, max, mono = tr
 // 年齢の「歳＋ヶ月」表示は、言語設定を必要とするためコンポーネント内のformatAge（下記）で行う。
 
 // 年齢を「歳」と「ヶ月」の2つの入力欄に分けて、小数の年齢値として扱う
+//
+// 【2026-07 修正：先頭の 0 が残る問題】
+// この部品だけ <input type="number" value={years}> に数値を直接流していたため、
+// Field で解決済みの不具合がそのまま残っていた。iOSでは type="number" に対して
+// e.target.select()（全選択）が効かず、初期値 0 の後ろにカーソルが置かれるので、
+// 「65」と打つと「0」＋「65」＝「065」と表示されてしまう。
+// （commit() に渡る値は Number("065") = 65 で正しく、計算は合っている。表示だけが崩れる）
+// Field と同じく表示用テキストを自前で持ち、フォーカス時に 0 を消すことで解決する。
+// 年齢の値の持ち方（歳＋ヶ月/12 の小数）・commit() の繰り上げ処理・保存データ構造は
+// 一切変更していない。
 function AgeField({ label, value, onChange, disabled, guide }) {
   const { t } = useContext(LocaleContext);
   const [showGuide, setShowGuide] = useState(false);
   const years = Math.floor(value + 1e-9);
   const months = Math.round((value - years) * 12);
+
   const commit = (y, m) => {
     let yy = y, mm = m;
     if (mm >= 12) { yy += Math.floor(mm / 12); mm = mm % 12; }
     if (mm < 0) { mm = 0; }
     onChange(yy + mm / 12);
   };
+
+  // 「歳」欄・「ヶ月」欄それぞれに表示用テキストを持たせる
+  const [yearsText, setYearsText] = useState(String(years));
+  const [monthsText, setMonthsText] = useState(String(months));
+  const [editing, setEditing] = useState(null); // null | "years" | "months"
+
+  // 外部から値が変わったとき（国の切替・保存データの読み込み・比較プランの開始等）に同期する
+  useEffect(() => {
+    if (editing !== "years") setYearsText(String(years));
+    if (editing !== "months") setMonthsText(String(months));
+  }, [years, months]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <label className="field">
       <span className="field-label-row">
@@ -197,11 +224,55 @@ function AgeField({ label, value, onChange, disabled, guide }) {
       {guide && showGuide && <span className="guide-text">{guide}</span>}
       <div style={{ display: "flex", gap: 6 }}>
         <div className="field-input-wrap" style={{ flex: 1 }}>
-          <input type="number" className="mono" value={years} disabled={disabled} onChange={(e) => commit(Number(e.target.value), months)} onFocus={(e) => e.target.select()} />
+          <input
+            type="number"
+            className="mono"
+            value={yearsText}
+            disabled={disabled}
+            onChange={(e) => {
+              const raw = e.target.value;
+              setYearsText(raw);
+              commit(raw === "" ? 0 : Number(raw), months);
+            }}
+            onFocus={(e) => {
+              setEditing("years");
+              // 0 のときは枠を空にして、先頭に 0 が残らないようにする
+              if (Number(yearsText) === 0) setYearsText("");
+              else e.target.select();
+            }}
+            onBlur={() => {
+              setEditing(null);
+              // 空のまま離れたら 0 に戻す。数字が入っていれば先頭の 0 を落として正規化する
+              if (yearsText === "") { commit(0, months); setYearsText("0"); }
+              else setYearsText(String(Number(yearsText)));
+            }}
+          />
           <span className="field-unit">{t("unitYears")}</span>
         </div>
         <div className="field-input-wrap" style={{ flex: 1 }}>
-          <input type="number" className="mono" min={0} max={11} value={months} disabled={disabled} onChange={(e) => commit(years, Number(e.target.value))} onFocus={(e) => e.target.select()} />
+          <input
+            type="number"
+            className="mono"
+            min={0}
+            max={11}
+            value={monthsText}
+            disabled={disabled}
+            onChange={(e) => {
+              const raw = e.target.value;
+              setMonthsText(raw);
+              commit(years, raw === "" ? 0 : Number(raw));
+            }}
+            onFocus={(e) => {
+              setEditing("months");
+              if (Number(monthsText) === 0) setMonthsText("");
+              else e.target.select();
+            }}
+            onBlur={() => {
+              setEditing(null);
+              if (monthsText === "") { commit(years, 0); setMonthsText("0"); }
+              else setMonthsText(String(Number(monthsText)));
+            }}
+          />
           <span className="field-unit">{t("unitMonths")}</span>
         </div>
       </div>
