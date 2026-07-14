@@ -190,13 +190,72 @@ describe("第2段階：銀行積立の倍率", () => {
     expect(JSON.stringify(ctx.inputs.banks)).toBe(before);
   });
 
-  it("金とiDeCoの積立には、まだ倍率が掛からない（第3・第4段階で対応）", () => {
-    // ここを守らないと、金・iDeCoの「現在残高の遡及計算」が壊れ、
-    // 現在の資産額そのものが変わってしまう。段階を分けている理由そのもの。
+  it("iDeCoの積立には、まだ倍率が掛からない（第4段階で対応）", () => {
+    // ここを守らないと、iDeCoの「現在残高の遡及計算」が壊れ、
+    // 現在のiDeCo残高そのものが変わってしまう。段階を分けている理由そのもの。
     const ctx = ctxFor("JP");
     const plan = buildPlanInput(ctx, { contributionMultiplier: 1.5 });
-    expect(plan.pools.find((p) => p.id === "gold").monthlyContribution).toBe(10000);
     expect(plan.pools.find((p) => p.id === "ideco").monthlyContribution).toBe(23000);
+  });
+});
+
+// ============================================================================
+// 第3段階：金積立にも倍率が掛かる。
+// 金の現在評価額は App 側が「倍率をかけていない入力」から算出して渡してくるため、
+// buildPlanInput が月々の積立に倍率を掛けても、現在の保有量・評価額は動かない。
+// ============================================================================
+describe("第3段階：金積立の倍率", () => {
+  const goldPool = (plan) => plan.pools.find((p) => p.id === "gold");
+
+  it.each(COUNTRIES)("%s：これから積み立てる分にだけ倍率が掛かる", (country) => {
+    const ctx = ctxFor(country);
+    expect(goldPool(buildPlanInput(ctx)).monthlyContribution).toBeCloseTo(10000, 6);
+    expect(goldPool(buildPlanInput(ctx, { contributionMultiplier: 1.5 })).monthlyContribution).toBeCloseTo(15000, 6);
+    expect(goldPool(buildPlanInput(ctx, { contributionMultiplier: 0.8 })).monthlyContribution).toBeCloseTo(8000, 6);
+  });
+
+  it.each(COUNTRIES)("%s：現在の金の評価額は倍率をどう変えても1円も動かない", (country) => {
+    const ctx = ctxFor(country);
+    for (const m of [0.8, 1.0, 1.2, 1.5]) {
+      // goldCurrentValue は ctx から渡された値そのまま。ここで再計算はしない。
+      expect(goldPool(buildPlanInput(ctx, { contributionMultiplier: m })).balance).toBe(ctx.goldCurrentValue);
+    }
+  });
+
+  it("金の積立終了年齢は退職年齢に引きずられない（accumulateUntilAge が優先）", () => {
+    const ctx = ctxFor("JP");
+    ctx.inputs.gold.accumulateUntilAge = 70; // 退職65歳より後まで積み立てる設定
+    const plan = buildPlanInput(ctx, { retireAge: 55, contributionMultiplier: 1.5 });
+    expect(goldPool(plan).contribEndAge).toBe(70); // 退職を55歳にしても70歳のまま
+  });
+
+  it("accumulateUntilAge が未設定なら退職年齢まで積み立てる", () => {
+    const ctx = ctxFor("JP");
+    ctx.inputs.gold.accumulateUntilAge = 0; // 未設定扱い
+    const plan = buildPlanInput(ctx, { retireAge: 60 });
+    expect(goldPool(plan).contribEndAge).toBe(60);
+  });
+
+  it("金の積立だけがある構成でも、倍率を上げれば退職時の資産が増える", () => {
+    const ctx = ctxFor("JP");
+    ctx.inputs.tsumitateSchedule = [];
+    ctx.inputs.growthSchedule = [];
+    ctx.inputs.banks = [{ name: "main", balance: 5000000, monthlyDeposit: 0, interestPct: 0.1 }];
+    ctx.inputs.ideco.monthlyContribution = 0;
+
+    const at = (m) => {
+      const r = runIntegratedPlan(buildPlanInput(ctx, { contributionMultiplier: m }));
+      return r.yearly.find((y) => y.age >= 65).netWorth;
+    };
+    expect(at(1.5)).toBeGreaterThan(at(1.0));
+    expect(at(0.8)).toBeLessThan(at(1.0));
+  });
+
+  it("元の inputs.gold は書き換えられない", () => {
+    const ctx = ctxFor("JP");
+    const before = JSON.stringify(ctx.inputs.gold);
+    buildPlanInput(ctx, { contributionMultiplier: 1.5 });
+    expect(JSON.stringify(ctx.inputs.gold)).toBe(before);
   });
 });
 
