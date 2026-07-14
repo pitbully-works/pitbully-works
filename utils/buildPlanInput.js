@@ -19,13 +19,21 @@
 //   contributionMultiplier 毎月の積立額の倍率（0.8 / 1.0 / 1.2 / 1.5）
 //
 // 【倍率の適用範囲】
-// 倍率は「これから積み立てる分」だけに掛ける。具体的には
-//   JP …… tsumitateSchedule / growthSchedule の monthlyYen
-//   US/GB/CA/AU …… 各投資口座の annualContribution（＋AUの voluntaryConcessional）
-// のみ。gold.monthlyYen や ideco.monthlyContribution、banks[].monthlyDeposit には
-// 掛けない。これらは「現在残高の遡及計算（基準年齢から今日までの積み上げ）」にも
-// 使われており、倍率を掛けると過去に積み立てた額まで書き換わって
-// 現在の資産額そのものが変わってしまうため（＝比較の前提が壊れる）。
+// 倍率は「これから積み立てる分」だけに掛ける。過去の積立・現在の残高・使用済みの
+// 非課税枠は、倍率をどう変えても1円も動かない。
+//
+//   ✓ 対象  JP …… tsumitateSchedule / growthSchedule の monthlyYen（将来区間のみ）
+//   ✓ 対象  US/GB/CA/AU …… 各投資口座の annualContribution（＋AUの voluntaryConcessional）
+//   ✓ 対象  banks[].monthlyDeposit（第2段階で追加）
+//           銀行は残高を入力値からそのまま使い、遡及計算を持たないため、
+//           月々の入金に倍率を掛けても現在残高は変わらない。
+//
+//   ✗ 対象外 gold.monthlyYen / ideco.monthlyContribution
+//           この2つは「現在残高の遡及計算（基準年齢から今日までの積み上げ）」にも
+//           使われている。素直に倍率を掛けると、過去に積み立てた額まで書き換わり、
+//           現在の資産額そのものが変わってしまう（＝比較の前提が壊れる）。
+//           将来分だけに掛けるには、遡及計算と将来計算を分離する必要があるため、
+//           第3段階（金）・第4段階（iDeCo）で個別に対応する。
 //
 // NISAの年間上限・生涯上限は倍率を掛けたあとに再判定される（buildNisaContributionPlan
 // をスケジュールごと作り直しているため）。1.5倍にしても上限を超えて積み立てられない。
@@ -368,12 +376,18 @@ export function buildPlanInput(ctx, overrides = {}) {
   }
 
   // ---- 銀行預金（全ての国で共通。取り崩しの最優先）----
+  //
+  // 【第2段階：銀行積立にも倍率を掛ける】
+  // 銀行は残高（balance）を入力値からそのまま使っており、金やiDeCoのような
+  // 「基準年齢から現在までの遡及計算」を持たない。したがって monthlyDeposit に
+  // 倍率を掛けても、現在の残高＝過去に積み立てた結果は一切変わらない。
+  // 影響するのは contribEndAge（退職）までの将来の入金だけ。
   (inputs.banks || []).forEach((b, i) => {
     pools.push({
       id: `bank_${i}`, group: "bank", drawCategory: "cash",
-      balance: Number(b.balance) || 0,
+      balance: Number(b.balance) || 0, // 現在残高：倍率の対象外（過去は変えない）
       annualReturnPct: b.interestPct || 0,
-      monthlyContribution: Number(b.monthlyDeposit) || 0,
+      monthlyContribution: scale(b.monthlyDeposit, m), // これから入金する分だけ倍率
       contribEndAge: retireAge,
       withdrawalTaxPct: 0,
       drawOrder: drawOrderOf("cash", i, drawdownOrder),
