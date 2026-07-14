@@ -1,7 +1,7 @@
-import React, { useState, useMemo, useEffect, useCallback, useContext, createContext } from "react";
+import React, { useState, useMemo, useEffect, useCallback, useContext } from "react";
 import {
   ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip,
-  ReferenceLine, ResponsiveContainer, BarChart, Bar, Legend, Cell, PieChart, Pie, LabelList
+  ReferenceLine, ResponsiveContainer, BarChart, Bar, Legend, Cell
 } from "recharts";
 import { Plus, Trash2, TrendingUp, HeartPulse, Landmark, Users, Ruler, Info, Coins, PiggyBank, ChevronUp } from "lucide-react";
 import "./storageShim.js";
@@ -21,16 +21,26 @@ import {
 // 画面文言（翻訳辞書）は translations/ 配下に言語別で分離。
 // JP→ja / US・CA・AU→en / GB→en-GB（en + EN_GB_OVERRIDES）。取得は従来どおり translateWith()。
 import { translateWith } from "./translations/index.js";
+// 国に依存しない共通UI部品（入力欄・ガイド・内訳グラフ）と表示基盤（LocaleContext等）は ui/ 配下へ分離。
+import {
+  yen,
+  getCategoryLabel,
+  LocaleContext,
+  GuideButton,
+  SectionGuide,
+  GuideLabel,
+  MoneyInput,
+  MoneyField,
+  Field,
+  AgeField,
+  AgeYMInput,
+  LabeledMiniInput,
+  CustomBenefitEditor,
+  PIE_COLORS,
+  AllocationCharts,
+  AllocationBreakdown,
+} from "./ui/index.js";
 
-// ---------- helpers ----------
-const yen = (n) => {
-  if (n === null || n === undefined || isNaN(n)) return "¥0";
-  const sign = n < 0 ? "-" : "";
-  n = Math.abs(Math.round(n));
-  if (n >= 100000000) return `${sign}¥${(n / 100000000).toFixed(2)}億`;
-  if (n >= 10000) return `${sign}¥${(n / 10000).toFixed(1)}万`;
-  return `${sign}¥${n.toLocaleString()}`;
-};
 
 // ============================================================================
 // ---------- 国際化（i18n）基盤 ----------
@@ -70,95 +80,7 @@ const CURRENCY_BY_CODE = {
 const DEFAULT_CURRENCY_BY_COUNTRY = { JP: "JPY", US: "USD", GB: "GBP", CA: "CAD", AU: "AUD" };
 const DEFAULT_LANGUAGE_BY_COUNTRY = { JP: "ja", US: "en", GB: "en-GB", CA: "en", AU: "en" };
 
-// 世界共通の内部カテゴリ・キー → 国別の「表示名」だけを切り替えるテーブル。
-// データ構造・計算ロジックはこのキー（例："investmentTaxAdvantaged"）を使い、
-// NISAやiDeCoといった日本固有の名称はここでの「表示専用マッピング」としてのみ登場する。
-const CATEGORY_LABELS = {
-  personalInfo: {
-    JP: "ご本人情報", US: "Personal Info", GB: "Personal Info", CA: "Personal Info", AU: "Personal Info",
-  },
-  basicInfo: {
-    JP: "基本情報", US: "Basic Info", GB: "Basic Info", CA: "Basic Info", AU: "Basic Info",
-  },
-  // NISA（日本）→ 他国では税制優遇のある投資口座全般
-  investmentTaxAdvantaged: {
-    JP: "NISA積立（つみたて枠 + 成長投資枠）",
-    US: "Investment Account (401(k) + Brokerage)",
-    GB: "ISA (Stocks & Shares)",
-    CA: "TFSA (Tax-Free Savings Account)",
-    AU: "Investment Account (Super + Brokerage)",
-  },
-  // iDeCo（日本）→ 他国では個人年金口座全般
-  retirementAccount: {
-    JP: "iDeCo積立（個人型確定拠出年金）",
-    US: "Retirement Account (IRA)",
-    GB: "SIPP / Personal Pension",
-    CA: "RRSP (Registered Retirement Savings Plan)",
-    AU: "Superannuation Contributions",
-  },
-  pensionRetirement: {
-    JP: "老後・年金",
-    US: "Retirement & Social Security",
-    GB: "Retirement & State Pension",
-    CA: "Retirement & CPP",
-    AU: "Retirement & Age Pension",
-  },
-  healthCost: {
-    JP: "健康リスク費用（自己負担目安）",
-    US: "Healthcare Costs (Out-of-Pocket Estimate)",
-    GB: "Healthcare Costs",
-    CA: "Healthcare Costs (Out-of-Pocket Estimate)",
-    AU: "Healthcare Costs (Out-of-Pocket Estimate)",
-  },
-  inheritance: {
-    JP: "相続プラン",
-    US: "Estate & Inheritance Plan",
-    GB: "Inheritance",
-    CA: "Estate & Inheritance Plan",
-    AU: "Estate & Inheritance Plan",
-  },
-  gold: {
-    JP: "金（ゴールド）資産形成",
-    US: "Gold Holdings",
-    GB: "Gold Holdings",
-    CA: "Gold Holdings",
-    AU: "Gold Holdings",
-  },
-  cash: {
-    JP: "銀行預金（銀行別）",
-    US: "Cash & Bank Accounts",
-    GB: "Cash Savings",
-    CA: "Cash & Bank Accounts",
-    AU: "Cash & Bank Accounts",
-  },
-  loan: {
-    JP: "借入金（返済シミュレーション）",
-    US: "Loans (Repayment Simulation)",
-    GB: "Loans (Repayment Simulation)",
-    CA: "Loans (Repayment Simulation)",
-    AU: "Loans (Repayment Simulation)",
-  },
-  insurance: {
-    JP: "生命保険",
-    US: "Insurance (Life)",
-    GB: "Life Insurance",
-    CA: "Insurance (Life)",
-    AU: "Insurance (Life)",
-  },
-  privatePension: {
-    JP: "民間年金積立",
-    US: "Private Pension / Annuity",
-    GB: "Private Pension",
-    CA: "Private Pension / Annuity",
-    AU: "Private Pension / Annuity",
-  },
-};
 
-function getCategoryLabel(key, country) {
-  const entry = CATEGORY_LABELS[key];
-  if (!entry) return key;
-  return entry[country] || entry.JP;
-}
 
 // ============================================================================
 // ---------- 翻訳辞書（translations/） ----------
@@ -186,17 +108,6 @@ function formatMoneyFor(baseCurrency, n) {
   return `${sign}${cfg.symbol}${abs.toLocaleString(cfg.locale)}`;
 }
 
-// 表示層（見出し・金額フォーマット・現在の国/通貨/言語設定）だけを配布するための軽量Context。
-// AllocationCharts等、メインコンポーネントの外側にある小コンポーネントからも
-// props経由でバケツリレーせずに現在の設定へアクセスできるようにする。
-const LocaleContext = createContext({
-  country: "JP",
-  baseCurrency: "JPY",
-  language: "ja",
-  money: yen,
-  label: (key) => getCategoryLabel(key, "JP"),
-  t: (key) => translateWith("ja", key),
-});
 
 function monthlyRate(annualPct) {
   return Math.pow(1 + annualPct / 100, 1 / 12) - 1;
@@ -973,61 +884,6 @@ function defaultWatchlistFor(country) {
   return DEFAULT_WATCHLIST_JP;
 }
 
-// ---------- UI atoms ----------
-// ---------- 入力ガイド（「?」ボタンを押すと、何を入力する欄なのかが開く） ----------
-// 金額の入力欄・入力ブロックの見出しの隣に置き、迷わず入力できるようにする。
-// 計算やデータ構造には一切関与しない、表示専用のUI部品。
-function GuideButton({ open, onToggle }) {
-  const { t } = useContext(LocaleContext);
-  return (
-    <button
-      type="button"
-      className={`guide-btn ${open ? "guide-btn-open" : ""}`}
-      aria-label={t("guideButtonLabel")}
-      aria-expanded={open}
-      title={t("guideButtonLabel")}
-      onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggle(); }}
-    >
-      ?
-    </button>
-  );
-}
-
-// 入力ブロックの見出し（例：「積立枠の保有銘柄」）にガイドを付けるためのラッパー。
-// <GuideLabel guide={t("...Guide")}>{t("...Label")}</GuideLabel> の形で使う。
-// セクション見出しの直下に置く、単独のガイドボタン（テーブル形式のセクション用）
-function SectionGuide({ guide }) {
-  const { t } = useContext(LocaleContext);
-  const [open, setOpen] = useState(false);
-  if (!guide) return null;
-  return (
-    <div style={{ marginBottom: 10, marginTop: -4 }}>
-      <button
-        type="button"
-        className={`section-guide-btn ${open ? "guide-btn-open" : ""}`}
-        aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
-      >
-        <span className="guide-btn" aria-hidden="true">?</span>
-        <span>{t("guideButtonLabel")}</span>
-      </button>
-      {open && <div className="guide-text">{guide}</div>}
-    </div>
-  );
-}
-
-function GuideLabel({ children, guide, style }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div style={{ marginBottom: 6, ...(style || {}) }}>
-      <div className="field-label-row">
-        <span className="field-label">{children}</span>
-        {guide && <GuideButton open={open} onToggle={() => setOpen((v) => !v)} />}
-      </div>
-      {guide && open && <div className="guide-text">{guide}</div>}
-    </div>
-  );
-}
 
 // NISA合計の見出し（span内に置くため、GuideLabelとは別に用意した専用のガイド）
 function NisaTotalGuide() {
@@ -1041,346 +897,6 @@ function NisaTotalGuide() {
   );
 }
 
-// ============================================================================
-// 金額入力は「万円」単位に統一する（基準通貨が円のとき）。
-//
-// 【なぜ】円のまま7桁を入力させると、スマホでは先頭のゼロ1文字だけを消すような
-// 細かいカーソル操作ができず、`0240000`（24万円）を `023000`（2.3万円）に
-// 直してしまうような1桁の取り違えが起きる。実際にそれで生活費が1/10になり、
-// シミュレーション結果が別物になった。
-// 万円単位なら「24」の2桁で済むため、桁を数え間違えようがない。
-//
-// 内部で保持する値は従来どおり「円」。表示と入力だけを万円に変換する。
-// 円以外の通貨（USD等）は万の概念が無いため、そのままの単位で扱う。
-// ============================================================================
-const MAN = 10000;
-
-function useMoneyScale() {
-  const { baseCurrency } = useContext(LocaleContext);
-  return (baseCurrency || "JPY") === "JPY" ? MAN : 1;
-}
-
-// 円 <-> 万円 の相互変換を行う入力欄（行内の小さな入力用）
-function MoneyInput({ value, onChange, placeholder, className, style, disabled }) {
-  const scale = useMoneyScale();
-  const toDisplay = (yen) => (yen === "" || yen === null || yen === undefined ? "" : String(Number(yen) / scale));
-  const [text, setText] = useState(toDisplay(value));
-  const [editing, setEditing] = useState(false);
-
-  // 外部から値が変わったとき（他の操作でリセットされた等）に表示を同期する
-  useEffect(() => {
-    if (!editing) setText(toDisplay(value));
-  }, [value, scale]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  return (
-    <input
-      type="number"
-      inputMode="decimal"
-      className={className}
-      style={style}
-      disabled={disabled}
-      placeholder={placeholder}
-      value={text}
-      onFocus={(e) => { setEditing(true); e.target.select(); }}
-      onBlur={() => { setEditing(false); setText(toDisplay(value)); }}
-      onChange={(e) => {
-        const raw = e.target.value;
-        setText(raw);
-        onChange(raw === "" ? "" : Number(raw) * scale);
-      }}
-    />
-  );
-}
-
-// ラベル付きの金額入力欄（Field の金額版）
-function MoneyField({ label, value, onChange, unitPer, guide, disabled, mono = true }) {
-  const { t, baseCurrency, currencySymbol } = useContext(LocaleContext);
-  const [showGuide, setShowGuide] = useState(false);
-  const isYen = (baseCurrency || "JPY") === "JPY";
-  const scale = isYen ? MAN : 1;
-  // unitPer: undefined | "month" | "year"
-  const base = isYen ? t("unitMan") : currencySymbol;
-  const unit = unitPer === "month" ? `${base}${t("unitPerMonthSuffix")}`
-    : unitPer === "year" ? `${base}${t("unitPerYearSuffix")}`
-    : base;
-
-  const toDisplay = (yen) => (yen === "" || yen === null || yen === undefined ? "" : String(Number(yen) / scale));
-  const [text, setText] = useState(toDisplay(value));
-  const [editing, setEditing] = useState(false);
-  useEffect(() => { if (!editing) setText(toDisplay(value)); }, [value, scale]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  return (
-    <label className="field">
-      <span className="field-label-row">
-        <span className="field-label">{label}</span>
-        {guide && <GuideButton open={showGuide} onToggle={() => setShowGuide((v) => !v)} />}
-      </span>
-      {guide && showGuide && <span className="guide-text">{guide}</span>}
-      <div className="field-input-wrap">
-        <input
-          type="number"
-          inputMode="decimal"
-          value={text}
-          min={0}
-          disabled={disabled}
-          className={mono ? "mono" : ""}
-          onFocus={(e) => { setEditing(true); e.target.select(); }}
-          onBlur={() => { setEditing(false); setText(toDisplay(value)); }}
-          onChange={(e) => {
-            const raw = e.target.value;
-            setText(raw);
-            onChange(raw === "" ? 0 : Number(raw) * scale);
-          }}
-        />
-        <span className="field-unit">{unit}</span>
-      </div>
-      {/* 桁の取り違えを目視で防ぐため、実額を併記する */}
-      {value !== "" && value !== null && value !== undefined && Number(value) > 0 && (
-        <span className="guide-text" style={{ opacity: 0.6, marginTop: 4 }}>
-          = {new Intl.NumberFormat().format(Math.round(Number(value)))} {isYen ? t("currencyUnit") : currencySymbol}
-        </span>
-      )}
-    </label>
-  );
-}
-
-function Field({ label, unit, value, onChange, step = 1, min = 0, max, mono = true, disabled = false, guide }) {
-  const [showGuide, setShowGuide] = useState(false);
-  return (
-    <label className="field">
-      <span className="field-label-row">
-        <span className="field-label">{label}</span>
-        {guide && <GuideButton open={showGuide} onToggle={() => setShowGuide((v) => !v)} />}
-      </span>
-      {guide && showGuide && <span className="guide-text">{guide}</span>}
-      <div className="field-input-wrap">
-        <input
-          type="number"
-          value={value}
-          step={step}
-          min={min}
-          max={max}
-          disabled={disabled}
-          onChange={(e) => onChange(Number(e.target.value))}
-          onFocus={(e) => e.target.select()}
-          className={mono ? "mono" : ""}
-        />
-        {unit && <span className="field-unit">{unit}</span>}
-      </div>
-    </label>
-  );
-}
-
-// 年齢の「歳＋ヶ月」表示は、言語設定を必要とするためコンポーネント内のformatAge（下記）で行う。
-
-// 年齢を「歳」と「ヶ月」の2つの入力欄に分けて、小数の年齢値として扱う
-function AgeField({ label, value, onChange, disabled, guide }) {
-  const { t } = useContext(LocaleContext);
-  const [showGuide, setShowGuide] = useState(false);
-  const years = Math.floor(value + 1e-9);
-  const months = Math.round((value - years) * 12);
-  const commit = (y, m) => {
-    let yy = y, mm = m;
-    if (mm >= 12) { yy += Math.floor(mm / 12); mm = mm % 12; }
-    if (mm < 0) { mm = 0; }
-    onChange(yy + mm / 12);
-  };
-  return (
-    <label className="field">
-      <span className="field-label-row">
-        <span className="field-label">{label}</span>
-        {guide && <GuideButton open={showGuide} onToggle={() => setShowGuide((v) => !v)} />}
-      </span>
-      {guide && showGuide && <span className="guide-text">{guide}</span>}
-      <div style={{ display: "flex", gap: 6 }}>
-        <div className="field-input-wrap" style={{ flex: 1 }}>
-          <input type="number" className="mono" value={years} disabled={disabled} onChange={(e) => commit(Number(e.target.value), months)} onFocus={(e) => e.target.select()} />
-          <span className="field-unit">{t("unitYears")}</span>
-        </div>
-        <div className="field-input-wrap" style={{ flex: 1 }}>
-          <input type="number" className="mono" min={0} max={11} value={months} disabled={disabled} onChange={(e) => commit(years, Number(e.target.value))} onFocus={(e) => e.target.select()} />
-          <span className="field-unit">{t("unitMonths")}</span>
-        </div>
-      </div>
-    </label>
-  );
-}
-
-// 追加フォーム用の小型「歳＋ヶ月」入力（2つの数値を親のuseState断片として管理）
-function AgeYMInput({ years, months, onYears, onMonths, placeholder }) {
-  const { t } = useContext(LocaleContext);
-  const inputStyle = {
-    width: "50%",
-    background: "var(--panel-2)",
-    border: "1px solid var(--line)",
-    color: "var(--text)",
-    padding: "7px 9px",
-    borderRadius: 3,
-    fontSize: 12,
-    outline: "none",
-  };
-  return (
-    <div style={{ display: "flex", gap: 4, flex: 1 }}>
-      <input
-        type="number" placeholder={`${placeholder}${t("unitYearsShort")}`} value={years}
-        onChange={(e) => onYears(e.target.value)}
-        onFocus={(e) => e.target.select()}
-        style={inputStyle}
-      />
-      <input
-        type="number" placeholder={t("unitMonths")} min={0} max={11} value={months}
-        onChange={(e) => onMonths(e.target.value)}
-        onFocus={(e) => e.target.select()}
-        style={inputStyle}
-      />
-    </div>
-  );
-}
-
-// 常に表示されるラベル付き入力（placeholderは入力すると消えてしまい何の欄か分からなくなるため、
-// ラベルを別要素として常時表示する）
-function LabeledMiniInput({ label, value, onChange, type = "number", money = false, onChangeValue }) {
-  const { t, baseCurrency } = useContext(LocaleContext);
-  const isYen = (baseCurrency || "JPY") === "JPY";
-  return (
-    <div style={{ flex: 1 }}>
-      <div style={{ fontSize: 10, color: "#7C8A90", marginBottom: 2 }}>
-        {label}{money && isYen ? `（${t("unitMan")}）` : ""}
-      </div>
-      {money ? (
-        <MoneyInput value={value} onChange={(v) => onChangeValue(v)} style={{ width: "100%" }} />
-      ) : (
-        <input type={type} value={value} onChange={onChange} style={{ width: "100%" }} />
-      )}
-    </div>
-  );
-}
-
-// 保険の保障内容に、任意の項目名と金額を自由に追加できる小さな編集フォーム
-function CustomBenefitEditor({ onAdd }) {
-  const { t } = useContext(LocaleContext);
-  const [name, setName] = useState("");
-  const [amount, setAmount] = useState("");
-  return (
-    <div className="add-row" style={{ marginTop: 6 }}>
-      <input placeholder={t("customBenefitNamePlaceholder")} value={name} onChange={(e) => setName(e.target.value)} />
-      <MoneyInput placeholder={t("amountPlaceholderMan")} value={amount} onChange={(v) => setAmount(v)} />
-      <button
-        className="add-btn"
-        onClick={() => {
-          if (!name.trim()) return;
-          onAdd(name.trim(), Number(amount) || 0);
-          setName("");
-          setAmount("");
-        }}
-      >
-        <Plus size={15} />
-      </button>
-    </div>
-  );
-}
-
-const PIE_COLORS = ["#4FA8D8", "#D9A54F", "#8FBF7F", "#B08FD6", "#C2694F", "#7BC9E0", "#E6B0A6", "#6FA88A"];
-
-// 銘柄別の内訳（金額を入れると割合を自動計算し、円グラフで表示）
-// 円グラフ＋棒グラフ（同じitems/合計から生成するので常に連動する）。編集UIを持たない読み取り専用版。
-function AllocationCharts({ items, height = 180 }) {
-  const { money, t } = useContext(LocaleContext);
-  const total = items.reduce((s, it) => s + (it.amount || 0), 0);
-  if (total <= 0) return null;
-  const renderPieLabel = ({ cx, cy, midAngle, outerRadius, percent, name, value }) => {
-    const RADIAN = Math.PI / 180;
-    const radius = outerRadius + 4;
-    const x = cx + radius * Math.cos(-midAngle * RADIAN);
-    const y = cy + radius * Math.sin(-midAngle * RADIAN);
-    return (
-      <text x={x} y={y} fill="#B7C2C7" fontSize={7.5} textAnchor={x > cx ? "start" : "end"} dominantBaseline="central">
-        {`${name} ${money(value)}（${(percent * 100).toFixed(0)}%）`}
-      </text>
-    );
-  };
-  return (
-    <>
-      <ResponsiveContainer width="100%" height={height}>
-        <PieChart>
-          <Pie
-            data={items} dataKey="amount" nameKey="name" cx="50%" cy="50%" outerRadius={65}
-            label={renderPieLabel}
-            labelLine={false}
-          >
-            {items.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
-          </Pie>
-          <Tooltip formatter={(v) => money(v)} contentStyle={{ background: "#151C20", border: "1px solid #2A363C", fontSize: 12 }} />
-        </PieChart>
-      </ResponsiveContainer>
-      <ResponsiveContainer width="100%" height={Math.max(90, items.length * 32)}>
-        <BarChart
-          data={items.map((it) => ({ name: it.name, pct: (it.amount / total) * 100, amount: it.amount }))}
-          layout="vertical" margin={{ left: 8, right: 56, top: 4, bottom: 4 }}
-        >
-          <CartesianGrid stroke="#2A363C" strokeDasharray="3 3" horizontal={false} />
-          <XAxis type="number" domain={[0, 100]} stroke="#7C8A90" fontSize={10} tickFormatter={(v) => `${v}%`} />
-          <YAxis type="category" dataKey="name" stroke="#7C8A90" fontSize={10} width={90} />
-          <Tooltip
-            formatter={(v, n, p) => (n === "pct" ? [`${v.toFixed(1)}% (${money(p.payload.amount)})`, t("colPercent")] : [money(v), n])}
-            contentStyle={{ background: "#151C20", border: "1px solid #2A363C", fontSize: 12 }}
-          />
-          <Bar dataKey="pct" radius={[0, 2, 2, 0]}>
-            {items.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
-            <LabelList
-              dataKey="amount"
-              position="right"
-              formatter={(v) => money(v)}
-              style={{ fill: "#E7ECEE", fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }}
-            />
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
-    </>
-  );
-}
-
-function AllocationBreakdown({ items, newItem, onNewItemChange, onAdd, onRemove, onUpdate }) {
-  const { t } = useContext(LocaleContext);
-  const total = items.reduce((s, it) => s + (it.amount || 0), 0);
-  return (
-    <div>
-      {items.length > 0 && (
-        <table className="watchlist" style={{ marginBottom: 8 }}>
-          <thead><tr><th>{t("colName")}</th><th>{t("colAmount")}</th><th>{t("colPercent")}</th><th></th></tr></thead>
-          <tbody>
-            {items.map((it, i) => (
-              <tr key={i}>
-                <td>
-                  <input
-                    className="inline-num" value={it.name}
-                    onChange={(e) => onUpdate(i, "name", e.target.value)}
-                  />
-                </td>
-                <td style={{ width: 96 }}>
-                  <MoneyInput
-                    className="inline-num" value={it.amount}
-                    onChange={(v) => onUpdate(i, "amount", v === "" ? 0 : v)}
-                  />
-                </td>
-                <td className="mono" style={{ width: 52 }}>{total > 0 ? `${((it.amount / total) * 100).toFixed(1)}%` : "—"}</td>
-                <td style={{ width: 24 }}>
-                  <button className="del-btn" onClick={() => onRemove(i)}><Trash2 size={13} /></button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-      <div className="add-row" style={{ marginBottom: total > 0 ? 8 : 0 }}>
-        <input placeholder={t("holdingNamePlaceholder")} value={newItem.name} onChange={(e) => onNewItemChange({ ...newItem, name: e.target.value })} />
-        <MoneyInput placeholder={t("amountPlaceholderMan")} value={newItem.amount} onChange={(v) => onNewItemChange({ ...newItem, amount: v })} />
-        <button className="add-btn" onClick={onAdd}><Plus size={15} /></button>
-      </div>
-      <AllocationCharts items={items} />
-    </div>
-  );
-}
 
 // ---------- アメリカ選択時：投資口座パネル（401(k) / Traditional IRA / Roth IRA / Brokerage） ----------
 // JP側のNISA関連ステート・計算（tsumitateSchedule, NISA_LIMITS, runSimulation等）とは
