@@ -5571,11 +5571,18 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       <div className="footer-note">
         {t("footerDisclaimer")}
       </div>
+    </div>
 
-      {/* 画面右下に常駐する「トップへ戻る」ボタン。
-          着地先はアプリ紹介ではなく入力フォームの先頭（#simulator）。
-          普段使う人が毎回アプリ紹介まで戻らずに済むようにするのが目的。
-          紹介文自体は残す（初回利用者向けなので削除しない）。 */}
+    {/* 画面右下に常駐する「トップへ戻る」ボタン。
+        着地先はアプリ紹介ではなく入力フォームの先頭（#simulator）。
+        普段使う人が毎回アプリ紹介まで戻らずに済むようにするのが目的。
+        紹介文自体は残す（初回利用者向けなので削除しない）。
+
+        【なぜ .app の外に置くか】
+        .app には overflow-x: hidden が指定されている。overflow が visible 以外の
+        要素は、その内側の position: fixed の基準枠になってしまい、fixed が
+        「画面に固定」ではなく「.app 内でスクロール追従」に化けて流れてしまう。
+        そのため .app の外（Provider 直下）に置き、確実に画面へ固定する。 */}
       <button
         type="button"
         className="back-to-top no-print"
@@ -5590,7 +5597,6 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         <ChevronUp size={18} strokeWidth={2.25} />
         <span>{t("backToTopLabel")}</span>
       </button>
-    </div>
     </LocaleContext.Provider>
   );
 }

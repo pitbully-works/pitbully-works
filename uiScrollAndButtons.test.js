@@ -103,6 +103,24 @@ describe("UI改善：トップへ戻るボタンとスクロール着地点", ()
     expect(app).toContain('id="simulator"');
   });
 
+  it("トップへ戻るボタンは .app の外にある（overflow-x:hidden で fixed が壊れないように）", () => {
+    // .app には overflow-x: hidden があり、その内側だと position: fixed が
+    // 画面固定にならず一緒にスクロールしてしまう。ボタンは .app を閉じた後、
+    // Provider を閉じる前に置かれていなければならない。
+    const appClose = app.lastIndexOf("</div>\n    </LocaleContext.Provider>");
+    // 上の形（.app 閉じ → 直後に Provider 閉じ）が存在しないこと＝間に何か（ボタン）がある
+    const btnIdx = app.indexOf('className="back-to-top no-print"');
+    const providerClose = app.indexOf("</LocaleContext.Provider>");
+    // ボタンは Provider 閉じより前にある
+    expect(btnIdx).toBeGreaterThan(0);
+    expect(btnIdx).toBeLessThan(providerClose);
+    // ボタンの直前に .app の閉じタグがある（＝ボタンは .app の外）
+    const before = app.slice(0, btnIdx);
+    const lastFooter = before.lastIndexOf('className="footer-note"');
+    const appDivCloseAfterFooter = before.indexOf("</div>", before.indexOf("</div>", lastFooter) + 1);
+    expect(appDivCloseAfterFooter).toBeGreaterThan(lastFooter);
+  });
+
   it("アプリ紹介（landing）は削除されず残っている", () => {
     expect(app).toContain('className="landing"');
   });
