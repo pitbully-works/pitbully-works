@@ -2234,6 +2234,18 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   }, [country, inputs]);
   const endComparison = useCallback(() => setComparisonDraft(null), []);
 
+  // 国を切り替えたら、比較プランは必ず破棄する。
+  //
+  // 【なぜ必要か】
+  // 比較プランは「退職後の生活費」を数値として持つが、その単位（円・ドル・ポンド…）は
+  // 国に紐づいている。国を切り替えても比較プランが残っていると、日本で入れた
+  // 23万（円）が、そのまま £230,000/月 として計算されてしまう。
+  // 実際にそれで資産が72歳で尽き、比較線が0に張り付く不具合が出た。
+  // 単位の異なる値を引き継ぐ意味は無いため、国が変わったら比較そのものを終了する。
+  useEffect(() => {
+    setComparisonDraft(null);
+  }, [country]);
+
   // グラフ用データ。比較中でなければ netWorthYearly をそのまま返す（＝既存の描画と完全に同一）。
   // 比較中は「現在プランの行に comparisonNetWorth を1キー足すだけ」なので、
   // 資産内訳の面グラフが参照するキーは一切変わらない。
