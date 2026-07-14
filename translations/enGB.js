@@ -45,4 +45,12 @@ export const EN_GB_OVERRIDES = {
   adviceRetirementCashflowDeficit: "Once you retire, your State Pension and any other pension income are not projected to cover your living costs. You would need to draw on your savings to make up the difference.",
   adviceTipGeneric: "Try changing your living costs, the age you retire, how much you put aside each month, or the age you start taking your State Pension, and compare the results. Moving the numbers around is the surest way to see what would close the gap.",
 
+  // ---------- シナリオ比較：英国向けの差分だけを上書きする ----------
+  // 他の scenarioCompare* キー（タイトル・ボタン・結果カードの見出しなど）は
+  // en の値がそのまま英国英語として通用するため、ここには列挙しない（二重管理を避ける）。
+  // 差し替えが必要なのは、米国固有の Social Security 表記と、
+  // 英国で allowance と呼ぶ非課税枠の表記を含む2件のみ。
+  scenarioCompareRetireAgeGuide: "Simulates retiring at this age. Contributions continue until you retire, and drawing on your assets for living costs begins afterwards. The State Pension has its own claim age, so retiring earlier does not bring it forward.",
+  scenarioCompareMultiplierNote: "A multiplier applied to your current contributions. It affects only what you have yet to put in \u2014 what you have already invested, your current balances, and any allowance you have already used all stay exactly as they are. Annual and lifetime allowances still apply after the multiplier, so if you are already at the limit, raising it will not add anything.",
+
 };
