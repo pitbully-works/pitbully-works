@@ -2216,6 +2216,26 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     { index: "11", title: label("privatePension"), icon: PiggyBank },
   ]), [label]);
 
+  // 画面右下に縦並びで出す「クイックジャンプ」用の短縮ラベル一覧。
+  // 各入力セクション（section-00〜11）に加えて、個別株と総資産グラフへも飛べる。
+  // anchor はスクロール先の要素id。short は被りを避けるための短い表示名。
+  const quickNavItems = useMemo(() => ([
+    { anchor: "section-00", short: t("navShortPersonal") },
+    { anchor: "section-01", short: t("navShortBasic") },
+    { anchor: "section-02", short: t("navShortInvestment") },
+    { anchor: "section-03", short: t("navShortRetirementAcct") },
+    { anchor: "section-04", short: t("navShortPension") },
+    { anchor: "section-05", short: t("navShortHealth") },
+    { anchor: "section-06", short: t("navShortInheritance") },
+    { anchor: "section-07", short: t("navShortGold") },
+    { anchor: "section-08", short: t("navShortCash") },
+    { anchor: "section-09", short: t("navShortLoan") },
+    { anchor: "section-10", short: t("navShortInsurance") },
+    { anchor: "section-11", short: t("navShortPrivatePension") },
+    { anchor: "section-stock", short: t("navShortStock") },
+    { anchor: "section-networth-chart", short: t("navShortChart") },
+  ]), [t]);
+
   const netWorthFinal = integrated.finalNetWorth;
   const inheritanceTotal = inputs.inheritancePlans.reduce((s, p) => s + (p.amount || 0), 0);
   const effectiveInheritanceTarget = inputs.inheritancePlans.length > 0 ? inheritanceTotal : inputs.inheritanceTarget;
@@ -2954,12 +2974,57 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           border-color: #4FA8D8;
         }
 
+        /* 右下に常駐するフローティング領域（クイックジャンプ＋トップへ戻る）。
+           領域を fixed にし、中のボタンは通常フローで縦積みする。 */
+        .quicknav-wrap {
+          position: fixed;
+          right: 10px;
+          bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+          z-index: 50;
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          gap: 6px;
+          /* 画面高を超えたらこの領域内だけスクロール（項目が多いため）。
+             背景は透明なので、はみ出しても後ろは見える。 */
+          max-height: 78vh;
+          overflow-y: auto;
+          overflow-x: hidden;
+          -webkit-overflow-scrolling: touch;
+          pointer-events: none; /* 透明な余白部分はタップを透過させる */
+        }
+        .quicknav-wrap > * { pointer-events: auto; } /* ボタン自体は押せる */
+
+        .quicknav {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          gap: 5px;
+        }
+        /* 各項目ボタン：背景透明・アクセント色・小さめだが指で押せるサイズ。 */
+        .quicknav-btn {
+          min-height: 30px;
+          padding: 5px 11px;
+          border-radius: 999px;
+          border: 1px solid rgba(79, 168, 216, 0.55);
+          background: transparent;
+          color: #6FC0EC;
+          font-size: 12px;
+          font-weight: 700;
+          line-height: 1;
+          white-space: nowrap;
+          cursor: pointer;
+          text-shadow: 0 0 4px #000, 0 0 3px #000;
+          transition: color .12s, border-color .12s, background .12s;
+        }
+        .quicknav-btn:hover, .quicknav-btn:active {
+          color: #0E1316;
+          background: #6FC0EC;
+          border-color: #6FC0EC;
+        }
+
         /* 右下に常駐する「トップへ戻る」ボタン。着地先は #simulator（入力フォーム先頭）。 */
         .back-to-top {
-          position: fixed;
-          right: 16px;
-          bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-          z-index: 50;
           display: inline-flex;
           align-items: center;
           gap: 6px;
@@ -5384,7 +5449,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           />
 
           <SectionGuide guide={t("netWorthChartGuide")} />
-          <div className="chart-frame">
+          <div className="chart-frame" id="section-networth-chart">
             {/* 【修正】年齢に端数があると「57.66478859472867歳」と表示されていたため、整数に丸める。 */}
             <div className="chart-label">{t("netWorthChartTitle", { currentAge: t("ageYears", { age: Math.round(effectiveCurrentAge) }), deathAge: t("ageYears", { age: Math.round(inputs.deathAge) }) })}</div>
             <ResponsiveContainer width="100%" height={340}>
@@ -5512,7 +5577,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               )}
             </div>
 
-            <div className="chart-frame" style={{ padding: "16px 16px 18px" }}>
+            <div className="chart-frame" id="section-stock" style={{ padding: "16px 16px 18px" }}>
               <div className="chart-label" style={{ padding: 0, marginBottom: 10 }}>{t("stockWatchlistTitle")}</div>
               <table className="watchlist">
                 <thead>
@@ -5628,20 +5693,40 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         createPortal で document.body の直下に出すことで、いかなる祖先の
         overflow / transform の影響も受けず、確実に画面へ固定する。 */}
     {typeof document !== "undefined" && createPortal(
-      <button
-        type="button"
-        className="back-to-top no-print"
-        aria-label={t("backToTopLabel")}
-        title={t("backToTopLabel")}
-        onClick={() => {
-          const el = document.getElementById("simulator");
-          if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-          else window.scrollTo({ top: 0, behavior: "smooth" });
-        }}
-      >
-        <ChevronUp size={18} strokeWidth={2.25} />
-        <span>{t("backToTopLabel")}</span>
-      </button>,
+      <div className="quicknav-wrap no-print">
+        {/* 各入力項目・個別株・総資産グラフへ飛ぶ小さなボタン群。
+            背景は透明、文字はアクセント色。指で押せる最小サイズを確保しつつ、
+            画面になるべく被らないよう右端に縦並びで置く。 */}
+        <nav className="quicknav" aria-label={t("quickNavLabel")}>
+          {quickNavItems.map(({ anchor, short }) => (
+            <button
+              key={anchor}
+              type="button"
+              className="quicknav-btn"
+              onClick={() => {
+                const el = document.getElementById(anchor);
+                if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
+            >
+              {short}
+            </button>
+          ))}
+        </nav>
+        <button
+          type="button"
+          className="back-to-top"
+          aria-label={t("backToTopLabel")}
+          title={t("backToTopLabel")}
+          onClick={() => {
+            const el = document.getElementById("simulator");
+            if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+            else window.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+        >
+          <ChevronUp size={18} strokeWidth={2.25} />
+          <span>{t("backToTopLabel")}</span>
+        </button>
+      </div>,
       document.body
     )}
     </LocaleContext.Provider>

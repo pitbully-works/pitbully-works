@@ -85,17 +85,19 @@ describe("UI改善：トップへ戻るボタンとスクロール着地点", ()
   const app = read("./App.jsx");
 
   it("常駐ボタンが存在し、backToTopLabel を表示する", () => {
-    expect(app).toContain('className="back-to-top no-print"');
+    expect(app).toContain('className="back-to-top"');
     expect(app).toContain('t("backToTopLabel")');
   });
 
+  it("フローティング領域は no-print で、印刷時に出ない", () => {
+    expect(app).toContain('className="quicknav-wrap no-print"');
+  });
+
   it("着地先はアプリ紹介ではなく入力フォーム先頭（#simulator）", () => {
-    // back-to-top ボタンの onClick が simulator を対象にしていること
-    const idx = app.indexOf('className="back-to-top no-print"');
+    const idx = app.indexOf('className="back-to-top"');
     expect(idx).toBeGreaterThan(0);
     const block = app.slice(idx, idx + 500);
     expect(block).toContain('getElementById("simulator")');
-    // landing（紹介）へ戻していないこと
     expect(block).not.toContain('getElementById("landing")');
   });
 
@@ -103,14 +105,10 @@ describe("UI改善：トップへ戻るボタンとスクロール着地点", ()
     expect(app).toContain('id="simulator"');
   });
 
-  it("トップへ戻るボタンは Portal で body 直下に描画される（overflow/transform の影響を受けない）", () => {
-    // .app や祖先に overflow-x:hidden / transform があると、内側の position:fixed は
-    // 画面ではなく祖先の枠を基準にして流れてしまう。createPortal で document.body に
-    // 出すことで、いかなる祖先の影響も受けず確実に画面へ固定する。
+  it("フローティング領域は Portal で body 直下に描画される（overflow/transform の影響を受けない）", () => {
     expect(app).toContain("createPortal");
-    const idx = app.indexOf('className="back-to-top no-print"');
+    const idx = app.indexOf('className="quicknav-wrap no-print"');
     expect(idx).toBeGreaterThan(0);
-    // 常駐ボタンが createPortal(..., document.body) の内側にあること
     const portalStart = app.lastIndexOf("createPortal", idx);
     const portalTarget = app.indexOf("document.body", idx);
     expect(portalStart).toBeGreaterThan(0);
@@ -119,7 +117,6 @@ describe("UI改善：トップへ戻るボタンとスクロール着地点", ()
 
   it("入力フォーム末尾にもインラインの「トップへ戻る」ボタンがある", () => {
     expect(app).toContain('className="back-to-top-inline no-print"');
-    // インラインボタンも着地先は #simulator
     const idx = app.indexOf('className="back-to-top-inline no-print"');
     const block = app.slice(idx, idx + 400);
     expect(block).toContain('getElementById("simulator")');
@@ -133,5 +130,49 @@ describe("UI改善：トップへ戻るボタンとスクロール着地点", ()
 
   it("アプリ紹介（landing）は削除されず残っている", () => {
     expect(app).toContain('className="landing"');
+  });
+});
+
+describe("UI改善：クイックジャンプ（各項目ボタン）", () => {
+  const app = read("./App.jsx");
+
+  it("クイックジャンプの項目一覧に14個（12セクション＋個別株＋グラフ）ある", () => {
+    const idx = app.indexOf("const quickNavItems = useMemo");
+    expect(idx).toBeGreaterThan(0);
+    const block = app.slice(idx, app.indexOf("]), [t]);", idx));
+    const anchors = block.match(/anchor: "/g) || [];
+    expect(anchors.length).toBe(14);
+  });
+
+  it("個別株（section-stock）と総資産グラフ（section-networth-chart）の着地先が実在する", () => {
+    expect(app).toContain('id="section-stock"');
+    expect(app).toContain('id="section-networth-chart"');
+    // quickNavItems から両方を参照している
+    expect(app).toContain('anchor: "section-stock"');
+    expect(app).toContain('anchor: "section-networth-chart"');
+  });
+
+  it("各項目ボタンは quicknav-btn クラスで、背景透明・アクセント色", () => {
+    expect(app).toContain('className="quicknav-btn"');
+    // 背景 transparent とアクセント色の指定がCSSにある
+    const cssIdx = app.indexOf(".quicknav-btn {");
+    expect(cssIdx).toBeGreaterThan(0);
+    const css = app.slice(cssIdx, cssIdx + 400);
+    expect(css).toContain("background: transparent");
+    expect(css).toContain("#6FC0EC");
+  });
+
+  it("短縮ラベルの翻訳キーが ja / en で解決できる", () => {
+    const keys = [
+      "navShortPersonal", "navShortBasic", "navShortInvestment", "navShortRetirementAcct",
+      "navShortPension", "navShortHealth", "navShortInheritance", "navShortGold",
+      "navShortCash", "navShortLoan", "navShortInsurance", "navShortPrivatePension",
+      "navShortStock", "navShortChart",
+    ];
+    for (const dict of [JA_TRANSLATIONS, EN_TRANSLATIONS]) {
+      for (const k of keys) {
+        expect(dict[k]).toBeTruthy();
+      }
+    }
   });
 });
