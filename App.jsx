@@ -3422,12 +3422,14 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           font-size: 10.5px; color: var(--muted); padding: 20px 28px 0;
           line-height: 1.6; border-top: 1px solid var(--line); margin-top: 10px;
         }
-        /* 免責事項の直下の著作権表記 */
+        /* 免責事項の直下の著作権表記。免責文に埋もれないよう、少し明るく・余白を広めに。 */
         .footer-copyright {
-          margin-top: 12px;
+          margin-top: 16px;
+          padding-top: 12px;
+          border-top: 1px solid var(--line);
           font-family: 'JetBrains Mono', monospace;
-          font-size: 11px;
-          color: var(--muted);
+          font-size: 12px;
+          color: var(--text);
         }
         /* 画面最下部のクレジット */
         .footer-credit {
