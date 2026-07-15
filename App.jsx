@@ -3422,6 +3422,29 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           font-size: 10.5px; color: var(--muted); padding: 20px 28px 0;
           line-height: 1.6; border-top: 1px solid var(--line); margin-top: 10px;
         }
+        /* 免責事項の直下の著作権表記 */
+        .footer-copyright {
+          margin-top: 12px;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 11px;
+          color: var(--muted);
+        }
+        /* 画面最下部のクレジット */
+        .footer-credit {
+          margin-top: 22px;
+          padding: 18px 28px 26px;
+          border-top: 1px solid var(--line);
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 11px;
+          line-height: 1.9;
+          color: var(--muted);
+          text-align: center;
+        }
+        .footer-mail {
+          color: var(--blue); text-decoration: none;
+          border-bottom: 1px solid rgba(79,168,216,0.5);
+        }
+        .footer-mail:hover { border-bottom-color: var(--blue); }
 
         @media print {
           .app { background: #fff !important; color: #111 !important; background-image: none !important; }
@@ -5679,6 +5702,18 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
       <div className="footer-note">
         {t("footerDisclaimer")}
+        {/* 免責事項の直下に著作権表記を入れる。 */}
+        <div className="footer-copyright">© 2026 Kunihiko Hioki</div>
+      </div>
+
+      {/* 画面の一番下のクレジット表記。 */}
+      <div className="footer-credit">
+        <div>© 2026 Kunihiko Hioki</div>
+        <div>Developed by Kunihiko Hioki</div>
+        <div>Version 1.0.0</div>
+        <div>
+          <a className="footer-mail" href="mailto:pdr.gifu@gmail.com">✉️ pdr.gifu@gmail.com</a>
+        </div>
       </div>
     </div>
 
