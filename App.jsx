@@ -3023,28 +3023,27 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           border-color: #6FC0EC;
         }
 
-        /* 右下に常駐する「トップへ戻る」ボタン。着地先は #simulator（入力フォーム先頭）。 */
+        /* 「トップへ戻る」ボタン。項目ボタンと同じ小型・背景透明のピル。
+           区別できるよう文字色だけピンクにする。着地先は #simulator（入力フォーム先頭）。 */
         .back-to-top {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          padding: 11px 15px;
+          min-height: 30px;
+          padding: 5px 11px;
           border-radius: 999px;
-          border: 1px solid #2A363C;
-          background: rgba(21, 28, 32, 0.92);
-          backdrop-filter: blur(6px);
-          -webkit-backdrop-filter: blur(6px);
-          color: #E7ECEE;
-          font-size: 13px;
-          font-weight: 600;
+          border: 1px solid rgba(230, 138, 176, 0.6);
+          background: transparent;
+          color: #F0A6C4;
+          font-size: 12px;
+          font-weight: 700;
+          line-height: 1;
+          white-space: nowrap;
           cursor: pointer;
-          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
-          transition: color .15s, border-color .15s, background .15s;
+          text-shadow: 0 0 4px #000, 0 0 3px #000;
+          transition: color .12s, border-color .12s, background .12s;
         }
         .back-to-top:hover, .back-to-top:active {
-          color: #4FA8D8;
-          border-color: #4FA8D8;
-          background: rgba(21, 28, 32, 0.98);
+          color: #0E1316;
+          background: #F0A6C4;
+          border-color: #F0A6C4;
         }
 
         /* 入力フォーム末尾に置く、通常フローの「トップへ戻る」ボタン（全幅）。 */
@@ -5723,8 +5722,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             else window.scrollTo({ top: 0, behavior: "smooth" });
           }}
         >
-          <ChevronUp size={18} strokeWidth={2.25} />
-          <span>{t("backToTopLabel")}</span>
+          {t("backToTopShort")}
         </button>
       </div>,
       document.body

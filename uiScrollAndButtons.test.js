@@ -86,7 +86,22 @@ describe("UI改善：トップへ戻るボタンとスクロール着地点", ()
 
   it("常駐ボタンが存在し、backToTopLabel を表示する", () => {
     expect(app).toContain('className="back-to-top"');
-    expect(app).toContain('t("backToTopLabel")');
+    expect(app).toContain('t("backToTopLabel")'); // aria-label / title に残る
+  });
+
+  it("常駐ボタンは短縮表示（backToTopShort）で、ピンク（#F0A6C4）の透明ピル", () => {
+    // ボタン本文は短縮キー
+    const btnIdx = app.indexOf('className="back-to-top"');
+    const btnBlock = app.slice(btnIdx, btnIdx + 500);
+    expect(btnBlock).toContain('t("backToTopShort")');
+    // CSS：背景透明・ピンク文字
+    const cssIdx = app.indexOf(".back-to-top {");
+    const css = app.slice(cssIdx, cssIdx + 400);
+    expect(css).toContain("background: transparent");
+    expect(css).toContain("#F0A6C4");
+    // 翻訳キーが解決できる
+    expect(JA_TRANSLATIONS.backToTopShort).toBeTruthy();
+    expect(EN_TRANSLATIONS.backToTopShort).toBeTruthy();
   });
 
   it("フローティング領域は no-print で、印刷時に出ない", () => {
