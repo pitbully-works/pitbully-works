@@ -349,6 +349,7 @@ export const JA_TRANSLATIONS = {
     "sectionNavTitle": "入力する項目を選ぶ",
     "backToNavLabel": "項目一覧へ",
     "backToTopLabel": "トップへ戻る",
+    "backToTopShort": "トップ",
     "quickNavLabel": "項目へジャンプ",
     "navShortPersonal": "本人",
     "navShortBasic": "基本",

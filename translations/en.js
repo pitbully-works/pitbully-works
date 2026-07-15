@@ -349,6 +349,7 @@ export const EN_TRANSLATIONS = {
     "sectionNavTitle": "Jump to a section",
     "backToNavLabel": "Back to list",
     "backToTopLabel": "Back to top",
+    "backToTopShort": "Top",
     "quickNavLabel": "Jump to section",
     "navShortPersonal": "You",
     "navShortBasic": "Basic",
