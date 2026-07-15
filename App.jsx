@@ -5393,7 +5393,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 <XAxis dataKey="age" stroke="#7C8A90" fontSize={11} tickFormatter={(a) => `${a}`} />
                 <YAxis stroke="#7C8A90" fontSize={11} tickFormatter={(v) => money(v)} width={64} />
                 <Tooltip
-                  contentStyle={{ background: "#151C20", border: "1px solid #2A363C", fontSize: 12 }}
+                  // 後ろのグラフが透けて見えるよう半透明＋ぼかしにする。
+                  // 面グラフのピーク付近でツールチップが重なっても、下の資産推移が確認できる。
+                  contentStyle={{ background: "rgba(21, 28, 32, 0.82)", backdropFilter: "blur(3px)", WebkitBackdropFilter: "blur(3px)", border: "1px solid #2A363C", fontSize: 12 }}
+                  wrapperStyle={{ zIndex: 20 }}
                   labelFormatter={(a) => t("ageYears", { age: a })}
                   formatter={(v, n) => [money(v), n]}
                 />
@@ -5473,7 +5476,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                   <CartesianGrid stroke="#2A363C" strokeDasharray="3 3" horizontal={false} />
                   <XAxis type="number" stroke="#7C8A90" fontSize={11} tickFormatter={(v) => money(v)} />
                   <YAxis type="category" dataKey="name" stroke="#7C8A90" fontSize={11} width={90} />
-                  <Tooltip contentStyle={{ background: "#151C20", border: "1px solid #2A363C", fontSize: 12 }} formatter={(v) => money(v)} />
+                  <Tooltip contentStyle={{ background: "rgba(21, 28, 32, 0.82)", backdropFilter: "blur(3px)", WebkitBackdropFilter: "blur(3px)", border: "1px solid #2A363C", fontSize: 12 }} formatter={(v) => money(v)} />
                   <Bar dataKey="value" radius={[0, 3, 3, 0]}>
                     {(country === "US" ? usAccountBreakdownAtRetire : country === "GB" ? gbAccountBreakdownAtRetire : country === "CA" ? caAccountBreakdownAtRetire : country === "AU" ? auAccountBreakdownAtRetire : fundBreakdownAtRetire).map((f, i) => (
                       <Cell key={i} fill={f.color} />
@@ -5578,7 +5581,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                   <CartesianGrid stroke="#2A363C" strokeDasharray="3 3" horizontal={false} />
                   <XAxis type="number" stroke="#7C8A90" fontSize={11} tickFormatter={(v) => money(v)} />
                   <YAxis type="category" dataKey="name" stroke="#7C8A90" fontSize={11} width={90} />
-                  <Tooltip contentStyle={{ background: "#151C20", border: "1px solid #2A363C", fontSize: 12 }} formatter={(v) => money(v)} />
+                  <Tooltip contentStyle={{ background: "rgba(21, 28, 32, 0.82)", backdropFilter: "blur(3px)", WebkitBackdropFilter: "blur(3px)", border: "1px solid #2A363C", fontSize: 12 }} formatter={(v) => money(v)} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                   <Bar dataKey={t("currentLabelShort")} fill="#C2694F" radius={[0, 2, 2, 0]} />
                   <Bar dataKey={t("ageYears", { age: inputs.retireAge })} fill="#D9877A" radius={[0, 2, 2, 0]} />
@@ -5596,7 +5599,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                   <CartesianGrid stroke="#2A363C" strokeDasharray="3 3" horizontal={false} />
                   <XAxis type="number" stroke="#7C8A90" fontSize={11} tickFormatter={(v) => money(v)} />
                   <YAxis type="category" dataKey="name" stroke="#7C8A90" fontSize={11} width={90} />
-                  <Tooltip contentStyle={{ background: "#151C20", border: "1px solid #2A363C", fontSize: 12 }} formatter={(v) => money(v)} />
+                  <Tooltip contentStyle={{ background: "rgba(21, 28, 32, 0.82)", backdropFilter: "blur(3px)", WebkitBackdropFilter: "blur(3px)", border: "1px solid #2A363C", fontSize: 12 }} formatter={(v) => money(v)} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                   <Bar dataKey={t("currentLabelShort")} fill="#4FA8D8" radius={[0, 2, 2, 0]} />
                   <Bar dataKey={t("ageYears", { age: inputs.retireAge })} fill="#D9A54F" radius={[0, 2, 2, 0]} />
