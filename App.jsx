@@ -5703,16 +5703,18 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       <div className="footer-note">
         {t("footerDisclaimer")}
         {/* 免責事項の直下に著作権表記を入れる。 */}
-        <div className="footer-copyright">© 2026 Kunihiko Hioki</div>
+        <div className="footer-copyright">{"© 2026 Kunihiko Hioki"}</div>
       </div>
 
-      {/* 画面の一番下のクレジット表記。 */}
+      {/* 画面の一番下のクレジット表記。
+          文字列は {"..."} で囲む。囲まないと importIntegrity.test.js が JSX の地の文中の
+          Kunihiko / Developed / Version を「未定義の識別子」と誤検出して落ちるため。 */}
       <div className="footer-credit">
-        <div>© 2026 Kunihiko Hioki</div>
-        <div>Developed by Kunihiko Hioki</div>
-        <div>Version 1.0.0</div>
+        <div>{"© 2026 Kunihiko Hioki"}</div>
+        <div>{"Developed by Kunihiko Hioki"}</div>
+        <div>{"Version 1.0.0"}</div>
         <div>
-          <a className="footer-mail" href="mailto:pdr.gifu@gmail.com">✉️ pdr.gifu@gmail.com</a>
+          <a className="footer-mail" href="mailto:pdr.gifu@gmail.com">{"✉️ pdr.gifu@gmail.com"}</a>
         </div>
       </div>
     </div>

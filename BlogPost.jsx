@@ -1,6 +1,29 @@
 import React from "react";
 import { blogPosts } from "./blogPosts.js";
 
+// 本文中の [表示文](URL) をタップできるリンクに変換する。
+// URL が mailto: で始まればメール、それ以外はリンク先を新しいタブで開く。
+// この記法を含まない段落は、これまでどおりただの <p> として表示する（既存の見た目は不変）。
+function renderParagraph(text, key) {
+  const linkMatch = /^\[([^\]]+)\]\(([^)]+)\)$/.exec(text.trim());
+  if (linkMatch) {
+    const [, labelText, url] = linkMatch;
+    const isMail = url.startsWith("mailto:");
+    return (
+      <p key={key}>
+        <a
+          className="blog-link"
+          href={url}
+          {...(isMail ? {} : { target: "_blank", rel: "noopener noreferrer" })}
+        >
+          {labelText}
+        </a>
+      </p>
+    );
+  }
+  return <p key={key}>{text}</p>;
+}
+
 export default function BlogPost({ slug, onBack, onGoToSimulator }) {
   const post = blogPosts.find((p) => p.slug === slug);
 
@@ -56,6 +79,13 @@ export default function BlogPost({ slug, onBack, onGoToSimulator }) {
         .blog-post-content p {
           font-size: 14px; line-height: 1.95; color: var(--text); margin: 0 0 18px;
         }
+        /* 本文中のリンク（note・メールなど）。既存の段落スタイルはそのまま、リンクだけ装飾する。 */
+        .blog-link {
+          color: var(--blue); font-weight: 600; text-decoration: none;
+          border-bottom: 1px solid rgba(79,168,216,0.5);
+          word-break: break-all;
+        }
+        .blog-link:hover { border-bottom-color: var(--blue); }
         .blog-post-footer {
           max-width: 680px; margin: 40px auto 0; padding: 20px 22px 0;
           border-top: 1px solid var(--line);
@@ -103,7 +133,7 @@ export default function BlogPost({ slug, onBack, onGoToSimulator }) {
                 block.startsWith("## ") ? (
                   <h2 key={i}>{block.replace("## ", "")}</h2>
                 ) : (
-                  <p key={i}>{block}</p>
+                  renderParagraph(block, i)
                 )
               )}
             </div>

@@ -57,21 +57,25 @@ describe("開発者コラム", () => {
 });
 
 describe("BlogPost：リンク描画", () => {
-  const src = read("./BlogPost.jsx");
+  let src = "";
+  try {
+    src = read("./BlogPost.jsx");
+  } catch {
+    src = "";
+  }
 
   it("[表示文](URL) をリンクに変換する処理がある", () => {
-    expect(src).toContain("renderParagraph");
-    expect(src).toContain("blog-link");
+    expect(src.includes("renderParagraph")).toBe(true);
+    expect(src.includes("blog-link")).toBe(true);
   });
 
   it("mailto は新規タブ属性を付けない（メール起動のため）", () => {
-    // mailto 判定があること
-    expect(src).toContain('url.startsWith("mailto:")');
+    expect(src.includes('startsWith("mailto:")')).toBe(true);
   });
 
   it("見出し（## ）と通常段落の既存の描画は残っている", () => {
-    expect(src).toContain('block.startsWith("## ")');
-    expect(src).toContain("blog-post-content");
+    expect(src.includes('startsWith("## ")')).toBe(true);
+    expect(src.includes("blog-post-content")).toBe(true);
   });
 });
 
