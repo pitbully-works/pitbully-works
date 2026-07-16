@@ -386,7 +386,7 @@ export const JA_TRANSLATIONS = {
     "bankBreakdownChartTitle": "銀行別 預金残高 — 年齢ごとの見込み（現在 / {retireAge} / {deathAge}）",
     "surplusBalanceTitle": "余剰金残高",
     "surplusBalanceCurrentLabel": "余剰金残高（現在）",
-    "surplusBalanceCurrentSub": "受給開始から今までに受け取った年金等のうち、使われずに積み上がった累計です",
+    "surplusBalanceCurrentSub": "民間年金の受給開始から今までに、使われずに積み上がった累計です",
     "surplusBalanceSelectLabel": "表示する年齢",
     "surplusBalanceAtAgeLabel": "余剰金残高（{age}歳時点）",
     "surplusBalanceMonthUnit": "{month}ヶ月",

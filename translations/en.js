@@ -386,7 +386,7 @@ export const EN_TRANSLATIONS = {
     "bankBreakdownChartTitle": "Cash Balance by Bank — Projected by Age (Current / {retireAge} / {deathAge})",
     "surplusBalanceTitle": "Surplus Balance",
     "surplusBalanceCurrentLabel": "Surplus balance (now)",
-    "surplusBalanceCurrentSub": "Total pension (and other income) received from the start age up to now that has not been spent",
+    "surplusBalanceCurrentSub": "Private pension accrued unspent, from its receiving age up to now",
     "surplusBalanceSelectLabel": "Show at age",
     "surplusBalanceAtAgeLabel": "Surplus balance (at age {age})",
     "surplusBalanceMonthUnit": "{month} mo",
