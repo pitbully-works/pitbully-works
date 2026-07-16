@@ -2330,35 +2330,41 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     surplusFocusAge !== null && surplusAgeOptions.includes(surplusFocusAge)
       ? surplusFocusAge
       : inputs.deathAge;
-  // 選択年齢時点の累計（従来どおり・年次スナップショットのまま）。
-  const surplusAtFocus = integratedRowAt(effectiveSurplusFocusAge)?.surplusBalance ?? 0;
 
-  // 「現在」＝民間年金の受給開始年齢（現在年齢より前に始まっているもののうち最も早い年齢）
-  // から、現在年齢までに積み上がった累計。ここでは民間年金だけを対象にし、公的年金・iDeCo
-  // には波及させない（別セクションの入力なので別々に扱う）。
-  // エンジンを「開始点＝民間年金の受給開始年齢／終点＝現在年齢／収入は民間年金のみ」で
+  // 「現在」も「選択年齢時点」も、同じ基準＝民間年金の受給開始年齢を起点にした累計にする。
+  // 民間年金だけを対象にし、公的年金・iDeCo には波及させない（別セクションの入力なので別々に扱う）。
+  // エンジンを「開始点＝民間年金の受給開始年齢／終点＝対象年齢／収入は民間年金のみ」で
   // 呼び直して得る（計算式は不変。入力の一部だけを渡して呼ぶだけ）。
   const surplusPlanInput = useMemo(() => buildPlanInput(planCtx), [planCtx]);
+  // 民間年金の受給開始年齢（最も早いもの）。無ければ null。
   const surplusIncomeStartAge = useMemo(() => {
-    const ages = [];
-    (surplusPlanInput.privatePensionPlans || []).forEach((p) => {
-      const a = Number(p.payoutFromAge);
-      if (Number.isFinite(a) && a < effectiveCurrentAge) ages.push(a);
-    });
+    const ages = (surplusPlanInput.privatePensionPlans || [])
+      .map((p) => Number(p.payoutFromAge))
+      .filter((a) => Number.isFinite(a));
     return ages.length ? Math.min(...ages) : null;
-  }, [surplusPlanInput, effectiveCurrentAge]);
-  const surplusAtCurrent = useMemo(() => {
+  }, [surplusPlanInput]);
+  // 受給開始年齢 → targetAge の、民間年金だけの累計余剰金。
+  const surplusPrivateUpTo = useCallback((targetAge) => {
     if (surplusIncomeStartAge == null) return 0;
-    // 民間年金だけを収入として渡す。公的年金・iDeCo年金・iDeCo一時金は除外。
+    if (!(targetAge > surplusIncomeStartAge + 1e-9)) return 0;
     return runIntegratedPlan({
       ...surplusPlanInput,
       currentAge: surplusIncomeStartAge,
-      deathAge: effectiveCurrentAge,
+      deathAge: targetAge,
       publicPensions: [],
       idecoLumpAge: null,
       idecoAnnuityMonthly: undefined,
     }).finalSurplusBalance ?? 0;
-  }, [surplusPlanInput, surplusIncomeStartAge, effectiveCurrentAge]);
+  }, [surplusPlanInput, surplusIncomeStartAge]);
+  // 現在＝受給開始→現在年齢。 選択＝受給開始→選択年齢。どちらも同じ起点・同じ方式。
+  const surplusAtCurrent = useMemo(
+    () => surplusPrivateUpTo(effectiveCurrentAge),
+    [surplusPrivateUpTo, effectiveCurrentAge]
+  );
+  const surplusAtFocus = useMemo(
+    () => surplusPrivateUpTo(effectiveSurplusFocusAge),
+    [surplusPrivateUpTo, effectiveSurplusFocusAge]
+  );
 
   const fundBreakdownAtRetire = useMemo(() => {
     if (country !== "JP") return [];
