@@ -385,7 +385,7 @@ export const JA_TRANSLATIONS = {
     "balanceCol": "残高",
     "bankBreakdownChartTitle": "銀行別 預金残高 — 年齢ごとの見込み（現在 / {retireAge} / {deathAge}）",
     "bankNameCol": "銀行名",
-    "bankNote": "毎月入金は引退年齢（{age}）まで継続する前提で計算します。金利は普通預金なら0〜0.1%程度が目安です。",
+    "bankNote": "毎月入金は引退年齢（{age}）まで継続する前提で計算します。金利は普通預金なら0〜0.1%程度が目安です。\nなお、退職前でも年金（公的・民間・iDeCo）を受け取り始めていて、その分を生活費に使っていない場合、使われなかったお金はこの銀行預金に積み上がります。そのため、毎月の積立をしていなくても銀行預金が増えて見えることがあります（総資産は正しく計算されています）。",
     "bankTotalNowLabel": "銀行預金 合計（現在）",
     "benefitAdvancedMedical": "先進医療{amount}",
     "benefitDaySurgery": "日帰り{amount}",

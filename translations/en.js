@@ -385,7 +385,7 @@ export const EN_TRANSLATIONS = {
     "balanceCol": "Balance",
     "bankBreakdownChartTitle": "Cash Balance by Bank — Projected by Age (Current / {retireAge} / {deathAge})",
     "bankNameCol": "Bank Name",
-    "bankNote": "Monthly deposits are assumed to continue until retirement age ({age}). For a typical savings account, an interest rate of 0-0.1% is a reasonable guide.",
+    "bankNote": "Monthly deposits are assumed to continue until retirement age ({age}). For a typical savings account, an interest rate of 0-0.1% is a reasonable guide.\nNote: if you start receiving a pension (state, private, or a defined-contribution plan) before retiring and do not spend it on living costs, the unused money accumulates here in your cash savings. As a result, your cash savings can appear to grow even without monthly deposits (your total assets are still calculated correctly).",
     "bankTotalNowLabel": "Total Cash (Current)",
     "benefitAdvancedMedical": "Advanced medical care {amount}",
     "benefitDaySurgery": "Day surgery {amount}",
