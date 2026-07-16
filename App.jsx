@@ -2320,9 +2320,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     });
   }, [inputs.banks, breakdownAges, integratedRowAt]);
 
-  // 余剰金残高（surplusBalance）の表示用。第3段階：表示のみ。
-  // エンジンが各スナップショット行に持つ surplusBalance を、現在時点と選択年齢時点で
-  // 読み出すだけ。計算・保存・グラフ・取り崩し順序・bankValue/totalAssets には影響しない。
+  // 余剰金残高（surplusBalance）の表示用。第3段階：表示のみ。エンジン計算は不変。
   const surplusAgeOptions = useMemo(
     () => integrated.yearly.map((r) => r.age),
     [integrated]
@@ -2332,9 +2330,35 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     surplusFocusAge !== null && surplusAgeOptions.includes(surplusFocusAge)
       ? surplusFocusAge
       : inputs.deathAge;
-  // 現在時点は先頭スナップショット（＝今日の年齢）。ここは必ず 0＝これから積み上がる起点。
-  const surplusAtCurrent = integrated.yearly[0]?.surplusBalance ?? 0;
+  // 選択年齢時点の累計（従来どおり・年次スナップショットのまま）。
   const surplusAtFocus = integratedRowAt(effectiveSurplusFocusAge)?.surplusBalance ?? 0;
+
+  // 「現在」＝民間年金の受給開始年齢（現在年齢より前に始まっているもののうち最も早い年齢）
+  // から、現在年齢までに積み上がった累計。ここでは民間年金だけを対象にし、公的年金・iDeCo
+  // には波及させない（別セクションの入力なので別々に扱う）。
+  // エンジンを「開始点＝民間年金の受給開始年齢／終点＝現在年齢／収入は民間年金のみ」で
+  // 呼び直して得る（計算式は不変。入力の一部だけを渡して呼ぶだけ）。
+  const surplusPlanInput = useMemo(() => buildPlanInput(planCtx), [planCtx]);
+  const surplusIncomeStartAge = useMemo(() => {
+    const ages = [];
+    (surplusPlanInput.privatePensionPlans || []).forEach((p) => {
+      const a = Number(p.payoutFromAge);
+      if (Number.isFinite(a) && a < effectiveCurrentAge) ages.push(a);
+    });
+    return ages.length ? Math.min(...ages) : null;
+  }, [surplusPlanInput, effectiveCurrentAge]);
+  const surplusAtCurrent = useMemo(() => {
+    if (surplusIncomeStartAge == null) return 0;
+    // 民間年金だけを収入として渡す。公的年金・iDeCo年金・iDeCo一時金は除外。
+    return runIntegratedPlan({
+      ...surplusPlanInput,
+      currentAge: surplusIncomeStartAge,
+      deathAge: effectiveCurrentAge,
+      publicPensions: [],
+      idecoLumpAge: null,
+      idecoAnnuityMonthly: undefined,
+    }).finalSurplusBalance ?? 0;
+  }, [surplusPlanInput, surplusIncomeStartAge, effectiveCurrentAge]);
 
   const fundBreakdownAtRetire = useMemo(() => {
     if (country !== "JP") return [];
