@@ -28,7 +28,7 @@ export default function BlogList({ onBack, onSelectPost }) {
           padding: 0 0 60px;
         }
         .blog-header {
-          padding: 22px 24px 18px; border-bottom: 1px solid var(--line);
+           padding: calc(22px + env(safe-area-inset-top, 0px)) 24px 18px; border-bottom: 1px solid var(--line);
           display: flex; align-items: center; gap: 14px;
         }
         .blog-back {
