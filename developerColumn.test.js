@@ -23,7 +23,7 @@ describe("開発者コラム", () => {
   it("既存のコラムは残っている（削除・破壊していない）", () => {
     const slugs = blogPosts.map((p) => p.slug);
     expect(slugs).toContain("nisa-life-plan-basics");
-    expect(slugs).toContain("practice-column");
+    expect(slugs).toContain("why-i-built-total-assets-app");
     expect(blogPosts.length).toBe(3);
   });
 
