@@ -3571,6 +3571,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           max-width: 640px; margin: 22px auto 0;
           font-size: 11px; line-height: 1.7; color: var(--muted); text-align: center;
         }
+        /* トップ免責事項の下の著作権表記。小さく控えめに。 */
+        .landing-copyright {
+          margin: 10px auto 0; text-align: center;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 10.5px; color: var(--muted);
+        }
       `}</style>
 
       <div className="landing">
@@ -3648,6 +3654,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         <p className="landing-disclaimer">
           {t("landingDisclaimer")}
         </p>
+        {/* トップ画面の免責事項の下にも著作権表記を小さく入れる。 */}
+        <div className="landing-copyright">{"© 2026 Kunihiko Hioki"}</div>
       </div>
 
       <div className="titleblock" id="simulator">
