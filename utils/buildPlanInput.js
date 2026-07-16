@@ -217,6 +217,14 @@ export function buildPlanInput(ctx, overrides = {}) {
     boundaries.push(D.auAgePensionQualifyingAge, rules.investment.preservationAge);
     Object.values(inputs.auInvestment).forEach((a) => { if (a && a.contributionEndAge) boundaries.push(a.contributionEndAge); });
   }
+  // 余剰金の「使う」台帳（第4段階4b）。consume だけをエンジンの一時支出として渡す
+  // （銀行プールから一度だけ引く＝総資産がその分だけ減る）。transfer（預金へ回す・銀行へ戻す等）は
+  // 総資産不変のラベル移動なので、エンジンには渡さない。ctx.inputs は読み取り専用のまま。
+  const surplusLedger = Array.isArray(inputs.surplusLedger) ? inputs.surplusLedger : [];
+  const oneTimeExpenses = surplusLedger
+    .filter((e) => e && e.kind === "consume" && Number(e.amount) > 0 && Number.isFinite(Number(e.age)))
+    .map((e) => ({ age: Number(e.age), amount: Number(e.amount) }));
+  oneTimeExpenses.forEach((e) => boundaries.push(e.age));
   const planBoundaries = boundaries.filter((v) => Number.isFinite(Number(v))).map(Number);
 
   // ==========================================================================
@@ -564,6 +572,7 @@ export function buildPlanInput(ctx, overrides = {}) {
     idecoLumpAmount,
     idecoLumpAge,
     idecoAnnuityMonthly,
+    oneTimeExpenses,
     surplusTargetId: "bank_0",
   };
 }
