@@ -4876,6 +4876,35 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <span>{t("bankNote", { age: t("ageYears", { age: inputs.retireAge }) })}</span>
           </div>
 
+          {/* 余剰金残高（surplusBalance）— 第3段階：表示のみ。
+              上の注記でいう「使われなかったお金」を、現在時点と選択年齢時点で表示する。
+              エンジンの surplusBalance を読み出すだけで、残高・総資産・純資産・
+              取り崩し順序・保存形式には影響しない。使用金額入力・確定・使用履歴・
+              グラフ帯はまだ行わない。 */}
+          <div id="section-surplus-balance" style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #2A363C" }}>
+            <div className="stat-sub" style={{ marginBottom: 8 }}>{t("surplusBalanceTitle")}</div>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
+              <StatCard label={t("surplusBalanceCurrentLabel")} value={money(surplusAtCurrent)} sub={t("surplusBalanceCurrentSub")} />
+              <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                {t("surplusBalanceSelectLabel")}
+                <select
+                  value={effectiveSurplusFocusAge}
+                  onChange={(e) => setSurplusFocusAge(Number(e.target.value))}
+                  style={{ fontSize: 13, padding: "4px 6px" }}
+                >
+                  {surplusAgeOptions.map((a) => (
+                    <option key={a} value={a}>{t("ageYears", { age: a })}</option>
+                  ))}
+                </select>
+              </label>
+              <StatCard label={t("surplusBalanceAtAgeLabel", { age: effectiveSurplusFocusAge })} value={money(surplusAtFocus)} tone="good" />
+            </div>
+            <div className="note" style={{ marginTop: 8 }}>
+              <Info size={13} />
+              <span>{t("surplusBalanceExplain")}</span>
+            </div>
+          </div>
+
           </div>
           <div className="section-block" style={{ borderColor: "#9D8FD6" }}>
           <SectionTitle index="09" title={label("loan")} icon={Landmark} />
@@ -5729,33 +5758,6 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               </ResponsiveContainer>
             </div>
           )}
-
-          {/* 余剰金残高（surplusBalance）— 第3段階：表示のみ。
-              エンジンが各スナップショット行に持つ surplusBalance を、現在時点と
-              選択年齢時点で読み出して表示するだけ。使用金額入力・確定・使用履歴・
-              保存形式変更・グラフ帯追加はまだ行わない。計算ロジックにも触れない。 */}
-          <div className="chart-frame" style={{ marginTop: 16 }} id="section-surplus-balance">
-            <div className="chart-label">{t("surplusBalanceTitle")}</div>
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end", margin: "8px 0" }}>
-              <StatCard label={t("surplusBalanceCurrentLabel")} value={money(surplusAtCurrent)} sub={t("surplusBalanceCurrentSub")} />
-              <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
-                {t("surplusBalanceSelectLabel")}
-                <select
-                  value={effectiveSurplusFocusAge}
-                  onChange={(e) => setSurplusFocusAge(Number(e.target.value))}
-                  style={{ fontSize: 13, padding: "4px 6px" }}
-                >
-                  {surplusAgeOptions.map((a) => (
-                    <option key={a} value={a}>{t("ageYears", { age: a })}</option>
-                  ))}
-                </select>
-              </label>
-              <StatCard label={t("surplusBalanceAtAgeLabel", { age: effectiveSurplusFocusAge })} value={money(surplusAtFocus)} tone="good" />
-            </div>
-            <div className="chart-label" style={{ opacity: 0.75, fontWeight: 400, marginTop: 4 }}>
-              {t("surplusBalanceExplain")}
-            </div>
-          </div>
         </div>
       </div>
 
