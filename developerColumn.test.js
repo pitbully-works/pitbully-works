@@ -79,15 +79,27 @@ describe("BlogPost：リンク描画", () => {
   });
 });
 
-describe("フッターのクレジット表記", () => {
+describe("クレジット表記", () => {
   const app = read("./App.jsx");
 
-  it("免責事項の下に © 2026 Kunihiko Hioki がある", () => {
-    expect(app).toContain('className="footer-copyright"');
-    expect(app).toContain("© 2026 Kunihiko Hioki");
+  it("「このアプリについて」の免責事項の下に4項目のクレジットがある", () => {
+    const idx = app.indexOf('className="app-credit"');
+    expect(idx).toBeGreaterThan(0);
+    // 免責バナー（disclaimer-banner）より後にあること
+    const banner = app.indexOf('className="disclaimer-banner"');
+    expect(idx).toBeGreaterThan(banner);
+    const block = app.slice(idx, idx + 600);
+    expect(block).toContain("© 2026 Kunihiko Hioki");
+    expect(block).toContain("Developed by Kunihiko Hioki");
+    expect(block).toContain("Version 1.0.0");
+    expect(block).toContain("pdr.gifu@gmail.com");
   });
 
-  it("画面最下部のクレジットに4項目すべてがある", () => {
+  it("画面下の免責事項の下には1行だけの © 表記は無い（footer-copyright を削除）", () => {
+    expect(app.includes('className="footer-copyright"')).toBe(false);
+  });
+
+  it("一番下に4行のクレジット（footer-credit）がある", () => {
     const idx = app.indexOf('className="footer-credit"');
     expect(idx).toBeGreaterThan(0);
     const block = app.slice(idx, idx + 600);
@@ -97,7 +109,7 @@ describe("フッターのクレジット表記", () => {
     expect(block).toContain("pdr.gifu@gmail.com");
   });
 
-  it("最下部クレジットのメールは mailto リンクになっている", () => {
+  it("クレジットのメールは mailto リンクになっている", () => {
     expect(app).toContain('href="mailto:pdr.gifu@gmail.com"');
   });
 });

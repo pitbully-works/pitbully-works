@@ -3422,16 +3422,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           font-size: 10.5px; color: var(--muted); padding: 20px 28px 0;
           line-height: 1.6; border-top: 1px solid var(--line); margin-top: 10px;
         }
-        /* 免責事項の直下の著作権表記。免責文に埋もれないよう、少し明るく・余白を広めに。 */
-        .footer-copyright {
-          margin-top: 16px;
-          padding-top: 12px;
-          border-top: 1px solid var(--line);
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 12px;
-          color: var(--text);
-        }
-        /* 画面最下部のクレジット */
+        /* 画面最下部のクレジット（4行） */
         .footer-credit {
           margin-top: 22px;
           padding: 18px 28px 26px;
@@ -3571,11 +3562,16 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           max-width: 640px; margin: 22px auto 0;
           font-size: 11px; line-height: 1.7; color: var(--muted); text-align: center;
         }
-        /* トップ免責事項の下の著作権表記。小さく控えめに。 */
-        .landing-copyright {
-          margin: 10px auto 0; text-align: center;
+        /* 「このアプリについて」の免責事項の下に出す開発者クレジット。 */
+        .app-credit {
+          margin: 10px 0 0;
+          padding: 14px 4px 0;
+          border-top: 1px solid var(--line);
           font-family: 'JetBrains Mono', monospace;
-          font-size: 10.5px; color: var(--muted);
+          font-size: 11px;
+          line-height: 1.9;
+          color: var(--muted);
+          text-align: center;
         }
       `}</style>
 
@@ -3654,8 +3650,6 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         <p className="landing-disclaimer">
           {t("landingDisclaimer")}
         </p>
-        {/* トップ画面の免責事項の下にも著作権表記を小さく入れる。 */}
-        <div className="landing-copyright">{"© 2026 Kunihiko Hioki"}</div>
       </div>
 
       <div className="titleblock" id="simulator">
@@ -3789,6 +3783,15 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       <div className="disclaimer-banner">
         <Info size={13} />
         <span>{t("disclaimerBanner")}</span>
+      </div>
+      {/* 免責事項の下に開発者クレジットを表示する。 */}
+      <div className="app-credit">
+        <div>{"© 2026 Kunihiko Hioki"}</div>
+        <div>{"Developed by Kunihiko Hioki"}</div>
+        <div>{"Version 1.0.0"}</div>
+        <div>
+          <a className="footer-mail" href="mailto:pdr.gifu@gmail.com">{"✉️ pdr.gifu@gmail.com"}</a>
+        </div>
       </div>
       {country !== "JP" && (
         <div className="locale-preview-warning no-print">
@@ -5712,11 +5715,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
       <div className="footer-note">
         {t("footerDisclaimer")}
-        {/* 免責事項の直下に著作権表記を入れる。 */}
-        <div className="footer-copyright">{"© 2026 Kunihiko Hioki"}</div>
       </div>
 
-      {/* 画面の一番下のクレジット表記。
+      {/* 画面の一番下のクレジット表記（4行）。
           文字列は {"..."} で囲む。囲まないと importIntegrity.test.js が JSX の地の文中の
           Kunihiko / Developed / Version を「未定義の識別子」と誤検出して落ちるため。 */}
       <div className="footer-credit">
