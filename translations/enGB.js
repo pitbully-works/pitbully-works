@@ -52,5 +52,7 @@ export const EN_GB_OVERRIDES = {
   // 英国で allowance と呼ぶ非課税枠の表記を含む2件のみ。
   scenarioCompareRetireAgeGuide: "Simulates retiring at this age. Contributions continue until you retire, and drawing on your assets for living costs begins afterwards. The State Pension has its own claim age, so retiring earlier does not bring it forward.",
   scenarioCompareMultiplierNote: "A multiplier applied to your current contributions. It affects only what you have yet to put in \u2014 what you have already invested, your current balances, and any allowance you have already used all stay exactly as they are. Annual and lifetime allowances still apply after the multiplier, so if you are already at the limit, raising it will not add anything.",
+  // 余剰金の用途：英国では NISA ではなく ISA。
+  surplusCategory_toNisa: "Move to ISA",
 
 };
