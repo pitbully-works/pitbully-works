@@ -1121,6 +1121,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     loans: [],
     insurancePolicies: [],
     privatePensionPlans: [],
+    // 余剰金の「使う」台帳（第4段階4b）。各要素は
+    //   { id, age, kind: "consume"|"transfer", category, amount, memo, source }
+    // inputs の一部なので、保存・バックアップ・スナップショット・import に自動で乗る。
+    // 旧データには存在しないが、mergeSavedInputs が既定の [] を残すため自動的に移行される。
+    // consume だけが buildPlanInput 経由でエンジンの一時支出になる（transfer は総資産不変）。
+    surplusLedger: [],
     // アメリカ選択時の投資口座（401(k) / Traditional IRA / Roth IRA / Brokerage）。
     // JP側のNISA関連フィールド（tsumitateSchedule等）とは完全に独立した専用データ。
     usInvestment: {

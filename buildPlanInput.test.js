@@ -479,3 +479,96 @@ describe("buildScaledNisaPlan：倍率は現在年齢以降にだけ掛かる", 
     expect(boosted.nisaPlan.growthCum).toBeLessThanOrEqual(NISA_LIMITS.growthLifetime + 1e-6);
   });
 });
+
+// ============================================================================
+// 余剰金の「使う」台帳 → 一時支出の結線（第4段階4b）
+//
+// A案：余剰金は銀行預金プールの内訳ラベル。使う操作は surplusLedger（inputs の一部）に
+// 記録し、buildPlanInput が consume だけをエンジンの oneTimeExpenses へ写す。
+//   ・consume … 実消費。銀行プールから一度だけ引く＝総資産がその分だけ減る。
+//   ・transfer … 預金へ回す/銀行へ戻す等。総資産不変のラベル移動なのでエンジンへ渡さない。
+// UI（「使う」ボタン・使用履歴）は 4c。ここでは結線とデータ契約だけを固定する。
+// ============================================================================
+describe("余剰金の『使う』台帳 → 一時支出の結線（第4段階4b）", () => {
+  const led = (over) => ({
+    id: "x", age: 70, kind: "consume", category: "travel",
+    amount: 300000, memo: "", source: "privatePension", ...over,
+  });
+
+  it("surplusLedger が無ければ oneTimeExpenses は空（後方互換）", () => {
+    const plan = buildPlanInput(ctxFor("JP"));
+    expect(Array.isArray(plan.oneTimeExpenses)).toBe(true);
+    expect(plan.oneTimeExpenses).toHaveLength(0);
+  });
+
+  it("consume だけが oneTimeExpenses に写る（transfer は写らない）", () => {
+    const ctx = ctxFor("JP");
+    ctx.inputs.surplusLedger = [
+      led({ id: "1", age: 70, kind: "consume", category: "travel", amount: 300000 }),
+      led({ id: "2", age: 72, kind: "transfer", category: "toBank", amount: 500000 }),
+      led({ id: "3", age: 75, kind: "consume", category: "car", amount: 1000000 }),
+    ];
+    const plan = buildPlanInput(ctx);
+    expect(plan.oneTimeExpenses).toEqual([
+      { age: 70, amount: 300000 },
+      { age: 75, amount: 1000000 },
+    ]);
+  });
+
+  it("consume は総資産を減らし（全年齢で base 以下）、transfer は総資産を1円も変えない", () => {
+    const base = runIntegratedPlan(buildPlanInput(ctxFor("JP")));
+
+    const ctxC = ctxFor("JP");
+    ctxC.inputs.surplusLedger = [led({ id: "c", age: 66, kind: "consume", category: "car", amount: 100000 })];
+    const withConsume = runIntegratedPlan(buildPlanInput(ctxC));
+
+    const ctxT = ctxFor("JP");
+    ctxT.inputs.surplusLedger = [led({ id: "t", age: 66, kind: "transfer", category: "toBank", amount: 100000 })];
+    const withTransfer = runIntegratedPlan(buildPlanInput(ctxT));
+
+    // consume：エンジンへ届いて銀行から引かれる。総資産は全年齢で base 以下（増えることはない）。
+    expect(base.cumulativeOneTimeSpent).toBe(0);
+    expect(withConsume.cumulativeOneTimeSpent).toBe(100000);
+    withConsume.yearly.forEach((r, i) => {
+      expect(r.totalAssets).toBeLessThanOrEqual(base.yearly[i].totalAssets + 1e-6);
+    });
+    // transfer：エンジンへ渡さないので総資産の系列は base と完全一致。
+    expect(withTransfer.cumulativeOneTimeSpent).toBe(0);
+    expect(JSON.stringify(withTransfer.yearly.map((r) => r.totalAssets)))
+      .toBe(JSON.stringify(base.yearly.map((r) => r.totalAssets)));
+  });
+
+  it("category / memo / source はエンジンに渡らない（age・amount だけが使われる）", () => {
+    const ctxA = ctxFor("JP");
+    ctxA.inputs.surplusLedger = [led({ id: "a", age: 70, category: "travel", memo: "X", source: "idecoLump", amount: 200000 })];
+    const ctxB = ctxFor("JP");
+    ctxB.inputs.surplusLedger = [led({ id: "b", age: 70, category: "medical", memo: "Y", source: "publicPension", amount: 200000 })];
+    const a = runIntegratedPlan(buildPlanInput(ctxA));
+    const b = runIntegratedPlan(buildPlanInput(ctxB));
+    // age・amount が同じなら、用途や発生源が違っても結果は完全一致。
+    expect(JSON.stringify(a.yearly)).toBe(JSON.stringify(b.yearly));
+  });
+
+  it.each(COUNTRIES)("%s：台帳（consume＋transfer）があっても例外なく走り、不変条件が保たれる", (country) => {
+    const ctx = ctxFor(country);
+    ctx.inputs.surplusLedger = [
+      led({ id: "1", age: 70, kind: "consume", category: "reform", amount: 500000 }),
+      led({ id: "2", age: 72, kind: "transfer", category: "toNisa", amount: 300000 }),
+    ];
+    const res = runIntegratedPlan(buildPlanInput(ctx));
+    expect(res.yearly.length).toBeGreaterThan(0);
+    expect(Number.isFinite(res.finalNetWorth)).toBe(true);
+    res.yearly.forEach((r) => {
+      expect(Number.isFinite(r.totalAssets)).toBe(true);
+      expect(r.totalAssets).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  it("元の inputs.surplusLedger を1バイトも変更しない（読み取り専用）", () => {
+    const ctx = ctxFor("JP");
+    ctx.inputs.surplusLedger = [led({ id: "1", age: 70, kind: "consume", category: "travel", amount: 300000, memo: "旅行" })];
+    const before = JSON.stringify(ctx.inputs.surplusLedger);
+    buildPlanInput(ctx);
+    expect(JSON.stringify(ctx.inputs.surplusLedger)).toBe(before);
+  });
+});
