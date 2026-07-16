@@ -10,6 +10,8 @@ import { getCountryRules } from "./countryRules/index.js";
 import { runIntegratedPlan } from "./lifePlanEngine.js";
 import { DRAWDOWN_CATEGORIES, NISA_LIMITS } from "./utils/simulations.js";
 import { buildPlanInput, buildScaledNisaPlan, readLivingCostMonthly } from "./utils/buildPlanInput.js";
+import { surplusKindForCategory, SURPLUS_CATEGORIES } from "./utils/surplusLedger.js";
+import { TRANSLATIONS } from "./translations/index.js";
 
 const COUNTRIES = ["JP", "US", "GB", "CA", "AU"];
 
@@ -570,5 +572,62 @@ describe("余剰金の『使う』台帳 → 一時支出の結線（第4段階4
     const before = JSON.stringify(ctx.inputs.surplusLedger);
     buildPlanInput(ctx);
     expect(JSON.stringify(ctx.inputs.surplusLedger)).toBe(before);
+  });
+});
+
+// ============================================================================
+// 4c-1：余剰金を「使う」UI の土台（用途→種別の判定 ＋ 翻訳キー）
+//
+// 利用者は用途（category）だけを選び、種別（kind）は自動判定する。
+// UI・buildPlanInput・テストが utils/surplusLedger.js の 1 つの判定を共有するので、
+// 表示と計算がズレない。ここでは判定と翻訳キーの契約を固定する（UI 描画は 4c-2）。
+// ============================================================================
+describe("余剰金を使う：用途→種別の判定と翻訳キー（第4段階4c-1）", () => {
+  it("用途 → 種別：toNisa / toBank は transfer、それ以外は consume", () => {
+    expect(surplusKindForCategory("toNisa")).toBe("transfer");
+    expect(surplusKindForCategory("toBank")).toBe("transfer");
+    for (const c of ["living", "medical", "travel", "car", "reform", "other"]) {
+      expect(surplusKindForCategory(c)).toBe("consume");
+    }
+    // 未知の用途は安全側（consume）に倒す
+    expect(surplusKindForCategory("something-unknown")).toBe("consume");
+  });
+
+  it("用途の一覧は 8 種で、順序も期待どおり", () => {
+    expect(SURPLUS_CATEGORIES).toEqual([
+      "living", "medical", "travel", "car", "reform", "toNisa", "toBank", "other",
+    ]);
+  });
+
+  it("全用途のラベルが ja / en に存在し、空でない", () => {
+    for (const c of SURPLUS_CATEGORIES) {
+      const key = "surplusCategory_" + c;
+      expect(typeof TRANSLATIONS.ja[key]).toBe("string");
+      expect(TRANSLATIONS.ja[key].length).toBeGreaterThan(0);
+      expect(typeof TRANSLATIONS.en[key]).toBe("string");
+      expect(TRANSLATIONS.en[key].length).toBeGreaterThan(0);
+    }
+  });
+
+  it("使う UI のラベルが ja / en に存在し、空でない", () => {
+    const keys = [
+      "surplusUseTitle", "surplusUseAmountPlaceholder", "surplusUseAgePlaceholder",
+      "surplusUseCategoryLabel", "surplusUseMemoPlaceholder", "surplusUseAddButton",
+      "surplusHistoryTitle", "surplusHistoryEmpty", "surplusTransferNote",
+      "surplusConsumeTag", "surplusTransferTag",
+    ];
+    for (const k of keys) {
+      expect(typeof TRANSLATIONS.ja[k]).toBe("string");
+      expect(TRANSLATIONS.ja[k].length).toBeGreaterThan(0);
+      expect(typeof TRANSLATIONS.en[k]).toBe("string");
+      expect(TRANSLATIONS.en[k].length).toBeGreaterThan(0);
+    }
+  });
+
+  it("en-GB は NISA→ISA を上書きし、それ以外の用途は en を継承する", () => {
+    expect(TRANSLATIONS["en-GB"].surplusCategory_toNisa).toBe("Move to ISA");
+    // 上書きしていない用途は en の値をそのまま継承
+    expect(TRANSLATIONS["en-GB"].surplusCategory_toBank).toBe(TRANSLATIONS.en.surplusCategory_toBank);
+    expect(TRANSLATIONS["en-GB"].surplusCategory_living).toBe(TRANSLATIONS.en.surplusCategory_living);
   });
 });

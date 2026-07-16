@@ -185,6 +185,7 @@ export {
 
 // 統合プラン入力の組み立て（React の外に出した純粋関数）。
 import { buildPlanInput, CONTRIBUTION_MULTIPLIERS } from "./utils/buildPlanInput.js";
+import { SURPLUS_CATEGORIES, surplusKindForCategory } from "./utils/surplusLedger.js";
 // シナリオ比較（現在プラン vs 比較プラン）。既存エンジンを2回呼ぶだけで、新しい計算式は無い。
 import { runScenarioComparison, createComparisonDraft, attachComparisonLine } from "./utils/scenarioComparison.js";
 
@@ -1565,6 +1566,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     fromYears: "", fromMonths: "", toYears: "", toMonths: "", monthlyYen: "",
   });
   const [newBank, setNewBank] = useState({ name: "", balance: "", monthlyDeposit: "", interestPct: "" });
+  const [newSurplusUse, setNewSurplusUse] = useState({ amount: "", age: "", category: "living", memo: "" });
   const [newInheritance, setNewInheritance] = useState({ name: "", relation: "", amount: "" });
   const [newPensionSource, setNewPensionSource] = useState({ name: "", monthlyAmount: "" });
   const [newAssetHolding, setNewAssetHolding] = useState({ name: "", value: "" });
@@ -2493,6 +2495,29 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     setNewBank({ name: "", balance: "", monthlyDeposit: "", interestPct: "" });
   };
   const removeBank = (idx) => setInputs((prev) => ({ ...prev, banks: prev.banks.filter((_, i) => i !== idx) }));
+
+  // 余剰金を「使う」（第4段階4c）。用途から種別（consume/transfer）を自動判定して
+  // surplusLedger に1件追加する。amount は MoneyInput 経由なので円。計算側（4a/4b）は
+  // buildPlanInput が consume だけを一時支出に写す形で既に完成しているため、ここは記録のみ。
+  const addSurplusUse = () => {
+    const amount = Number(newSurplusUse.amount) || 0;
+    const age = Number(newSurplusUse.age);
+    if (!(amount > 0) || !Number.isFinite(age)) return;
+    const category = SURPLUS_CATEGORIES.includes(newSurplusUse.category) ? newSurplusUse.category : "other";
+    const entry = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      age,
+      kind: surplusKindForCategory(category),
+      category,
+      amount,
+      memo: (newSurplusUse.memo || "").trim(),
+      source: "privatePension",
+    };
+    setInputs((prev) => ({ ...prev, surplusLedger: [...(prev.surplusLedger || []), entry] }));
+    setNewSurplusUse({ amount: "", age: "", category: "living", memo: "" });
+  };
+  const removeSurplusUse = (id) =>
+    setInputs((prev) => ({ ...prev, surplusLedger: (prev.surplusLedger || []).filter((e) => e.id !== id) }));
 
   const addInheritancePlan = () => {
     if (!newInheritance.name.trim()) return;
@@ -4938,6 +4963,81 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <div className="note" style={{ marginTop: 8 }}>
               <Info size={13} />
               <span>{t("surplusBalanceExplain")}</span>
+            </div>
+
+            {/* 余剰金を使う（第4段階4c）。用途を選ぶだけで、種別（消費/付け替え）は自動判定。
+                計算側（4a/4b）は完成済みで、ここは surplusLedger に1件足す/消すだけ。 */}
+            <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid #2A363C" }}>
+              <div className="stat-sub" style={{ marginBottom: 8 }}>{t("surplusUseTitle")}</div>
+              <div className="add-row" style={{ flexWrap: "wrap" }}>
+                <MoneyInput
+                  placeholder={t("surplusUseAmountPlaceholder")}
+                  value={newSurplusUse.amount}
+                  onChange={(v) => setNewSurplusUse((p) => ({ ...p, amount: v }))}
+                />
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  placeholder={t("surplusUseAgePlaceholder")}
+                  value={newSurplusUse.age}
+                  onChange={(e) => setNewSurplusUse((p) => ({ ...p, age: e.target.value }))}
+                />
+              </div>
+              <div className="add-row" style={{ flexWrap: "wrap" }}>
+                <select
+                  aria-label={t("surplusUseCategoryLabel")}
+                  value={newSurplusUse.category}
+                  onChange={(e) => setNewSurplusUse((p) => ({ ...p, category: e.target.value }))}
+                  style={{ fontSize: 13, padding: "6px 8px" }}
+                >
+                  {SURPLUS_CATEGORIES.map((c) => (
+                    <option key={c} value={c}>{t("surplusCategory_" + c)}</option>
+                  ))}
+                </select>
+                <input
+                  placeholder={t("surplusUseMemoPlaceholder")}
+                  value={newSurplusUse.memo}
+                  onChange={(e) => setNewSurplusUse((p) => ({ ...p, memo: e.target.value }))}
+                />
+                <button className="add-btn" onClick={addSurplusUse}><Plus size={15} /></button>
+              </div>
+              {surplusKindForCategory(newSurplusUse.category) === "transfer" && (
+                <div className="note" style={{ marginTop: 6 }}>
+                  <Info size={13} />
+                  <span>{t("surplusTransferNote")}</span>
+                </div>
+              )}
+
+              <div className="stat-sub" style={{ marginTop: 12, marginBottom: 6 }}>{t("surplusHistoryTitle")}</div>
+              {(inputs.surplusLedger || []).length === 0 ? (
+                <div className="stat-sub" style={{ opacity: 0.7 }}>{t("surplusHistoryEmpty")}</div>
+              ) : (
+                <table className="watchlist">
+                  <tbody>
+                    {(inputs.surplusLedger || []).slice().reverse().map((e) => {
+                      const cat = SURPLUS_CATEGORIES.includes(e.category) ? e.category : "other";
+                      return (
+                        <tr key={e.id}>
+                          <td>{t("ageYears", { age: e.age })}</td>
+                          <td>
+                            {t("surplusCategory_" + cat)}
+                            {e.memo ? <span style={{ opacity: 0.7 }}>{" · " + e.memo}</span> : null}
+                          </td>
+                          <td className="mono">{money(e.amount)}</td>
+                          <td>
+                            <span style={{ fontSize: 11, opacity: 0.8 }}>
+                              {e.kind === "transfer" ? t("surplusTransferTag") : t("surplusConsumeTag")}
+                            </span>
+                          </td>
+                          <td>
+                            <button className="del-btn" onClick={() => removeSurplusUse(e.id)}><Trash2 size={13} /></button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
             </div>
           </div>
 
