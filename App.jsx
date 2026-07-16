@@ -1623,6 +1623,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   // シナリオ比較。inputs とは別の一時的な state に置くため、
   // 保存処理・自動保存・入力履歴には一切影響しない（保存もされない）。
   const [comparisonDraft, setComparisonDraft] = useState(null); // null＝比較していない
+  // 余剰金残高の表示対象年齢（第3段階・表示専用）。inputs とは別の一時 state なので
+  // 保存処理・自動保存・入力履歴には一切影響しない。null＝既定（想定寿命）を表示する。
+  const [surplusFocusAge, setSurplusFocusAge] = useState(null);
   const [importText, setImportText] = useState("");
   const [importError, setImportError] = useState("");
   const [importOk, setImportOk] = useState(false);
@@ -2316,6 +2319,22 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       return row;
     });
   }, [inputs.banks, breakdownAges, integratedRowAt]);
+
+  // 余剰金残高（surplusBalance）の表示用。第3段階：表示のみ。
+  // エンジンが各スナップショット行に持つ surplusBalance を、現在時点と選択年齢時点で
+  // 読み出すだけ。計算・保存・グラフ・取り崩し順序・bankValue/totalAssets には影響しない。
+  const surplusAgeOptions = useMemo(
+    () => integrated.yearly.map((r) => r.age),
+    [integrated]
+  );
+  // 選択年齢が未設定、または現在のスナップショットに存在しない場合は想定寿命を既定に使う。
+  const effectiveSurplusFocusAge =
+    surplusFocusAge !== null && surplusAgeOptions.includes(surplusFocusAge)
+      ? surplusFocusAge
+      : inputs.deathAge;
+  // 現在時点は先頭スナップショット（＝今日の年齢）。ここは必ず 0＝これから積み上がる起点。
+  const surplusAtCurrent = integrated.yearly[0]?.surplusBalance ?? 0;
+  const surplusAtFocus = integratedRowAt(effectiveSurplusFocusAge)?.surplusBalance ?? 0;
 
   const fundBreakdownAtRetire = useMemo(() => {
     if (country !== "JP") return [];
@@ -5710,6 +5729,33 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               </ResponsiveContainer>
             </div>
           )}
+
+          {/* 余剰金残高（surplusBalance）— 第3段階：表示のみ。
+              エンジンが各スナップショット行に持つ surplusBalance を、現在時点と
+              選択年齢時点で読み出して表示するだけ。使用金額入力・確定・使用履歴・
+              保存形式変更・グラフ帯追加はまだ行わない。計算ロジックにも触れない。 */}
+          <div className="chart-frame" style={{ marginTop: 16 }} id="section-surplus-balance">
+            <div className="chart-label">{t("surplusBalanceTitle")}</div>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end", margin: "8px 0" }}>
+              <StatCard label={t("surplusBalanceCurrentLabel")} value={money(surplusAtCurrent)} sub={t("surplusBalanceCurrentSub")} />
+              <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                {t("surplusBalanceSelectLabel")}
+                <select
+                  value={effectiveSurplusFocusAge}
+                  onChange={(e) => setSurplusFocusAge(Number(e.target.value))}
+                  style={{ fontSize: 13, padding: "4px 6px" }}
+                >
+                  {surplusAgeOptions.map((a) => (
+                    <option key={a} value={a}>{t("ageYears", { age: a })}</option>
+                  ))}
+                </select>
+              </label>
+              <StatCard label={t("surplusBalanceAtAgeLabel", { age: effectiveSurplusFocusAge })} value={money(surplusAtFocus)} tone="good" />
+            </div>
+            <div className="chart-label" style={{ opacity: 0.75, fontWeight: 400, marginTop: 4 }}>
+              {t("surplusBalanceExplain")}
+            </div>
+          </div>
         </div>
       </div>
 
