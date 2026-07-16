@@ -53,7 +53,7 @@ export default function BlogPost({ slug, onBack, onGoToSimulator }) {
           padding: 0 0 70px;
         }
         .blog-post-header {
-          padding: 22px 24px 18px; border-bottom: 1px solid var(--line);
+          padding: calc(22px + env(safe-area-inset-top, 0px)) 24px 18px; border-bottom: ...24px 18px; border-bottom: 1px solid var(--line);
         }
         .blog-back {
           background: var(--panel); border: 1px solid var(--line); color: var(--blue);
