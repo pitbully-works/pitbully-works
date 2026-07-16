@@ -872,4 +872,109 @@ test("余剰金③: iDeCo一時金は一度だけ surplusBalance に載り、再
   assert.ok(Math.abs(again.finalSurplusBalance - res.finalSurplusBalance) < 1e-6, "再実行で最終値が不一致");
   assertInvariants(res, "余剰金③");
 });
+
+// ===========================================================================
+// 一時支出（第4段階4a）— 指定年齢で一度だけ銀行プールから差し引く原子操作。
+// oneTimeExpenses が未指定/空なら従来と完全一致（＝上の全テストがそれを保証）。
+// ここでは「銀行から一度だけ引く」プリミティブ単体の正しさを固定する。
+// 余剰金台帳（surplusLedger）との結線・UI は 4b/4c。ここでは扱わない。
+// ===========================================================================
+
+test("4a①: oneTimeExpenses 空配列は未指定と完全一致（後方互換）", () => {
+  const cfg = {
+    ...base, currentAge: 65, retireAge: 65, deathAge: 70,
+    livingCostMonthly: 0, publicPensions: [],
+    pools: [{ id: "bank", group: "bank", balance: 10000000, annualReturnPct: 0, drawOrder: 1 }],
+  };
+  const a = runIntegratedPlan(cfg);
+  const b = runIntegratedPlan({ ...cfg, oneTimeExpenses: [] });
+  assert.equal(JSON.stringify(a.yearly), JSON.stringify(b.yearly), "空配列で結果が変わってはいけない");
+});
+
+test("4a②: 指定年齢で一度だけ銀行から引かれ、総資産・純資産がその分だけ減る", () => {
+  const res = runIntegratedPlan({
+    ...base, currentAge: 65, retireAge: 65, deathAge: 70,
+    livingCostMonthly: 0, publicPensions: [],
+    pools: [{ id: "bank", group: "bank", balance: 10000000, annualReturnPct: 0, drawOrder: 1 }],
+    oneTimeExpenses: [{ age: 67, amount: 3000000 }],
+  });
+  const at = (a) => res.yearly.find((r) => r.age === a);
+  assert.ok(Math.abs(at(66).bankValue - 10000000) < 1, "67より前は減らない");
+  assert.ok(Math.abs(at(67).bankValue - 7000000) < 1, `67で300万減る: ${at(67).bankValue}`);
+  assert.ok(Math.abs(at(68).bankValue - 7000000) < 1, "68以降は追加で減らない（一度だけ）");
+  assert.ok(Math.abs(at(70).bankValue - 7000000) < 1, "維持");
+  assert.ok(Math.abs(at(70).totalAssets - 7000000) < 1, "総資産も300万減る");
+  assert.ok(Math.abs(at(70).netWorth - 7000000) < 1, "純資産も300万減る");
+  assert.ok(Math.abs(res.cumulativeOneTimeSpent - 3000000) < 1, `支出累計=${res.cumulativeOneTimeSpent}`);
+  assertInvariants(res, "4a②");
+});
+
+test("4a③: 引き落としは銀行プールだけ。他の資産（投資）には波及しない", () => {
+  const res = runIntegratedPlan({
+    ...base, currentAge: 65, retireAge: 65, deathAge: 70,
+    livingCostMonthly: 0, publicPensions: [],
+    pools: [
+      { id: "bank", group: "bank", balance: 5000000, annualReturnPct: 0, drawOrder: 1 },
+      { id: "nisa", group: "investment", balance: 5000000, annualReturnPct: 0, drawOrder: 2 },
+    ],
+    oneTimeExpenses: [{ age: 67, amount: 3000000 }],
+  });
+  const last = res.yearly[res.yearly.length - 1];
+  assert.ok(Math.abs(last.bankValue - 2000000) < 1, `銀行だけ減る: ${last.bankValue}`);
+  assert.ok(Math.abs(last.investmentValue - 5000000) < 1, `投資は不変: ${last.investmentValue}`);
+  assertInvariants(res, "4a③");
+});
+
+test("4a④: 銀行残高を超える一時支出は残高で頭打ち（負数にならず、他資産へ波及しない）", () => {
+  const res = runIntegratedPlan({
+    ...base, currentAge: 65, retireAge: 65, deathAge: 70,
+    livingCostMonthly: 0, publicPensions: [],
+    pools: [
+      { id: "bank", group: "bank", balance: 1000000, annualReturnPct: 0, drawOrder: 1 },
+      { id: "nisa", group: "investment", balance: 5000000, annualReturnPct: 0, drawOrder: 2 },
+    ],
+    oneTimeExpenses: [{ age: 67, amount: 3000000 }],
+  });
+  const last = res.yearly[res.yearly.length - 1];
+  assert.equal(last.bankValue, 0, "銀行は0で頭打ち（負数にしない）");
+  assert.ok(Math.abs(last.investmentValue - 5000000) < 1, "投資には波及しない");
+  assert.ok(Math.abs(res.cumulativeOneTimeSpent - 1000000) < 1, `引けたのは残高分だけ: ${res.cumulativeOneTimeSpent}`);
+  assertInvariants(res, "4a④");
+});
+
+test("4a⑤: 再実行しても銀行残高の系列が完全一致（再実行で二重に引かれない）", () => {
+  const cfg = {
+    ...base, currentAge: 65, retireAge: 65, deathAge: 70,
+    livingCostMonthly: 0, publicPensions: [],
+    pools: [{ id: "bank", group: "bank", balance: 10000000, annualReturnPct: 0, drawOrder: 1 }],
+    oneTimeExpenses: [{ age: 67, amount: 3000000 }],
+  };
+  const a = runIntegratedPlan(cfg);
+  const b = runIntegratedPlan(cfg);
+  assert.equal(
+    JSON.stringify(a.yearly.map((r) => r.bankValue)),
+    JSON.stringify(b.yearly.map((r) => r.bankValue)),
+    "再実行で系列が変わってはいけない"
+  );
+  assert.equal(a.cumulativeOneTimeSpent, b.cumulativeOneTimeSpent);
+});
+
+test("4a⑥: フル構成＋複数の一時支出でも全年齢で不変条件が保たれる", () => {
+  const res = runIntegratedPlan({
+    ...base,
+    currentAge: 58, retireAge: 65, deathAge: 95,
+    healthCostAnnual: (age) => (age >= 75 ? 300000 : 120000),
+    pools: [
+      { id: "nisa", group: "investment", balance: 8000000, annualReturnPct: 5, retireReturnPct: 3, drawOrder: 1 },
+      { id: "bank", group: "bank", balance: 5000000, annualReturnPct: 0.1, drawOrder: 2 },
+      { id: "gold", group: "gold", balance: 3000000, annualReturnPct: 4, drawOrder: 4 },
+    ],
+    loans: [{ principal: 12000000, annualRatePct: 1.2, monthlyPayment: 70000 }],
+    insurancePolicies: [{ monthlyPremium: 20000, premiumFromAge: 58, premiumToAge: 80 }],
+    oneTimeExpenses: [{ age: 61, amount: 1800000 }, { age: 70, amount: 500000 }],
+  });
+  assert.equal(res.yearly[0].age, 58);
+  assert.equal(res.yearly[res.yearly.length - 1].age, 95);
+  assertInvariants(res, "4a⑥");
+});
 });

@@ -171,6 +171,12 @@ export function runIntegratedPlan(p) {
     .filter((x) => x.accessAge !== NOT_DRAWABLE)
     .slice()
     .sort((a, b) => a.drawOrder - b.drawOrder);
+  // 一時支出（第4段階4a）が引き落とす先＝銀行グループのプールのみ。drawOrder 昇順。
+  // 余剰金は銀行預金プールの内数なので、その消費はこの銀行プールからだけ差し引く。
+  const bankDrawPools = pools
+    .filter((x) => x.group === "bank")
+    .slice()
+    .sort((a, b) => a.drawOrder - b.drawOrder);
 
   // ---- 借入 ----
   const loans = (p.loans || []).map((l) => ({
@@ -212,6 +218,17 @@ export function runIntegratedPlan(p) {
   //   ・取り崩し順序・保存形式・UI には影響しない
   // したがって、この行を消しても資産・純資産の数値は 1 円も変わらない。
   let surplusBalance = 0;
+
+  // ---- 一時支出（第4段階4a）----
+  // 指定年齢に到達したとき、銀行プールから amount を「一度だけ」差し引く一時支出。
+  // oneTimeExpenses が未指定/空なら、このブロックは完全に無効（従来と1円も変わらない）。
+  // 関数スコープの paid フラグで、シミュレーション再実行でも二重に引かれない。
+  // 【重要】第4段階4aではエンジンの原子操作だけを追加する。余剰金台帳（surplusLedger）
+  //   との結線や UI は 4b/4c で行う。ここでは「銀行から一度だけ引く」以上のことはしない。
+  const oneTimeExpenses = (p.oneTimeExpenses || [])
+    .map((e) => ({ age: num(e.age), amount: clampZero(num(e.amount)), paid: false }))
+    .filter((e) => e.amount > 0);
+  let cumulativeOneTimeSpent = 0; // 実際に銀行から引けた一時支出の累計
 
   const totalAssets = () => pools.reduce((s, x) => s + x.balance, 0);
   const totalLoans = () => loans.reduce((s, l) => s + l.balance, 0);
@@ -435,6 +452,25 @@ export function runIntegratedPlan(p) {
     // surplusBalance はどのプール残高にも足し込まないため、資産・純資産は変化しない。
     if (cash > EPS) surplusBalance += cash;
 
+    // -------- 8. 一時支出（第4段階4a）--------
+    // 指定年齢に到達した最初のステップで一度だけ、銀行プールから amount を差し引く。
+    // 銀行プールの内数（余剰金）を消費する前提なので、他の資産には波及させない。
+    // 残高不足のぶんは引かず（頭打ち）、負数にもしない。paid フラグで一度きり。
+    if (oneTimeExpenses.length) {
+      oneTimeExpenses.forEach((e) => {
+        if (e.paid || age < e.age - EPS) return;
+        let need = e.amount;
+        for (const bp of bankDrawPools) {
+          if (need <= EPS) break;
+          const take = Math.min(bp.balance, need);
+          bp.balance = clampZero(bp.balance - take);
+          need -= take;
+        }
+        cumulativeOneTimeSpent += e.amount - Math.max(0, need);
+        e.paid = true;
+      });
+    }
+
     pools.forEach((x) => { x.balance = clampZero(Number.isFinite(x.balance) ? x.balance : 0); });
 
     if (isBirthday) yearly.push(snapshot(age));
@@ -455,6 +491,8 @@ export function runIntegratedPlan(p) {
     cumulativeLoanInterest,
     cumulativeLoanPrincipal,
     cumulativeWithdrawalTax,
+    // 一時支出（4a）で実際に銀行から引けた累計。既存フィールドには影響しない。
+    cumulativeOneTimeSpent,
     loanPayoffAges: loans.map((l) => l.payoffAge),
     peakNetWorth: yearly.reduce((mx, r) => Math.max(mx, r.netWorth), -Infinity),
   };
