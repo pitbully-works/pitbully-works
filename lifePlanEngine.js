@@ -201,6 +201,18 @@ export function runIntegratedPlan(p) {
   let idecoLumpPaid = false;
   let cumulativeWithdrawalTax = 0;   // 引出時課税として失われた額の累計
 
+  // ---- 余剰金（第2段階・記録専用）----
+  // 各期間の収入から生活費・医療費・保険料・ローン返済をすべて差し引いた「後」に
+  // 残った現金だけを累計する。関数スコープの局所変数なので、runIntegratedPlan を
+  // 呼ぶたびに必ず 0 から始まる（＝シミュレーション再実行で二重加算されない）。
+  //
+  // 【重要・この値は記録専用】
+  //   ・どのプール残高にも一切足し込まない（surplusPool.balance とは別物）
+  //   ・totalAssets / netWorth / bankValue などの資産計算には算入しない
+  //   ・取り崩し順序・保存形式・UI には影響しない
+  // したがって、この行を消しても資産・純資産の数値は 1 円も変わらない。
+  let surplusBalance = 0;
+
   const totalAssets = () => pools.reduce((s, x) => s + x.balance, 0);
   const totalLoans = () => loans.reduce((s, l) => s + l.balance, 0);
 
@@ -216,6 +228,8 @@ export function runIntegratedPlan(p) {
       cumulativeUnmet,
       cumulativeUnpaidLoan,
       cumulativePremiums,
+      // 記録専用。資産バンド（totalAssets）にも純資産（netWorth）にも算入されない。
+      surplusBalance,
     };
     loans.forEach((l, i) => { row[`loan_${i}`] = clampZero(l.balance); });
     const groups = { investment: 0, gold: 0, bank: 0, stock: 0, privatePension: 0, ideco: 0 };
@@ -413,6 +427,14 @@ export function runIntegratedPlan(p) {
     // -------- 7. 余剰金 --------
     if (cash > EPS && surplusPool) surplusPool.balance += cash;
 
+    // -------- 7b. 余剰金の記録（第2段階・記録専用）--------
+    // 上の surplusPool への加算とは独立に、この期間で使われずに残った現金を累計する。
+    // ここに到達した cash は、収入（公的年金・民間年金・iDeCo年金・iDeCo一時金）から
+    // 生活費・医療費・保険料・ローン返済をすべて差し引いた「後」の残額なので、
+    // 4種の収入源はいずれも最終的に残った cash を通じて自動的に含まれる。
+    // surplusBalance はどのプール残高にも足し込まないため、資産・純資産は変化しない。
+    if (cash > EPS) surplusBalance += cash;
+
     pools.forEach((x) => { x.balance = clampZero(Number.isFinite(x.balance) ? x.balance : 0); });
 
     if (isBirthday) yearly.push(snapshot(age));
@@ -423,6 +445,9 @@ export function runIntegratedPlan(p) {
     yearly,
     finalNetWorth: last.netWorth,
     finalAssets: last.totalAssets,
+    // 記録専用の累計余剰金の最終値（各スナップショットの surplusBalance と同じ系列の最後）。
+    // 既存の finalNetWorth / finalAssets には一切影響しない。
+    finalSurplusBalance: surplusBalance,
     depletionAge,
     cumulativeUnmet,
     cumulativeUnpaidLoan,
