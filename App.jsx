@@ -3341,6 +3341,11 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         }
         .stat-card.danger::before { background: var(--danger); }
         .stat-card.good::before { background: var(--green); }
+        /* 「余剰金残高（◯歳時点）」「◯歳で使える金額」の2枚を、高さ・幅そろえて同じ大きさにする。
+           包みだけでなく中の .stat-card 自体を伸ばすことで、ラベルの行数差があっても箱が揃う。 */
+        .surplus-focus-cards { display: flex; gap: 12px; margin-top: 12px; align-items: stretch; }
+        .surplus-focus-cards > div { flex: 1 1 0; min-width: 0; display: flex; }
+        .surplus-focus-cards > div > .stat-card { flex: 1; width: 100%; }
         .stat-label { font-size: 11px; color: var(--muted); margin-bottom: 6px; }
         .stat-value { font-size: 19px; font-weight: 600; }
         .stat-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
@@ -3939,7 +3944,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       <div className="app-credit">
         <div>{"© 2026 Kunihiko Hioki"}</div>
         <div>{"Developed by Kunihiko Hioki"}</div>
-        <div>{"Version 1.0.1"}</div>
+        <div>{"Version 1.0.2"}</div>
         <div>
           <a className="footer-mail" href="mailto:pdr.gifu@gmail.com">{"✉️ pdr.gifu@gmail.com"}</a>
         </div>
@@ -5131,12 +5136,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 </select>
               </label>
             </div>
-            {/* 「余剰金残高（◯歳時点）」と「◯歳で使える金額」の2つは横に並べる */}
-            <div style={{ display: "flex", gap: 12, marginTop: 12 }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
+            {/* 「余剰金残高（◯歳時点）」と「◯歳で使える金額」を横並び＆同じ大きさに揃える */}
+            <div className="surplus-focus-cards">
+              <div>
                 <StatCard label={t("surplusBalanceAtAgeLabel", { age: effectiveSurplusFocusAge })} value={money(surplusAtFocus)} tone="good" />
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
+              <div>
                 <StatCard label={t("availableAtAgeLabel", { age: effectiveSurplusFocusAge })} value={money(availableAtFocus)} tone="good" />
               </div>
             </div>
@@ -6173,7 +6178,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       <div className="footer-credit">
         <div>{"© 2026 Kunihiko Hioki"}</div>
         <div>{"Developed by Kunihiko Hioki"}</div>
-        <div>{"Version 1.0.1"}</div>
+        <div>{"Version 1.0.2"}</div>
         <div>
           <a className="footer-mail" href="mailto:pdr.gifu@gmail.com">{"✉️ pdr.gifu@gmail.com"}</a>
         </div>
