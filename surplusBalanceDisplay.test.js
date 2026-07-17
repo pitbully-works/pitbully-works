@@ -29,7 +29,7 @@
 
 import { describe, it, expect } from "vitest";
 import { runIntegratedPlan, NOT_DRAWABLE } from "./lifePlanEngine.js";
-import { nearTermPlannedExpenses, freeToSpendNow, availableToSpendAtAge, NEAR_TERM_HORIZON_YEARS } from "./utils/walletMetrics.js";
+import { nearTermPlannedExpenses, freeToSpendNow, availableToSpendAtAge, withWhatIfExpense, summarizeWhatIfImpact, NEAR_TERM_HORIZON_YEARS } from "./utils/walletMetrics.js";
 import { JA_TRANSLATIONS } from "./translations/ja.js";
 import { EN_TRANSLATIONS } from "./translations/en.js";
 
@@ -886,5 +886,80 @@ describe("トップ統合ダッシュボードのデータ契約（単一 integr
     });
     assert.ok(JA_TRANSLATIONS.dashAssetsAtAgeLabel.includes("{age}"), "ja dashAssetsAtAgeLabel に {age} が無い");
     assert.ok(EN_TRANSLATIONS.dashAssetsAtAgeLabel.includes("{age}"), "en dashAssetsAtAgeLabel に {age} が無い");
+  });
+});
+
+// ============================================================================
+// フェーズ5：急な出費 What-if（表示専用・非破壊の一時試算）のデータ契約
+//   基のプランに一時支出を1件だけ加えたクローンを engine で再計算し、before/after/delta を
+//   単一 integrated から要約する。入力・基の integrated は変更しない。
+// ============================================================================
+describe("急な出費 What-if のデータ契約（非破壊・単一 integrated）", () => {
+  const near = (a, b, t = 1) => Math.abs(a - b) <= t;
+  const plan = () => ({
+    currentAge: 60, retireAge: 65, deathAge: 95, livingCostMonthly: 200000,
+    publicPensions: [{ monthlyAmount: 220000, startAge: 65 }], healthCostAnnual: () => 0,
+    surplusTargetId: "bank", initialSurplusBalance: 800000,
+    pools: [
+      { id: "bank", group: "bank", balance: 6000000, annualReturnPct: 0, drawOrder: 2 },
+      { id: "nisa", group: "investment", balance: 5000000, annualReturnPct: 0, drawOrder: 1 },
+    ],
+    loans: [{ principal: 3000000, annualRatePct: 0, monthlyPayment: 20000 }],
+    oneTimeExpenses: [],
+  });
+
+  it("使う前＝現在値、使った後＝現在値−実使用額（余剰内の50万）", () => {
+    const base = runIntegratedPlan(plan());
+    const wi = runIntegratedPlan(withWhatIfExpense(plan(), { amount: 500000, age: 60 }));
+    const s = summarizeWhatIfImpact(base, wi, [65, 75, 95]);
+    assert.ok(near(s.surplus.before, base.yearly[0].surplusBalance), "使う前=現在の余剰金");
+    assert.ok(near(s.surplus.after, base.yearly[0].surplusBalance - 500000), "使った後=現在−50万");
+    assert.ok(near(s.surplus.delta, -500000), "差=-50万");
+    assert.ok(near(s.bank.delta, -500000) && near(s.totalAssets.delta, -500000), "銀行・総資産も-50万");
+  });
+
+  it("65/75/95歳の資産は engine の What-if 行の netWorth から比較する", () => {
+    const base = runIntegratedPlan(plan());
+    const wi = runIntegratedPlan(withWhatIfExpense(plan(), { amount: 500000, age: 60 }));
+    const s = summarizeWhatIfImpact(base, wi, [65, 75, 95]);
+    const rowAt = (res, age) => res.yearly.find((y) => y.age >= Math.round(age)) || res.yearly[res.yearly.length - 1];
+    s.byAge.forEach(({ age, before, after, delta }) => {
+      assert.ok(near(before, rowAt(base, age).netWorth), `age ${age}: before が base.netWorth と不一致`);
+      assert.ok(near(after, rowAt(wi, age).netWorth), `age ${age}: after が whatIf.netWorth と不一致`);
+      assert.ok(near(delta, after - before), `age ${age}: delta 不一致`);
+    });
+  });
+
+  it("非破壊：What-if を実行しても基の integrated（総資産系列）は変わらない", () => {
+    const p = plan();
+    const base1 = runIntegratedPlan(p);
+    const seqBefore = JSON.stringify(base1.yearly.map((r) => [r.totalAssets, r.netWorth, r.surplusBalance]));
+    runIntegratedPlan(withWhatIfExpense(p, { amount: 500000, age: 60 }));
+    const seqAfter = JSON.stringify(runIntegratedPlan(p).yearly.map((r) => [r.totalAssets, r.netWorth, r.surplusBalance]));
+    assert.equal(seqAfter, seqBefore);
+    assert.equal(p.oneTimeExpenses.length, 0); // 基のプランも不変
+  });
+
+  it("余剰超過時は実使用が余剰まで・未処理額を返す（通常預金に波及しない）", () => {
+    const base = runIntegratedPlan(plan());
+    const wi = runIntegratedPlan(withWhatIfExpense(plan(), { amount: 3000000, age: 60 })); // 余剰80万に対し300万
+    const s = summarizeWhatIfImpact(base, wi, [65, 75, 95]);
+    assert.ok(near(s.actuallySpent, 800000), `実使用=${s.actuallySpent}`);
+    assert.ok(near(s.insufficientSurplusAmount, 2200000), `未処理=${s.insufficientSurplusAmount}`);
+    assert.ok(near(s.totalAssets.delta, -800000), "総資産は余剰分だけ減る");
+  });
+
+  it("翻訳キー（What-if）が ja・en に存在し、不足案内は {requested}{spent}{shortfall} を含む", () => {
+    const KEYS = ["whatIfTitle", "whatIfAmountLabel", "whatIfEmpty", "whatIfColItem", "whatIfColBefore",
+      "whatIfColAfter", "whatIfColDelta", "whatIfSurplusLabel", "whatIfBankLabel", "whatIfTotalLabel",
+      "whatIfDepletionLabel", "whatIfInsufficient", "whatIfNote"];
+    KEYS.forEach((k) => {
+      assert.ok(typeof JA_TRANSLATIONS[k] === "string" && JA_TRANSLATIONS[k].length > 0, `ja に ${k} が無い`);
+      assert.ok(typeof EN_TRANSLATIONS[k] === "string" && EN_TRANSLATIONS[k].length > 0, `en に ${k} が無い`);
+    });
+    ["{requested}", "{spent}", "{shortfall}"].forEach((tok) => {
+      assert.ok(JA_TRANSLATIONS.whatIfInsufficient.includes(tok), `ja whatIfInsufficient に ${tok} が無い`);
+      assert.ok(EN_TRANSLATIONS.whatIfInsufficient.includes(tok), `en whatIfInsufficient に ${tok} が無い`);
+    });
   });
 });

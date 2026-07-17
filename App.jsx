@@ -186,7 +186,7 @@ export {
 // 統合プラン入力の組み立て（React の外に出した純粋関数）。
 import { buildPlanInput, CONTRIBUTION_MULTIPLIERS } from "./utils/buildPlanInput.js";
 import { SURPLUS_CATEGORIES, surplusKindForCategory } from "./utils/surplusLedger.js";
-import { nearTermPlannedExpenses, freeToSpendNow, availableToSpendAtAge, NEAR_TERM_HORIZON_YEARS } from "./utils/walletMetrics.js";
+import { nearTermPlannedExpenses, freeToSpendNow, availableToSpendAtAge, withWhatIfExpense, summarizeWhatIfImpact, NEAR_TERM_HORIZON_YEARS } from "./utils/walletMetrics.js";
 // シナリオ比較（現在プラン vs 比較プラン）。既存エンジンを2回呼ぶだけで、新しい計算式は無い。
 import { runScenarioComparison, createComparisonDraft, attachComparisonLine } from "./utils/scenarioComparison.js";
 
@@ -1639,6 +1639,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   // 余剰金残高の表示対象年齢（第3段階・表示専用）。inputs とは別の一時 state なので
   // 保存処理・自動保存・入力履歴には一切影響しない。null＝既定（想定寿命）を表示する。
   const [surplusFocusAge, setSurplusFocusAge] = useState(null);
+  // What-if（急な出費シミュレーション）で「余剰金から使う金額」（円・表示専用の試算）。既定0。
+  const [whatIfAmount, setWhatIfAmount] = useState(0);
   const [importText, setImportText] = useState("");
   const [importError, setImportError] = useState("");
   const [importOk, setImportOk] = useState(false);
@@ -2388,6 +2390,21 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     spendableAssets: focusRow?.accessibleAssets ?? 0,
     minimumResidual: Number(effectiveInheritanceTarget) || 0,
   });
+
+  // 【What-if・非破壊の一時試算】「余剰金から◯円使ったら」を、基のプランに一時支出を
+  // 1件だけ加えたクローンで再計算する。inputs・台帳・保存データは書き換えない。
+  // 金額0のときは計算しない（null）。単一エンジン（runIntegratedPlan）を使い、
+  // 基の integrated（現在の総資産推移）とは独立した一時結果として持つ。
+  const whatIfIntegrated = useMemo(() => {
+    const amt = Number(whatIfAmount) || 0;
+    if (!(amt > 0)) return null;
+    return runIntegratedPlan(withWhatIfExpense(buildPlanInput(planCtx), { amount: amt, age: effectiveCurrentAge }));
+  }, [planCtx, whatIfAmount, effectiveCurrentAge]);
+  // before/after/delta の要約（表示専用）。現在値は integrated から、将来値は What-if 結果から。
+  const whatIfSummary = useMemo(
+    () => (whatIfIntegrated ? summarizeWhatIfImpact(integrated, whatIfIntegrated, [65, 75, 95]) : null),
+    [integrated, whatIfIntegrated]
+  );
 
   const fundBreakdownAtRetire = useMemo(() => {
     if (country !== "JP") return [];
@@ -5130,6 +5147,78 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                     })}
                   </tbody>
                 </table>
+              )}
+            </div>
+
+            {/* 急な出費の What-if（表示専用・非破壊の一時試算）。「余剰金から◯円使ったら」を
+                基のプランに一時支出を1件だけ加えたクローンで再計算し、使用前後を比較する。
+                入力・台帳・保存データは変更しない。余剰金の範囲でだけ使える（超過分は通常預金から
+                引かない）。将来（65/75/95歳）の資産と資産枯渇年齢への影響も表示する。 */}
+            <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid #2A363C" }}>
+              <div className="stat-sub" style={{ marginBottom: 8 }}>{t("whatIfTitle")}</div>
+              <div style={{ maxWidth: 260, marginBottom: 8 }}>
+                <MoneyField
+                  label={t("whatIfAmountLabel")}
+                  value={whatIfAmount}
+                  onChange={(v) => setWhatIfAmount(Number(v) || 0)}
+                />
+              </div>
+              {whatIfSummary && (
+                <div>
+                  {whatIfSummary.insufficientSurplusAmount > 0 && (
+                    <div className="note" style={{ marginBottom: 8 }}>
+                      <Info size={13} />
+                      <span>{t("whatIfInsufficient", {
+                        requested: money(whatIfSummary.requestedAmount),
+                        spent: money(whatIfSummary.actuallySpent),
+                        shortfall: money(whatIfSummary.insufficientSurplusAmount),
+                      })}</span>
+                    </div>
+                  )}
+                  <table className="watchlist">
+                    <thead>
+                      <tr>
+                        <th>{t("whatIfColItem")}</th>
+                        <th>{t("whatIfColBefore")}</th>
+                        <th>{t("whatIfColAfter")}</th>
+                        <th>{t("whatIfColDelta")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[
+                        { label: t("whatIfSurplusLabel"), cell: whatIfSummary.surplus },
+                        { label: t("whatIfBankLabel"), cell: whatIfSummary.bank },
+                        { label: t("whatIfTotalLabel"), cell: whatIfSummary.totalAssets },
+                        ...whatIfSummary.byAge.map((a) => ({ label: t("dashAssetsAtAgeLabel", { age: a.age }), cell: a })),
+                      ].map((row, i) => (
+                        <tr key={i}>
+                          <td>{row.label}</td>
+                          <td className="mono">{money(row.cell.before)}</td>
+                          <td className="mono">{money(row.cell.after)}</td>
+                          <td
+                            className="mono"
+                            style={{ color: row.cell.delta < 0 ? "#C2694F" : row.cell.delta > 0 ? "#5FB0A0" : undefined }}
+                          >
+                            {row.cell.delta === 0 ? "±0" : (row.cell.delta > 0 ? "+" : "-") + money(Math.abs(row.cell.delta))}
+                          </td>
+                        </tr>
+                      ))}
+                      <tr>
+                        <td>{t("whatIfDepletionLabel")}</td>
+                        <td>{whatIfSummary.depletionAge.before ? t("ageYears", { age: Math.round(whatIfSummary.depletionAge.before) }) : t("statNeverDepletes")}</td>
+                        <td>{whatIfSummary.depletionAge.after ? t("ageYears", { age: Math.round(whatIfSummary.depletionAge.after) }) : t("statNeverDepletes")}</td>
+                        <td>—</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <div className="note" style={{ marginTop: 8 }}>
+                    <Info size={13} />
+                    <span>{t("whatIfNote")}</span>
+                  </div>
+                </div>
+              )}
+              {!whatIfSummary && (
+                <div className="stat-sub" style={{ opacity: 0.7 }}>{t("whatIfEmpty")}</div>
               )}
             </div>
           </div>
