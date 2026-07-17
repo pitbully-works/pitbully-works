@@ -99,3 +99,67 @@ export function availableToSpendAtAge({ spendableAssets, minimumResidual = 0 }) 
   const floor = Number(minimumResidual) || 0;
   return Math.max(0, spend - floor);
 }
+
+// What-if（急な出費シミュレーション）で追加する一時支出の識別子。
+// 基の余剰金台帳（surplusLedger）とは別の、その場限りの試算用。
+export const WHATIF_EXPENSE_ID = "__whatif__";
+
+/**
+ * What-if：基のプランに「余剰金の使用」を1件だけ一時的に加えたプランを返す。
+ * 【非破壊】basePlan も inputs も一切書き換えず、クローンを返す（表示専用の試算）。
+ * amount<=0 のときは基のプランをそのまま返す（何も足さない）。
+ * 一時支出は既存の「余剰金を使う」経路をそのまま通るので、余剰金の範囲でだけ使われ、
+ * 通常預金には波及しない（エンジンの計算は変更しない）。
+ *
+ * @param {object} basePlan  buildPlanInput の結果
+ * @param {object} args { amount, age }
+ * @returns {object} クローンされたプラン（oneTimeExpenses に1件追加）
+ */
+export function withWhatIfExpense(basePlan, { amount, age }) {
+  const amt = Number(amount) || 0;
+  if (!(amt > 0) || !basePlan) return basePlan;
+  const extra = { id: WHATIF_EXPENSE_ID, age: Number(age), amount: amt };
+  return { ...basePlan, oneTimeExpenses: [...(basePlan.oneTimeExpenses || []), extra] };
+}
+
+/**
+ * What-if の影響を before/after/delta で要約する（純粋・表示専用）。
+ * すべて integrated の行から読み出す（現在値＝yearly[0]、将来値＝年齢で解決した行の netWorth）。
+ * 基の integrated は読み取るだけで変更しない。
+ *
+ * @param {object} baseInt   基の integrated
+ * @param {object} whatIfInt What-if の integrated
+ * @param {number[]} ages    将来資産（純資産）を比較する年齢（既定 [65,75,95]）
+ * @returns {object} { surplus, bank, totalAssets, byAge[], depletionAge,
+ *                     requestedAmount, actuallySpent, insufficientSurplusAmount }
+ */
+export function summarizeWhatIfImpact(baseInt, whatIfInt, ages = [65, 75, 95]) {
+  const rowAt = (res, age) => {
+    const t = Math.round(age);
+    const rows = res.yearly;
+    return rows.find((y) => y.age >= t) || rows[rows.length - 1];
+  };
+  const b0 = baseInt.yearly[0];
+  const wResult = (whatIfInt.oneTimeExpenseResults || []).find((r) => r.id === WHATIF_EXPENSE_ID) || null;
+  const spent = wResult ? wResult.actuallySpent : 0;
+  // 現在の余剰金・銀行・総資産は「使うと同額だけ即時に減る」。実使用額は必ず
+  //   spent ≤ 余剰金 ≤ 銀行 ≤ 総資産 なので before − spent は 0 未満にならない。
+  // （engine の yearly[0] は支出適用前のスナップショットなので、直後の値はここで求める。）
+  const immediate = (beforeVal) => ({ before: beforeVal, after: beforeVal - spent, delta: -spent });
+  return {
+    surplus: immediate(b0.surplusBalance),
+    bank: immediate(b0.bankValue),
+    totalAssets: immediate(b0.totalAssets),
+    // 将来（65/75/95歳）の純資産は運用機会損失や取り崩し動学を含むため、engine の
+    // What-if 実行結果の行から読む（表示専用だが、ここは engine の再実行が必要な部分）。
+    byAge: ages.map((age) => {
+      const bA = rowAt(baseInt, age).netWorth;
+      const wA = rowAt(whatIfInt, age).netWorth;
+      return { age, before: bA, after: wA, delta: wA - bA };
+    }),
+    depletionAge: { before: baseInt.depletionAge ?? null, after: whatIfInt.depletionAge ?? null },
+    requestedAmount: wResult ? wResult.requestedAmount : 0,
+    actuallySpent: spent,
+    insufficientSurplusAmount: wResult ? wResult.insufficientSurplusAmount : 0,
+  };
+}
