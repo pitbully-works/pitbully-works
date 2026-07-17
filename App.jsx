@@ -3044,11 +3044,15 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         }
 
         .section-block {
-          border: 1.5px solid;
+          /* 個別株カード（.chart-frame）と同じ、色なしの落ち着いた見た目に統一。
+             各セクションはインラインで borderColor を指定しているため、
+             border-color を !important で上書きして色を打ち消す。 */
+          border: 1px solid var(--line);
+          border-color: var(--line) !important;
+          background: var(--panel);
           border-radius: 8px;
           padding: 14px 14px 4px;
           margin-bottom: 18px;
-          opacity: 0.92;
         }
         /* タイトル内のお名前（○○様）。見出しより小さく控えめに。 */
         .title-username {
