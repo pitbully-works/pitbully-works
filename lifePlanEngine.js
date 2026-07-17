@@ -131,6 +131,8 @@ export function buildAgeSteps(currentAge, deathAge, boundaries) {
  * @param {function} p.idecoAnnuityMonthly (age) => iDeCo年金の月額
  * @param {string}   p.idecoPoolId
  * @param {string}   p.surplusTargetId    余剰金・一時金の受け皿プールid
+ * @param {number}   p.initialSurplusBalance 現在までに貯まっている余剰金の初期残高。
+ *        既存の銀行残高の内数として扱い、銀行残高合計を上限に頭打ちする。総資産には加算しない。
  * @param {boolean}  p.chargeFixedCostsBeforeRetirement
  *        退職前もローン返済・保険料を資産から引くか。既定 false
  *        （積立期は給与から支払われる前提。積立額は返済・保険料を払った後の余剰のため、
@@ -197,6 +199,16 @@ export function runIntegratedPlan(p) {
   const idecoLumpAge = (p.idecoLumpAge === undefined || p.idecoLumpAge === null) ? null : num(p.idecoLumpAge);
   const idecoPool = p.idecoPoolId ? poolById.get(p.idecoPoolId) : null;
   const surplusPool = p.surplusTargetId ? poolById.get(p.surplusTargetId) : null;
+  // 余剰金（使われず残った現金）の入金先。既定は surplusTargetId（＝銀行プール）。
+  // 指定が見つからなくても現金を失わない（総資産を保存する）よう、
+  //   ① surplusTargetId のプール → ② 最初の銀行プール → ③ 最初のプール
+  // の順にフォールバック先を決める。
+  const surplusDepositPool = surplusPool || bankDrawPools[0] || pools[0] || null;
+  // 余剰金残高（表示用の台帳）を積み増すのは「surplusTargetId で明示指定され、かつ
+  // 銀行グループ」のときだけ。②③のフォールバックに落ちた場合は、cash は総資産として
+  // 保存はするが余剰金残高には計上しない（Problem 2：置き場所が無いのに表示だけ増える
+  // 不整合を防ぐ）。
+  const trackSurplusLedger = !!surplusPool && surplusPool.group === "bank";
 
   let depletionAge = null;
   let cumulativeUnmet = 0;        // 生活費・医療費・保険料で払えなかった額の累計
@@ -207,28 +219,58 @@ export function runIntegratedPlan(p) {
   let idecoLumpPaid = false;
   let cumulativeWithdrawalTax = 0;   // 引出時課税として失われた額の累計
 
-  // ---- 余剰金（第2段階・記録専用）----
-  // 各期間の収入から生活費・医療費・保険料・ローン返済をすべて差し引いた「後」に
-  // 残った現金だけを累計する。関数スコープの局所変数なので、runIntegratedPlan を
-  // 呼ぶたびに必ず 0 から始まる（＝シミュレーション再実行で二重加算されない）。
+  // ---- 余剰金残高（surplusBalance）----
+  // 【定義】銀行プールの中にある「余剰金由来（＝収入が使われずに残って積み上がった分、
+  //   および利用者が初期入力した既存の余剰金）」の元本残高。単なる発生累計ではなく、
+  //   実際に銀行に残っている余剰金の残高を表す。関数スコープの局所変数なので、呼ぶたびに
+  //   必ず initialSurplusBalance から始まる（再実行で二重加算されない）。
   //
-  // 【重要・この値は記録専用】
-  //   ・どのプール残高にも一切足し込まない（surplusPool.balance とは別物）
-  //   ・totalAssets / netWorth / bankValue などの資産計算には算入しない
-  //   ・取り崩し順序・保存形式・UI には影響しない
-  // したがって、この行を消しても資産・純資産の数値は 1 円も変わらない。
-  let surplusBalance = 0;
+  // 【初期値】p.initialSurplusBalance（利用者が「現在までに貯まっている余剰金」として入力）。
+  //   これは既存の銀行残高の一部を「余剰金」として区別するラベルなので、銀行残高の合計を
+  //   上限に頭打ちする（銀行残高を超える初期余剰は指定できない＝二重計上・不変条件破りを防ぐ）。
+  //   総資産には一切加算しない（銀行残高の内数）。
+  // 【増える時】surplusDepositPool（既定は銀行）へ余剰の cash を入金したとき、同額だけ増える。
+  // 【減る時】銀行プールを取り崩したとき（生活費・医療費・保険料・ローン返済・一時支出の
+  //   いずれでも）、reduceSurplusByBankDraw を通して実際に引かれた額だけ減る（余剰金を
+  //   先に使う仕様＝surplus-first）。0未満にはしない。
+  //
+  // 【不変条件】常に 0 ≤ surplusBalance ≤ 銀行プール残高の合計。
+  //   （初期値も銀行合計で頭打ち。増加は銀行入金と同額、減少は銀行取崩しと同額を上限に
+  //     減らすため、破れない。）
+  //
+  // 【重要・この値は表示専用】どのプール残高にも足し込まないため、totalAssets /
+  //   netWorth / bankValue などの資産計算には一切算入されない。したがって
+  //   surplusBalance を丸ごと消しても、資産・純資産の数値は 1 円も変わらない
+  //   （＝初期余剰金を入力しても総資産は増えない）。
+  const initialBankTotal = bankDrawPools.reduce((s, bp) => s + Math.max(0, bp.balance), 0);
+  let surplusBalance = Math.min(clampZero(num(p.initialSurplusBalance)), initialBankTotal);
 
-  // ---- 一時支出（第4段階4a）----
-  // 指定年齢に到達したとき、銀行プールから amount を「一度だけ」差し引く一時支出。
+  // 銀行プールから実際に引かれた額だけ、余剰金台帳を減らす共通関数。
+  // 通常支出（pay 経由）も一時支出も、銀行の取り崩しはすべてここを一元的に通す。
+  // 余剰金を先に使う（surplus-first）ので、引かれた額をそのまま減じて 0 で頭打ちする。
+  const reduceSurplusByBankDraw = (bankGrossDrawn) => {
+    if (!(bankGrossDrawn > EPS)) return;
+    surplusBalance = clampZero(surplusBalance - bankGrossDrawn);
+  };
+
+  // ---- 一時支出（余剰金を使う）----
+  // 指定年齢に到達したとき、余剰金の範囲で銀行プールから「一度だけ」差し引く一時支出。
   // oneTimeExpenses が未指定/空なら、このブロックは完全に無効（従来と1円も変わらない）。
   // 関数スコープの paid フラグで、シミュレーション再実行でも二重に引かれない。
-  // 【重要】第4段階4aではエンジンの原子操作だけを追加する。余剰金台帳（surplusLedger）
-  //   との結線や UI は 4b/4c で行う。ここでは「銀行から一度だけ引く」以上のことはしない。
+  //
+  // 【Problem 3 対策】現在年齢より過去の一時支出は無視する。過去の支出は既に現在の
+  //   銀行残高へ反映済みのはずで、最初のステップで現在残高から引くと二重控除になるため。
   const oneTimeExpenses = (p.oneTimeExpenses || [])
-    .map((e) => ({ age: num(e.age), amount: clampZero(num(e.amount)), paid: false }))
-    .filter((e) => e.amount > 0);
+    .map((e) => ({
+      id: e.id === undefined || e.id === null ? null : e.id,
+      age: num(e.age),
+      amount: clampZero(num(e.amount)),
+      paid: false,
+    }))
+    .filter((e) => e.amount > 0 && e.age >= currentAge - EPS);
   let cumulativeOneTimeSpent = 0; // 実際に銀行から引けた一時支出の累計
+  // 各一時支出の結果（UI表示用）。要求額・実使用額・不足額をエンジンが返す。
+  const oneTimeExpenseResults = [];
 
   const totalAssets = () => pools.reduce((s, x) => s + x.balance, 0);
   const totalLoans = () => loans.reduce((s, l) => s + l.balance, 0);
@@ -263,6 +305,32 @@ export function runIntegratedPlan(p) {
     row.totalAssets = clampZero(totalAssets());
     row.spendableAssets = clampZero(
       pools.reduce((s, x) => (x.accessAge === NOT_DRAWABLE ? s : s + x.balance), 0)
+    );
+    // 「現在使える資産（＝今すぐ換金・引き出しできる資産）」＝ 銀行・投資（課税/非課税の
+    // 上場株・ETF・投資信託等）・金・株のうち、この年齢で引き出し制限が無い（accessAge に
+    // 到達済みで、恒久ロック=NOT_DRAWABLE でない）プールの合計。iDeCo（受取前）や民間年金の
+    // 予備原資（group=ideco / privatePension）は「引き出せない資産」なので含めない。
+    // 読み取り専用の派生値。どのプール残高にも足し込まず、totalAssets/netWorth を1円も変えない。
+    // 不変条件：0 ≤ accessibleAssets ≤ spendableAssets ≤ totalAssets。
+    //
+    // 【内訳（将来の「使える資産の内訳」表示のための基盤）】グループ別の使える額も併せて
+    // 出す。すべて数値フィールドなので、行の値はすべて finite のまま。
+    //   accessibleAssets === accessibleBank + accessibleInvestment + accessibleGold + accessibleStock
+    let accBank = 0, accInvestment = 0, accGold = 0, accStock = 0;
+    pools.forEach((x) => {
+      const accessibleNow = x.accessAge !== NOT_DRAWABLE && age >= x.accessAge - EPS;
+      if (!accessibleNow) return;
+      if (x.group === "bank") accBank += x.balance;
+      else if (x.group === "investment") accInvestment += x.balance;
+      else if (x.group === "gold") accGold += x.balance;
+      else if (x.group === "stock") accStock += x.balance;
+    });
+    row.accessibleBank = clampZero(accBank);
+    row.accessibleInvestment = clampZero(accInvestment);
+    row.accessibleGold = clampZero(accGold);
+    row.accessibleStock = clampZero(accStock);
+    row.accessibleAssets = clampZero(
+      row.accessibleBank + row.accessibleInvestment + row.accessibleGold + row.accessibleStock
     );
     row.netWorth = row.totalAssets - row.loanBalance; // ★ 唯一の純資産定義
     return row;
@@ -378,6 +446,9 @@ export function runIntegratedPlan(p) {
           const net = gross * keep;
           pool.balance = clampZero(pool.balance - gross);
           cumulativeWithdrawalTax += gross - net;
+          // 銀行プールを取り崩したら、余剰金台帳を同額（実際に引かれた gross）だけ減らす。
+          // 通常支出（生活費・医療費・保険料・ローン返済）の取り崩しもここで一元管理される。
+          if (pool.group === "bank") reduceSurplusByBankDraw(gross);
           need -= net;
         }
       }
@@ -441,32 +512,53 @@ export function runIntegratedPlan(p) {
       if (l.balance <= EPS && l.payoffAge === null) l.payoffAge = age;
     });
 
-    // -------- 7. 余剰金 --------
-    if (cash > EPS && surplusPool) surplusPool.balance += cash;
-
-    // -------- 7b. 余剰金の記録（第2段階・記録専用）--------
-    // 上の surplusPool への加算とは独立に、この期間で使われずに残った現金を累計する。
+    // -------- 7. 余剰金（残った現金を銀行等へ入金し、台帳へも記録）--------
     // ここに到達した cash は、収入（公的年金・民間年金・iDeCo年金・iDeCo一時金）から
-    // 生活費・医療費・保険料・ローン返済をすべて差し引いた「後」の残額なので、
-    // 4種の収入源はいずれも最終的に残った cash を通じて自動的に含まれる。
-    // surplusBalance はどのプール残高にも足し込まないため、資産・純資産は変化しない。
-    if (cash > EPS) surplusBalance += cash;
+    // 生活費・医療費・保険料・ローン返済をすべて差し引いた「後」の残額。
+    // 置き場所（surplusDepositPool・既定は銀行）へ入金して総資産に残す。
+    // 【Problem 2 対策】置き場所が見つからないフォールバック時も cash は失わない（総資産を保存）。
+    //   余剰金残高（表示）へ積み増すのは、銀行に明示入金したとき（trackSurplusLedger）だけ。
+    if (cash > EPS) {
+      if (surplusDepositPool) surplusDepositPool.balance += cash;
+      if (trackSurplusLedger) surplusBalance += cash;
+      cash = 0;
+    }
 
-    // -------- 8. 一時支出（第4段階4a）--------
-    // 指定年齢に到達した最初のステップで一度だけ、銀行プールから amount を差し引く。
-    // 銀行プールの内数（余剰金）を消費する前提なので、他の資産には波及させない。
-    // 残高不足のぶんは引かず（頭打ち）、負数にもしない。paid フラグで一度きり。
+    // -------- 8. 一時支出（余剰金を使う）--------
+    // 【新仕様】余剰金の範囲でだけ使う。実際に使える額は
+    //     actuallySpent = min(requestedAmount, surplusBalance, availableBankBalance)
+    //   に制限し、この額だけを銀行プールから引く。要求額が余剰金残高を超えても、
+    //   超過分を通常の銀行預金からは引かない（通常預金からの臨時支出は将来別機能で扱う）。
+    //   余剰金残高からの減算も、銀行取り崩しの一元管理（reduceSurplusByBankDraw）を通す。
+    //   結果（要求額・実使用額・不足額）を oneTimeExpenseResults に記録して UI へ返す。
     if (oneTimeExpenses.length) {
       oneTimeExpenses.forEach((e) => {
         if (e.paid || age < e.age - EPS) return;
-        let need = e.amount;
+        const requestedAmount = e.amount;
+        const availableBank = bankDrawPools.reduce((s, bp) => s + Math.max(0, bp.balance), 0);
+        const actuallySpent = Math.max(
+          0,
+          Math.min(requestedAmount, clampZero(surplusBalance), clampZero(availableBank))
+        );
+        // 実際に使える額だけを銀行から引く（余剰金以外＝通常預金には波及させない）。
+        let need = actuallySpent;
         for (const bp of bankDrawPools) {
           if (need <= EPS) break;
           const take = Math.min(bp.balance, need);
           bp.balance = clampZero(bp.balance - take);
           need -= take;
         }
-        cumulativeOneTimeSpent += e.amount - Math.max(0, need);
+        const spent = actuallySpent - Math.max(0, need); // 端数丸め対策。実質 actuallySpent。
+        cumulativeOneTimeSpent += spent;
+        reduceSurplusByBankDraw(spent); // 共通台帳から実使用額を減らす（spent ≤ surplusBalance）。
+        oneTimeExpenseResults.push({
+          id: e.id,
+          age: e.age,
+          requestedAmount,
+          actuallySpent: spent,
+          // 余剰金残高が足りず使えなかった額。UI で「未処理額」として表示する。
+          insufficientSurplusAmount: clampZero(requestedAmount - spent),
+        });
         e.paid = true;
       });
     }
@@ -491,8 +583,10 @@ export function runIntegratedPlan(p) {
     cumulativeLoanInterest,
     cumulativeLoanPrincipal,
     cumulativeWithdrawalTax,
-    // 一時支出（4a）で実際に銀行から引けた累計。既存フィールドには影響しない。
+    // 一時支出で実際に銀行から引けた累計。既存フィールドには影響しない。
     cumulativeOneTimeSpent,
+    // 各一時支出の結果（要求額・実使用額・不足額）。UI が不足時の案内表示に使う。
+    oneTimeExpenseResults,
     loanPayoffAges: loans.map((l) => l.payoffAge),
     peakNetWorth: yearly.reduce((mx, r) => Math.max(mx, r.netWorth), -Infinity),
   };

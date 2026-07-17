@@ -186,6 +186,7 @@ export {
 // 統合プラン入力の組み立て（React の外に出した純粋関数）。
 import { buildPlanInput, CONTRIBUTION_MULTIPLIERS } from "./utils/buildPlanInput.js";
 import { SURPLUS_CATEGORIES, surplusKindForCategory } from "./utils/surplusLedger.js";
+import { nearTermPlannedExpenses, freeToSpendNow, availableToSpendAtAge, NEAR_TERM_HORIZON_YEARS } from "./utils/walletMetrics.js";
 // シナリオ比較（現在プラン vs 比較プラン）。既存エンジンを2回呼ぶだけで、新しい計算式は無い。
 import { runScenarioComparison, createComparisonDraft, attachComparisonLine } from "./utils/scenarioComparison.js";
 
@@ -1083,6 +1084,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     publicPensionStartAge: 65,
     pensionSources: [],
     livingCostMonthly: 0,
+    // 現在までに貯まっている余剰金（既存の銀行残高の内数・円単位）。既定0。
+    initialSurplusBalance: 0,
+    // 生活防衛資金（残しておきたい最低現金・円単位・表示専用）。既定0。エンジンには渡さない。
+    emergencyFund: 0,
     postRetireReturn: 3,
     postRetireReturnAuto: true,
     healthBrackets: { b60: 0, b70: 0, b80: 0 },
@@ -2189,6 +2194,16 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
   const integrated = useMemo(() => runIntegratedPlan(buildPlanInput(planCtx)), [planCtx]);
 
+  // 一時支出（余剰金を使う）の結果を台帳IDで引けるようにする。要求額が余剰金残高を
+  // 超えて一部しか使えなかった行に「未処理額」を表示するための対応表。防御的に空扱い。
+  const surplusResultById = useMemo(() => {
+    const map = {};
+    (integrated?.oneTimeExpenseResults || []).forEach((r) => {
+      if (r && r.id !== undefined && r.id !== null) map[r.id] = r;
+    });
+    return map;
+  }, [integrated]);
+
   // チャート用データ。行の age は「その時点で実際に到達している年齢」（整数）で、
   // 計算に使った小数年齢は exactAge に保持されている。
   const netWorthYearly = useMemo(() => {
@@ -2339,40 +2354,40 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       ? surplusFocusAge
       : inputs.deathAge;
 
-  // 「現在」も「選択年齢時点」も、同じ基準＝民間年金の受給開始年齢を起点にした累計にする。
-  // 民間年金だけを対象にし、公的年金・iDeCo には波及させない（別セクションの入力なので別々に扱う）。
-  // エンジンを「開始点＝民間年金の受給開始年齢／終点＝対象年齢／収入は民間年金のみ」で
-  // 呼び直して得る（計算式は不変。入力の一部だけを渡して呼ぶだけ）。
-  const surplusPlanInput = useMemo(() => buildPlanInput(planCtx), [planCtx]);
-  // 民間年金の受給開始年齢（最も早いもの）。無ければ null。
-  const surplusIncomeStartAge = useMemo(() => {
-    const ages = (surplusPlanInput.privatePensionPlans || [])
-      .map((p) => Number(p.payoutFromAge))
-      .filter((a) => Number.isFinite(a));
-    return ages.length ? Math.min(...ages) : null;
-  }, [surplusPlanInput]);
-  // 受給開始年齢 → targetAge の、民間年金だけの累計余剰金。
-  const surplusPrivateUpTo = useCallback((targetAge) => {
-    if (surplusIncomeStartAge == null) return 0;
-    if (!(targetAge > surplusIncomeStartAge + 1e-9)) return 0;
-    return runIntegratedPlan({
-      ...surplusPlanInput,
-      currentAge: surplusIncomeStartAge,
-      deathAge: targetAge,
-      publicPensions: [],
-      idecoLumpAge: null,
-      idecoAnnuityMonthly: undefined,
-    }).finalSurplusBalance ?? 0;
-  }, [surplusPlanInput, surplusIncomeStartAge]);
-  // 現在＝受給開始→現在年齢。 選択＝受給開始→選択年齢。どちらも同じ起点・同じ方式。
-  const surplusAtCurrent = useMemo(
-    () => surplusPrivateUpTo(effectiveCurrentAge),
-    [surplusPrivateUpTo, effectiveCurrentAge]
+  // 【統一】余剰金残高カードは、総資産グラフ・銀行残高と同じ integrated の
+  // surplusBalance をそのまま読む（別シミュレーションはしない）。余剰金は銀行預金の
+  // 内数なので bankValue に一度だけ含まれており、ここでは表示のために読み出すだけ。
+  //   現在時点    = integrated.yearly[0].surplusBalance（積み上がりの起点＝0）
+  //   選択年齢時点 = integratedRowAt(effectiveSurplusFocusAge).surplusBalance
+  // これにより、公的年金・iDeCo・民間年金いずれの余剰も、総資産グラフと同じ計算源から
+  // 一貫して表示される（旧 surplusPrivateUpTo の民間年金だけの別計算は廃止）。
+  const surplusAtCurrent = integrated.yearly[0]?.surplusBalance ?? (Number(inputs.initialSurplusBalance) || 0);
+  const surplusAtFocus = integratedRowAt(effectiveSurplusFocusAge)?.surplusBalance ?? 0;
+
+  // 【表示専用】現在自由に使える金額。すべて単一の integrated と inputs から導出する。
+  //   = max(0, 現在使える資産 − 生活防衛資金 − 今後 N 年以内の予定支出)
+  // エンジンには一切渡さないので、資産・純資産・余剰金の計算は 1 円も変わらない。
+  const accessibleNow = integrated.yearly[0]?.accessibleAssets ?? 0;
+  const nearTermPlanned = useMemo(
+    () => nearTermPlannedExpenses(inputs.surplusLedger, effectiveCurrentAge, NEAR_TERM_HORIZON_YEARS),
+    [inputs.surplusLedger, effectiveCurrentAge]
   );
-  const surplusAtFocus = useMemo(
-    () => surplusPrivateUpTo(effectiveSurplusFocusAge),
-    [surplusPrivateUpTo, effectiveSurplusFocusAge]
-  );
+  const freeToSpend = freeToSpendNow({
+    accessibleAssets: accessibleNow,
+    emergencyFund: Number(inputs.emergencyFund) || 0,
+    nearTermPlanned,
+  });
+
+  // 【表示専用】選択年齢で使用可能な金額（静的版）。
+  //   = max(0, accessibleAssets(age) − 最低残したい資産)
+  // 「◯歳で使える金額」なので、その年齢で実際に引き出せる accessibleAssets を使う
+  // （spendableAssets は accessAge 未到達の口座も含むため、55歳で59.5歳解禁の401k等を
+  //   誤って含めてしまう）。最低残したい資産は既存の相続で残す額を流用。エンジン非依存。
+  const focusRow = integratedRowAt(effectiveSurplusFocusAge);
+  const availableAtFocus = availableToSpendAtAge({
+    spendableAssets: focusRow?.accessibleAssets ?? 0,
+    minimumResidual: Number(effectiveInheritanceTarget) || 0,
+  });
 
   const fundBreakdownAtRetire = useMemo(() => {
     if (country !== "JP") return [];
@@ -4937,13 +4952,45 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <span>{t("bankNote", { age: t("ageYears", { age: inputs.retireAge }) })}</span>
           </div>
 
-          {/* 余剰金残高（surplusBalance）— 第3段階：表示のみ。
-              上の注記でいう「使われなかったお金」を、現在時点と選択年齢時点で表示する。
-              エンジンの surplusBalance を読み出すだけで、残高・総資産・純資産・
-              取り崩し順序・保存形式には影響しない。使用金額入力・確定・使用履歴・
-              グラフ帯はまだ行わない。 */}
+          {/* 余剰金残高（surplusBalance）— 総資産グラフ・銀行残高と同一の integrated から
+              読み出して表示する。余剰金は銀行預金の内数（bankValue に一度だけ含まれる）で、
+              別帯にはしない（二重計上防止）。公的年金・iDeCo・民間年金いずれの余剰も
+              同じ計算源で反映される。使用（消費）は下の「余剰金を使う」で surplusLedger に
+              記録し、engine の oneTimeExpenseResults を使って使用履歴に未処理額を表示する。 */}
           <div id="section-surplus-balance" style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #2A363C" }}>
             <div className="stat-sub" style={{ marginBottom: 8 }}>{t("surplusBalanceTitle")}</div>
+            <div style={{ maxWidth: 260, marginBottom: 10 }}>
+              <MoneyField
+                label={t("initialSurplusLabel")}
+                value={inputs.initialSurplusBalance}
+                onChange={(v) => update({ initialSurplusBalance: v })}
+              />
+              <div className="note" style={{ marginTop: 6 }}>
+                <Info size={13} />
+                <span>{t("initialSurplusExplain")}</span>
+              </div>
+            </div>
+            {/* 生活防衛資金（表示専用・エンジンには渡さない）と、現在自由に使える金額。
+                現在使える資産（integrated.yearly[0].accessibleAssets）− 生活防衛資金 −
+                今後N年以内の予定支出。すべて単一の integrated と inputs から導出。 */}
+            <div style={{ maxWidth: 260, marginBottom: 10 }}>
+              <MoneyField
+                label={t("emergencyFundLabel")}
+                value={inputs.emergencyFund}
+                onChange={(v) => update({ emergencyFund: v })}
+              />
+              <div className="note" style={{ marginTop: 6 }}>
+                <Info size={13} />
+                <span>{t("emergencyFundExplain")}</span>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end", marginBottom: 8 }}>
+              <StatCard label={t("freeToSpendLabel")} value={money(freeToSpend)} tone="good" />
+            </div>
+            <div className="note" style={{ marginBottom: 10 }}>
+              <Info size={13} />
+              <span>{t("freeToSpendExplain", { years: NEAR_TERM_HORIZON_YEARS })}</span>
+            </div>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
               <StatCard label={t("surplusBalanceCurrentLabel")} value={money(surplusAtCurrent)} sub={t("surplusBalanceCurrentSub")} />
               <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
@@ -4959,6 +5006,11 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 </select>
               </label>
               <StatCard label={t("surplusBalanceAtAgeLabel", { age: effectiveSurplusFocusAge })} value={money(surplusAtFocus)} tone="good" />
+              <StatCard label={t("availableAtAgeLabel", { age: effectiveSurplusFocusAge })} value={money(availableAtFocus)} tone="good" />
+            </div>
+            <div className="note" style={{ marginTop: 8 }}>
+              <Info size={13} />
+              <span>{t("availableAtAgeExplain")}</span>
             </div>
             <div className="note" style={{ marginTop: 8 }}>
               <Info size={13} />
@@ -5022,6 +5074,16 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                           <td>
                             {t("surplusCategory_" + cat)}
                             {e.memo ? <span style={{ opacity: 0.7 }}>{" · " + e.memo}</span> : null}
+                            {(() => {
+                              // 余剰金残高が足りず一部しか使えなかった場合に「未処理額」を表示。
+                              const r = surplusResultById[e.id];
+                              const shortfall = r && Number(r.insufficientSurplusAmount) > 0 ? Number(r.insufficientSurplusAmount) : 0;
+                              return shortfall > 0 ? (
+                                <div style={{ fontSize: 11, color: "#C2694F", marginTop: 2 }}>
+                                  {t("surplusInsufficientShort", { shortfall: money(shortfall) })}
+                                </div>
+                              ) : null;
+                            })()}
                           </td>
                           <td className="mono">{money(e.amount)}</td>
                           <td>

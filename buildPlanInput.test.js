@@ -512,8 +512,8 @@ describe("余剰金の『使う』台帳 → 一時支出の結線（第4段階4
     ];
     const plan = buildPlanInput(ctx);
     expect(plan.oneTimeExpenses).toEqual([
-      { age: 70, amount: 300000 },
-      { age: 75, amount: 1000000 },
+      { id: "1", age: 70, amount: 300000 },
+      { id: "3", age: 75, amount: 1000000 },
     ]);
   });
 
@@ -572,6 +572,20 @@ describe("余剰金の『使う』台帳 → 一時支出の結線（第4段階4
     const before = JSON.stringify(ctx.inputs.surplusLedger);
     buildPlanInput(ctx);
     expect(JSON.stringify(ctx.inputs.surplusLedger)).toBe(before);
+  });
+
+  it("小数現在年齢：画面表示上の現在年齢（floor）の支出は現在時点(小数)に正規化する", () => {
+    const ctx = ctxFor("JP");
+    ctx.effectiveCurrentAge = 58.66; // 画面は「58歳」と表示
+    ctx.inputs.surplusLedger = [
+      led({ id: "now", age: 58, kind: "consume", category: "car", amount: 100000 }), // 現在 → 58.66へ
+      led({ id: "past", age: 57, kind: "consume", category: "car", amount: 200000 }), // 過去 → そのまま
+    ];
+    const plan = buildPlanInput(ctx);
+    const now = plan.oneTimeExpenses.find((e) => e.id === "now");
+    const past = plan.oneTimeExpenses.find((e) => e.id === "past");
+    expect(Math.abs(now.age - 58.66)).toBeLessThan(1e-9);   // 現在時点に正規化
+    expect(Math.abs(past.age - 57)).toBeLessThan(1e-9);      // 過去はそのまま（エンジンが除外）
   });
 });
 
