@@ -48,6 +48,7 @@
 // ============================================================================
 
 import { NOT_DRAWABLE } from "../lifePlanEngine.js";
+import { normalizeExpenseAge } from "./walletMetrics.js";
 import {
   ACCOUNT_DRAW_CATEGORY,
   drawOrderOf,
@@ -223,7 +224,16 @@ export function buildPlanInput(ctx, overrides = {}) {
   const surplusLedger = Array.isArray(inputs.surplusLedger) ? inputs.surplusLedger : [];
   const oneTimeExpenses = surplusLedger
     .filter((e) => e && e.kind === "consume" && Number(e.amount) > 0 && Number.isFinite(Number(e.age)))
-    .map((e) => ({ age: Number(e.age), amount: Number(e.amount) }));
+    // id を引き継ぐ（エンジンが oneTimeExpenseResults で id 付きの実使用額/不足額を返し、
+    // UI が該当の台帳行に「未処理額」を表示できるようにするため）。
+    // age は normalizeExpenseAge で正規化：現在年齢が小数（例58.66）でも、画面表示上の
+    // 現在年齢（floor=58）で入力された支出を「現在時点の支出」として扱い、エンジンの
+    // `age >= currentAge` 判定で過去扱いされて無視されるのを防ぐ。
+    .map((e) => ({
+      id: e.id === undefined ? null : e.id,
+      age: normalizeExpenseAge(Number(e.age), effectiveCurrentAge),
+      amount: Number(e.amount),
+    }));
   oneTimeExpenses.forEach((e) => boundaries.push(e.age));
   const planBoundaries = boundaries.filter((v) => Number.isFinite(Number(v))).map(Number);
 
@@ -574,5 +584,8 @@ export function buildPlanInput(ctx, overrides = {}) {
     idecoAnnuityMonthly,
     oneTimeExpenses,
     surplusTargetId: "bank_0",
+    // 現在までに貯まっている余剰金の初期残高（既存の銀行残高の内数）。エンジン側で
+    // 銀行残高合計を上限に頭打ちする。未入力なら 0。
+    initialSurplusBalance: Number(inputs.initialSurplusBalance) || 0,
   };
 }
