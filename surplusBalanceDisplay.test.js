@@ -814,3 +814,77 @@ describe("修正2：小数現在年齢での現在支出の正規化（end-to-en
     assert.ok(near(near3, 100000), `予定支出=${near3}`);
   });
 });
+
+// ============================================================================
+// フェーズ4：トップ統合ダッシュボードの画面データ契約
+//   8項目すべてが単一の integrated（＋表示専用 inputs）から導出されることを固定する。
+//   現在値＝yearly[0]、将来値＝integratedRowAt(age).netWorth、表示専用値は0円フロア・
+//   総資産に二重加算しない。
+// ============================================================================
+describe("トップ統合ダッシュボードのデータ契約（単一 integrated 源）", () => {
+  const near = (a, b, t = 1) => Math.abs(a - b) <= t;
+  const rowAt = (res, age) => res.yearly.find((y) => y.age >= Math.round(age)) || res.yearly[res.yearly.length - 1];
+  // 現在55歳・複数資産（銀行・NISA・401k(59.5)）＋借入。将来65/75/95を含む。
+  const res = runIntegratedPlan({
+    currentAge: 55, retireAge: 65, deathAge: 95, livingCostMonthly: 200000,
+    publicPensions: [{ monthlyAmount: 220000, startAge: 65 }], healthCostAnnual: () => 0,
+    surplusTargetId: "bank", initialSurplusBalance: 300000,
+    pools: [
+      { id: "bank", group: "bank", balance: 5000000, annualReturnPct: 0, drawOrder: 2 },
+      { id: "nisa", group: "investment", balance: 8000000, annualReturnPct: 0, drawOrder: 1 },
+      { id: "k401", group: "investment", balance: 3000000, annualReturnPct: 0, drawOrder: 3, accessAge: 59.5 },
+    ],
+    loans: [{ principal: 4000000, annualRatePct: 0, monthlyPayment: 30000 }],
+  });
+  const emergencyFund = 1000000;
+  const surplusLedger = [{ id: "a", kind: "consume", age: 56, amount: 200000 }];
+
+  it("現在の総資産カード = integrated.yearly[0].totalAssets", () => {
+    assert.ok(near(res.yearly[0].totalAssets, rowAt(res, 55).totalAssets));
+    assert.ok(res.yearly[0].totalAssets > 0);
+  });
+
+  it("現在使える資産カード = integrated.yearly[0].accessibleAssets（401kは55歳で除外）", () => {
+    // 銀行500万＋NISA800万＝1300万（401k 300万は59.5歳まで除外）。
+    assert.ok(near(res.yearly[0].accessibleAssets, 13000000), `accessible=${res.yearly[0].accessibleAssets}`);
+  });
+
+  it("現在の余剰金カード = integrated.yearly[0].surplusBalance（初期30万）", () => {
+    assert.ok(near(surplusAtCurrent(res), 300000), `surplus=${surplusAtCurrent(res)}`);
+  });
+
+  it("現在自由に使える金額カード = freeToSpendNow(accessible, 生活防衛, 予定支出)（単一源・0円フロア）", () => {
+    const near3 = nearTermPlannedExpenses(surplusLedger, 55, NEAR_TERM_HORIZON_YEARS); // 56歳=20万
+    const free = freeToSpendNow({ accessibleAssets: res.yearly[0].accessibleAssets, emergencyFund, nearTermPlanned: near3 });
+    // 1300万 − 100万 − 20万 = 1180万
+    assert.ok(near(free, 11800000), `free=${free}`);
+    assert.ok(free >= 0, "0円未満にならない");
+  });
+
+  it("65・75・95歳の資産カード = integratedRowAt(age).netWorth", () => {
+    [65, 75, 95].forEach((age) => {
+      const v = rowAt(res, age).netWorth;
+      assert.ok(Number.isFinite(v), `age ${age}: netWorth が有限でない`);
+      // 純資産 = 総資産 − 借入（同じ行から）。
+      assert.ok(near(v, rowAt(res, age).totalAssets - rowAt(res, age).loanBalance), `age ${age}: netWorth 不一致`);
+    });
+  });
+
+  it("表示専用値は総資産に二重加算されない（totalAssets は帯の合計のまま）", () => {
+    res.yearly.forEach((r) => {
+      const band = r.investmentValue + r.goldValue + r.bankValue + r.stockValue + r.pensionValue + r.idecoLockedValue;
+      assert.ok(near(band, r.totalAssets), `age ${r.age}: 総資産に余剰金等が混入`);
+    });
+  });
+
+  it("翻訳キー（dashboard）が ja・en に存在し {age} 補間を含む", () => {
+    const KEYS = ["walletDashboardTitle", "dashTotalAssetsLabel", "dashAccessibleLabel", "dashSurplusLabel",
+      "dashEmergencyLabel", "dashFreeToSpendLabel", "dashAssetsAtAgeLabel", "walletDashboardNote"];
+    KEYS.forEach((k) => {
+      assert.ok(typeof JA_TRANSLATIONS[k] === "string" && JA_TRANSLATIONS[k].length > 0, `ja に ${k} が無い`);
+      assert.ok(typeof EN_TRANSLATIONS[k] === "string" && EN_TRANSLATIONS[k].length > 0, `en に ${k} が無い`);
+    });
+    assert.ok(JA_TRANSLATIONS.dashAssetsAtAgeLabel.includes("{age}"), "ja dashAssetsAtAgeLabel に {age} が無い");
+    assert.ok(EN_TRANSLATIONS.dashAssetsAtAgeLabel.includes("{age}"), "en dashAssetsAtAgeLabel に {age} が無い");
+  });
+});
