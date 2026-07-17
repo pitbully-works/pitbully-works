@@ -2921,11 +2921,14 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           --text: #E7ECEE;
           --muted: #7C8A90;
           --danger: #C2694F;
+          /* 右端のクイックジャンプ列ぶんの右余白。ボタン幅(60px)＋右10px＋隙間で算出。
+             各ページの囲い線がボタンに隠れないよう、この幅だけ内容を左に寄せる。 */
+          --quicknav-space: 76px;
           font-family: 'Noto Sans JP', sans-serif;
           background: var(--bg);
           color: var(--text);
           min-height: 100vh;
-          padding: 0 0 60px 0;
+          padding: 0 var(--quicknav-space) 60px 0;
         }
         .mono { font-family: 'JetBrains Mono', monospace; }
 
@@ -3115,8 +3118,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         }
         /* 各項目ボタン：背景透明・アクセント色・小さめだが指で押せるサイズ。 */
         .quicknav-btn {
+          width: 60px;            /* 全ボタン共通の固定幅。文字数に関係なく横幅を統一 */
           min-height: 30px;
-          padding: 5px 11px;
+          padding: 5px 0;         /* 幅を固定したので左右パディングは0にして中央寄せ */
+          text-align: center;
           border-radius: 999px;
           border: 1px solid rgba(79, 168, 216, 0.55);
           background: transparent;
@@ -3138,8 +3143,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         /* 「トップへ戻る」ボタン。項目ボタンと同じ小型・背景透明のピル。
            区別できるよう文字色だけピンクにする。着地先は #simulator（入力フォーム先頭）。 */
         .back-to-top {
+          width: 60px;            /* クイックジャンプと同じ固定幅で統一 */
           min-height: 30px;
-          padding: 5px 11px;
+          padding: 5px 0;
+          text-align: center;
           border-radius: 999px;
           border: 1px solid rgba(230, 138, 176, 0.6);
           background: transparent;
