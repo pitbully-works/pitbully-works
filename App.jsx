@@ -1007,7 +1007,7 @@ function SectionNav({ items }) {
   };
   return (
     // id="section-nav" は、各セクションの「一覧へ戻る」ボタンの戻り先
-    <div className="card no-print" id="section-nav" style={{ marginBottom: 18 }}>
+    <div className="card section-block no-print" id="section-nav" style={{ borderColor: "#4FA8D8", marginBottom: 18 }}>
       <div className="chart-label">{t("sectionNavTitle")}</div>
       <div className="section-nav">
         {items.map(({ index, title, icon: Icon }) => (
@@ -3712,7 +3712,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       `}</style>
 
       <div className="landing">
-        <div className="landing-hero">
+        <div className="landing-hero" style={{ border: "1.5px solid #4FA8D8", borderRadius: 8, padding: 20, marginBottom: 22 }}>
           <h1>{t("landingTitle")}</h1>
           <p className="landing-free-notice">
             <strong>{t("landingFreeBadge")}</strong><br />
@@ -3800,6 +3800,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         </p>
       </div>
 
+      {/* トップの見出しブロックにも、他のセクションと同じ枠（囲い線）を付ける。
+          中の各要素は元々パディングを持つので、枠側の padding は 0 にして二重にしない。 */}
+      <div className="section-block" style={{ borderColor: "#4FA8D8", padding: 0, overflow: "hidden", marginBottom: 12 }}>
       <div className="titleblock" id="simulator">
         <div>
           <h1>
@@ -3940,6 +3943,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         <div>
           <a className="footer-mail" href="mailto:pdr.gifu@gmail.com">{"✉️ pdr.gifu@gmail.com"}</a>
         </div>
+      </div>
+      {/* ← トップ見出しブロックの枠 ここまで */}
       </div>
       {country !== "JP" && (
         <div className="locale-preview-warning no-print">
@@ -5125,8 +5130,15 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                   ))}
                 </select>
               </label>
-              <StatCard label={t("surplusBalanceAtAgeLabel", { age: effectiveSurplusFocusAge })} value={money(surplusAtFocus)} tone="good" />
-              <StatCard label={t("availableAtAgeLabel", { age: effectiveSurplusFocusAge })} value={money(availableAtFocus)} tone="good" />
+            </div>
+            {/* 「余剰金残高（◯歳時点）」と「◯歳で使える金額」の2つは横に並べる */}
+            <div style={{ display: "flex", gap: 12, marginTop: 12 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <StatCard label={t("surplusBalanceAtAgeLabel", { age: effectiveSurplusFocusAge })} value={money(surplusAtFocus)} tone="good" />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <StatCard label={t("availableAtAgeLabel", { age: effectiveSurplusFocusAge })} value={money(availableAtFocus)} tone="good" />
+              </div>
             </div>
             <div className="note" style={{ marginTop: 8 }}>
               <Info size={13} />
