@@ -3707,6 +3707,14 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           max-width: 640px; margin: 22px auto 0;
           font-size: 11px; line-height: 1.7; color: var(--muted); text-align: center;
         }
+        /* 紹介ページ＋見出しの本文（説明・サブ・免責）を、見出しと同じはっきりした白に統一。
+           数値のアクセント色（.meta の青い span 等）は、より詳細度が高いので影響しない。 */
+        .landing-sub,
+        .landing-screenshot p,
+        .landing-blog-section p,
+        .landing-disclaimer,
+        .titleblock .sub,
+        .titleblock .meta { color: var(--text); }
         /* 「このアプリについて」の免責事項の下に出す開発者クレジット。 */
         .app-credit {
           margin: 10px 0 0;
@@ -3720,7 +3728,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         }
       `}</style>
 
-      <div className="landing" style={{ border: "1.5px solid #4FA8D8", borderRadius: 8, marginBottom: 16 }}>
+      <div className="landing" style={{ border: "1px solid #2A363C", background: "#151C20", borderRadius: 8, marginBottom: 16 }}>
         <div className="landing-hero">
           <h1>{t("landingTitle")}</h1>
           <p className="landing-free-notice">
