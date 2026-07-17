@@ -3711,8 +3711,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         }
       `}</style>
 
-      <div className="landing">
-        <div className="landing-hero" style={{ border: "1.5px solid #4FA8D8", borderRadius: 8, padding: 20, marginBottom: 22 }}>
+      <div className="landing" style={{ border: "1.5px solid #4FA8D8", borderRadius: 8, marginBottom: 16 }}>
+        <div className="landing-hero">
           <h1>{t("landingTitle")}</h1>
           <p className="landing-free-notice">
             <strong>{t("landingFreeBadge")}</strong><br />
