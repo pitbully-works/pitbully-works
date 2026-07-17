@@ -589,6 +589,7 @@ export const JA_TRANSLATIONS = {
     "landingAudience4": "年金と資産をまとめて管理したい方",
     "landingAudience5": "ライフプランを見える化したい方",
     "landingAudienceTitle": "こんな方におすすめ",
+    "landingBlogComingSoon": "準備中です。",
     "landingBlogCta": "資産形成コラムを見る",
     "landingBlogDesc1": "老後資産・NISA・年金・保険・ライフプランに役立つ情報を分かりやすく解説しています。",
     "landingBlogDesc2": "シミュレーションだけでは伝えきれない考え方や資産形成のポイントも随時更新していきます。",

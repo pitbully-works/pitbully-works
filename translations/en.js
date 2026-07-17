@@ -589,6 +589,7 @@ export const EN_TRANSLATIONS = {
     "landingAudience4": "Anyone who wants to manage pensions and assets together",
     "landingAudience5": "Anyone who wants to visualize their life plan",
     "landingAudienceTitle": "Who This Is For",
+    "landingBlogComingSoon": "The articles are currently available in Japanese only. An English version is in preparation.",
     "landingBlogCta": "Read the Articles",
     "landingBlogDesc1": "Clear explanations on retirement savings, tax-advantaged investing, pensions, insurance, and life planning.",
     "landingBlogDesc2": "Regularly updated with ideas and insights that go beyond what the simulation alone can show.",
