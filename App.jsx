@@ -1545,6 +1545,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const money = useCallback((n) => formatMoneyFor(baseCurrency, n), [baseCurrency]);
   const label = useCallback((key) => getCategoryLabel(key, country), [country]);
   const t = useCallback((key, vars) => translateWith(language, key, vars), [language]);
+  // 海外（日本語以外）でコラムを開こうとしたときに「準備中」表示を出すためのフラグ
+  const [blogComingSoon, setBlogComingSoon] = useState(false);
   // Field/表示用の単位文字列（通貨のみ切替、円建て表示のロジック自体は変更しない）
   const currencySymbol = (CURRENCY_BY_CODE[baseCurrency] || CURRENCY_BY_CODE.JPY).symbol;
   const localeValue = useMemo(
@@ -3775,9 +3777,21 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               {t("landingBlogDesc1")}<br />
               {t("landingBlogDesc2")}
             </p>
-            <button className="landing-cta" onClick={onOpenBlog}>
+            <button
+              className="landing-cta"
+              onClick={() => {
+                // 日本語表示のときだけコラムへ遷移。それ以外は「準備中」を表示して遷移しない。
+                if (language === "ja") onOpenBlog();
+                else setBlogComingSoon(true);
+              }}
+            >
               {t("landingBlogCta")}
             </button>
+            {blogComingSoon && language !== "ja" && (
+              <p style={{ marginTop: 12, fontSize: 13, color: "#D9A54F" }}>
+                {t("landingBlogComingSoon")}
+              </p>
+            )}
           </div>
         )}
 
