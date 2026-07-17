@@ -3988,35 +3988,71 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         </div>
       )}
 
-      {/* ===== トップ統合ダッシュボード（フェーズ4）=====
-          「未来現在統合財布」の要約。すべて単一の integrated と inputs から読み出す
-          表示専用ブロックで、エンジンの計算には一切影響しない（点10）。
-            現在値   … integrated.yearly[0]（totalAssets / accessibleAssets / surplusBalance）
-            生活防衛資金 … inputs.emergencyFund（表示専用）
-            自由に使える金額 … freeToSpend（accessibleAssets − 生活防衛資金 − 近い将来の予定支出）
-            65/75/95歳の資産 … integratedRowAt(age).netWorth（純資産＝借入を差し引いた見込み）
-          余剰金・生活防衛資金・自由に使える金額は銀行預金の内数や差引の目安で、
-          総資産には二重加算しない。 */}
+      {/* ===== トップ統合ダッシュボード（フェーズ4＋UX改善 A〜F）=====
+          単一の integrated と inputs から読み出す表示専用ブロック。エンジンは無変更。
+          A: 総資産0のときは空状態の案内を出す（¥0の羅列を避ける）
+          B: 各カードに一言ヘルプ（?）を付ける
+          C: 「資産寿命（枯渇年齢）」「生涯の最終純資産」を結論として表示
+          D: モバイルでも見やすい自動2列グリッド
+          E: 「使える資産」の内訳（銀行・投資・金・株）を sub に表示（accessible* から）
+          F: 余剰金・急な出費（What-if）セクションへのジャンプ導線 */}
       <div className="section-block wallet-dashboard" style={{ borderColor: "#5FB0A0", marginBottom: 12 }}>
         <div className="stat-sub" style={{ marginBottom: 8 }}>{t("walletDashboardTitle")}</div>
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <StatCard label={t("dashTotalAssetsLabel")} value={money(integrated.yearly[0]?.totalAssets ?? 0)} />
-          <StatCard label={t("dashAccessibleLabel")} value={money(accessibleNow)} tone="good" />
-          <StatCard label={t("dashSurplusLabel")} value={money(surplusAtCurrent)} />
-          <StatCard label={t("dashEmergencyLabel")} value={money(Number(inputs.emergencyFund) || 0)} />
-          <StatCard label={t("dashFreeToSpendLabel")} value={money(freeToSpend)} tone="good" />
-          {[65, 75, 95].map((age) => (
-            <StatCard
-              key={age}
-              label={t("dashAssetsAtAgeLabel", { age })}
-              value={money(integratedRowAt(age)?.netWorth ?? 0)}
-            />
-          ))}
-        </div>
-        <div className="note" style={{ marginTop: 8 }}>
-          <Info size={13} />
-          <span>{t("walletDashboardNote")}</span>
-        </div>
+        {(integrated.yearly[0]?.totalAssets ?? 0) <= 0 ? (
+          <div className="stat-sub" style={{ opacity: 0.8 }}>{t("dashEmptyHint")}</div>
+        ) : (
+          <div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 12 }}>
+              <StatCard label={t("dashTotalAssetsLabel")} value={money(integrated.yearly[0]?.totalAssets ?? 0)} hint={t("dashTotalAssetsHint")} />
+              <StatCard
+                label={t("dashAccessibleLabel")}
+                value={money(accessibleNow)}
+                tone="good"
+                hint={t("dashAccessibleHint")}
+                sub={(() => {
+                  const r = integrated.yearly[0] || {};
+                  const parts = [
+                    [t("dashGroupBank"), r.accessibleBank],
+                    [t("dashGroupInvestment"), r.accessibleInvestment],
+                    [t("dashGroupGold"), r.accessibleGold],
+                    [t("dashGroupStock"), r.accessibleStock],
+                  ].filter(([, v]) => Number(v) > 0).map(([lab, v]) => `${lab} ${money(v)}`);
+                  return parts.length ? parts.join(" ・ ") : undefined;
+                })()}
+              />
+              <StatCard label={t("dashSurplusLabel")} value={money(surplusAtCurrent)} hint={t("dashSurplusHint")} />
+              <StatCard label={t("dashEmergencyLabel")} value={money(Number(inputs.emergencyFund) || 0)} hint={t("dashEmergencyHint")} />
+              <StatCard label={t("dashFreeToSpendLabel")} value={money(freeToSpend)} tone="good" hint={t("dashFreeToSpendHint")} />
+              {[65, 75, 95].map((age) => (
+                <StatCard
+                  key={age}
+                  label={t("dashAssetsAtAgeLabel", { age })}
+                  value={money(integratedRowAt(age)?.netWorth ?? 0)}
+                  hint={t("dashAssetsAtAgeHint")}
+                />
+              ))}
+              <StatCard
+                label={t("dashLifespanLabel")}
+                value={integrated.depletionAge ? t("statDepletionAtAge", { age: Math.round(integrated.depletionAge) }) : t("statNeverDepletes")}
+                tone={integrated.depletionAge ? "danger" : "good"}
+                hint={t("dashLifespanHint")}
+              />
+              <StatCard label={t("dashFinalNetWorthLabel")} value={money(integrated.finalNetWorth ?? 0)} hint={t("dashFinalNetWorthHint")} />
+            </div>
+            <button
+              type="button"
+              className="history-toggle no-print"
+              style={{ marginTop: 10 }}
+              onClick={() => document.getElementById("section-surplus-balance")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            >
+              {t("dashOpenSurplus")}
+            </button>
+            <div className="note" style={{ marginTop: 8 }}>
+              <Info size={13} />
+              <span>{t("walletDashboardNote")}</span>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="grid-main">

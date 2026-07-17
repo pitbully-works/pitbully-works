@@ -963,3 +963,72 @@ describe("急な出費 What-if のデータ契約（非破壊・単一 integrate
     });
   });
 });
+
+// ============================================================================
+// UX改善 A〜F：ダッシュボードの追加要素のデータ契約（すべて単一 integrated 源・表示専用）
+// ============================================================================
+describe("ダッシュボードUX改善（A空状態・C結論・E内訳・翻訳）", () => {
+  const near = (a, b, t = 1) => Math.abs(a - b) <= t;
+  const bankPool = (b) => [{ id: "bank", group: "bank", balance: b, annualReturnPct: 0, drawOrder: 1 }];
+
+  it("A: 総資産0のとき yearly[0].totalAssets<=0（空状態の案内を出すゲート）", () => {
+    const res = runIntegratedPlan({
+      currentAge: 40, retireAge: 65, deathAge: 90, livingCostMonthly: 0, publicPensions: [],
+      healthCostAnnual: () => 0, surplusTargetId: "bank", pools: bankPool(0),
+    });
+    assert.ok((res.yearly[0]?.totalAssets ?? 0) <= 0, `total=${res.yearly[0]?.totalAssets}`);
+  });
+
+  it("C: 資産寿命カード＝depletionAge（枯渇するシナリオでは年齢、しないシナリオでは null）", () => {
+    // 収入なし・生活費だけ → 枯渇する。
+    const deplete = runIntegratedPlan({
+      currentAge: 65, retireAge: 65, deathAge: 95, livingCostMonthly: 200000, publicPensions: [],
+      healthCostAnnual: () => 0, surplusTargetId: "bank", pools: bankPool(5000000),
+    });
+    assert.ok(deplete.depletionAge !== null && deplete.depletionAge > 65, `depletion=${deplete.depletionAge}`);
+    // 年金≥生活費 → 枯渇しない。
+    const sustain = runIntegratedPlan({
+      currentAge: 65, retireAge: 65, deathAge: 95, livingCostMonthly: 150000,
+      publicPensions: [{ monthlyAmount: 200000, startAge: 65 }], healthCostAnnual: () => 0,
+      surplusTargetId: "bank", pools: bankPool(5000000),
+    });
+    assert.equal(sustain.depletionAge, null);
+  });
+
+  it("C: 生涯の最終純資産カード＝integrated.finalNetWorth＝末尾行の netWorth", () => {
+    const res = runIntegratedPlan({
+      currentAge: 65, retireAge: 65, deathAge: 80, livingCostMonthly: 150000,
+      publicPensions: [{ monthlyAmount: 200000, startAge: 65 }], healthCostAnnual: () => 0,
+      surplusTargetId: "bank", pools: bankPool(5000000),
+    });
+    assert.ok(near(res.finalNetWorth, res.yearly[res.yearly.length - 1].netWorth), `final=${res.finalNetWorth}`);
+  });
+
+  it("E: 使える資産の内訳（銀行・投資・金・株）は accessible* から取り、合計が accessibleAssets に一致", () => {
+    const res = runIntegratedPlan({
+      currentAge: 55, retireAge: 65, deathAge: 70, livingCostMonthly: 0, publicPensions: [],
+      healthCostAnnual: () => 0, surplusTargetId: "bank",
+      pools: [
+        { id: "bank", group: "bank", balance: 1000000, annualReturnPct: 0, drawOrder: 1 },
+        { id: "nisa", group: "investment", balance: 2000000, annualReturnPct: 0, drawOrder: 2 },
+        { id: "gold", group: "gold", balance: 500000, annualReturnPct: 0, drawOrder: 90 },
+        { id: "stock", group: "stock", balance: 800000, annualReturnPct: 0, drawOrder: 4 },
+      ],
+    });
+    const r = res.yearly[0];
+    // 内訳の表示に使う4値が存在し、合計が accessibleAssets に一致（0の項目は表示しない前提）。
+    assert.ok(near(r.accessibleBank, 1000000) && near(r.accessibleInvestment, 2000000) && near(r.accessibleGold, 500000) && near(r.accessibleStock, 800000));
+    assert.ok(near(r.accessibleBank + r.accessibleInvestment + r.accessibleGold + r.accessibleStock, r.accessibleAssets));
+  });
+
+  it("翻訳キー（UX改善 16個）が ja・en に存在する", () => {
+    const KEYS = ["dashEmptyHint", "dashTotalAssetsHint", "dashAccessibleHint", "dashSurplusHint",
+      "dashEmergencyHint", "dashFreeToSpendHint", "dashAssetsAtAgeHint", "dashLifespanLabel",
+      "dashLifespanHint", "dashFinalNetWorthLabel", "dashFinalNetWorthHint", "dashGroupBank",
+      "dashGroupInvestment", "dashGroupGold", "dashGroupStock", "dashOpenSurplus"];
+    KEYS.forEach((k) => {
+      assert.ok(typeof JA_TRANSLATIONS[k] === "string" && JA_TRANSLATIONS[k].length > 0, `ja に ${k} が無い`);
+      assert.ok(typeof EN_TRANSLATIONS[k] === "string" && EN_TRANSLATIONS[k].length > 0, `en に ${k} が無い`);
+    });
+  });
+});
