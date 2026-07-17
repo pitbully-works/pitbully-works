@@ -2921,14 +2921,15 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           --text: #E7ECEE;
           --muted: #7C8A90;
           --danger: #C2694F;
-          /* 右端のクイックジャンプ列ぶんの右余白。ボタン幅(60px)＋右10px＋隙間で算出。
-             各ページの囲い線がボタンに隠れないよう、この幅だけ内容を左に寄せる。 */
-          --quicknav-space: 76px;
+          /* 右端のクイックジャンプ列に、色付きの囲い線がちょうど届く幅。
+             ボタンは右端から10px＋幅60px＝右端70pxの位置にある。
+             この値を小さくすると囲い線が右（ボタン側）へ伸び、大きくすると左へ寄る。 */
+          --quicknav-space: 66px;
           font-family: 'Noto Sans JP', sans-serif;
           background: var(--bg);
           color: var(--text);
           min-height: 100vh;
-          padding: 0 var(--quicknav-space) 60px 0;
+          padding: 0 var(--quicknav-space) 60px 6px;
         }
         .mono { font-family: 'JetBrains Mono', monospace; }
 
@@ -2953,7 +2954,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           .titleblock { padding: 16px 14px 12px; align-items: flex-start; }
           .titleblock h1 { font-size: 19px; line-height: 1.35; }
           .titleblock .meta { width: 100%; gap: 6px 12px; }
-          .panel, .content { padding: 16px 14px; border-right: none; }
+          .panel, .content { padding: 16px 0; border-right: none; }
           .save-warning, .history-panel { padding-left: 14px; padding-right: 14px; }
           .footer-note { padding-left: 14px; padding-right: 14px; }
           .stat-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
