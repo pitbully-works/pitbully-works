@@ -2954,7 +2954,6 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           .titleblock { padding: 16px 14px 12px; align-items: flex-start; }
           .titleblock h1 { font-size: 19px; line-height: 1.35; }
           .titleblock .meta { width: 100%; gap: 6px 12px; }
-          .panel, .content { padding: 16px 0; border-right: none; }
           .save-warning, .history-panel { padding-left: 14px; padding-right: 14px; }
           .footer-note { padding-left: 14px; padding-right: 14px; }
           .stat-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -3026,6 +3025,21 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           border-right: 1px solid var(--line);
         }
         .content { padding: 20px 28px; }
+
+        /* スマホなど1カラム表示（≤880px）では、パネル／コンテンツの左右パディングを
+           0にして、中のカード（section-block）を上部ダッシュボードと同じ幅に揃える。
+           横フレームは .app のパディング（左6px／右 --quicknav-space）だけで決める。
+           ※このブロックは .panel / .content の基本ルールより後ろに置くこと。
+             CSSは同じ詳細度なら後勝ちなので、前に置くと基本ルールに負けて効かない。 */
+        @media (max-width: 880px) {
+          .panel, .content {
+            padding-left: 0;
+            padding-right: 0;
+            padding-top: 16px;
+            padding-bottom: 16px;
+            border-right: none;
+          }
+        }
 
         .section-block {
           border: 1.5px solid;
@@ -3908,7 +3922,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       <div className="app-credit">
         <div>{"© 2026 Kunihiko Hioki"}</div>
         <div>{"Developed by Kunihiko Hioki"}</div>
-        <div>{"Version 1.0.0"}</div>
+        <div>{"Version 1.0.1"}</div>
         <div>
           <a className="footer-mail" href="mailto:pdr.gifu@gmail.com">{"✉️ pdr.gifu@gmail.com"}</a>
         </div>
@@ -6133,7 +6147,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       <div className="footer-credit">
         <div>{"© 2026 Kunihiko Hioki"}</div>
         <div>{"Developed by Kunihiko Hioki"}</div>
-        <div>{"Version 1.0.0"}</div>
+        <div>{"Version 1.0.1"}</div>
         <div>
           <a className="footer-mail" href="mailto:pdr.gifu@gmail.com">{"✉️ pdr.gifu@gmail.com"}</a>
         </div>
