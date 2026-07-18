@@ -317,7 +317,11 @@ export const US_COUNTRY_RULES = {
           const taxableSurplus = Math.max(0, plan.taxable - spendOnlyPlan.taxable);
           estimatedTax = taxOnSpending + taxableSurplus * rmdSurplusTaxRate;
           ordinaryTaxableIncome = plan.taxable;
-          federalTax = 0; // SS非有効時は連邦税の詳細計算を行わないため0のまま
+          // Social Securityが無くても、暫定所得と税額のフィールドは同じ意味で埋める
+          // （給付が0なので暫定所得＝課税繰延引出＋非課税利子）。
+          // これらの意味が経路によって変わると、呼び出し側の検算が破綻するため。
+          provisionalIncome = plan.taxable + exemptInterest;
+          federalTax = estimatedTax;
         }
 
         // --- 収束した計画を、実際の残高に反映する ---
@@ -334,13 +338,14 @@ export const US_COUNTRY_RULES = {
         // 主な発生源は「RMDで生活費以上に強制的に引き出した分」と「SS給付が生活費を上回った分」。
         // どちらも課税口座（Brokerage）へ再投資する。
         const cashIn = totalWithdrawn + socialSecurityBenefit;
-        const cashOut = spendingNeed + (socialSecurityBenefit > 0 ? federalTax : estimatedTax);
+        // federalTax と estimatedTax は常に同じ値（SS有無で意味が変わらないよう統一済み）
+        const cashOut = spendingNeed + federalTax;
         const unusedCash = Math.max(0, cashIn - cashOut);
         if (unusedCash > 0) {
           // このうち「RMDによる強制引出が生活費を超えた分」を rmdSurplus として区別する。
           // 残りはSS給付などの収入余剰（incomeSurplus）。
           const rmdDriven = Math.max(0, taxableWithdrawn - Math.max(0, spendingNeed - socialSecurityBenefit));
-          rmdSurplusToBrokerage = Math.min(unusedCash, Math.max(0, rmdDriven - (socialSecurityBenefit > 0 ? federalTax : estimatedTax)));
+          rmdSurplusToBrokerage = Math.min(unusedCash, Math.max(0, rmdDriven - federalTax));
           incomeSurplusToBrokerage = unusedCash - rmdSurplusToBrokerage;
           balances.brokerage += unusedCash;
         }

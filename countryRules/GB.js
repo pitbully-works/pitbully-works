@@ -178,11 +178,41 @@ export const GB_COUNTRY_RULES = {
       basicFullWeeklyRate: 184.90,
       qualifyingYearsForFull: 35,
       minimumQualifyingYears: 10,
-      // State Pension age は2026年4月〜2028年4月にかけて66歳→67歳へ段階的に引き上げ中。
-      // 生年月日により66〜67歳と異なるため、アプリ側では固定せずユーザーが入力する。
+      // State Pension age は生年月日で法律により決まる（利用者の入力ではなく自動算出する）。
+      // 根拠：Pensions Act 2014 s.26（66→67の前倒し）／Pensions Act 2007 Sch.3（67→68）。
+      //   〜1960-04-05生まれ            → 66歳
+      //   1960-04-06〜1961-03-05生まれ  → 66歳1か月〜66歳11か月（1か月刻みで逓増）
+      //   1961-03-06〜1977-04-05生まれ  → 67歳
+      //   1977-04-06〜1978-04-05生まれ  → 移行期。下の TABLE 4 の固定日にSPAへ到達する
+      //   1978-04-06以降生まれ          → 68歳（68歳の誕生日に到達）
+      // 1954-10-06より前の生まれ（2026年時点で71歳以上）は既にSPAに到達済みのため66歳を返す。
       ageBefore2026: 66,
       ageAfterTransition: 67,
+      ageFrom2044: 68,
       defaultAge: 67,
+      // 段階的引上げの区切り（ISO日付）
+      transitionStart: "1960-04-06",   // これ以降、66歳から月単位で逓増
+      age67From: "1961-03-06",         // これ以降は67歳
+      age68TransitionStart: "1977-04-06", // これ以降、67→68の移行期に入る
+      age68From: "1978-04-06",         // これ以降は68歳（68歳の誕生日）
+      // Pensions Act 2007 Schedule 3 TABLE 4（GOV.UK「State Pension age timetable」Table 5と同一）。
+      // 移行期は「年齢」ではなく「SPAに到達する固定日」で定められているため、表をそのまま持つ。
+      // 実際の到達年齢は生年月日とこの固定日の差で決まり、区分内でも人によって異なる。
+      // 出典：https://www.legislation.gov.uk/ukpga/2007/22/schedule/3/enacted
+      age68Table: [
+        { from: "1977-04-06", to: "1977-05-05", spaDate: "2044-05-06" },
+        { from: "1977-05-06", to: "1977-06-05", spaDate: "2044-07-06" },
+        { from: "1977-06-06", to: "1977-07-05", spaDate: "2044-09-06" },
+        { from: "1977-07-06", to: "1977-08-05", spaDate: "2044-11-06" },
+        { from: "1977-08-06", to: "1977-09-05", spaDate: "2045-01-06" },
+        { from: "1977-09-06", to: "1977-10-05", spaDate: "2045-03-06" },
+        { from: "1977-10-06", to: "1977-11-05", spaDate: "2045-05-06" },
+        { from: "1977-11-06", to: "1977-12-05", spaDate: "2045-07-06" },
+        { from: "1977-12-06", to: "1978-01-05", spaDate: "2045-09-06" },
+        { from: "1978-01-06", to: "1978-02-05", spaDate: "2045-11-06" },
+        { from: "1978-02-06", to: "1978-03-05", spaDate: "2046-01-06" },
+        { from: "1978-03-06", to: "1978-04-05", spaDate: "2046-03-06" },
+      ],
       // 繰下げ受給：9週ごとに1%増額（1年＝52週の繰下げで約5.78%増）。英国では繰上げ受給はできない。
       // GOV.UK "Delay (defer) your State Pension"：最低9週間の繰下げが必要で、それ以降は比例して増額する。
       deferralUpliftPerNineWeeks: 0.01,
@@ -190,6 +220,94 @@ export const GB_COUNTRY_RULES = {
       deferralMinimumWeeks: 9,   // これ未満の繰下げでは増額しない
       weeksPerYear: 52,
       earlyClaimAllowed: false,
+    },
+    // 生年月日から法定の State Pension age を算出する（自動算出が標準）。
+    // 返り値は { years, months, ageInYears, isTransitional, spaDate, source }。
+    //   ageInYears は年単位の小数（例：66歳4か月 → 66.3333…）。計算にはこれを使う。
+    //   spaDate は到達日が法律で固定されている場合のみ入る（67→68の移行期）。
+    //   birthDate は "YYYY-MM-DD" 形式の文字列、または Date。
+    // 判定できない場合（未入力・不正値）は null を返し、呼び出し側が既定値を使えるようにする。
+    getStatePensionAge(birthDate) {
+      const sp = this.statePension;
+      if (!birthDate) return null;
+      const d = birthDate instanceof Date ? birthDate : new Date(String(birthDate));
+      if (Number.isNaN(d.getTime())) return null;
+      const toKey = (iso) => {
+        const p = String(iso).split("-").map(Number);
+        return p[0] * 10000 + p[1] * 100 + p[2];
+      };
+      const key = d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate();
+
+      // 1978-04-06以降 → 68歳（68歳の誕生日に到達）
+      if (key >= toKey(sp.age68From)) {
+        return { years: sp.ageFrom2044, months: 0, ageInYears: sp.ageFrom2044, isTransitional: false, spaDate: null, source: "Pensions Act 2007 Sch.3" };
+      }
+      // 1977-04-06〜1978-04-05 → 67→68の移行期。法定の固定日にSPAへ到達する。
+      if (key >= toKey(sp.age68TransitionStart)) {
+        const row = sp.age68Table.find((r) => key >= toKey(r.from) && key <= toKey(r.to));
+        if (row) {
+          const spa = new Date(`${row.spaDate}T00:00:00Z`);
+          // 生年月日から到達日までの正確な年数・月数を求める
+          let years = spa.getUTCFullYear() - d.getUTCFullYear();
+          let months = spa.getUTCMonth() - d.getUTCMonth();
+          let days = spa.getUTCDate() - d.getUTCDate();
+          if (days < 0) {
+            months -= 1;
+            // 前月の日数を足して日数を正の値にする
+            const prevMonth = new Date(Date.UTC(spa.getUTCFullYear(), spa.getUTCMonth(), 0));
+            days += prevMonth.getUTCDate();
+          }
+          if (months < 0) { years -= 1; months += 12; }
+          return {
+            years,
+            months,
+            days,
+            ageInYears: years + months / 12,
+            isTransitional: true,
+            spaDate: row.spaDate,
+            source: "Pensions Act 2007 Sch.3 Table 4",
+          };
+        }
+      }
+      // 1961-03-06〜1977-04-05 → 67歳
+      if (key >= toKey(sp.age67From)) {
+        return { years: sp.ageAfterTransition, months: 0, ageInYears: sp.ageAfterTransition, isTransitional: false, spaDate: null, source: "Pensions Act 2014 s.26" };
+      }
+      // 1960-04-06〜1961-03-05 → 66歳＋N か月（「6日〜翌5日」を1区切りとして数える）
+      if (key >= toKey(sp.transitionStart)) {
+        // 区切りの開始は1960-04-06。生年月日が各月の6日以降なら当月、5日以前なら前月の区切りに属する。
+        const y = d.getUTCFullYear();
+        const m = d.getUTCMonth() + 1; // 1-12
+        const day = d.getUTCDate();
+        const windowMonth = day >= 6 ? m : m - 1;   // 属する区切りの開始月
+        const windowYear = windowMonth === 0 ? y - 1 : y;
+        const normalizedMonth = windowMonth === 0 ? 12 : windowMonth;
+        // 1960年4月を1番目として何番目の区切りか
+        const monthsFromStart = (windowYear - 1960) * 12 + (normalizedMonth - 4) + 1;
+        const months = Math.min(11, Math.max(1, monthsFromStart));
+        return {
+          years: sp.ageBefore2026,
+          months,
+          ageInYears: sp.ageBefore2026 + months / 12,
+          isTransitional: true,
+          spaDate: null,
+          source: "Pensions Act 2014 s.26",
+        };
+      }
+      // 1960-04-05以前 → 66歳
+      return { years: sp.ageBefore2026, months: 0, ageInYears: sp.ageBefore2026, isTransitional: false, spaDate: null, source: "Pensions Act 2011" };
+    },
+    // 自動算出を標準とし、利用者が手動で上書きした場合のみその値を使う。
+    //   manualOverride が有効な数値（>0）ならそれを優先する。
+    //   そうでなければ生年月日から算出し、算出できなければ defaultAge を使う。
+    resolveStatePensionAge(birthDate, manualOverride) {
+      const manual = Number(manualOverride);
+      if (Number.isFinite(manual) && manual > 0) {
+        return { ageInYears: manual, isAuto: false, detail: null };
+      }
+      const auto = this.getStatePensionAge(birthDate);
+      if (auto) return { ageInYears: auto.ageInYears, isAuto: true, detail: auto };
+      return { ageInYears: this.statePension.defaultAge, isAuto: false, detail: null };
     },
     // 繰下げ受給による増額率（State Pension age より前は増額なし＝1.0）。
     // 端数を切り捨てず比例計算する（52週 → 52/9 × 1% ≒ 5.78%増）。
