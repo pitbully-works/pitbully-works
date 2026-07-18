@@ -14,6 +14,8 @@
 //   ・surplusLedger   … inputs.surplusLedger（既存の「使う」台帳）
 // ============================================================================
 
+import { normalizeSurplusEntry } from "./surplusLedger.js";
+
 // 「近い将来」の既定の年数。将来、設定で 3 年 / 5 年を選べるようにする余地を残す。
 export const NEAR_TERM_HORIZON_YEARS = 3;
 
@@ -56,9 +58,13 @@ export function nearTermPlannedExpenses(surplusLedger, currentAge, horizonYears 
   const to = Number(currentAge) + Number(horizonYears);
   if (!Number.isFinite(from) || !Number.isFinite(to)) return 0;
   return list.reduce((sum, e) => {
-    if (!e || e.kind !== "consume") return sum;
-    const age = normalizeExpenseAge(e.age, currentAge);
-    const amount = Number(e.amount);
+    if (!e) return sum;
+    // 種別は台帳の正規化と同じ判定を使う（保存データに kind が無い古い行も、
+    // 用途から consume と判定して予定支出に正しく数える）。
+    const entry = normalizeSurplusEntry(e);
+    if (entry.kind !== "consume") return sum;
+    const age = normalizeExpenseAge(entry.age, currentAge);
+    const amount = Number(entry.amount);
     if (!Number.isFinite(age) || !(amount > 0)) return sum;
     if (age < from - 1e-9 || age > to + 1e-9) return sum;
     return sum + amount;

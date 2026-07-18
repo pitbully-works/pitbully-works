@@ -49,6 +49,7 @@
 
 import { NOT_DRAWABLE } from "../lifePlanEngine.js";
 import { normalizeExpenseAge } from "./walletMetrics.js";
+import { normalizeSurplusLedger } from "./surplusLedger.js";
 import {
   ACCOUNT_DRAW_CATEGORY,
   drawOrderOf,
@@ -229,7 +230,11 @@ export function buildPlanInput(ctx, overrides = {}) {
   // 余剰金の「使う」台帳（第4段階4b）。consume だけをエンジンの一時支出として渡す
   // （銀行プールから一度だけ引く＝総資産がその分だけ減る）。transfer（預金へ回す・銀行へ戻す等）は
   // 総資産不変のラベル移動なので、エンジンには渡さない。ctx.inputs は読み取り専用のまま。
-  const surplusLedger = Array.isArray(inputs.surplusLedger) ? inputs.surplusLedger : [];
+  // 【正規化】保存データ由来の欠損（kind 無し・id 無し・id 重複）をここで吸収する。
+  // 正規化しないと、古い保存データの行が consume 判定から漏れて「使ったのに引かれない」、
+  // あるいは id 重複で実使用額の紐付けが崩れる。ctx.inputs は読み取り専用のまま
+  // （normalizeSurplusLedger は入力を一切書き換えず、新しい配列を返す）。
+  const surplusLedger = normalizeSurplusLedger(inputs.surplusLedger);
   const oneTimeExpenses = surplusLedger
     .filter((e) => e && e.kind === "consume" && Number(e.amount) > 0 && Number.isFinite(Number(e.age)))
     // id を引き継ぐ（エンジンが oneTimeExpenseResults で id 付きの実使用額/不足額を返し、
