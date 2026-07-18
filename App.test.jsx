@@ -476,7 +476,8 @@ describe("Canada (CA) core calculations", () => {
   it("every rule carries its tax year, last updated date and source", () => {
     [inv, ret, tax, CA_COUNTRY_RULES.healthcare].forEach((rule) => {
       expect(rule.effectiveTaxYear).toBe("2026");
-      expect(rule.lastUpdated).toBe("2026-07-13");
+      // 2026-07-18：OAS月額を7〜9月期へ更新し、RRIF最低取崩しの開始年齢を制度どおり72歳に修正した日
+      expect(rule.lastUpdated).toBe("2026-07-18");
       expect(rule.sourceName).toBeTruthy();
       expect(rule.sourceUrl).toBeTruthy();
     });
@@ -497,6 +498,8 @@ describe("Canada (CA) core calculations", () => {
 
   it("RRIF minimum withdrawal factors follow the CRA table", () => {
     expect(inv.rrifConversionAge).toBe(71);
+    // 転換は71歳末まで、最低取崩しの義務はその翌年（72歳の年）から
+    expect(inv.rrifFirstWithdrawalAge).toBe(72);
     expect(inv.getRrifMinimumFactor(70)).toBeCloseTo(0.05, 6);
     expect(inv.getRrifMinimumFactor(71)).toBeCloseTo(0.0528, 6);
     expect(inv.getRrifMinimumFactor(80)).toBeCloseTo(0.0682, 6);
@@ -523,8 +526,9 @@ describe("Canada (CA) core calculations", () => {
   });
 
   it("OAS increases by 10% from age 75 and is prorated by residence years", () => {
-    expect(ret.getOasMaxAnnual(70)).toBeCloseTo(743.05 * 12, 2);
-    expect(ret.getOasMaxAnnual(75)).toBeCloseTo(817.36 * 12, 2);
+    // 2026年7〜9月期の月額（7月支給分から+1.2%）を12倍した年換算額
+    expect(ret.getOasMaxAnnual(70)).toBeCloseTo(751.97 * 12, 2);
+    expect(ret.getOasMaxAnnual(75)).toBeCloseTo(827.17 * 12, 2);
     expect(ret.getOasResidenceFraction(40)).toBe(1);
     expect(ret.getOasResidenceFraction(20)).toBeCloseTo(0.5, 6);
     expect(ret.getOasResidenceFraction(5)).toBe(0);
@@ -595,7 +599,7 @@ describe("Canada (CA) core calculations", () => {
     expect(inv.splitAssets(71, a).isRrifPhase).toBe(true);
   });
 
-  it("the projection forces RRIF minimum withdrawals from age 71", () => {
+  it("the projection forces RRIF minimum withdrawals from age 72", () => {
     const accounts = {
       tfsa: { currentValue: 50_000, annualContribution: 7_000, expectedReturnPct: 5, contributionEndAge: 65 },
       rrsp: { currentValue: 200_000, annualContribution: 15_000, expectedReturnPct: 5, contributionEndAge: 65 },
@@ -604,8 +608,10 @@ describe("Canada (CA) core calculations", () => {
     };
     const sim = inv.simulateGrowth({ currentAge: 40, retireAge: 65, deathAge: 90, accounts, annualWithdrawalNeeded: 40_000 });
     expect(sim.yearly).toHaveLength(51);
+    // 71歳は転換の年。最低取崩しの義務が生じるのは翌年（72歳の年）から。
     expect(sim.yearly.find((y) => y.age === 70).rrifMinimum).toBe(0);
-    expect(sim.yearly.find((y) => y.age === 71).rrifMinimum).toBeGreaterThan(0);
+    expect(sim.yearly.find((y) => y.age === 71).rrifMinimum).toBe(0);
+    expect(sim.yearly.find((y) => y.age === 72).rrifMinimum).toBeGreaterThan(0);
     expect(sim.yearly.every((y) => Object.values(y.accounts).every((v) => v >= -0.01))).toBe(true);
   });
 
