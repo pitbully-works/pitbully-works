@@ -6,7 +6,7 @@
 
 // ---------- countryRules/CA.js 相当（カナダ版：実装済み） ----------
 // country: CA
-// lastUpdated: 2026-07-13
+// lastUpdated: 2026-07-18
 // source: canada.ca（CRA / Service Canada / ESDC）
 // 対象年度：2026課税年度（暦年）。CPP・OASの給付額は四半期ごとに物価連動で改定される。
 // 制度上限・税率はすべて CA_COUNTRY_RULES 内に集約し、画面や共通計算関数へ直接書かない。
@@ -17,7 +17,7 @@ export const CA_COUNTRY_RULES = {
   investment: {
     implemented: true,
     effectiveTaxYear: "2026",
-    lastUpdated: "2026-07-13",
+    lastUpdated: "2026-07-18",
     sourceName: "Government of Canada (CRA) — TFSA / RRSP contribution limits, RRIF minimum withdrawals",
     sourceUrl: "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/tax-free-savings-account.html",
     sourceUrls: {
@@ -38,9 +38,12 @@ export const CA_COUNTRY_RULES = {
       rrspAnnualDollarLimit: 33810,
       rrspIncomePercent: 0.18,
     },
-    // RRSPは71歳の年末までにRRIF（またはアニュイティ）へ強制転換され、
-    // 翌年から年齢別の最低取崩し率に従って引き出さなければならない。
+    // RRSPは71歳の年末までにRRIF（またはアニュイティ）へ強制転換される（rrifConversionAge）。
+    // 最低取崩しが義務づけられるのは転換の「翌年」＝72歳の年からで、その年の1月1日時点の
+    // 残高に年齢別の率を掛けた額を引き出す（rrifFirstWithdrawalAge）。
+    // 65〜71歳の率は、任意で早期にRRIFを開設した場合にのみ適用される。
     rrifConversionAge: 71,
+    rrifFirstWithdrawalAge: 72,
     // RRIF最低取崩し率（CRA公表テーブル。71歳以降が強制、65〜70歳は任意のRRIF開始時に適用）
     rrifMinimumFactors: {
       65: 0.0400, 66: 0.0417, 67: 0.0435, 68: 0.0455, 69: 0.0476, 70: 0.0500,
@@ -78,48 +81,71 @@ export const CA_COUNTRY_RULES = {
 
     // 4口座の残高を、現在の年齢から死亡想定年齢まで年単位で積み上げる。
     // 口座ごとに「現在額・年間積立額・想定利回り・積立終了年齢」を個別に持つ。
-    // 取崩し順：Non-Registered → Cash Savings → TFSA → RRSP
-    // （課税口座から先に取り崩し、非課税のTFSAとRRSPは後回しにする）
-    // ただし rrifConversionAge 以降は、RRSPからの最低取崩し額が強制的に発生する。
+    // 取崩し順：Cash Savings → Non-Registered → TFSA → RRSP
+    // （utils/simulations.js の ACCOUNT_DRAW_CATEGORY.CA = cash → taxable → taxFree →
+    //   restricted と完全に一致させること。ここが食い違うと、パネルのプレビューと
+    //   lifePlanEngine の本計算で取崩し順が変わり、結果が一致しなくなる）
+    // ただし rrifFirstWithdrawalAge 以降は、RRSPからの最低取崩し額が強制的に発生する。
     simulateGrowth({ currentAge, retireAge, deathAge, accounts, annualWithdrawalNeeded }) {
       const keys = this.accountTypes;
-      const balances = {}, contributions = {}, rates = {}, endAges = {};
+      const balances = {}, contributions = {}, rates = {}, endAges = {}, withdrawalTax = {};
       keys.forEach((k) => {
         const a = accounts[k] || {};
         balances[k] = Number(a.currentValue) || 0;
         contributions[k] = Number(a.annualContribution) || 0;
         rates[k] = (Number(a.expectedReturnPct) || 0) / 100;
         endAges[k] = Number(a.contributionEndAge) || 0;
+        // 引出時課税（%）。lifePlanEngine と同じ扱いにするため、ここでも税引後の手取りで計算する。
+        withdrawalTax[k] = Math.min(99, Math.max(0, Number(a.withdrawalTaxPct) || 0)) / 100;
       });
-      const withdrawalOrder = ["nonRegistered", "cashSavings", "tfsa", "rrsp"];
+      const withdrawalOrder = ["cashSavings", "nonRegistered", "tfsa", "rrsp"];
       const totalOf = (b) => keys.reduce((s, k) => s + b[k], 0);
       const startAge = Math.round(currentAge);
       const endAge = Math.round(deathAge);
-      const yearly = [{ age: startAge, value: totalOf(balances), accounts: { ...balances }, rrifMinimum: 0 }];
+      let withdrawalTaxPaid = 0;
+      const yearly = [{
+        age: startAge, value: totalOf(balances), accounts: { ...balances },
+        rrifMinimum: 0, rrifTax: 0, withdrawalTaxPaid: 0,
+      }];
       for (let age = startAge + 1; age <= endAge; age++) {
         keys.forEach((k) => { balances[k] = balances[k] * (1 + rates[k]); });
         keys.forEach((k) => { if (age <= endAges[k]) balances[k] += contributions[k]; });
 
-        // RRIF強制取崩し（71歳以降）。引き出した額は非登録口座へ移し、生活費に充てられる状態にする。
-        let rrifMinimum = 0;
-        if (age >= this.rrifConversionAge && balances.rrsp > 0) {
+        // RRIF強制取崩し（72歳以降）。引き出した額は全額が課税所得になるため、
+        // 税引後の手取りだけを非登録口座へ移す（税額 rrifTax のぶん総資産が減る）。
+        let rrifMinimum = 0, rrifTax = 0;
+        if (age >= this.rrifFirstWithdrawalAge && balances.rrsp > 0) {
           rrifMinimum = Math.min(balances.rrsp, this.getRrifMinimumWithdrawal(age, balances.rrsp));
+          const net = rrifMinimum * (1 - withdrawalTax.rrsp);
+          rrifTax = rrifMinimum - net;
           balances.rrsp -= rrifMinimum;
-          balances.nonRegistered += rrifMinimum;
+          balances.nonRegistered += net;
         }
+        withdrawalTaxPaid += rrifTax;
 
         if (age > retireAge) {
+          // 必要額は「手取り」ベース。課税口座からは 必要額 ÷ (1 − 税率) を引き出す。
           let remaining = Number(annualWithdrawalNeeded) || 0;
           for (const key of withdrawalOrder) {
             if (remaining <= 0) break;
-            const take = Math.min(balances[key], remaining);
-            balances[key] -= take;
-            remaining -= take;
+            const keep = 1 - withdrawalTax[key];
+            const grossWanted = keep > 0 ? remaining / keep : Infinity;
+            const gross = Math.min(balances[key], grossWanted);
+            const net = gross * keep;
+            balances[key] -= gross;
+            withdrawalTaxPaid += gross - net;
+            remaining -= net;
           }
         }
-        yearly.push({ age, value: totalOf(balances), accounts: { ...balances }, rrifMinimum });
+        yearly.push({
+          age, value: totalOf(balances), accounts: { ...balances },
+          rrifMinimum, rrifTax, withdrawalTaxPaid,
+        });
       }
-      return { yearly, finalValue: totalOf(balances), finalAccounts: { ...balances } };
+      return {
+        yearly, finalValue: totalOf(balances), finalAccounts: { ...balances },
+        withdrawalTaxPaid,
+      };
     },
 
     // 資産区分。
@@ -145,7 +171,8 @@ export const CA_COUNTRY_RULES = {
       "職域年金加入者のPension Adjustment（PA）によるRRSP枠の減額",
       "RRSP・TFSAの未使用枠の繰越（キャリーフォワード）",
       "FHSA（First Home Savings Account）／RESP／RDSP",
-      "RRSPからの引出し時の源泉徴収税（withholding tax）",
+      "RRSPからの引出し時の源泉徴収税（withholding tax）。引出時課税は口座ごとの withdrawalTaxPct（単一税率）で近似しており、実際の限界税率や源泉徴収率とは一致しない",
+      "RRIF最低取崩し率に配偶者（通常は年下の配偶者）の年齢を使う選択（spousal age election）。RRIF開設時に一度だけ選べ、以後は変更できない",
       "ケベック州のQPP（CPPと拠出率・給付が異なる）",
     ],
   },
@@ -153,7 +180,7 @@ export const CA_COUNTRY_RULES = {
   retirement: {
     implemented: true,
     effectiveTaxYear: "2026",
-    lastUpdated: "2026-07-13",
+    lastUpdated: "2026-07-18",
     sourceName: "Service Canada / ESDC — Canada Pension Plan, Old Age Security",
     sourceUrl: "https://www.canada.ca/en/services/benefits/publicpensions.html",
     sourceUrls: {
@@ -176,9 +203,10 @@ export const CA_COUNTRY_RULES = {
       lateIncreasePerMonth: 0.007,
     },
     oas: {
-      // 2026年4〜6月期の満額（月額）。OASは四半期ごとに物価連動で改定される。
-      maxMonthly65to74: 743.05,
-      maxMonthly75plus: 817.36,
+      // 2026年7〜9月期の満額（月額）。OASは四半期ごとに物価連動で改定される
+      // （2026年7月支給分から+1.2%：743.05→751.97 / 817.36→827.17）。
+      maxMonthly65to74: 751.97,
+      maxMonthly75plus: 827.17,
       enhancedAge: 75,   // 75歳以降は10%上乗せ
       standardAge: 65,
       latestAge: 70,
@@ -253,6 +281,11 @@ export const CA_COUNTRY_RULES = {
       "CPP拠出履歴からの受給見込額の自動算出（利用者が見込額を入力する方式）",
       "CPP post-retirement benefit（受給開始後も就労を続けた場合の増額）",
       "配偶者との年金分割（pension income splitting / CPP sharing）",
+      // 【B-3／将来対応】OAS回収税の判定所得は、本来はその年の純世界所得（OAS本体・CPP・
+      //   RRIF強制取崩し・非登録口座の課税所得を含み、TFSA引出しは含まない）で毎年
+      //   再計算すべきもの。現行は利用者が入力した年間総所得（annualIncome）を全期間
+      //   一定として扱うため、RRIF最低取崩し率が上がる80代以降のクローバックを過小評価する。
+      "OAS回収税の判定所得を、退職後の純世界所得から年ごとに再計算すること（現行は入力値で固定）",
     ],
   },
 
@@ -262,7 +295,7 @@ export const CA_COUNTRY_RULES = {
     // 自己負担が生じうる費目のみ年間費用を入力する簡易モデル。
     model: "selfInputAnnualCostsWithProvincialCoverage",
     effectiveTaxYear: "2026",
-    lastUpdated: "2026-07-13",
+    lastUpdated: "2026-07-18",
     sourceName: "Government of Canada — Canada's health care system",
     sourceUrl: "https://www.canada.ca/en/health-canada/services/canada-health-care-system.html",
     costItems: [
@@ -296,7 +329,7 @@ export const CA_COUNTRY_RULES = {
     implemented: true,
     model: "canadaFederalIncomeTax",
     effectiveTaxYear: "2026",
-    lastUpdated: "2026-07-13",
+    lastUpdated: "2026-07-18",
     sourceName: "Canada Revenue Agency (CRA) — Federal tax rates and income brackets",
     sourceUrl: "https://www.canada.ca/en/revenue-agency/services/tax/individuals/tax-rates-brackets/current-year.html",
     sourceUrls: {
