@@ -235,6 +235,17 @@ describe("完成条件2：不足時は実際に使えた金額と不足額を返
     });
   });
 
+  it("全額使えた行でも3行表示に必要な値が揃う（要求額＝実使用・不足額0）", () => {
+    // 実機：余剰24万に対して20万を要求 → 要求20万 / 実使用20万 / 不足0
+    const ledger = [{ id: "a", age: 66, category: "living", amount: 200000 }];
+    const res = runLedger(ledger);
+    const s = summarizeSurplusUsage(ledger, res.oneTimeExpenseResults)[0];
+    expect(s.status).toBe(SURPLUS_USE_STATUS.FULL);
+    expect(near(s.requestedAmount, 200000)).toBe(true);
+    expect(near(s.actuallySpent, 200000)).toBe(true);
+    expect(s.insufficientSurplusAmount).toBe(0);
+  });
+
   it("3行表示に必要な値（要求額・実使用・不足額）が要約に揃っている", () => {
     // 実機と同じ：余剰24万に対して50万を要求 → 要求50万 / 実使用24万 / 不足26万
     const ledger = [{ id: "a", age: 66, category: "living", amount: 500000 }];
