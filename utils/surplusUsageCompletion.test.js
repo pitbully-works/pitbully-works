@@ -223,18 +223,28 @@ describe("完成条件2：不足時は実際に使えた金額と不足額を返
     expect(near(res.cumulativeOneTimeSpent, 100000)).toBe(true);
   });
 
-  it("翻訳キー surplusPartialUse / surplusNotApplied が ja・en に存在し、補間トークンを含む", () => {
-    ["surplusPartialUse", "surplusNotApplied"].forEach((k) => {
+  it("翻訳キー（要求額・実使用・不足額・未反映）が ja・en に存在する", () => {
+    // 履歴行は「要求額 / 実使用 / 不足額」の3行で表示するため、ラベルが3つとも必要。
+    [
+      "surplusRequestedLabel", "surplusSpentLabel", "surplusShortfallLabel", "surplusNotApplied",
+    ].forEach((k) => {
       expect(typeof JA_TRANSLATIONS[k]).toBe("string");
       expect(JA_TRANSLATIONS[k].length).toBeGreaterThan(0);
       expect(typeof EN_TRANSLATIONS[k]).toBe("string");
       expect(EN_TRANSLATIONS[k].length).toBeGreaterThan(0);
     });
-    // 「実際に使えた金額」と「不足額」の両方を出せる文面であること。
-    ["{spent}", "{shortfall}"].forEach((tok) => {
-      expect(JA_TRANSLATIONS.surplusPartialUse.includes(tok)).toBe(true);
-      expect(EN_TRANSLATIONS.surplusPartialUse.includes(tok)).toBe(true);
-    });
+  });
+
+  it("3行表示に必要な値（要求額・実使用・不足額）が要約に揃っている", () => {
+    // 実機と同じ：余剰24万に対して50万を要求 → 要求50万 / 実使用24万 / 不足26万
+    const ledger = [{ id: "a", age: 66, category: "living", amount: 500000 }];
+    const res = runLedger(ledger);
+    const s = summarizeSurplusUsage(ledger, res.oneTimeExpenseResults)[0];
+    expect(near(s.requestedAmount, 500000)).toBe(true);
+    expect(near(s.actuallySpent, 240000)).toBe(true);
+    expect(near(s.insufficientSurplusAmount, 260000)).toBe(true);
+    // 3つの値は互いに矛盾しない（要求額＝実使用＋不足額）。
+    expect(near(s.actuallySpent + s.insufficientSurplusAmount, s.requestedAmount)).toBe(true);
   });
 });
 
