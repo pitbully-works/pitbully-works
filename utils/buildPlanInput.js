@@ -212,7 +212,13 @@ export function buildPlanInput(ctx, overrides = {}) {
     boundaries.push(D.gbEffectiveClaimAge, rules.investment.pensionAccessAge);
     Object.values(inputs.gbInvestment).forEach((a) => { if (a && a.contributionEndAge) boundaries.push(a.contributionEndAge); });
   } else if (country === "CA") {
-    boundaries.push(D.caCppStartAge, D.caOasStartAge, rules.investment.rrifConversionAge);
+    boundaries.push(D.caCppStartAge, D.caOasStartAge);
+    if (rules.investment.implemented) {
+      // RRIFは71歳末に転換、最低取崩しは72歳の年から。両方を境界に積む。
+      boundaries.push(rules.investment.rrifConversionAge, rules.investment.rrifFirstWithdrawalAge);
+    }
+    // OASは75歳到達で満額が10%上乗せされるので、その年齢でステップを割る。
+    if (rules.retirement.implemented) boundaries.push(rules.retirement.oas.enhancedAge);
     Object.values(inputs.caInvestment).forEach((a) => { if (a && a.contributionEndAge) boundaries.push(a.contributionEndAge); });
   } else if (country === "AU") {
     boundaries.push(D.auAgePensionQualifyingAge, rules.investment.preservationAge);
@@ -395,11 +401,14 @@ export function buildPlanInput(ctx, overrides = {}) {
         withdrawalTaxPct: Number(a.withdrawalTaxPct) || 0,
         drawOrder: ord(key, i),
       };
-      // RRIF：71歳以降はRRSPから最低取崩し額が強制的に発生し、非登録口座へ移る
+      // RRIF：71歳末にRRSPからRRIFへ強制転換され、72歳の年から最低取崩し額が
+      // 強制的に発生して非登録口座へ移る。就労を続けていても年齢だけで義務が生じるため、
+      // 退職年齢による年齢ゲート（minimumDrawdownRequiresRetirement）は外す。
       if (key === "rrsp") {
         pool.minimumDrawdown = (age, bal) =>
-          (age >= inv.rrifConversionAge ? inv.getRrifMinimumWithdrawal(age, bal) : 0);
+          (age >= inv.rrifFirstWithdrawalAge ? inv.getRrifMinimumWithdrawal(age, bal) : 0);
         pool.minimumDrawdownTo = "nonRegistered";
+        pool.minimumDrawdownRequiresRetirement = false;
       }
       pools.push(pool);
     });
@@ -554,11 +563,26 @@ export function buildPlanInput(ctx, overrides = {}) {
   } else if (country === "CA") {
     healthCostAnnual = () => D.caHealthcareAnnual;
     publicPensions.push({ monthlyAmount: D.caCppAnnual / 12, startAge: D.caCppStartAge });
-    publicPensions.push({
-      monthlyAmount: D.caOasAnnual / 12,
-      startAge: rules.retirement.implemented
-        ? rules.retirement.getOasEffectiveStartAge(D.caOasStartAge) : D.caOasStartAge,
-    });
+    if (rules.retirement.implemented) {
+      // OASは受給中も金額が変わる（75歳到達で満額が10%上乗せ）。受給開始年齢で固定した
+      // 単一の月額ではなく、その年齢時点の月額を返す関数をエンジンへ渡す。
+      // クローバックの判定所得は現行仕様どおり入力値（annualIncome）で固定する。
+      // ※ 本来は毎年の純世界所得で再計算すべきもの。CA.js の retirement.notImplemented を参照。
+      const ret = rules.retirement;
+      const caOas = (inputs.caInvestment || {}).oas || {};
+      const caOasResidenceYears = Number(caOas.residenceYears) || 0;
+      const caOasNetIncome = Number((inputs.caInvestment || {}).annualIncome) || 0;
+      publicPensions.push({
+        monthlyAmount: D.caOasAnnual / 12,
+        monthlyAmountAt: (age) => ret.getOasAnnualAfterClawback(
+          caOasNetIncome,
+          ret.getOasAnnualBeforeClawback(age, D.caOasStartAge, caOasResidenceYears),
+        ) / 12,
+        startAge: ret.getOasEffectiveStartAge(D.caOasStartAge),
+      });
+    } else {
+      publicPensions.push({ monthlyAmount: D.caOasAnnual / 12, startAge: D.caOasStartAge });
+    }
     publicPensions.push({ monthlyAmount: D.caAdditionalPensionAnnual / 12, startAge: retireAge });
   } else if (country === "AU") {
     healthCostAnnual = () => D.auHealthcareAnnual;
