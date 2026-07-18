@@ -187,7 +187,7 @@ export {
 import { buildPlanInput, CONTRIBUTION_MULTIPLIERS } from "./utils/buildPlanInput.js";
 import {
   SURPLUS_CATEGORIES, surplusKindForCategory, normalizeSurplusLedger,
-  removeSurplusEntry, summarizeSurplusUsage, SURPLUS_USE_STATUS,
+  removeSurplusEntry, summarizeSurplusUsage, SURPLUS_USE_STATUS, surplusBalanceNow,
 } from "./utils/surplusLedger.js";
 import { nearTermPlannedExpenses, freeToSpendNow, availableToSpendAtAge, withWhatIfExpense, summarizeWhatIfImpact, NEAR_TERM_HORIZON_YEARS } from "./utils/walletMetrics.js";
 // シナリオ比較（現在プラン vs 比較プラン）。既存エンジンを2回呼ぶだけで、新しい計算式は無い。
@@ -2578,7 +2578,15 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   //   選択年齢時点 = integratedRowAt(effectiveSurplusFocusAge).surplusBalance
   // これにより、公的年金・iDeCo・民間年金いずれの余剰も、総資産グラフと同じ計算源から
   // 一貫して表示される（旧 surplusPrivateUpTo の民間年金だけの別計算は廃止）。
-  const surplusAtCurrent = integrated.yearly[0]?.surplusBalance ?? (Number(inputs.initialSurplusBalance) || 0);
+  // 【現在時点の残高】先頭スナップショット（yearly[0]）は「現在年齢の処理を行う前」の値なので、
+  // 現在年齢で余剰金を使ってもそのままでは減って見えない。エンジンが返した実使用額のうち
+  // 現在年齢までに済んだ分を差し引いて、利用者の感覚（使ったら減る）と一致させる。
+  // 引かれた額はエンジン側で銀行残高に反映済みなので、ここで二重に引くことはない。
+  const surplusAtCurrent = surplusBalanceNow({
+    snapshotBalance: integrated.yearly[0]?.surplusBalance ?? (Number(inputs.initialSurplusBalance) || 0),
+    oneTimeExpenseResults: integrated.oneTimeExpenseResults,
+    currentAge: effectiveCurrentAge,
+  });
   const surplusAtFocus = integratedRowAt(effectiveSurplusFocusAge)?.surplusBalance ?? 0;
 
   // 【表示専用】現在自由に使える金額。すべて単一の integrated と inputs から導出する。
