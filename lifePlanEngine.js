@@ -121,6 +121,11 @@ export function buildAgeSteps(currentAge, deathAge, boundaries) {
  * @param {Array}  p.insurancePolicies   [{ monthlyPremium, premiumFromAge, premiumToAge }]
  * @param {Array}  p.privatePensionPlans [{ poolId, monthlyPayout, payoutFromAge, payoutToAge }]
  * @param {Array}  p.publicPensions      [{ monthlyAmount, startAge }]
+ *        monthlyAmountAt(age, ctx) を持つ場合はそちらが優先される。
+ *        ctx = { assessedAssets, deemedAssets, totalAssets }。
+ *        assessedAssets は assessedPoolIds（プールidの配列）で指定したプールの残高合計、
+ *        deemedAssets は deemedPoolIds で指定したプールの残高合計。どちらも未指定なら null。
+ *        資力調査のある公的年金（豪Age Pension）はこれを使って毎ステップ再判定する。
  *        公的年金。国ごとに受給開始年齢が異なる（US: Social Security の claim age、
  *        GB: State Pension の effective claim age、CA: CPP と OAS で別々、
  *        AU: Age Pension の qualifying age）ため、ストリームごとに開始年齢を持つ。
@@ -407,15 +412,37 @@ export function runIntegratedPlan(p) {
     let cash = 0;
 
     // 公的年金：ストリームごとの受給開始年齢に達してから。退職年齢では始まらない。
-    // monthlyAmountAt(age) を持つストリームは、その年齢時点の月額で評価する。
-    // （加OASの75歳到達による10%上乗せのように、受給中に金額が変わる制度のため。
-    //   年齢の境界は buildPlanInput 側で boundaries に積んでステップを割る。）
+    //
+    // monthlyAmountAt(age, ctx) を持つストリームは、その時点で月額を再評価する。
+    //   ・年齢だけで変わる制度（加OASの75歳到達による10%上乗せ）→ 第1引数だけを使う
+    //   ・資力調査のある制度（豪Age Pensionの資産テスト）→ ctx.assessedAssets を使う
+    // ctx.assessedAssets は assessedPoolIds で指定されたプールの現在残高の合計（資産テスト用）。
+    // ctx.deemedAssets は deemedPoolIds で指定されたプールの現在残高の合計
+    //   （みなし収入＝豪Deemingの対象となる金融資産。資産テストの対象と範囲が異なるため別枠）。
+    // どちらも指定がなければ null（その調査を行わない制度は参照しない）。
+    // 資産は毎ステップ変動するため、ここでの再評価が「毎年の再判定」に相当する。
+    // 年齢の境界（受給開始年齢・金額が変わる年齢）は buildPlanInput 側で
+    // boundaries に積んでステップを割ること。
+    const assessedAssetsOf = (ids) => {
+      if (!Array.isArray(ids) || ids.length === 0) return null;
+      return ids.reduce((sum, id) => {
+        const pool = poolById.get(id);
+        return sum + (pool ? clampZero(pool.balance) : 0);
+      }, 0);
+    };
     publicPensions.forEach((ps) => {
       if (ageStart < num(ps.startAge) - EPS) return;
-      const monthly = typeof ps.monthlyAmountAt === "function"
-        ? num(ps.monthlyAmountAt(ageStart))
-        : num(ps.monthlyAmount);
-      cash += monthly * months;
+      let monthly;
+      if (typeof ps.monthlyAmountAt === "function") {
+        monthly = num(ps.monthlyAmountAt(ageStart, {
+          assessedAssets: assessedAssetsOf(ps.assessedPoolIds),
+          deemedAssets: assessedAssetsOf(ps.deemedPoolIds),
+          totalAssets: totalAssets(),
+        }));
+      } else {
+        monthly = num(ps.monthlyAmount);
+      }
+      cash += clampZero(monthly) * months;
     });
 
     // 民間年金：その期間に残高から実際に取り崩せた額だけが収入になる

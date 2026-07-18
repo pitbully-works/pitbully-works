@@ -1267,7 +1267,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       agePension: {
         status: "single",          // "single" または "couple"
         homeowner: true,           // 持家かどうか（資産テストの無影響枠が変わる）
-        otherAnnualIncome: 0,      // Age Pensionの所得テストで評価される、年金以外の年間収入
+        // カップルのとき、双方が受給資格年齢（67歳）に達しているか。
+        // 双方なら世帯の年金収入は1人あたりの2倍になる。片方だけなら1人分。
+        bothQualified: true,
+        // Age Pensionの所得テストで評価される、年金以外の年間収入。
+        // 金融資産からのみなし収入（Deeming）は別途自動で加算されるので、ここには含めない。
+        otherAnnualIncome: 0,
       },
       // 医療費（Medicare前提の簡易モデル）
       healthcare: {
@@ -1553,27 +1558,54 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const auHealthcareAnnual = (auIsAU && rules.healthcare.implemented)
     ? rules.healthcare.getAnnualTotal(auInvestment.healthcare) : 0;
 
-  // Age Pension：資産テストの対象資産は、退職時点の総資産（3口座の合計）で評価する。
-  // （Superは受給資格年齢に達すると資産テストの対象になる）
-  const auAssetSplitAtRetire = (auIsAU && rules.investment.implemented)
-    ? rules.investment.splitAssets(inputs.retireAge, inputs.auInvestment)
-    : { liquid: 0, restricted: 0, taxAdvantaged: 0, total: 0, isAccessibleAge: false };
+  // ---------- Age Pension（画面カードに出す「受給開始時点の見込額」）----------
+  // ここで求めるのは画面表示用の値であって、投影に使う値ではない。
+  // 投影中のAge Pensionは lifePlanEngine 側が毎ステップその時点の資産で再判定している
+  //   （utils/buildPlanInput.js の publicPensions.monthlyAmountAt + assessedPoolIds /
+  //     deemedPoolIds を参照）。資産が減れば受給額は増える。
+  // 画面カードには「受給資格年齢に到達した時点の見込額」を出す。
+  // 取り崩し額そのものがAge Pensionに依存して循環するため、算定は2パスに分ける。
+  //   パス1：Age Pensionを一切見込まない取り崩し額で資産を投影し、受給資格年齢時点の総資産を得る
+  //   パス2：その資産額で所得テスト（Deeming込み）・資産テストを行い、見込額を確定する
   const auAgePensionQualifyingAge = (auIsAU && rules.retirement.implemented)
     ? rules.retirement.getQualifyingAge() : 67;
+  const auOtherAnnualIncome = Number(auInvestment.agePension.otherAnnualIncome) || 0;
+  const auExpensesAnnual = (Number(auInvestment.expensesMonthly) || 0) * 12;
+  // 計算そのものは AU_COUNTRY_RULES.retirement.projectAgePension（純関数）に置く。
+  // 画面側は結果を受け取るだけにして、テストから同じ経路を検証できるようにする。
+  const auAgePensionProjection = useMemo(() => {
+    if (country !== "AU" || !rules.retirement.implemented) {
+      return {
+        qualifyingAge: 67, assessableAssets: 0, deemedIncomeAnnual: 0,
+        recipients: 1, agePensionPerPersonAnnual: 0, agePensionAnnual: 0,
+      };
+    }
+    return rules.retirement.projectAgePension({
+      investmentRules: rules.investment,
+      contributionsTaxRate: rules.tax.superannuation.contributionsTaxRate,
+      earningsTaxAccumulation: rules.tax.superannuation.earningsTaxAccumulation,
+      currentAge: effectiveCurrentAge,
+      retireAge: inputs.retireAge,
+      deathAge: inputs.deathAge,
+      accounts: inputs.auInvestment,
+      annualSalary: inputs.auInvestment.annualSalary,
+      voluntaryConcessional: inputs.auInvestment.voluntaryConcessional,
+      expensesAnnual: auExpensesAnnual,
+      healthcareAnnual: auHealthcareAnnual,
+      otherAnnualIncome: auOtherAnnualIncome,
+      status: inputs.auInvestment.agePension.status,
+      homeowner: inputs.auInvestment.agePension.homeowner,
+      bothQualified: inputs.auInvestment.agePension.bothQualified,
+    });
+  }, [
+    country, rules, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, inputs.auInvestment,
+    auExpensesAnnual, auHealthcareAnnual, auOtherAnnualIncome,
+  ]);
+  const auAssessableAssetsAtQualifyingAge = auAgePensionProjection.assessableAssets;
+  const auAgePensionAnnual = auAgePensionProjection.agePensionAnnual;
   const auAgePensionMaxAnnual = (auIsAU && rules.retirement.implemented)
     ? rules.retirement.getMaxAnnual(auInvestment.agePension.status) : 0;
-  const auAgePensionAnnual = (auIsAU && rules.retirement.implemented)
-    ? rules.retirement.getAgePension({
-        age: Math.max(inputs.retireAge, auAgePensionQualifyingAge),
-        annualIncome: auInvestment.agePension.otherAnnualIncome,
-        assessableAssets: auAssetSplitAtRetire.total,
-        status: auInvestment.agePension.status,
-        homeowner: auInvestment.agePension.homeowner,
-      })
-    : 0;
-  const auOtherAnnualIncome = Number(auInvestment.agePension.otherAnnualIncome) || 0;
   const auRetirementIncomeAnnual = auAgePensionAnnual + auOtherAnnualIncome;
-  const auExpensesAnnual = (Number(auInvestment.expensesMonthly) || 0) * 12;
   const auWithdrawalNeeded = Math.max(0, auExpensesAnnual + auHealthcareAnnual - auRetirementIncomeAnnual);
   const auIncomeSurplus = Math.max(0, auRetirementIncomeAnnual - (auExpensesAnnual + auHealthcareAnnual));
 
@@ -4983,8 +5015,11 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               qualifyingAge={auAgePensionQualifyingAge}
               maxAnnual={auAgePensionMaxAnnual}
               agePensionAnnual={auAgePensionAnnual}
+              agePensionPerPersonAnnual={auAgePensionProjection.agePensionPerPersonAnnual}
+              recipients={auAgePensionProjection.recipients}
+              deemedIncomeAnnual={auAgePensionProjection.deemedIncomeAnnual}
               retirementIncomeAnnual={auRetirementIncomeAnnual}
-              assessableAssets={auAssetSplitAtRetire.total}
+              assessableAssets={auAssessableAssetsAtQualifyingAge}
               expensesAnnual={auExpensesAnnual}
               healthcareAnnual={auHealthcareAnnual}
               withdrawalNeeded={auWithdrawalNeeded}
