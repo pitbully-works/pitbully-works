@@ -84,21 +84,13 @@ describe("UI改善：比較カードのマークアップ", () => {
 describe("UI改善：トップへ戻るボタンとスクロール着地点", () => {
   const app = read("./App.jsx");
 
-  it("常駐ボタンが存在し、backToTopLabel を表示する", () => {
-    expect(app).toContain('className="back-to-top"');
-    expect(app).toContain('t("backToTopLabel")'); // aria-label / title に残る
-  });
-
-  it("常駐ボタンは短縮表示（backToTopShort）で、ピンク（#F0A6C4）の透明ピル", () => {
-    // ボタン本文は短縮キー
-    const btnIdx = app.indexOf('className="back-to-top"');
-    const btnBlock = app.slice(btnIdx, btnIdx + 500);
-    expect(btnBlock).toContain('t("backToTopShort")');
-    // CSS：背景透明・ピンク文字
-    const cssIdx = app.indexOf(".back-to-top {");
-    const css = app.slice(cssIdx, cssIdx + 400);
-    expect(css).toContain("background: transparent");
-    expect(css).toContain("#F0A6C4");
+  it("「トップ」はクイックジャンプ列の項目として存在する（独立した常駐ボタンは廃止）", () => {
+    // 以前は右下に別枠の .back-to-top ボタンを置いていたが、
+    // ジャンプボタンをページ順に並べ替えた際に列の中へ統合した。
+    const idx = app.indexOf("const quickNavItems = useMemo");
+    const block = app.slice(idx, app.indexOf("]), [t]);", idx));
+    expect(block).toContain('anchor: "simulator"');
+    expect(block).toContain('t("backToTopShort")');
     // 翻訳キーが解決できる
     expect(JA_TRANSLATIONS.backToTopShort).toBeTruthy();
     expect(EN_TRANSLATIONS.backToTopShort).toBeTruthy();
@@ -108,12 +100,13 @@ describe("UI改善：トップへ戻るボタンとスクロール着地点", ()
     expect(app).toContain('className="quicknav-wrap no-print"');
   });
 
-  it("着地先はアプリ紹介ではなく入力フォーム先頭（#simulator）", () => {
-    const idx = app.indexOf('className="back-to-top"');
+  it("「トップ」の着地先は入力フォーム先頭（#simulator）", () => {
+    const idx = app.indexOf("const quickNavItems = useMemo");
     expect(idx).toBeGreaterThan(0);
-    const block = app.slice(idx, idx + 500);
-    expect(block).toContain('getElementById("simulator")');
-    expect(block).not.toContain('getElementById("landing")');
+    const block = app.slice(idx, app.indexOf("]), [t]);", idx));
+    expect(block).toContain('anchor: "simulator"');
+    // クイックジャンプは anchor を getElementById でそのまま解決している
+    expect(app).toContain("document.getElementById(anchor)");
   });
 
   it("入力フォームのアンカー #simulator が存在する（着地先が実在する）", () => {
@@ -151,12 +144,23 @@ describe("UI改善：トップへ戻るボタンとスクロール着地点", ()
 describe("UI改善：クイックジャンプ（各項目ボタン）", () => {
   const app = read("./App.jsx");
 
-  it("クイックジャンプの項目一覧に14個（12セクション＋個別株＋グラフ）ある", () => {
+  it("クイックジャンプの項目一覧に22個ある（ページ表示順：概要〜個別株）", () => {
+    // 12の入力セクションに加え、概要・コラム・トップ・総財布・項目・余剰金・
+    // 診断・比較・グラフ・個別株を足して22個。
     const idx = app.indexOf("const quickNavItems = useMemo");
     expect(idx).toBeGreaterThan(0);
     const block = app.slice(idx, app.indexOf("]), [t]);", idx));
     const anchors = block.match(/anchor: "/g) || [];
-    expect(anchors.length).toBe(14);
+    expect(anchors.length).toBe(22);
+  });
+
+  it("追加したジャンプ先のアンカーがすべて実在する", () => {
+    for (const id of [
+      "section-overview", "section-column", "section-wallet", "section-nav",
+      "section-surplus-balance", "section-advice", "section-comparison",
+    ]) {
+      expect(app).toContain(`id="${id}"`);
+    }
   });
 
   it("個別株（section-stock）と総資産グラフ（section-networth-chart）の着地先が実在する", () => {

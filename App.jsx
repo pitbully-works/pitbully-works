@@ -1345,6 +1345,22 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const usStateTax = country === "US" ? usMagi * ((Number(inputs.usInvestment.stateTaxRatePct) || 0) / 100) : 0;
   const usTotalTax = usFederalTaxResult.tax + usLtcgTax + usNiit + usStateTax;
 
+  // RMDのうち生活費を超えて引き出した分にかかる税の概算率。
+  // 課税繰延口座（Traditional IRA / 401(k)）からの引出は通常所得として課税されるため、
+  // 「連邦の限界税率 ＋ ユーザー入力の州税率」で概算する。確定申告の計算ではない。
+  const usRmdTaxRatePct = useMemo(() => {
+    if (country !== "US" || !rules.tax.implemented) return 0;
+    const fs = rules.tax.federalBrackets2026[usFilingStatus] ? usFilingStatus : "single";
+    const brackets = rules.tax.federalBrackets2026[
+      fs === "marriedSeparate" || fs === "headOfHousehold" ? "single" : fs
+    ] || rules.tax.federalBrackets2026.single;
+    const taxable = usFederalTaxResult.taxableIncome;
+    const bracket = brackets.find((b) => taxable <= b.upTo) || brackets[brackets.length - 1];
+    const federalPct = bracket.rate * 100;
+    const statePct = Number(inputs.usInvestment.stateTaxRatePct) || 0;
+    return Math.min(federalPct + statePct, 100);
+  }, [country, rules, usFilingStatus, usFederalTaxResult.taxableIncome, inputs.usInvestment.stateTaxRatePct]);
+
   const usMedicareAnnual = (country === "US" && rules.healthcare.implemented)
     ? rules.healthcare.getAnnualMedicarePartB(usFilingStatus, usMagi)
     : 0;
@@ -2058,6 +2074,16 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   // アメリカ選択時：401(k)/Traditional IRA/Roth IRA/Brokerageの残高推移シミュレーション。
   // JPのrunSimulation（NISA専用）とは完全に独立しており、US_COUNTRY_RULES.investment.simulateGrowth
   // のみを使用する。country !== "US" のときは計算自体を行わない（空データを返すだけ）。
+  // RMD（必須最低引出）の開始年齢は生年で決まる（SECURE 2.0：1960年以降生まれは75歳、それ以前は73歳）。
+  // 生年月日が入力されていればその年を、未入力なら「今年 − 現在の年齢」で推定する。
+  const usBirthYear = useMemo(() => {
+    const fromInput = String(inputs.birthDate || "").slice(0, 4);
+    const parsed = Number(fromInput);
+    if (Number.isFinite(parsed) && parsed > 1900) return parsed;
+    const est = new Date().getFullYear() - Math.floor(Number(effectiveCurrentAge) || 0);
+    return Number.isFinite(est) ? est : 0;
+  }, [inputs.birthDate, effectiveCurrentAge]);
+
   const usInvestmentSim = useMemo(() => {
     if (country !== "US" || !rules.investment.implemented) {
       return { yearly: [], finalValue: 0 };
@@ -2068,9 +2094,28 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       deathAge: inputs.deathAge,
       accounts: inputs.usInvestment,
       returnPct: inputs.usInvestment.expectedReturnPct,
-      annualWithdrawalNeeded: usWithdrawalNeeded,
+      // Social Securityの課税を有効にする場合、生活費はSS控除“前”の総額を渡す
+      // （SS給付は engine 内で手取りの原資として差し引かれるため、二重に引かない）。
+      annualWithdrawalNeeded: usSSAnnualBenefit > 0
+        ? usExpensesAnnual + usTotalHealthcareAnnual
+        : usWithdrawalNeeded,
+      // ここから下がRMD・税グロスアップ用。
+      // retirementRules を渡したときだけRMDが有効になる。
+      retirementRules: rules.retirement,
+      birthYear: usBirthYear,
+      // 課税繰延口座（Traditional IRA / 401(k)）からの引出にかかる概算税率。
+      // 生活費は税引後の手取りで必要なため、この税率ぶんグロスアップして引き出す。
+      // 内部では用途ごとに税率を分離しているが、UIでは同じ概算税率を使用する。
+      taxRatePct: usRmdTaxRatePct,
+      rmdTaxRatePct: usRmdTaxRatePct,
+      // Social Security給付の課税（IRC §86 / Pub 915）。
+      // taxRules と給付額を渡したときだけ有効になる。
+      taxRules: rules.tax,
+      socialSecurityAnnual: usSSAnnualBenefit,
+      socialSecurityStartAge: usClaimAge,
+      filingStatus: usFilingStatus,
     });
-  }, [country, rules, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, inputs.usInvestment, usWithdrawalNeeded]);
+  }, [country, rules, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, inputs.usInvestment, usWithdrawalNeeded, usBirthYear, usRmdTaxRatePct, usSSAnnualBenefit, usExpensesAnnual, usTotalHealthcareAnnual, usClaimAge, usFilingStatus]);
 
   // イギリス選択時：ISA / SIPP / 職域年金 / GIA / Cash Savings の残高推移シミュレーション。
   // GB_COUNTRY_RULES.investment.simulateGrowth のみを使用し、JP（runSimulation）・US（US側のsimulateGrowth）
@@ -3991,10 +4036,13 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       </div>
       {/* ← トップ見出しブロックの枠 ここまで */}
       </div>
+      {/* 国別の注意書き。実装済みの4か国（US/GB/CA/AU）は、その国の制度で計算していることと
+          実装していない範囲を明記する。以前はここに「計算は日本の制度基準」という
+          プレビュー版の警告を出していたが、各国の制度を実装した現在は事実と異なるため廃止した。 */}
       {country !== "JP" && (
         <div className="locale-preview-warning no-print">
           <Info size={13} />
-          <span>{t("localePreviewWarning")}</span>
+          <span>{t(`${country.toLowerCase()}CountryNote`)}</span>
         </div>
       )}
       {(saveStatus === "unavailable" || saveStatus === "error") && (
@@ -4759,7 +4807,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             </div>
           )}
 
-          {country === "GB" || country === "CA" || country === "AU" ? (
+          {country === "US" || country === "GB" || country === "CA" || country === "AU" ? (
             <div className="note" style={{ borderLeftColor: "#5FB0A0" }}>
               <Info size={13} style={{ color: "#5FB0A0" }} />
               <span>{t(rules.labels.taxNote)}</span>

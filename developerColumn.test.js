@@ -91,7 +91,7 @@ describe("クレジット表記", () => {
     const block = app.slice(idx, idx + 600);
     expect(block).toContain("© 2026 Kunihiko Hioki");
     expect(block).toContain("Developed by Kunihiko Hioki");
-    expect(block).toContain("Version 1.0.0");
+    expect(/Version \d+\.\d+\.\d+/.test(block)).toBe(true); // 版数はデプロイのたびに上がるため形式のみ検証
     expect(block).toContain("pdr.gifu@gmail.com");
   });
 
@@ -105,7 +105,7 @@ describe("クレジット表記", () => {
     const block = app.slice(idx, idx + 600);
     expect(block).toContain("© 2026 Kunihiko Hioki");
     expect(block).toContain("Developed by Kunihiko Hioki");
-    expect(block).toContain("Version 1.0.0");
+    expect(/Version \d+\.\d+\.\d+/.test(block)).toBe(true); // 版数はデプロイのたびに上がるため形式のみ検証
     expect(block).toContain("pdr.gifu@gmail.com");
   });
 
