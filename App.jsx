@@ -185,7 +185,10 @@ export {
 
 // 統合プラン入力の組み立て（React の外に出した純粋関数）。
 import { buildPlanInput, CONTRIBUTION_MULTIPLIERS } from "./utils/buildPlanInput.js";
-import { SURPLUS_CATEGORIES, surplusKindForCategory } from "./utils/surplusLedger.js";
+import {
+  SURPLUS_CATEGORIES, surplusKindForCategory, normalizeSurplusLedger,
+  removeSurplusEntry, summarizeSurplusUsage, SURPLUS_USE_STATUS,
+} from "./utils/surplusLedger.js";
 import { nearTermPlannedExpenses, freeToSpendNow, availableToSpendAtAge, withWhatIfExpense, summarizeWhatIfImpact, NEAR_TERM_HORIZON_YEARS } from "./utils/walletMetrics.js";
 // シナリオ比較（現在プラン vs 比較プラン）。既存エンジンを2回呼ぶだけで、新しい計算式は無い。
 import { runScenarioComparison, createComparisonDraft, attachComparisonLine } from "./utils/scenarioComparison.js";
@@ -2389,15 +2392,14 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   }, [country, rules, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, inputs.auInvestment, auWithdrawalNeeded, auDiv293Tax, auDiv293PaidFrom]);
 
 
-  // 一時支出（余剰金を使う）の結果を台帳IDで引けるようにする。要求額が余剰金残高を
-  // 超えて一部しか使えなかった行に「未処理額」を表示するための対応表。防御的に空扱い。
-  const surplusResultById = useMemo(() => {
-    const map = {};
-    (integrated?.oneTimeExpenseResults || []).forEach((r) => {
-      if (r && r.id !== undefined && r.id !== null) map[r.id] = r;
-    });
-    return map;
-  }, [integrated]);
+  // 余剰金の使用状況（表示専用）。台帳の各行に、エンジンが返した
+  //   要求額 / 実際に使えた金額 / 不足額 / 状態（全額・一部・0円・未反映・付け替え）
+  // を突き合わせる。台帳を1件削除すると inputs が変わり planCtx → integrated が
+  // 再計算されるので、この要約も余剰金残高も自動で作り直される（差分の巻き戻しはしない）。
+  const surplusUsage = useMemo(
+    () => summarizeSurplusUsage(inputs.surplusLedger, integrated?.oneTimeExpenseResults),
+    [inputs.surplusLedger, integrated]
+  );
 
   // チャート用データ。行の age は「その時点で実際に到達している年齢」（整数）で、
   // 計算に使った小数年齢は exactAge に保持されている。
@@ -2758,11 +2760,16 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       memo: (newSurplusUse.memo || "").trim(),
       source: "privatePension",
     };
-    setInputs((prev) => ({ ...prev, surplusLedger: [...(prev.surplusLedger || []), entry] }));
+    // 追加時に台帳全体を正規化しておく（古い保存データ由来の欠損行や id 重複をここで解消し、
+    // 表示・計算・削除がすべて同じ正規化済みの1本のデータを見るようにする）。
+    setInputs((prev) => ({ ...prev, surplusLedger: normalizeSurplusLedger([...(prev.surplusLedger || []), entry]) }));
     setNewSurplusUse({ amount: "", age: "", category: "living", memo: "" });
   };
+  // 使用履歴の削除。純粋関数で1行だけ取り除いた新しい台帳を入れ直す。
+  // 余剰金残高はこの台帳から毎回まるごと再計算されるため、削除した分の使用は
+  // 自動的に無かったことになる（手動での戻し入れ処理は不要＝二重戻しが起きない）。
   const removeSurplusUse = (id) =>
-    setInputs((prev) => ({ ...prev, surplusLedger: (prev.surplusLedger || []).filter((e) => e.id !== id) }));
+    setInputs((prev) => ({ ...prev, surplusLedger: removeSurplusEntry(prev.surplusLedger, id) }));
 
   const addInheritancePlan = () => {
     if (!newInheritance.name.trim()) return;
@@ -5432,12 +5439,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               )}
 
               <div className="stat-sub" style={{ marginTop: 12, marginBottom: 6 }}>{t("surplusHistoryTitle")}</div>
-              {(inputs.surplusLedger || []).length === 0 ? (
+              {surplusUsage.length === 0 ? (
                 <div className="stat-sub" style={{ opacity: 0.7 }}>{t("surplusHistoryEmpty")}</div>
               ) : (
                 <table className="watchlist">
                   <tbody>
-                    {(inputs.surplusLedger || []).slice().reverse().map((e) => {
+                    {surplusUsage.slice().reverse().map((e) => {
                       const cat = SURPLUS_CATEGORIES.includes(e.category) ? e.category : "other";
                       return (
                         <tr key={e.id}>
@@ -5445,16 +5452,24 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                           <td>
                             {t("surplusCategory_" + cat)}
                             {e.memo ? <span style={{ opacity: 0.7 }}>{" · " + e.memo}</span> : null}
-                            {(() => {
-                              // 余剰金残高が足りず一部しか使えなかった場合に「未処理額」を表示。
-                              const r = surplusResultById[e.id];
-                              const shortfall = r && Number(r.insufficientSurplusAmount) > 0 ? Number(r.insufficientSurplusAmount) : 0;
-                              return shortfall > 0 ? (
-                                <div style={{ fontSize: 11, color: "#C2694F", marginTop: 2 }}>
-                                  {t("surplusInsufficientShort", { shortfall: money(shortfall) })}
-                                </div>
-                              ) : null;
-                            })()}
+                            {/* 余剰金残高が足りなかった行は「実際に使えた金額」と「不足額」を
+                                両方出す（利用者が“いくら足りなかったのか”をその場で判断できるように）。
+                                エンジンが返した値をそのまま表示するだけで、再計算はしない。 */}
+                            {(e.status === SURPLUS_USE_STATUS.PARTIAL || e.status === SURPLUS_USE_STATUS.NONE) && (
+                              <div style={{ fontSize: 11, color: "#C2694F", marginTop: 2 }}>
+                                {t("surplusPartialUse", {
+                                  spent: money(e.actuallySpent),
+                                  shortfall: money(e.insufficientSurplusAmount),
+                                })}
+                              </div>
+                            )}
+                            {/* 現在年齢より過去、または想定寿命より先の年齢の行は計算に入らない。
+                                黙って無視すると「使ったのに残高が減らない」ように見えるため明示する。 */}
+                            {e.status === SURPLUS_USE_STATUS.NOT_APPLIED && (
+                              <div style={{ fontSize: 11, opacity: 0.75, marginTop: 2 }}>
+                                {t("surplusNotApplied")}
+                              </div>
+                            )}
                           </td>
                           <td className="mono">{money(e.amount)}</td>
                           <td>
