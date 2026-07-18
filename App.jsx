@@ -3139,15 +3139,17 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         .quicknav-wrap {
           position: fixed;
           right: 10px;
-          bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+          /* ボタンが22個に増えたので、全部が画面に収まるよう下端を少し上げ、
+             表示高さの上限を広げ、隙間とボタンの高さを詰める。 */
+          bottom: calc(50px + env(safe-area-inset-bottom, 0px));
           z-index: 50;
           display: flex;
           flex-direction: column;
           align-items: flex-end;
-          gap: 6px;
+          gap: 4px;
           /* 画面高を超えたらこの領域内だけスクロール（項目が多いため）。
              背景は透明なので、はみ出しても後ろは見える。 */
-          max-height: 78vh;
+          max-height: 90vh;
           overflow-y: auto;
           overflow-x: hidden;
           -webkit-overflow-scrolling: touch;
@@ -3164,8 +3166,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         /* 各項目ボタン：背景透明・アクセント色・小さめだが指で押せるサイズ。 */
         .quicknav-btn {
           width: 60px;            /* 全ボタン共通の固定幅。文字数に関係なく横幅を統一 */
-          min-height: 30px;
-          padding: 5px 0;         /* 幅を固定したので左右パディングは0にして中央寄せ */
+          min-height: 26px;
+          padding: 3px 0;         /* 幅を固定したので左右パディングは0にして中央寄せ */
           text-align: center;
           border-radius: 999px;
           border: 1px solid rgba(79, 168, 216, 0.55);
