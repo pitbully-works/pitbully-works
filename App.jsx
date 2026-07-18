@@ -620,9 +620,11 @@ function CAInvestmentAccountsPanel({ caInvestment, onUpdate, onUpdateAccount, ag
         <Info size={13} />
         <span>{t("caRrifNote", {
           age: rrifAge,
-          pct: pct(investmentRules.getRrifMinimumFactor(rrifAge)),
+          firstAge: investmentRules.rrifFirstWithdrawalAge,
+          pct: pct(investmentRules.getRrifMinimumFactor(investmentRules.rrifFirstWithdrawalAge)),
           pct80: pct(investmentRules.getRrifMinimumFactor(80)),
           pct95: pct(investmentRules.rrifMinimumFactorAt95Plus),
+          taxPct: Number(caInvestment.rrsp.withdrawalTaxPct) || 0,
         })}</span>
       </div>
 
@@ -1489,11 +1491,17 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const caOasResidenceFraction = (caIsCA && rules.retirement.implemented)
     ? rules.retirement.getOasResidenceFraction(caInvestment.oas.residenceYears)
     : 0;
-  // 退職時点の年齢でOAS満額を評価する（75歳以降は10%上乗せ）
+  // ここで求めるのは「受給開始時点」のOAS年額（＝画面のカード表示に使う初年度の金額）。
+  // 第1引数の age に受給開始年齢（65〜70）を渡すため、この値は必ず65〜74歳のレートになる。
+  // 75歳到達による10%上乗せは受給開始後に起きる変化なので、この表示値ではなく
+  // utils/buildPlanInput.js の publicPensions.monthlyAmountAt(age) 側で年齢に応じて反映される。
+  // （上乗せ後の金額そのものは caOasEnhancedNote で別途案内している）
   const caOasBeforeClawback = (caIsCA && rules.retirement.implemented)
     ? rules.retirement.getOasAnnualBeforeClawback(caOasEffectiveStartAge, caOasStartAge, caInvestment.oas.residenceYears)
     : 0;
-  // クローバックの判定に使う純所得＝年間総所得（利用者が退職後の想定所得を入力する）
+  // クローバックの判定に使う純所得＝年間総所得（利用者が退職後の想定所得を入力する）。
+  // ※ 本来はその年の純世界所得で毎年再計算すべきもの。将来対応（CA.js の
+  //    retirement.notImplemented に記載）。
   const caOasClawback = (caIsCA && rules.retirement.implemented)
     ? rules.retirement.getOasClawback(caGrossIncome, caOasBeforeClawback)
     : 0;

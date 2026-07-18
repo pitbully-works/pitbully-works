@@ -161,6 +161,12 @@ export function runIntegratedPlan(p) {
     drawOrder: raw.drawOrder === undefined || raw.drawOrder === null ? 9999 : num(raw.drawOrder),
     minimumDrawdown: typeof raw.minimumDrawdown === "function" ? raw.minimumDrawdown : null,
     minimumDrawdownTo: raw.minimumDrawdownTo || null,
+    // 強制取崩しが「退職していること」を条件とするか。
+    //   豪Super：pension phase（退職等の解放条件を満たすこと）が前提なので true（既定）。
+    //   加RRIF：就労を続けていても年齢だけで義務が発生するので false を明示的に渡す。
+    minimumDrawdownRequiresRetirement:
+      raw.minimumDrawdownRequiresRetirement === undefined || raw.minimumDrawdownRequiresRetirement === null
+        ? true : !!raw.minimumDrawdownRequiresRetirement,
     contributionFn: typeof raw.contributionFn === "function" ? raw.contributionFn : null,
     // 引出時課税（%）。取り崩した金額に対してこの率で課税され、手取りが目減りするため、
     // 必要額を賄うには「必要額 ÷ (1 − 税率)」を口座から引き出す必要がある。
@@ -373,18 +379,27 @@ export function runIntegratedPlan(p) {
     });
 
     // -------- 3. 強制取崩し（加RRIF / 豪Super最低取崩し）--------
-    // 誕生日に年1回。生活費に使える口座へ移すだけで総資産は変わらない（二重加算しない）。
+    // 誕生日に年1回。生活費に使える口座へ移す。
+    // 【引出時課税】強制取崩しであっても、引き出した時点で課税される口座
+    //   （加RRIF＝引出額の全額が課税所得）では、税引後の手取りだけが移動先へ入る。
+    //   税額は cumulativeWithdrawalTax に積み、その分だけ総資産が減る。
+    //   非課税の口座（withdrawalTaxPct=0／豪Superの60歳以降など）は従来どおり
+    //   全額が移るだけで総資産は変わらない。
     if (isBirthday) {
       pools.forEach((x) => {
         if (!x.minimumDrawdown || x.balance <= 0) return;
-        if (age < retireAge - EPS) return;
+        // 退職前でも義務が生じる強制取崩し（加RRIF）は、この年齢ゲートを通さない。
+        if (x.minimumDrawdownRequiresRetirement && age < retireAge - EPS) return;
         if (x.accessAge !== NOT_DRAWABLE && age < x.accessAge) return;
         const target = x.minimumDrawdownTo ? poolById.get(x.minimumDrawdownTo) : null;
         if (!target) return;
-        const amount = Math.min(x.balance, clampZero(num(x.minimumDrawdown(age, x.balance))));
-        if (amount <= 0) return;
-        x.balance -= amount;
-        target.balance += amount;
+        const gross = Math.min(x.balance, clampZero(num(x.minimumDrawdown(age, x.balance))));
+        if (gross <= 0) return;
+        const keep = 1 - x.withdrawalTaxPct / 100;
+        const net = gross * keep;
+        x.balance -= gross;
+        target.balance += net;
+        cumulativeWithdrawalTax += gross - net;
       });
     }
 
@@ -392,8 +407,15 @@ export function runIntegratedPlan(p) {
     let cash = 0;
 
     // 公的年金：ストリームごとの受給開始年齢に達してから。退職年齢では始まらない。
+    // monthlyAmountAt(age) を持つストリームは、その年齢時点の月額で評価する。
+    // （加OASの75歳到達による10%上乗せのように、受給中に金額が変わる制度のため。
+    //   年齢の境界は buildPlanInput 側で boundaries に積んでステップを割る。）
     publicPensions.forEach((ps) => {
-      if (ageStart >= num(ps.startAge) - EPS) cash += num(ps.monthlyAmount) * months;
+      if (ageStart < num(ps.startAge) - EPS) return;
+      const monthly = typeof ps.monthlyAmountAt === "function"
+        ? num(ps.monthlyAmountAt(ageStart))
+        : num(ps.monthlyAmount);
+      cash += monthly * months;
     });
 
     // 民間年金：その期間に残高から実際に取り崩せた額だけが収入になる
