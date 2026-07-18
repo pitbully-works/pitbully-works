@@ -1,5 +1,5 @@
 // ============================================================================
-// surplusUsageCompletion.test.js
+// utils/surplusUsageCompletion.test.js
 //
 // 余剰金機能の「完成条件」を固定する回帰テスト。
 //
@@ -16,11 +16,11 @@
 // ============================================================================
 
 import { describe, it, expect } from "vitest";
-import { runIntegratedPlan } from "./lifePlanEngine.js";
-import { getCountryRules } from "./countryRules/index.js";
-import { DRAWDOWN_CATEGORIES } from "./utils/simulations.js";
-import { buildPlanInput } from "./utils/buildPlanInput.js";
-import { nearTermPlannedExpenses, NEAR_TERM_HORIZON_YEARS } from "./utils/walletMetrics.js";
+import { runIntegratedPlan } from "../lifePlanEngine.js";
+import { getCountryRules } from "../countryRules/index.js";
+import { DRAWDOWN_CATEGORIES } from "./simulations.js";
+import { buildPlanInput } from "./buildPlanInput.js";
+import { nearTermPlannedExpenses, NEAR_TERM_HORIZON_YEARS } from "./walletMetrics.js";
 import {
   canonicalSurplusCategory,
   resolveSurplusKind,
@@ -31,9 +31,9 @@ import {
   summarizeSurplusUsage,
   totalSurplusUsage,
   SURPLUS_USE_STATUS,
-} from "./utils/surplusLedger.js";
-import { JA_TRANSLATIONS } from "./translations/ja.js";
-import { EN_TRANSLATIONS } from "./translations/en.js";
+} from "./surplusLedger.js";
+import { JA_TRANSLATIONS } from "../translations/ja.js";
+import { EN_TRANSLATIONS } from "../translations/en.js";
 
 // ----------------------------------------------------------------------------
 // 検証用の最小プラン。
