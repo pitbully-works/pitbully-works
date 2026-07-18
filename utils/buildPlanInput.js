@@ -176,11 +176,20 @@ export function buildPlanInput(ctx, overrides = {}) {
   } = ctx;
 
   // ---- 上書き値の確定（未指定なら現在プランの値）----
-  const m = Number.isFinite(Number(overrides.contributionMultiplier))
-    ? Number(overrides.contributionMultiplier) : 1;
-  const retireAge = overrides.retireAge === undefined || overrides.retireAge === null
+  // 「未指定」の判定は3項目とも同じ規則に揃える（undefined / null / 空文字）。
+  //
+  // 【なぜ揃える必要があるか】
+  //   Number(null) は 0 で、しかも Number.isFinite(0) は true になる。
+  //   そのため積立倍率だけを `Number.isFinite(Number(v)) ? ... : 1` で判定すると、
+  //   null が「未指定＝1倍」ではなく「0倍＝積立ゼロ」として通ってしまい、
+  //   比較プランが意図せず積立なしのシナリオになる。
+  //   明示的に 0 を渡した場合（積立を止めるシナリオ）は 0 のまま尊重する。
+  const isUnset = (v) => v === undefined || v === null || v === "";
+  const m = isUnset(overrides.contributionMultiplier) || !Number.isFinite(Number(overrides.contributionMultiplier))
+    ? 1 : Number(overrides.contributionMultiplier);
+  const retireAge = isUnset(overrides.retireAge) || !Number.isFinite(Number(overrides.retireAge))
     ? Number(inputs.retireAge) : Number(overrides.retireAge);
-  const livingCostMonthly = overrides.livingCostMonthly === undefined || overrides.livingCostMonthly === null
+  const livingCostMonthly = isUnset(overrides.livingCostMonthly) || !Number.isFinite(Number(overrides.livingCostMonthly))
     ? readLivingCostMonthly(country, inputs) : Number(overrides.livingCostMonthly);
 
   const D = countryDerived;
