@@ -184,6 +184,8 @@ export function buildPlanInput(ctx, overrides = {}) {
 
   const D = countryDerived;
   const pools = [];
+  // 豪 Division 293（口座外払いのときだけ recurringCharges として資産から引く）
+  let auDiv293 = null;
   const catMap = ACCOUNT_DRAW_CATEGORY[country] || ACCOUNT_DRAW_CATEGORY.JP;
   const ord = (key, tie = 0) => drawOrderOf(catMap[key], tie, drawdownOrder);
 
@@ -419,9 +421,36 @@ export function buildPlanInput(ctx, overrides = {}) {
     const earnTax = rules.tax.superannuation.earningsTaxAccumulation;
     // 任意拠出（voluntaryConcessional）も「これから積み立てる分」なので倍率の対象。
     // annualSalary（＝SG拠出の基礎）は給与であって積立額ではないため倍率を掛けない。
-    const concessionalNet = inv.getTotalConcessional(
-      acc.annualSalary, scale(acc.voluntaryConcessional, m)
-    ) * (1 - contribTax);
+    //
+    // 【重要】倍率を掛けた後の値を一度だけ作り、拠出額の計算とDivision 293 incomeの
+    //   概算（課税所得＝年収 − 給与犠牲）の両方で必ず同じ値を使う。
+    //   ここで倍率前後の値が混ざると、比較シナリオでのみ課税所得がずれる。
+    const scaledVoluntaryConcessional = scale(acc.voluntaryConcessional, m);
+    // 【concessional cap】超過分の課税・払戻し／残留の選択は未実装のため、
+    //   通常の税引前拠出として投影する額を cap までに制限する（安全側）。
+    const concessionalGross = inv.getCappedConcessional(
+      acc.annualSalary, scaledVoluntaryConcessional
+    );
+    // 【Division 293】所得＋拠出が閾値を超えると税引前拠出に追加15%がかかる。
+    //   画面表示だけでなく本番投影にも反映する。支払元によって減る口座が変わる：
+    //     "super"   ：Superへ入る額から控除（Super残高が減る）
+    //     "outside" ：recurringCharges で現金・銀行から控除（Super残高は満額）
+    //   どちらでも総資産は税額分だけ減る。
+    //   課税標準には cap 適用後の額を使う（cap超過分は low tax contributions ではない）。
+    const div293Income = rules.tax.resolveDivision293Income(
+      Math.max(0, (Number(acc.annualSalary) || 0) - scaledVoluntaryConcessional),
+      acc.div293Income
+    ).income;
+    const div293PaidFrom = rules.tax.normalizeDiv293PaidFrom(acc.div293PaidFrom);
+    const div293TaxAnnual = rules.tax.calculateSuperContributionTax(
+      concessionalGross, div293Income
+    ).div293Tax;
+    const concessionalNet = Math.max(
+      0,
+      concessionalGross * (1 - contribTax)
+        - (div293PaidFrom === "super" ? div293TaxAnnual : 0)
+    );
+    auDiv293 = { taxAnnual: div293TaxAnnual, paidFrom: div293PaidFrom };
     INVESTMENT_ACCOUNT_KEYS.AU.forEach((key, i) => {
       const a = acctOf(acc, key);
       const isSuper = key === "superannuation";
@@ -436,6 +465,9 @@ export function buildPlanInput(ctx, overrides = {}) {
       };
       if (isSuper) {
         pool.accessAge = inv.preservationAge; // preservation age まで取り崩せない
+        // 60〜64歳は condition of release（退職等）が必要、65歳以降は無条件。
+        // simulateGrowth の canAccessSuperAt と同じ規則をエンジンにも渡す。
+        pool.unconditionalAccessAge = inv.unrestrictedAccessAge;
         pool.earningsTaxPct = earnTax * 100;  // 積立期の運用益に15%課税
         pool.minimumDrawdown = (age, bal) =>
           (inv.canAccessSuper(age) ? inv.getMinimumDrawdown(age, bal) : 0);
@@ -589,10 +621,11 @@ export function buildPlanInput(ctx, overrides = {}) {
     if (rules.retirement.implemented) {
       // Age Pensionには資産テストがあり、資産が減るほど受給額が増える。
       // そのため受給開始時点の固定額ではなく、毎ステップその時点の資産で再判定する。
-      // 判定対象はAU版の3口座（Super・投資口座・現金）。自宅は資産テストの対象外だが、
-      // 本アプリは自宅を資産として保有していないため、この3口座がそのまま対象資産になる。
-      // 所得テストに使う所得は利用者が入力した「その他の年収」のみ
-      // （金融資産のみなし収入＝Deemingは未実装。AU.js の retirement.notImplemented を参照）。
+      // 判定対象はAU版の3口座（Super・投資口座・現金）に加えて、全国共通で持っている
+      // 銀行預金・個別株・金・民間年金も含む（assessedPoolIds を参照）。自宅は資産テストの
+      // 対象外だが、本アプリは自宅を資産として保有していないため考慮不要。
+      // 所得テストに使う所得は、利用者が入力した「その他の年収」＋金融資産のみなし収入
+      // （Deeming）。Deeming は実装済みで、対象範囲は deemedPoolIds で毎ステップ集計する。
       const ret = rules.retirement;
       const auAcc = inputs.auInvestment || {};
       const auPension = auAcc.agePension || {};
@@ -652,6 +685,19 @@ export function buildPlanInput(ctx, overrides = {}) {
     idecoLumpAge,
     idecoAnnuityMonthly,
     oneTimeExpenses,
+    // Division 293 を口座外から払う設定のときだけ、現金・銀行から毎年引く。
+    // Super から払う設定のときは拠出額の側で控除済みなので、ここは空にする。
+    // 拠出が続いている間（Superの contribEndAge まで）だけ課税される。
+    recurringCharges: (auDiv293 && auDiv293.paidFrom === "outside" && auDiv293.taxAnnual > 0)
+      ? [{
+          id: "auDiv293",
+          annualAmount: auDiv293.taxAnnual,
+          fromAge: effectiveCurrentAge,
+          toAge: Number(
+            (inputs.auInvestment.superannuation || {}).contributionEndAge
+          ) || retireAge,
+        }]
+      : [],
     surplusTargetId: "bank_0",
     // 現在までに貯まっている余剰金の初期残高（既存の銀行残高の内数）。エンジン側で
     // 銀行残高合計を上限に頭打ちする。未入力なら 0。
