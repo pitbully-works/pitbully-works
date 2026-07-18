@@ -5464,11 +5464,17 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                                 両方出す（利用者が“いくら足りなかったのか”をその場で判断できるように）。
                                 エンジンが返した値をそのまま表示するだけで、再計算はしない。 */}
                             {(e.status === SURPLUS_USE_STATUS.PARTIAL || e.status === SURPLUS_USE_STATUS.NONE) && (
-                              <div style={{ fontSize: 11, color: "#C2694F", marginTop: 2 }}>
-                                {t("surplusPartialUse", {
-                                  spent: money(e.actuallySpent),
-                                  shortfall: money(e.insufficientSurplusAmount),
-                                })}
+                              <div style={{ fontSize: 11, marginTop: 4, lineHeight: 1.6 }}>
+                                {[
+                                  { label: t("surplusRequestedLabel"), value: e.requestedAmount, tone: null },
+                                  { label: t("surplusSpentLabel"), value: e.actuallySpent, tone: null },
+                                  { label: t("surplusShortfallLabel"), value: e.insufficientSurplusAmount, tone: "#C2694F" },
+                                ].map((row) => (
+                                  <div key={row.label} style={{ display: "flex", gap: 8, color: row.tone || undefined, opacity: row.tone ? 1 : 0.85 }}>
+                                    <span style={{ minWidth: "4.5em", whiteSpace: "nowrap" }}>{row.label}</span>
+                                    <span className="mono" style={{ whiteSpace: "nowrap" }}>{money(row.value)}</span>
+                                  </div>
+                                ))}
                               </div>
                             )}
                             {/* 現在年齢より過去、または想定寿命より先の年齢の行は計算に入らない。
