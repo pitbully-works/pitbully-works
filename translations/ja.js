@@ -480,6 +480,8 @@ export const JA_TRANSLATIONS = {
     "surplusTransferTag": "付け替え",
     "surplusInsufficientNote": "余剰金残高が不足しているため、{requested}のうち{spent}だけ使用しました。未処理額は{shortfall}です。",
     "surplusInsufficientShort": "未処理額 {shortfall}",
+    "surplusPartialUse": "実際に使えた金額 {spent} ／ 不足額 {shortfall}",
+    "surplusNotApplied": "この使用は計算に反映されていません（現在より過去、または想定寿命より先の年齢です）",
     "surplusCategory_living": "生活費",
     "surplusCategory_medical": "医療費",
     "surplusCategory_travel": "旅行",

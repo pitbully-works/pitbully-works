@@ -480,6 +480,8 @@ export const EN_TRANSLATIONS = {
     "surplusTransferTag": "Moved",
     "surplusInsufficientNote": "Not enough surplus balance, so only {spent} of {requested} was used. Unprocessed amount: {shortfall}.",
     "surplusInsufficientShort": "Unprocessed {shortfall}",
+    "surplusPartialUse": "Actually used {spent} / Short by {shortfall}",
+    "surplusNotApplied": "This entry is not reflected in the projection (its age is in the past or beyond your assumed lifespan).",
     "surplusCategory_living": "Living costs",
     "surplusCategory_medical": "Medical",
     "surplusCategory_travel": "Travel",
