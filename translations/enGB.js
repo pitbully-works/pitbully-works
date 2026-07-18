@@ -14,7 +14,7 @@
 // ============================================================================
 export const EN_GB_OVERRIDES = {
   disclaimerBanner: "Disclaimer: This app is provided for information and simulation purposes only. It does not constitute tax, investment, or legal advice. Allowances and tax rates can change, and all figures are estimates based on the assumptions you enter. Please consult a qualified professional \u2014 such as an FCA-regulated financial adviser or an accountant \u2014 before acting on any result.",
-  localePreviewWarning: "UK edition: ISA and pension allowances, State Pension, Income Tax, Dividend Tax and Capital Gains Tax use GOV.UK figures for the 2026/27 tax year (England, Wales & Northern Ireland). Scottish Income Tax, National Insurance and Inheritance Tax are not implemented. This is a planning tool, not financial advice.",
+  gbCountryNote: "UK edition: ISA and pension allowances, State Pension, Income Tax, Dividend Tax and Capital Gains Tax use GOV.UK figures for the 2026/27 tax year (England, Wales & Northern Ireland). Scottish Income Tax, National Insurance and Inheritance Tax are not implemented. This is a planning tool, not financial advice.",
   appSubtitle: "Investment Accounts × Retirement Assets × Pensions × Healthcare Costs × Inheritance Planning — Integrated Simulation",
   idecoCurrentValueAutoLabel: "Current Pension Value (Auto-calculated)",
   idecoIntroNote: "A SIPP or Personal Pension is a retirement savings account. In principle, funds cannot be withdrawn before the eligible age. Investment returns are not guaranteed. The tax savings shown are estimates.",
