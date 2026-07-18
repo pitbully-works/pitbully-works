@@ -1337,6 +1337,13 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     [country]
   );
 
+  // 生年月日が入力されていれば、今日時点での正確な年齢（日単位）をそこから自動計算し、
+  // 現在の年齢として全体のシミュレーションに反映する
+  // ※ AU など各国の派生計算（useMemo の依存配列を含む）から参照されるため、
+  //    必ず国別派生計算より前に宣言する（後ろに置くと TDZ で白画面になる）
+  const preciseAge = useMemo(() => computeAgeFromBirthDate(inputs.birthDate), [inputs.birthDate]);
+  const effectiveCurrentAge = preciseAge ? preciseAge.decimal : inputs.currentAge;
+
   // ---------- アメリカ選択時の派生計算（すべて US_COUNTRY_RULES の関数のみを使用） ----------
   // country !== "US" のときは呼び出さない（JP_COUNTRY_RULES 等には同名メソッドが存在しないため）。
   const usFilingStatus = inputs.usInvestment.filingStatus;
@@ -1916,11 +1923,6 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         returnPct: (inputs.extraFundReturns && inputs.extraFundReturns[name] !== undefined) ? inputs.extraFundReturns[name] : guessDefaultReturn(name),
       }))
     : [];
-
-  // 生年月日が入力されていれば、今日時点での正確な年齢（日単位）をそこから自動計算し、
-  // 現在の年齢として全体のシミュレーションに反映する
-  const preciseAge = useMemo(() => computeAgeFromBirthDate(inputs.birthDate), [inputs.birthDate]);
-  const effectiveCurrentAge = preciseAge ? preciseAge.decimal : inputs.currentAge;
 
   // ①401(k)②Traditional IRA③Roth IRA④Brokerageを、現在の年齢時点で
   // Liquid/Accessible（引き出し可能）とRetirement/Restricted（制約付き）に分ける。

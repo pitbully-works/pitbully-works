@@ -655,7 +655,8 @@ describe("Australia (AU) core calculations", () => {
   it("every rule carries its tax year, last updated date and source", () => {
     [inv, ret, tax, AU_COUNTRY_RULES.healthcare].forEach((rule) => {
       expect(rule.effectiveTaxYear).toBe("2026-27");
-      expect(rule.lastUpdated).toBe("2026-07-13");
+      // 2026-07-18：Age Pension の資力調査をエンジン側で毎年再判定する実装に合わせて更新した日
+      expect(rule.lastUpdated).toBe("2026-07-18");
       expect(rule.sourceName).toBeTruthy();
       expect(rule.sourceUrl).toBeTruthy();
     });
