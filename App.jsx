@@ -1001,8 +1001,8 @@ function SectionTitle({ index, title, icon: Icon }) {
 // ---------- セクションへのショートカット（トップ画面のジャンプボタン） ----------
 function SectionNav({ items }) {
   const { t } = useContext(LocaleContext);
-  const jump = (index) => {
-    const el = document.getElementById(`section-${index}`);
+  const jump = (anchor) => {
+    const el = document.getElementById(anchor);
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   };
   return (
@@ -1010,12 +1010,16 @@ function SectionNav({ items }) {
     <div className="card section-block no-print" id="section-nav" style={{ borderColor: "#4FA8D8", marginBottom: 18 }}>
       <div className="chart-label">{t("sectionNavTitle")}</div>
       <div className="section-nav">
-        {items.map(({ index, title, icon: Icon }) => (
-          <button key={index} className="section-nav-btn" onClick={() => jump(index)}>
-            <Icon size={14} strokeWidth={1.75} />
-            <span>{title}</span>
-          </button>
-        ))}
+        {items.map(({ index, anchor, title, icon: Icon }) => {
+          // 入力セクション（00〜11）は section-NN、それ以外は anchor を直接使う。
+          const target = anchor || `section-${index}`;
+          return (
+            <button key={target} className="section-nav-btn" onClick={() => jump(target)}>
+              {Icon && <Icon size={14} strokeWidth={1.75} />}
+              <span>{title}</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -2232,6 +2236,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
   // トップのショートカットボタン。SectionTitle の index と1対1で対応する。
   const sectionNavItems = useMemo(() => ([
+    // 表示ページの順番（上→下）。各セクションの見出しをそのまま名前に使う。
+    // 「概要」と「トップページ」だけは見出しが同じ（資産形成 総合ライフプラン）で紛らわしいため専用名。
+    { anchor: "section-overview", title: t("navFullOverview") },        // 概要（一番上の紹介ページ）
+    { anchor: "section-column", title: t("landingBlogTitle") },         // 資産形成コラム
+    { anchor: "simulator", title: t("navFullTop") },                    // トップページ（国切り替え）
+    { anchor: "section-wallet", title: t("walletDashboardTitle") },     // 統合財布ダッシュボード
     { index: "00", title: label("personalInfo"), icon: Users },
     { index: "01", title: label("basicInfo"), icon: Ruler },
     { index: "02", title: label("investmentTaxAdvantaged"), icon: TrendingUp },
@@ -2241,29 +2251,43 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     { index: "06", title: label("inheritance"), icon: Users },
     { index: "07", title: label("gold"), icon: Coins },
     { index: "08", title: label("cash"), icon: PiggyBank },
+    { anchor: "section-surplus-balance", title: t("surplusBalanceTitle") }, // 余剰金残高（※預金の下）
     { index: "09", title: label("loan"), icon: Landmark },
     { index: "10", title: label("insurance"), icon: HeartPulse },
     { index: "11", title: label("privatePension"), icon: PiggyBank },
-  ]), [label]);
+    { anchor: "section-advice", title: t("adviceCardTitle") },          // 診断コメント
+    { anchor: "section-comparison", title: t("scenarioCompareTitle") }, // シナリオ比較
+    { anchor: "section-networth-chart", title: t("navFullChart") },     // 総資産推移グラフ
+    { anchor: "section-stock", title: t("stockWatchlistTitle") },       // 個別株 保有一覧
+  ]), [label, t]);
 
   // 画面右下に縦並びで出す「クイックジャンプ」用の短縮ラベル一覧。
   // 各入力セクション（section-00〜11）に加えて、個別株と総資産グラフへも飛べる。
   // anchor はスクロール先の要素id。short は被りを避けるための短い表示名。
   const quickNavItems = useMemo(() => ([
-    { anchor: "section-00", short: t("navShortPersonal") },
-    { anchor: "section-01", short: t("navShortBasic") },
-    { anchor: "section-02", short: t("navShortInvestment") },
-    { anchor: "section-03", short: t("navShortRetirementAcct") },
-    { anchor: "section-04", short: t("navShortPension") },
-    { anchor: "section-05", short: t("navShortHealth") },
-    { anchor: "section-06", short: t("navShortInheritance") },
-    { anchor: "section-07", short: t("navShortGold") },
-    { anchor: "section-08", short: t("navShortCash") },
-    { anchor: "section-09", short: t("navShortLoan") },
-    { anchor: "section-10", short: t("navShortInsurance") },
-    { anchor: "section-11", short: t("navShortPrivatePension") },
-    { anchor: "section-stock", short: t("navShortStock") },
-    { anchor: "section-networth-chart", short: t("navShortChart") },
+    // 表示ページの順番（上→下）に合わせて並べている。
+    { anchor: "section-overview", short: t("navShortOverview") },      // 概要（一番上の紹介ページ）
+    { anchor: "section-column", short: t("navShortColumn") },          // コラム（資産形成コラム）
+    { anchor: "simulator", short: t("backToTopShort") },              // トップ（国切り替えのある見出し）
+    { anchor: "section-wallet", short: t("navShortWallet") },          // 総財布（統合財布ダッシュボード）
+    { anchor: "section-nav", short: t("navShortItems") },              // 項目（入力する項目を選ぶ）
+    { anchor: "section-00", short: t("navShortPersonal") },            // 本人
+    { anchor: "section-01", short: t("navShortBasic") },               // 基本
+    { anchor: "section-02", short: t("navShortInvestment") },          // NISA
+    { anchor: "section-03", short: t("navShortRetirementAcct") },      // iDeCo
+    { anchor: "section-04", short: t("navShortPension") },             // 年金
+    { anchor: "section-05", short: t("navShortHealth") },              // 健康
+    { anchor: "section-06", short: t("navShortInheritance") },         // 相続
+    { anchor: "section-07", short: t("navShortGold") },                // 金
+    { anchor: "section-08", short: t("navShortCash") },                // 預金（銀行）
+    { anchor: "section-surplus-balance", short: t("navShortSurplus") },// 余剰金（※預金の下）
+    { anchor: "section-09", short: t("navShortLoan") },                // 借入
+    { anchor: "section-10", short: t("navShortInsurance") },           // 保険
+    { anchor: "section-11", short: t("navShortPrivatePension") },      // 私年金
+    { anchor: "section-advice", short: t("navShortDiagnosis") },       // 診断
+    { anchor: "section-comparison", short: t("navShortComparison") },  // 比較
+    { anchor: "section-networth-chart", short: t("navShortChart") },   // グラフ
+    { anchor: "section-stock", short: t("navShortStock") },            // 個別株
   ]), [t]);
 
   const netWorthFinal = integrated.finalNetWorth;
@@ -2921,7 +2945,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           --amber: #D9A54F;
           --green: #8FBF7F;
           --text: #E7ECEE;
-          --muted: #7C8A90;
+          --muted: #E7ECEE; /* 淡いグレーをやめ、はっきりした白に統一（全体） */
           --danger: #C2694F;
           /* 右端のクイックジャンプ列に、色付きの囲い線がちょうど届く幅。
              ボタンは右端から10px＋幅60px＝右端70pxの位置にある。
@@ -3211,6 +3235,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
         /* 上部固定ヘッダーに隠れないよう、ジャンプ先に余白を確保する */
         #simulator { scroll-margin-top: 12px; }
+        #section-overview, #section-column, #section-wallet, #section-nav,
+        #section-surplus-balance, #section-advice, #section-comparison { scroll-margin-top: 12px; }
 
         /* 上部固定ヘッダーに隠れないよう、ジャンプ先に余白を確保する */
         .section-title { scroll-margin-top: 16px; }
@@ -3728,7 +3754,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         }
       `}</style>
 
-      <div className="landing" style={{ border: "1px solid #2A363C", background: "#151C20", borderRadius: 8, marginBottom: 16 }}>
+      <div className="landing" id="section-overview" style={{ border: "1px solid #2A363C", background: "#151C20", borderRadius: 8, marginBottom: 16 }}>
         <div className="landing-hero">
           <h1>{t("landingTitle")}</h1>
           <p className="landing-free-notice">
@@ -3788,7 +3814,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         </div>
 
         {onOpenBlog && (
-          <div className="landing-blog-section">
+          <div className="landing-blog-section" id="section-column">
             <h3>{t("landingBlogTitle")}</h3>
             <p>
               {t("landingBlogDesc1")}<br />
@@ -4054,7 +4080,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           D: モバイルでも見やすい自動2列グリッド
           E: 「使える資産」の内訳（銀行・投資・金・株）を sub に表示（accessible* から）
           F: 余剰金・急な出費（What-if）セクションへのジャンプ導線 */}
-      <div className="section-block wallet-dashboard" style={{ borderColor: "#5FB0A0", marginBottom: 12 }}>
+      <div className="section-block wallet-dashboard" id="section-wallet" style={{ borderColor: "#5FB0A0", marginBottom: 12 }}>
         <div className="stat-sub" style={{ marginBottom: 8 }}>{t("walletDashboardTitle")}</div>
         {(integrated.yearly[0]?.totalAssets ?? 0) <= 0 ? (
           <div className="stat-sub" style={{ opacity: 0.8 }}>{t("dashEmptyHint")}</div>
@@ -5908,7 +5934,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
           {/* 診断コメント：グラフを見る前に、いまの状況が良いのか悪いのかが一目で分かるようにする。
               色だけに頼らず、アイコン（🟢🟡🔴✅⚠️💰💡）と文章の両方で伝える。 */}
-          <div className="section-block" style={{ borderColor: adviceBorderColor }}>
+          <div className="section-block" id="section-advice" style={{ borderColor: adviceBorderColor }}>
             <div className="field-label-row">
               <span className="field-label">{t("adviceCardTitle")}</span>
             </div>
@@ -5940,6 +5966,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           </div>
 
           {/* シナリオ比較カード（総資産推移グラフの上）。比較中だけ結果が表示される。 */}
+          <div id="section-comparison">
           <ScenarioComparisonCard
             active={!!comparisonDraft}
             draft={comparisonDraft}
@@ -5949,6 +5976,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             onEnd={endComparison}
             onChange={setComparisonDraft}
           />
+          </div>
 
           <SectionGuide guide={t("netWorthChartGuide")} />
           <div className="chart-frame" id="section-networth-chart">
@@ -6226,19 +6254,6 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             </button>
           ))}
         </nav>
-        <button
-          type="button"
-          className="back-to-top"
-          aria-label={t("backToTopLabel")}
-          title={t("backToTopLabel")}
-          onClick={() => {
-            const el = document.getElementById("simulator");
-            if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-            else window.scrollTo({ top: 0, behavior: "smooth" });
-          }}
-        >
-          {t("backToTopShort")}
-        </button>
       </div>,
       document.body
     )}
