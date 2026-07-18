@@ -13,7 +13,7 @@ import { GB_COUNTRY_RULES } from "../countryRules/index.js";
 // ---------- イギリス選択時：退職後パネル（State Pension → Expenses → Withdrawal） ----------
 function GBRetirementPanel({
   gbInvestment, onUpdateStatePension, onUpdate, retirementRules,
-  statePensionAge, claimAge, effectiveClaimAge, deferralFactor,
+  statePensionAge, statePensionAgeInfo, claimAge, effectiveClaimAge, deferralFactor,
   statePensionAnnual, retirementIncomeAnnual, fullStatePensionAnnual,
   expensesAnnual, healthcareAnnual, withdrawalNeeded, incomeSurplus,
 }) {
@@ -35,14 +35,40 @@ function GBRetirementPanel({
         })}</span>
       </div>
 
+      {/* State Pension age は生年月日から法律に従って自動算出する。
+          手動で変える必要がある場合だけ、下の上書き欄に値を入れてもらう。 */}
+      <div className="stat-card" style={{ marginBottom: 8 }}>
+        <div className="stat-label">{t("gbStatePensionAgeLabel")}</div>
+        <div className="stat-value">
+          {statePensionAgeInfo && statePensionAgeInfo.detail && statePensionAgeInfo.detail.months > 0
+            ? t("gbStatePensionAgeYearsMonths", {
+                years: statePensionAgeInfo.detail.years,
+                months: statePensionAgeInfo.detail.months,
+              })
+            : t("gbStatePensionAgeYears", { years: Math.floor(statePensionAge) })}
+        </div>
+        <div className="stat-sub">
+          {statePensionAgeInfo && statePensionAgeInfo.isAuto
+            ? t("gbStatePensionAgeAutoNote")
+            : t("gbStatePensionAgeManualNote")}
+        </div>
+      </div>
+      <div className="note" style={{ marginBottom: 8 }}>
+        <Info size={13} />
+        <span>{t("gbStatePensionAgeNote", {
+          from: sp.ageBefore2026,
+          to: sp.ageAfterTransition,
+          latest: sp.ageFrom2044,
+        })}</span>
+      </div>
       <AgeField
-        label={t("gbStatePensionAgeLabel")}
-        value={statePensionAge}
-        onChange={(v) => onUpdateStatePension("statePensionAge", Math.round(v))}
+        label={t("gbStatePensionAgeOverrideLabel")}
+        value={Number(gbInvestment.statePension.statePensionAgeOverride) || 0}
+        onChange={(v) => onUpdateStatePension("statePensionAgeOverride", Math.round(v))}
       />
       <div className="note" style={{ marginTop: -8, marginBottom: 8 }}>
         <Info size={13} />
-        <span>{t("gbStatePensionAgeNote", { from: sp.ageBefore2026, to: sp.ageAfterTransition })}</span>
+        <span>{t("gbStatePensionAgeOverrideNote")}</span>
       </div>
 
       <Field
