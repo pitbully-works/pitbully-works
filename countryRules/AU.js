@@ -75,15 +75,42 @@ export const AU_COUNTRY_RULES = {
     getTotalConcessional(annualSalary, voluntaryConcessional) {
       return this.getEmployerSgContribution(annualSalary) + this._num(voluntaryConcessional);
     },
+    // 【安全側の扱い】concessional cap を超えた税引前拠出は、実際には
+    //   ・超過分が課税所得に加算され、限界税率で課税される
+    //   ・すでに引かれた15%は税額控除される
+    //   ・超過分は「Superに残す」か「85%まで払い戻す」かを本人が選べる
+    //   ・繰越拠出（carry-forward）枠があれば、そもそも超過にならない
+    // という複雑な処理になる。本アプリはこれらを実装していないため、
+    // 投影では「通常の税引前拠出として扱う額」を cap までに制限する（安全側＝残高を過大にしない）。
+    // 超過分は投影に一切入らない。notImplemented と画面注記に明記すること。
+    getCappedConcessional(annualSalary, voluntaryConcessional) {
+      return Math.min(
+        this.getTotalConcessional(annualSalary, voluntaryConcessional),
+        this.limits.concessionalCap
+      );
+    },
     getConcessionalRemaining(annualSalary, voluntaryConcessional) {
       return this.limits.concessionalCap - this.getTotalConcessional(annualSalary, voluntaryConcessional);
     },
     getNonConcessionalRemaining(nonConcessionalContribution) {
       return this.limits.nonConcessionalCap - this._num(nonConcessionalContribution);
     },
-    // Superへアクセスできるか（60歳以上。65歳で無条件）
+    // Superへアクセスできるか（preservation age = 60歳以上）。
+    // 【注意】これは「preservation age に達しているか」だけを見る従来の判定で、
+    //   資産区分の表示（splitAssets）に使う。実際の取り崩し可否は
+    //   canAccessSuperAt(age, retired) を使うこと。
     canAccessSuper(age) {
       return (Number(age) || 0) >= this.preservationAge;
+    },
+    // 実際に取り崩せるか。condition of release を反映する。
+    //   ・60歳未満              ：不可
+    //   ・60〜64歳              ：退職等の condition of release を満たしている場合のみ可
+    //   ・65歳以降              ：就労状況に関わらず無条件で可
+    // simulateGrowth と lifePlanEngine の双方がこの同じ判定を使う。
+    canAccessSuperAt(age, retired) {
+      const a = Number(age) || 0;
+      if (a >= this.unrestrictedAccessAge) return true;
+      return a >= this.preservationAge && !!retired;
     },
     // 年齢別の最低取崩し率（Account-based pension）
     getMinimumDrawdownFactor(age) {
@@ -112,12 +139,21 @@ export const AU_COUNTRY_RULES = {
     //     完全に一致させること。ここが食い違うと、パネルのプレビューと lifePlanEngine の
     //     本計算で取崩し順が変わり、結果が一致しなくなる）
     //   Superは preservation age に達するまで取り崩せない。
+    //
+    // 【Division 293】税引前拠出への追加15%。呼び出し側が tax セクションで算出した
+    //   年額（div293TaxAnnual）と支払元（div293PaidFrom）を渡す。
+    //   ・"super"   ：Superへ入る額から差し引く（口座へ入る前に控除）
+    //   ・"outside" ：Cash Savings →（不足分は）Investment Account から差し引く
+    //   いずれの場合も総資産は税額分だけ減る。拠出が続いている年だけ課税される。
     simulateGrowth({
       currentAge, retireAge, deathAge, accounts, annualWithdrawalNeeded,
       annualSalary, voluntaryConcessional, contributionsTaxRate, earningsTaxAccumulation,
+      div293TaxAnnual, div293PaidFrom,
     }) {
       const keys = this.accountTypes;
       const contribTax = (contributionsTaxRate === undefined || contributionsTaxRate === null) ? 0.15 : Number(contributionsTaxRate);
+      const div293Annual = Math.max(0, Number(div293TaxAnnual) || 0);
+      const div293FromSuper = div293PaidFrom !== "outside";
       const earnTax = (earningsTaxAccumulation === undefined || earningsTaxAccumulation === null) ? 0.15 : Number(earningsTaxAccumulation);
 
       const balances = {}, contributions = {}, rates = {}, endAges = {}, withdrawalTax = {};
@@ -131,15 +167,25 @@ export const AU_COUNTRY_RULES = {
         // Superは60歳以降の引き出しが非課税なので既定0%。
         withdrawalTax[k] = Math.min(99, Math.max(0, Number(a.withdrawalTaxPct) || 0)) / 100;
       });
-      // Superへの税引前拠出（SG＋任意拠出）は、上限を超えた分も含めて15%課税後に口座へ入る。
-      const concessionalGross = this.getTotalConcessional(annualSalary, voluntaryConcessional);
-      const concessionalNet = concessionalGross * (1 - contribTax);
+      // Superへの税引前拠出（SG＋任意拠出）は15%課税後に口座へ入る。
+      // ただし concessional cap を超えた分は投影に入れない（getCappedConcessional 参照）。
+      // 超過分の限界税率課税・15%税額控除・払戻し／残留の選択・繰越拠出は未実装のため、
+      // 残高を過大に見せない安全側の扱いにしている。
+      // 【concessional cap】超過分の課税・払戻し／残留の選択は未実装のため、
+      // 通常の税引前拠出として投影する額を cap までに制限する（安全側）。
+      const concessionalGross = this.getCappedConcessional(annualSalary, voluntaryConcessional);
+      // Division 293 を Super から払う場合、口座へ入る額がその分だけ減る（0で下げ止まる）。
+      const concessionalNet = Math.max(
+        0,
+        concessionalGross * (1 - contribTax) - (div293FromSuper ? div293Annual : 0)
+      );
 
       const withdrawalOrder = ["cashSavings", "investmentAccount", "superannuation"];
       const totalOf = (b) => keys.reduce((s, k) => s + b[k], 0);
       const startAge = Math.round(currentAge);
       const endAge = Math.round(deathAge);
       let withdrawalTaxPaid = 0;
+      let div293TaxPaid = 0;
       const yearly = [{
         age: startAge, value: totalOf(balances), accounts: { ...balances },
         minimumDrawdown: 0, minimumDrawdownTax: 0, withdrawalTaxPaid: 0,
@@ -147,7 +193,12 @@ export const AU_COUNTRY_RULES = {
 
       for (let age = startAge + 1; age <= endAge; age++) {
         // 退職フェーズか（preservation age以降かつ退職後）。運用益が非課税になる。
-        const inRetirementPhase = age > retireAge && this.canAccessSuper(age);
+        // pension phase（運用益非課税・最低取崩し義務）は、退職して preservation age に
+        // 達していることが前提。取り崩しの可否とは判定が別であることに注意。
+        const retired = age > retireAge;
+        const inRetirementPhase = retired && this.canAccessSuper(age);
+        // 実際に取り崩せるか：60〜64歳は退職が条件、65歳以降は無条件。
+        const superAccessible = this.canAccessSuperAt(age, retired);
 
         keys.forEach((k) => {
           let r = rates[k];
@@ -165,6 +216,25 @@ export const AU_COUNTRY_RULES = {
             balances[k] += contributions[k];
           }
         });
+
+        // Division 293 を口座外から払う場合：Superは満額入るかわりに、
+        // 現金 →（不足分は）投資口座 の順に同額を差し引く。
+        // 拠出が続いている年だけ課税されるので、Superの拠出終了年齢で止める。
+        if (!div293FromSuper && div293Annual > 0 && age <= endAges.superannuation) {
+          let remaining = div293Annual;
+          for (const k of ["cashSavings", "investmentAccount"]) {
+            if (remaining <= 0) break;
+            const taken = Math.min(balances[k], remaining);
+            balances[k] -= taken;
+            remaining -= taken;
+          }
+          div293TaxPaid += div293Annual - remaining;
+        } else if (div293FromSuper && div293Annual > 0 && age <= endAges.superannuation) {
+          div293TaxPaid += Math.min(
+            div293Annual,
+            concessionalGross * (1 - contribTax)
+          );
+        }
 
         // 退職フェーズでの最低取崩し（引き出した額は投資口座へ移し、生活費に充てられる状態にする）
         let minimumDrawdown = 0, minimumDrawdownTax = 0;
@@ -185,7 +255,7 @@ export const AU_COUNTRY_RULES = {
           let remaining = Number(annualWithdrawalNeeded) || 0;
           for (const key of withdrawalOrder) {
             if (remaining <= 0) break;
-            if (key === "superannuation" && !this.canAccessSuper(age)) continue;
+            if (key === "superannuation" && !superAccessible) continue;
             const keep = 1 - withdrawalTax[key];
             const grossWanted = keep > 0 ? remaining / keep : Infinity;
             const gross = Math.min(balances[key], grossWanted);
@@ -202,7 +272,7 @@ export const AU_COUNTRY_RULES = {
       }
       return {
         yearly, finalValue: totalOf(balances), finalAccounts: { ...balances },
-        withdrawalTaxPaid,
+        withdrawalTaxPaid, div293TaxPaid,
       };
     },
 
@@ -227,6 +297,10 @@ export const AU_COUNTRY_RULES = {
       };
     },
     notImplemented: [
+      "Concessional cap 超過分の扱い：超過額は課税所得に加算されて限界税率で課税され、"
+        + "すでに引かれた15%が税額控除される。さらに超過分をSuperに残すか85%まで払い戻すかを"
+        + "選択できるが、いずれも未実装。投影では安全側として、通常の税引前拠出として扱う額を"
+        + "concessional cap までに制限し、超過分は投影に入れていない",
       "繰越拠出（carry-forward）：総残高$500,000未満なら過去5年分の未使用枠を繰り越せる",
       "3年分の前倒し拠出（bring-forward）の可否判定",
       "Transfer Balance Capを超えた分の課税（超過分は積立フェーズに留まり15%課税）",
@@ -402,7 +476,7 @@ export const AU_COUNTRY_RULES = {
     projectAgePension({
       investmentRules, contributionsTaxRate, earningsTaxAccumulation,
       currentAge, retireAge, deathAge, accounts,
-      annualSalary, voluntaryConcessional,
+      annualSalary, voluntaryConcessional, div293TaxAnnual, div293PaidFrom,
       expensesAnnual, healthcareAnnual, otherAnnualIncome,
       status, homeowner, bothQualified,
     }) {
@@ -424,6 +498,9 @@ export const AU_COUNTRY_RULES = {
           voluntaryConcessional,
           contributionsTaxRate,
           earningsTaxAccumulation,
+          // Division 293 の分だけ資産が減るので、資産テストの判定にも同じ前提を使う
+          div293TaxAnnual,
+          div293PaidFrom,
         });
         const target = Math.round(qualifyingAge);
         // すでに受給資格年齢を過ぎている場合は先頭行（＝現在の資産）で判定する
@@ -586,10 +663,36 @@ export const AU_COUNTRY_RULES = {
     //   min(税引前拠出額, 所得＋拠出額 − 250,000)
     // に対してのみ15%がかかる。閾値をわずかに超えただけの人に拠出額全額へ課税すると
     // 大きく過大評価になる（閾値をまたぐ境界で税額が不連続に跳ね上がってしまう）。
-    calculateSuperContributionTax(concessionalContribution, taxableIncome) {
+    // 【Division 293 income について】
+    //   ATOの定義する Division 293 income は「課税所得＋報告対象フリンジベネフィット＋
+    //   純投資損失＋純賃貸損失＋一部の海外所得」等の合計であり、年収そのものではない。
+    //   このアプリはフリンジベネフィットや投資損失を入力として持たないため厳密には
+    //   再現できない。そこで div293Income（概算用の入力欄）が正の値なら それを使い、
+    //   未入力なら「課税所得の概算＝年収 − 給与犠牲」で代用する（＝簡易計算）。
+    //   年収そのものではないのは、給与犠牲が課税所得から控除されるため。
+    //   どちらを使ったかは isEstimated で返し、画面にも簡易計算である旨を明示する。
+    //   なお calculateSuperContributionTax が income に拠出額を足し戻すので、
+    //   給与犠牲は二重に控除されない。
+    resolveDivision293Income(taxableIncomeApprox, div293Income) {
+      const explicit = Number(div293Income);
+      if (Number.isFinite(explicit) && explicit > 0) {
+        return { income: explicit, isEstimated: false };
+      }
+      return { income: Math.max(0, Number(taxableIncomeApprox) || 0), isEstimated: true };
+    },
+    // Division 293 税の支払元。
+    //   "super"   ：release authority で Super から支払う（Super残高が減る）
+    //   "outside" ：本人が口座外の現金で支払う（銀行・現金が減る）
+    //   どちらでも総資産は税額分だけ減る。既定は "super"。
+    DIV293_PAID_FROM: ["super", "outside"],
+    normalizeDiv293PaidFrom(v) {
+      return v === "outside" ? "outside" : "super";
+    },
+    // 第2引数は「Division 293 income」（年収そのものではない。resolveDivision293Income 参照）。
+    calculateSuperContributionTax(concessionalContribution, div293Income) {
       const s = this.superannuation;
       const c = Math.max(0, Number(concessionalContribution) || 0);
-      const income = Math.max(0, Number(taxableIncome) || 0);
+      const income = Math.max(0, Number(div293Income) || 0);
       const baseTax = c * s.contributionsTaxRate;
       const excessOverThreshold = Math.max(0, income + c - s.div293Threshold);
       const div293Base = Math.min(c, excessOverThreshold);
