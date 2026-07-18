@@ -586,7 +586,52 @@ export function buildPlanInput(ctx, overrides = {}) {
     publicPensions.push({ monthlyAmount: D.caAdditionalPensionAnnual / 12, startAge: retireAge });
   } else if (country === "AU") {
     healthCostAnnual = () => D.auHealthcareAnnual;
-    publicPensions.push({ monthlyAmount: D.auAgePensionAnnual / 12, startAge: D.auAgePensionQualifyingAge });
+    if (rules.retirement.implemented) {
+      // Age Pensionには資産テストがあり、資産が減るほど受給額が増える。
+      // そのため受給開始時点の固定額ではなく、毎ステップその時点の資産で再判定する。
+      // 判定対象はAU版の3口座（Super・投資口座・現金）。自宅は資産テストの対象外だが、
+      // 本アプリは自宅を資産として保有していないため、この3口座がそのまま対象資産になる。
+      // 所得テストに使う所得は利用者が入力した「その他の年収」のみ
+      // （金融資産のみなし収入＝Deemingは未実装。AU.js の retirement.notImplemented を参照）。
+      const ret = rules.retirement;
+      const auAcc = inputs.auInvestment || {};
+      const auPension = auAcc.agePension || {};
+      const auOtherIncome = Number(auPension.otherAnnualIncome) || 0;
+      const auStatus = auPension.status;
+      const auHomeowner = auPension.homeowner;
+      const auBothQualified = auPension.bothQualified;
+      // 資産テストの対象資産：AU版の3口座に加えて、全国共通で持っている
+      // 銀行預金・個別株・金・民間年金も含める（自宅は資産として保持していないので対象外）。
+      // iDeCo（group: "ideco"）とNISAはJP専用なのでAUでは生成されない。
+      const AU_ASSESSED_GROUPS = ["investment", "bank", "stock", "gold", "privatePension"];
+      const auAssessedPoolIds = pools
+        .filter((x) => AU_ASSESSED_GROUPS.includes(x.group))
+        .map((x) => x.id);
+      // Deeming（みなし収入）の対象＝financial investments。
+      // Services Australia は預金・株式・管理投資・債権・Super（受給資格年齢以降）に加えて
+      // 金/銀/プラチナの地金も金融投資に含めるため、上と同じ範囲になる。
+      const auDeemedPoolIds = auAssessedPoolIds;
+      publicPensions.push({
+        // 世帯合計で渡す。生活費を世帯合計で扱っているため、年金収入も世帯に揃える。
+        monthlyAmount: D.auAgePensionAnnual / 12,
+        monthlyAmountAt: (age, ctx) => ret.getAgePensionHousehold({
+          age,
+          annualIncome: auOtherIncome,
+          assessableAssets: (ctx && ctx.assessedAssets !== null && ctx.assessedAssets !== undefined)
+            ? ctx.assessedAssets : 0,
+          financialAssets: (ctx && ctx.deemedAssets !== null && ctx.deemedAssets !== undefined)
+            ? ctx.deemedAssets : 0,
+          status: auStatus,
+          homeowner: auHomeowner,
+          bothQualified: auBothQualified,
+        }) / 12,
+        assessedPoolIds: auAssessedPoolIds,
+        deemedPoolIds: auDeemedPoolIds,
+        startAge: D.auAgePensionQualifyingAge,
+      });
+    } else {
+      publicPensions.push({ monthlyAmount: D.auAgePensionAnnual / 12, startAge: D.auAgePensionQualifyingAge });
+    }
     publicPensions.push({ monthlyAmount: D.auOtherAnnualIncome / 12, startAge: retireAge });
   }
 
