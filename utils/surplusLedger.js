@@ -271,3 +271,43 @@ export function totalSurplusUsage(summary) {
     };
   }, { requested: 0, spent: 0, shortfall: 0 });
 }
+
+/**
+ * 指定年齢までに実際に使われた余剰金の合計（表示専用）。
+ *
+ * 【なぜ必要か】
+ *   エンジンのスナップショット（yearly[0]）は「その年齢の各種処理を行う前」の残高なので、
+ *   現在年齢で余剰金を使っても、現在時点のカードには反映されない
+ *   （例：余剰24万・現在57歳で20万使用 → カードは24万のまま。利用者の期待は4万）。
+ *   そこで、エンジンが返した実使用額のうち「その年齢までに済んだ分」を差し引いて表示する。
+ *   計算そのものは変えない（引かれた額はエンジン側で既に銀行残高へ反映済み）。
+ *
+ * @param {Array}  oneTimeExpenseResults integrated.oneTimeExpenseResults
+ * @param {number} age                   基準年齢（この年齢までに使われた分を数える）
+ * @returns {number} 実使用額の合計（円）。0 以上。
+ */
+export function surplusSpentThroughAge(oneTimeExpenseResults, age) {
+  const list = Array.isArray(oneTimeExpenseResults) ? oneTimeExpenseResults : [];
+  const limit = Number(age);
+  if (!Number.isFinite(limit)) return 0;
+  return list.reduce((sum, r) => {
+    if (!r) return sum;
+    const at = Number(r.age);
+    const spent = Number(r.actuallySpent);
+    if (!Number.isFinite(at) || !(spent > 0)) return sum;
+    return at <= limit + 1e-9 ? sum + spent : sum;
+  }, 0);
+}
+
+/**
+ * 現在時点の余剰金残高（表示用）。
+ *   = エンジンの先頭スナップショット − 現在年齢までに実際に使えた額（0円フロア）
+ *
+ * @param {object} args { snapshotBalance, oneTimeExpenseResults, currentAge }
+ * @returns {number} 円。0 以上。
+ */
+export function surplusBalanceNow({ snapshotBalance, oneTimeExpenseResults, currentAge }) {
+  const base = Number(snapshotBalance) || 0;
+  const spent = surplusSpentThroughAge(oneTimeExpenseResults, currentAge);
+  return Math.max(0, base - spent);
+}
