@@ -1187,7 +1187,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       cashSavings:      { currentValue: 0, annualContribution: 0, expectedReturnPct: 2, contributionEndAge: 65, withdrawalTaxPct: 0 },
       // ② State Pension（英国の公的年金）
       statePension: {
-        statePensionAge: 67,       // 生年月日により66〜67歳。GOV.UKで確認した値を入力
+        // State Pension age は生年月日から法律に従って自動算出する（Pensions Act 2007/2014）。
+        // ここは「手動で上書きしたい場合のみ」使う任意項目。0 / 空 なら自動算出値を使う。
+        statePensionAgeOverride: 0,
         claimAge: 67,              // 繰下げ受給する場合はここを引き上げる（繰上げ受給は不可）
         // 初期値は2026/27年度の満額（参考値）。実際の受給額はNational Insuranceの加入記録により
         // 異なるため、利用者がGOV.UKのforecastで確認した見込額で必ず上書きできる。
@@ -1420,7 +1422,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     ? rules.healthcare.getAnnualTotal(gbInvestment.healthcare)
     : 0;
 
-  const gbStatePensionAge = Number(gbInvestment.statePension.statePensionAge) || 67;
+  // State Pension age は生年月日から自動算出する（法定スケジュール）。
+  // 利用者が statePensionAgeOverride に値を入れた場合のみ、その値で上書きする。
+  const gbStatePensionAgeInfo = (gbIsGB && rules.retirement.implemented)
+    ? rules.retirement.resolveStatePensionAge(inputs.birthDate, gbInvestment.statePension.statePensionAgeOverride)
+    : { ageInYears: 67, isAuto: false, detail: null };
+  const gbStatePensionAge = gbStatePensionAgeInfo.ageInYears;
   const gbClaimAge = Number(gbInvestment.statePension.claimAge) || gbStatePensionAge;
   const gbEffectiveClaimAge = (gbIsGB && rules.retirement.implemented)
     ? rules.retirement.getEffectiveClaimAge(gbClaimAge, gbStatePensionAge)
@@ -4924,6 +4931,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               onUpdate={updateGbInvestment}
               retirementRules={rules.retirement}
               statePensionAge={gbStatePensionAge}
+              statePensionAgeInfo={gbStatePensionAgeInfo}
               claimAge={gbClaimAge}
               effectiveClaimAge={gbEffectiveClaimAge}
               deferralFactor={gbDeferralFactor}

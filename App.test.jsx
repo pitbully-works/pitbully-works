@@ -83,7 +83,7 @@ describe("BUG-3 saved data: shallow merge", () => {
     ideco: { currentValue: 0, payoutYears: 10, payoutReturnPct: 0 },
     gbInvestment: {
       sipp: { currentValue: 0, annualContribution: 0, expectedReturnPct: 5, contributionEndAge: 65 },
-      statePension: { statePensionAge: 67, claimAge: 67, incomeOverlapYears: 0 },
+      statePension: { statePensionAgeOverride: 0, claimAge: 67, incomeOverlapYears: 0 },
     },
     banks: [],
   };
@@ -108,7 +108,18 @@ describe("BUG-3 saved data: shallow merge", () => {
 
   it("keys absent from the save keep their defaults", () => {
     const merged = mergeSavedInputs(defaults, { country: "GB" });
-    expect(merged.gbInvestment.statePension.statePensionAge).toBe(67);
+    // State Pension age は生年月日から自動算出するため、保存されるのは手動上書き値のみ。
+    // 未設定（0）なら自動算出値が使われる。
+    expect(merged.gbInvestment.statePension.statePensionAgeOverride).toBe(0);
+  });
+
+  it("an old save containing the removed statePensionAge key still restores safely", () => {
+    // 旧バージョンの保存データには statePensionAge が入っている。
+    // 新しい既定値に無いキーが来ても壊れず、上書き値は未設定のまま自動算出に任せる。
+    const oldSave = { gbInvestment: { statePension: { statePensionAge: 66, claimAge: 68 } } };
+    const merged = mergeSavedInputs(defaults, oldSave);
+    expect(merged.gbInvestment.statePension.claimAge).toBe(68);
+    expect(merged.gbInvestment.statePension.statePensionAgeOverride).toBe(0);
   });
 
   it("arrays are replaced, not merged", () => {
