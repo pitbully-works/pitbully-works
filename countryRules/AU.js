@@ -6,7 +6,7 @@
 
 // ---------- countryRules/AU.js 相当（オーストラリア版：実装済み） ----------
 // country: AU
-// lastUpdated: 2026-07-13
+// lastUpdated: 2026-07-18
 // source: ato.gov.au（税制・Superannuation）／ servicesaustralia.gov.au（Age Pension）
 // 対象年度：2026-27会計年度（2026年7月1日〜2027年6月30日）。
 //   ※オーストラリアの会計年度は7月1日開始。2026年7月13日現在、2026-27年度が進行中。
@@ -18,7 +18,7 @@ export const AU_COUNTRY_RULES = {
   investment: {
     implemented: true,
     effectiveTaxYear: "2026-27",
-    lastUpdated: "2026-07-13",
+    lastUpdated: "2026-07-18",
     sourceName: "Australian Taxation Office (ATO) — Key superannuation rates and thresholds",
     sourceUrl: "https://www.ato.gov.au/tax-rates-and-codes/key-superannuation-rates-and-thresholds",
     sourceUrls: {
@@ -107,8 +107,11 @@ export const AU_COUNTRY_RULES = {
     //   ・積立期（accumulation phase）の運用益には15%課税 → 実効利回りが下がる
     //   ・退職フェーズ（preservation age以降かつ退職後）では運用益が非課税
     //   ・退職後は年齢別の最低取崩し率に従って引き出す義務がある
-    // 取崩し順：Investment Account → Cash Savings → Superannuation
-    //           （Superは preservation age に達するまで取り崩せない）
+    // 取崩し順：Cash Savings → Investment Account → Superannuation
+    //   （utils/simulations.js の ACCOUNT_DRAW_CATEGORY.AU = cash → taxable → restricted と
+    //     完全に一致させること。ここが食い違うと、パネルのプレビューと lifePlanEngine の
+    //     本計算で取崩し順が変わり、結果が一致しなくなる）
+    //   Superは preservation age に達するまで取り崩せない。
     simulateGrowth({
       currentAge, retireAge, deathAge, accounts, annualWithdrawalNeeded,
       annualSalary, voluntaryConcessional, contributionsTaxRate, earningsTaxAccumulation,
@@ -117,23 +120,30 @@ export const AU_COUNTRY_RULES = {
       const contribTax = (contributionsTaxRate === undefined || contributionsTaxRate === null) ? 0.15 : Number(contributionsTaxRate);
       const earnTax = (earningsTaxAccumulation === undefined || earningsTaxAccumulation === null) ? 0.15 : Number(earningsTaxAccumulation);
 
-      const balances = {}, contributions = {}, rates = {}, endAges = {};
+      const balances = {}, contributions = {}, rates = {}, endAges = {}, withdrawalTax = {};
       keys.forEach((k) => {
         const a = accounts[k] || {};
         balances[k] = Number(a.currentValue) || 0;
         contributions[k] = Number(a.annualContribution) || 0;
         rates[k] = (Number(a.expectedReturnPct) || 0) / 100;
         endAges[k] = Number(a.contributionEndAge) || 0;
+        // 引出時課税（%）。lifePlanEngine と同じ扱いにするため、ここでも税引後の手取りで計算する。
+        // Superは60歳以降の引き出しが非課税なので既定0%。
+        withdrawalTax[k] = Math.min(99, Math.max(0, Number(a.withdrawalTaxPct) || 0)) / 100;
       });
       // Superへの税引前拠出（SG＋任意拠出）は、上限を超えた分も含めて15%課税後に口座へ入る。
       const concessionalGross = this.getTotalConcessional(annualSalary, voluntaryConcessional);
       const concessionalNet = concessionalGross * (1 - contribTax);
 
-      const withdrawalOrder = ["investmentAccount", "cashSavings", "superannuation"];
+      const withdrawalOrder = ["cashSavings", "investmentAccount", "superannuation"];
       const totalOf = (b) => keys.reduce((s, k) => s + b[k], 0);
       const startAge = Math.round(currentAge);
       const endAge = Math.round(deathAge);
-      const yearly = [{ age: startAge, value: totalOf(balances), accounts: { ...balances }, minimumDrawdown: 0 }];
+      let withdrawalTaxPaid = 0;
+      const yearly = [{
+        age: startAge, value: totalOf(balances), accounts: { ...balances },
+        minimumDrawdown: 0, minimumDrawdownTax: 0, withdrawalTaxPaid: 0,
+      }];
 
       for (let age = startAge + 1; age <= endAge; age++) {
         // 退職フェーズか（preservation age以降かつ退職後）。運用益が非課税になる。
@@ -157,29 +167,43 @@ export const AU_COUNTRY_RULES = {
         });
 
         // 退職フェーズでの最低取崩し（引き出した額は投資口座へ移し、生活費に充てられる状態にする）
-        let minimumDrawdown = 0;
+        let minimumDrawdown = 0, minimumDrawdownTax = 0;
         if (inRetirementPhase && balances.superannuation > 0) {
           minimumDrawdown = Math.min(
             balances.superannuation,
             this.getMinimumDrawdown(age, balances.superannuation)
           );
+          const net = minimumDrawdown * (1 - withdrawalTax.superannuation);
+          minimumDrawdownTax = minimumDrawdown - net;
           balances.superannuation -= minimumDrawdown;
-          balances.investmentAccount += minimumDrawdown;
+          balances.investmentAccount += net;
         }
+        withdrawalTaxPaid += minimumDrawdownTax;
 
         if (age > retireAge) {
+          // 必要額は「手取り」ベース。課税口座からは 必要額 ÷ (1 − 税率) を引き出す。
           let remaining = Number(annualWithdrawalNeeded) || 0;
           for (const key of withdrawalOrder) {
             if (remaining <= 0) break;
             if (key === "superannuation" && !this.canAccessSuper(age)) continue;
-            const take = Math.min(balances[key], remaining);
-            balances[key] -= take;
-            remaining -= take;
+            const keep = 1 - withdrawalTax[key];
+            const grossWanted = keep > 0 ? remaining / keep : Infinity;
+            const gross = Math.min(balances[key], grossWanted);
+            const net = gross * keep;
+            balances[key] -= gross;
+            withdrawalTaxPaid += gross - net;
+            remaining -= net;
           }
         }
-        yearly.push({ age, value: totalOf(balances), accounts: { ...balances }, minimumDrawdown });
+        yearly.push({
+          age, value: totalOf(balances), accounts: { ...balances },
+          minimumDrawdown, minimumDrawdownTax, withdrawalTaxPaid,
+        });
       }
-      return { yearly, finalValue: totalOf(balances), finalAccounts: { ...balances } };
+      return {
+        yearly, finalValue: totalOf(balances), finalAccounts: { ...balances },
+        withdrawalTaxPaid,
+      };
     },
 
     // 資産区分。
@@ -215,7 +239,7 @@ export const AU_COUNTRY_RULES = {
   retirement: {
     implemented: true,
     effectiveTaxYear: "2026-27",
-    lastUpdated: "2026-07-13",
+    lastUpdated: "2026-07-18",
     sourceName: "Services Australia — Age Pension（給付額は2026年3月20日改定値、資産・所得基準は2026年7月1日改定値）",
     sourceUrl: "https://www.servicesaustralia.gov.au/age-pension",
     sourceUrls: {
@@ -232,22 +256,53 @@ export const AU_COUNTRY_RULES = {
       // 最大給付額（2026年3月20日〜9月19日。年金補助・エネルギー補助を含む）
       maxFortnightlySingle: 1200.90,
       maxFortnightlyCoupleEach: 905.20,
-      // 所得テスト：無影響枠を超えた分、1ドルにつき50セント減額
+      // 所得テスト：無影響枠を超えた分を逓減。
+      // 【重要】公表されている「1ドルにつき50セント」「1,000ドルにつき隔週3ドル」は
+      //   いずれも“世帯合計”の減額幅。カップルの給付額は1人あたりで管理するため、
+      //   1人あたりの逓減率はその半分（所得25セント／資産隔週1.50ドル）になる。
+      //   世帯合計の率を1人あたりの満額へ適用すると、約2倍の減額になってしまう。
       incomeFreeAreaFortnightlySingle: 226,
       incomeFreeAreaFortnightlyCoupleCombined: 396,
-      incomeTaperPerDollar: 0.50,
-      // 資産テスト：無影響枠を超えた1,000ドルごとに、隔週3ドル減額
+      incomeTaperPerDollarSingle: 0.50,
+      incomeTaperPerDollarCouplePerPerson: 0.25,
+      // 資産テスト：無影響枠を超えた1,000ドルごとの隔週減額（1人あたり）
       assetsFreeAreaSingleHomeowner: 333000,
       assetsFreeAreaSingleNonHomeowner: 600000,
       assetsFreeAreaCoupleHomeowner: 499000,
       assetsFreeAreaCoupleNonHomeowner: 766000,
-      assetsTaperPerThousandFortnightly: 3,
+      assetsTaperPerThousandFortnightlySingle: 3,
+      assetsTaperPerThousandFortnightlyCouplePerPerson: 1.5,
       // Work Bonus：就労収入のうち、所得テストから除外される年額
       workBonusAnnual: 11800,
     },
+    // Deeming（みなし収入）：金融資産は実際の運用益ではなく、みなし利率で所得を算定する。
+    //   レートは2026年3月20日から、しきい値は2026年7月1日から。
+    //   対象（financial investments）：Super（受給資格年齢以降）・預金・現金・定期預金・
+    //     上場株式・管理投資・債権・貸付金・金/銀/プラチナの地金。
+    //   対象外：自宅・家財・自動車・投資用不動産（不動産の実収入は別途所得テストに算入）。
+    deeming: {
+      lowerRate: 0.0125,
+      upperRate: 0.0325,
+      thresholdSingle: 66800,
+      thresholdCoupleCombined: 110600,
+    },
 
     getQualifyingAge() { return this.agePension.qualifyingAge; },
-    // 最大給付額（年額）
+    // Deemingのしきい値（カップルは世帯合算）
+    getDeemingThreshold(status) {
+      const d = this.deeming;
+      return status === "couple" ? d.thresholdCoupleCombined : d.thresholdSingle;
+    },
+    // 金融資産からのみなし収入（年額）。しきい値までは下限レート、超過分は上限レート。
+    getDeemedIncomeAnnual(financialAssets, status) {
+      const d = this.deeming;
+      const assets = Math.max(0, Number(financialAssets) || 0);
+      const threshold = this.getDeemingThreshold(status);
+      const lower = Math.min(assets, threshold);
+      const upper = Math.max(0, assets - threshold);
+      return lower * d.lowerRate + upper * d.upperRate;
+    },
+    // 最大給付額（年額）。カップルは「1人あたり」の額を返す（世帯合計はこの2倍）。
     getMaxAnnual(status) {
       const p = this.agePension;
       const fortnightly = status === "couple" ? p.maxFortnightlyCoupleEach : p.maxFortnightlySingle;
@@ -261,6 +316,17 @@ export const AU_COUNTRY_RULES = {
       }
       return homeowner ? p.assetsFreeAreaSingleHomeowner : p.assetsFreeAreaSingleNonHomeowner;
     },
+    // 逓減率（1人あたり）。カップルは世帯合計の半分。
+    getIncomeTaperPerDollar(status) {
+      const p = this.agePension;
+      return status === "couple" ? p.incomeTaperPerDollarCouplePerPerson : p.incomeTaperPerDollarSingle;
+    },
+    getAssetsTaperPerThousandFortnightly(status) {
+      const p = this.agePension;
+      return status === "couple"
+        ? p.assetsTaperPerThousandFortnightlyCouplePerPerson
+        : p.assetsTaperPerThousandFortnightlySingle;
+    },
     // 所得テストの無影響枠（年額）
     getIncomeFreeAreaAnnual(status) {
       const p = this.agePension;
@@ -271,31 +337,134 @@ export const AU_COUNTRY_RULES = {
     },
     // 所得テストによる給付額（年額）。就労収入はWork Bonus分が除外される。
     getAgePensionByIncomeTest(annualIncome, status) {
-      const p = this.agePension;
       const max = this.getMaxAnnual(status);
       const excess = Math.max(0, (Number(annualIncome) || 0) - this.getIncomeFreeAreaAnnual(status));
-      return Math.max(0, max - excess * p.incomeTaperPerDollar);
+      return Math.max(0, max - excess * this.getIncomeTaperPerDollar(status));
     },
     // 資産テストによる給付額（年額）
     getAgePensionByAssetsTest(assessableAssets, status, homeowner) {
       const p = this.agePension;
       const max = this.getMaxAnnual(status);
       const excess = Math.max(0, (Number(assessableAssets) || 0) - this.getAssetsFreeArea(status, homeowner));
-      const reductionPerYear = (excess / 1000) * p.assetsTaperPerThousandFortnightly * p.fortnightsPerYear;
+      const reductionPerYear = (excess / 1000)
+        * this.getAssetsTaperPerThousandFortnightly(status)
+        * p.fortnightsPerYear;
       return Math.max(0, max - reductionPerYear);
     },
-    // 実際の給付額 ＝ 所得テストと資産テストの「低い方」。受給資格年齢未満はゼロ。
-    getAgePension({ age, annualIncome, assessableAssets, status, homeowner }) {
+    // 給付が完全に打ち切られる資産額（カットオフ）。テストと画面表示で共有する。
+    getAssetsCutOff(status, homeowner) {
+      const p = this.agePension;
+      const perThousand = this.getAssetsTaperPerThousandFortnightly(status) * p.fortnightsPerYear;
+      return this.getAssetsFreeArea(status, homeowner) + (this.getMaxAnnual(status) / perThousand) * 1000;
+    },
+    // 給付が完全に打ち切られる年間所得（カットオフ）。
+    getIncomeCutOffAnnual(status) {
+      return this.getIncomeFreeAreaAnnual(status)
+        + this.getMaxAnnual(status) / this.getIncomeTaperPerDollar(status);
+    },
+    // 所得テストに算入する所得＝利用者が入力したその他の年収 ＋ 金融資産のみなし収入。
+    // financialAssets を渡さなければみなし収入は0として扱う（従来の呼び出しと互換）。
+    getAssessableIncomeAnnual(annualIncome, financialAssets, status) {
+      return (Number(annualIncome) || 0) + this.getDeemedIncomeAnnual(financialAssets, status);
+    },
+    // 実際の給付額（1人あたり年額）＝ 所得テストと資産テストの「低い方」。
+    // 受給資格年齢未満はゼロ。
+    getAgePension({ age, annualIncome, assessableAssets, financialAssets, status, homeowner }) {
       if ((Number(age) || 0) < this.agePension.qualifyingAge) return 0;
-      const byIncome = this.getAgePensionByIncomeTest(annualIncome, status);
+      const income = this.getAssessableIncomeAnnual(annualIncome, financialAssets, status);
+      const byIncome = this.getAgePensionByIncomeTest(income, status);
       const byAssets = this.getAgePensionByAssetsTest(assessableAssets, status, homeowner);
       return Math.min(byIncome, byAssets);
     },
+    // 世帯合計の給付額（年額）。生活費を世帯合計で扱っているため、投影に入れる年金収入も
+    // 世帯合計に揃える。カップルで双方が受給資格年齢に達している場合だけ2人分になる。
+    //   status !== "couple" → 1人分
+    //   status === "couple" かつ bothQualified === false → 1人分（片方だけが受給）
+    // ※ 片方が受給資格年齢未満の場合、その人の積立フェーズのSuperは資産テストの対象外に
+    //   なるが、本アプリは世帯の資産をまとめて扱うため、その除外は未実装。
+    getAgePensionHousehold({ age, annualIncome, assessableAssets, financialAssets, status, homeowner, bothQualified }) {
+      const perPerson = this.getAgePension({ age, annualIncome, assessableAssets, financialAssets, status, homeowner });
+      const recipients = (status === "couple" && bothQualified !== false) ? 2 : 1;
+      return perPerson * recipients;
+    },
+    getHouseholdRecipients(status, bothQualified) {
+      return (status === "couple" && bothQualified !== false) ? 2 : 1;
+    },
+    // 【画面表示用】Age Pensionを「受給資格年齢に到達した時点の投影資産」で算定する（純関数）。
+    // 投影（lifePlanEngine）側は毎ステップその時点の資産で再判定するため、この値は
+    // 「受給を開始する時点の見込額」であって、投影期間を通じた固定額ではない。
+    // 取り崩し額そのものがAge Pensionに依存して循環するため、2パスに分ける。
+    //   パス1：Age Pensionを一切見込まない取り崩し額で資産を投影し、受給資格年齢時点の総資産を得る
+    //   パス2：その資産額で所得テスト・資産テストを行い、給付額を確定する
+    // 投影中の毎年の再判定は lifePlanEngine 側が行う。
+    // investmentRules は同じ AU_COUNTRY_RULES.investment を呼び出し側から渡す
+    // （他国のルールは参照しないという原則を保つため、内部で import はしない）。
+    projectAgePension({
+      investmentRules, contributionsTaxRate, earningsTaxAccumulation,
+      currentAge, retireAge, deathAge, accounts,
+      annualSalary, voluntaryConcessional,
+      expensesAnnual, healthcareAnnual, otherAnnualIncome,
+      status, homeowner, bothQualified,
+    }) {
+      const qualifyingAge = this.getQualifyingAge();
+      const other = Number(otherAnnualIncome) || 0;
+      let assessableAssets = 0;
+      if (investmentRules && typeof investmentRules.simulateGrowth === "function") {
+        const needWithoutPension = Math.max(
+          0, (Number(expensesAnnual) || 0) + (Number(healthcareAnnual) || 0) - other
+        );
+        const sim = investmentRules.simulateGrowth({
+          currentAge,
+          retireAge,
+          // 想定寿命が受給資格年齢より手前でも、判定年齢までは投影する
+          deathAge: Math.max(Number(deathAge) || 0, qualifyingAge),
+          accounts,
+          annualWithdrawalNeeded: needWithoutPension,
+          annualSalary,
+          voluntaryConcessional,
+          contributionsTaxRate,
+          earningsTaxAccumulation,
+        });
+        const target = Math.round(qualifyingAge);
+        // すでに受給資格年齢を過ぎている場合は先頭行（＝現在の資産）で判定する
+        const row = sim.yearly.find((y) => y.age === target) || sim.yearly[0] || { value: 0 };
+        assessableAssets = Math.max(0, Number(row.value) || 0);
+      }
+      // 画面カードでも投影と同じ判定を使う：資産テストの対象資産＝投影総資産、
+      // 所得テストには金融資産のみなし収入（Deeming）を加算する。
+      // ここでの financialAssets は投影総資産と同じ（自宅を資産として保持していないため）。
+      const perPerson = this.getAgePension({
+        age: qualifyingAge,
+        annualIncome: other,
+        assessableAssets,
+        financialAssets: assessableAssets,
+        status,
+        homeowner,
+      });
+      const recipients = this.getHouseholdRecipients(status, bothQualified);
+      const deemedIncomeAnnual = this.getDeemedIncomeAnnual(assessableAssets, status);
+      return {
+        qualifyingAge,
+        assessableAssets,
+        deemedIncomeAnnual,
+        recipients,
+        // 1人あたりの年額
+        agePensionPerPersonAnnual: perPerson,
+        // 世帯合計の年額（投影に入るのはこちら）
+        agePensionAnnual: perPerson * recipients,
+      };
+    },
     notImplemented: [
-      "Deeming（金融資産のみなし収入）— 実際の運用益ではなく、みなし利率で所得を算定する制度",
-      "Work Bonusの income bank（未使用分の繰越）",
       "Rent Assistance（賃貸住宅手当）",
       "Transitional rate pension（2009年以前からの受給者への経過措置）",
+      // 【A-2】投影中のAge Pensionは lifePlanEngine 側で毎ステップ再判定している
+      //   （publicPensions.monthlyAmountAt + assessedPoolIds）。
+      //   projectAgePension は画面カードに出す「受給開始時点の見込額」を求めるためのもので、
+      //   投影値そのものではない。
+      "Work Bonus（就労収入 年 A$11,800 の所得テスト除外）。就労収入と非就労収入を区別せず入力するため未適用",
+      "カップルで片方だけが受給資格年齢の場合、受給資格年齢未満の配偶者の積立フェーズSuperを資産テストから除外する扱い",
+      "投資用不動産の実収入（Deemingの対象外だが所得テストには算入される）",
+      "カップルで片方だけが受給資格年齢に達している場合の取り扱い（資産・所得は世帯合算のまま）",
       "Commonwealth Seniors Health Card",
     ],
   },
@@ -306,7 +475,7 @@ export const AU_COUNTRY_RULES = {
     // 自己負担が生じうる費目のみ年間費用を入力する簡易モデル。
     model: "selfInputAnnualCostsWithMedicare",
     effectiveTaxYear: "2026-27",
-    lastUpdated: "2026-07-13",
+    lastUpdated: "2026-07-18",
     sourceName: "Services Australia — Medicare",
     sourceUrl: "https://www.servicesaustralia.gov.au/medicare",
     costItems: [
@@ -341,7 +510,7 @@ export const AU_COUNTRY_RULES = {
     implemented: true,
     model: "australiaIncomeTaxPlusMedicareLevy",
     effectiveTaxYear: "2026-27",
-    lastUpdated: "2026-07-13",
+    lastUpdated: "2026-07-18",
     sourceName: "Australian Taxation Office (ATO) — Tax rates for Australian residents",
     sourceUrl: "https://www.ato.gov.au/tax-rates-and-codes/tax-rates-australian-residents",
     sourceUrls: {
@@ -413,19 +582,25 @@ export const AU_COUNTRY_RULES = {
       return this.getMarginalRate(taxableIncome) + this.medicareLevy.rate;
     },
     // 税引前拠出への課税。所得＋拠出額が$250,000を超えるとDivision 293で追加15%。
+    // 【重要】Division 293 の追加課税は「拠出額の全額」ではなく、
+    //   min(税引前拠出額, 所得＋拠出額 − 250,000)
+    // に対してのみ15%がかかる。閾値をわずかに超えただけの人に拠出額全額へ課税すると
+    // 大きく過大評価になる（閾値をまたぐ境界で税額が不連続に跳ね上がってしまう）。
     calculateSuperContributionTax(concessionalContribution, taxableIncome) {
       const s = this.superannuation;
       const c = Math.max(0, Number(concessionalContribution) || 0);
       const income = Math.max(0, Number(taxableIncome) || 0);
       const baseTax = c * s.contributionsTaxRate;
-      const div293Applies = (income + c) > s.div293Threshold;
-      const div293Tax = div293Applies ? c * s.div293AdditionalRate : 0;
+      const excessOverThreshold = Math.max(0, income + c - s.div293Threshold);
+      const div293Base = Math.min(c, excessOverThreshold);
+      const div293Tax = div293Base * s.div293AdditionalRate;
       return {
         baseTax,
+        div293Base,
         div293Tax,
         total: baseTax + div293Tax,
         effectiveRate: c > 0 ? (baseTax + div293Tax) / c : 0,
-        div293Applies,
+        div293Applies: div293Base > 0,
       };
     },
     // 給与犠牲による節税額 ＝ 拠出額 ×（限界税率＋Medicare levy − 拠出課税の実効税率）
