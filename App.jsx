@@ -5451,32 +5451,30 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 <div className="stat-sub" style={{ opacity: 0.7 }}>{t("surplusHistoryEmpty")}</div>
               ) : (
                 <table className="watchlist">
+                  {/* table-layout:fixed の等幅列だと金額が隣の列に被るため、列幅を明示する。
+                      金額は1つの列（要求額・実使用・不足額）にまとめ、重複表示をなくす。 */}
+                  <colgroup>
+                    <col style={{ width: "15%" }} />
+                    <col style={{ width: "30%" }} />
+                    <col style={{ width: "32%" }} />
+                    <col style={{ width: "13%" }} />
+                    <col style={{ width: "10%" }} />
+                  </colgroup>
                   <tbody>
                     {surplusUsage.slice().reverse().map((e) => {
                       const cat = SURPLUS_CATEGORIES.includes(e.category) ? e.category : "other";
+                      // エンジンが実際に処理した消費行（全額・一部・0円）だけ金額の内訳を出す。
+                      // 付け替え（総資産不変）と未反映の行は、金額そのものだけを出す。
+                      const isSpendRow =
+                        e.status === SURPLUS_USE_STATUS.FULL ||
+                        e.status === SURPLUS_USE_STATUS.PARTIAL ||
+                        e.status === SURPLUS_USE_STATUS.NONE;
                       return (
                         <tr key={e.id}>
                           <td>{t("ageYears", { age: e.age })}</td>
                           <td>
                             {t("surplusCategory_" + cat)}
                             {e.memo ? <span style={{ opacity: 0.7 }}>{" · " + e.memo}</span> : null}
-                            {/* 余剰金残高が足りなかった行は「実際に使えた金額」と「不足額」を
-                                両方出す（利用者が“いくら足りなかったのか”をその場で判断できるように）。
-                                エンジンが返した値をそのまま表示するだけで、再計算はしない。 */}
-                            {(e.status === SURPLUS_USE_STATUS.PARTIAL || e.status === SURPLUS_USE_STATUS.NONE) && (
-                              <div style={{ fontSize: 11, marginTop: 4, lineHeight: 1.6 }}>
-                                {[
-                                  { label: t("surplusRequestedLabel"), value: e.requestedAmount, tone: null },
-                                  { label: t("surplusSpentLabel"), value: e.actuallySpent, tone: null },
-                                  { label: t("surplusShortfallLabel"), value: e.insufficientSurplusAmount, tone: "#C2694F" },
-                                ].map((row) => (
-                                  <div key={row.label} style={{ display: "flex", gap: 8, color: row.tone || undefined, opacity: row.tone ? 1 : 0.85 }}>
-                                    <span style={{ minWidth: "4.5em", whiteSpace: "nowrap" }}>{row.label}</span>
-                                    <span className="mono" style={{ whiteSpace: "nowrap" }}>{money(row.value)}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
                             {/* 現在年齢より過去、または想定寿命より先の年齢の行は計算に入らない。
                                 黙って無視すると「使ったのに残高が減らない」ように見えるため明示する。 */}
                             {e.status === SURPLUS_USE_STATUS.NOT_APPLIED && (
@@ -5485,7 +5483,34 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                               </div>
                             )}
                           </td>
-                          <td className="mono">{money(e.amount)}</td>
+                          {/* 消費した行は「要求額・実使用・不足額」を常に3行で出す（全額使えた場合も、
+                              いくら要求していくら使えたのかが履歴として残るようにする）。
+                              エンジンが返した値をそのまま表示するだけで、ここでは再計算しない。 */}
+                          <td>
+                            {isSpendRow ? (
+                              <div style={{ fontSize: 11, lineHeight: 1.6 }}>
+                                {[
+                                  { key: "requested", label: t("surplusRequestedLabel"), value: e.requestedAmount, warn: false },
+                                  { key: "spent", label: t("surplusSpentLabel"), value: e.actuallySpent, warn: false },
+                                  { key: "short", label: t("surplusShortfallLabel"), value: e.insufficientSurplusAmount, warn: e.insufficientSurplusAmount > 0 },
+                                ].map((row) => (
+                                  <div
+                                    key={row.key}
+                                    style={{
+                                      display: "flex", justifyContent: "space-between", gap: 6,
+                                      color: row.warn ? "#C2694F" : undefined,
+                                      opacity: row.warn ? 1 : 0.9,
+                                    }}
+                                  >
+                                    <span>{row.label}</span>
+                                    <span className="mono" style={{ whiteSpace: "nowrap" }}>{money(row.value)}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="mono">{money(e.amount)}</span>
+                            )}
+                          </td>
                           <td>
                             <span style={{ fontSize: 11, opacity: 0.8 }}>
                               {e.kind === "transfer" ? t("surplusTransferTag") : t("surplusConsumeTag")}
