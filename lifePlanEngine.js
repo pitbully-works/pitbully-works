@@ -138,6 +138,13 @@ export function buildAgeSteps(currentAge, deathAge, boundaries) {
  * @param {string}   p.surplusTargetId    余剰金・一時金の受け皿プールid
  * @param {number}   p.initialSurplusBalance 現在までに貯まっている余剰金の初期残高。
  *        既存の銀行残高の内数として扱い、銀行残高合計を上限に頭打ちする。総資産には加算しない。
+ * @param {Array}  p.recurringCharges
+ *        [{ id, annualAmount, fromAge, toAge, fromPoolIds }]
+ *        生活費・保険料とは別に、資産から直接引かれる定期的な支出。
+ *        退職の前後を問わず必ず徴収される（積立期でも資産が減る）。
+ *        豪 Division 293 税を「口座外から支払う」設定にした場合に使う。
+ *        fromPoolIds を指定するとそのプールから順に引き、未指定なら通常の取り崩し順に従う。
+ *        既定は空配列なので、渡さなければ挙動は一切変わらない。
  * @param {boolean}  p.chargeFixedCostsBeforeRetirement
  *        退職前もローン返済・保険料を資産から引くか。既定 false
  *        （積立期は給与から支払われる前提。積立額は返済・保険料を払った後の余剰のため、
@@ -163,6 +170,11 @@ export function runIntegratedPlan(p) {
     contributionTaxPct: num(raw.contributionTaxPct),
     earningsTaxPct: num(raw.earningsTaxPct),
     accessAge: raw.accessAge === undefined || raw.accessAge === null ? 0 : raw.accessAge,
+    // condition of release：accessAge に達していても、この年齢までは「退職していること」が
+    // 取り崩しの条件になる口座（豪Super：60〜64歳は退職等が必要、65歳で無条件）。
+    // 未指定なら accessAge に達した時点で無条件に取り崩せる（従来どおり＝他国は不変）。
+    unconditionalAccessAge: raw.unconditionalAccessAge === undefined || raw.unconditionalAccessAge === null
+      ? null : num(raw.unconditionalAccessAge),
     drawOrder: raw.drawOrder === undefined || raw.drawOrder === null ? 9999 : num(raw.drawOrder),
     minimumDrawdown: typeof raw.minimumDrawdown === "function" ? raw.minimumDrawdown : null,
     minimumDrawdownTo: raw.minimumDrawdownTo || null,
@@ -180,6 +192,17 @@ export function runIntegratedPlan(p) {
     drawCategory: raw.drawCategory || null,
   }));
   const poolById = new Map(pools.map((x) => [x.id, x]));
+  // 取り崩し可否の唯一の判定。AU_COUNTRY_RULES.investment.canAccessSuperAt と同じ規則。
+  //   ・accessAge 未満                        ：不可
+  //   ・accessAge 以上 unconditionalAccessAge 未満：退職している場合のみ可
+  //   ・unconditionalAccessAge 以上           ：無条件に可
+  const poolAccessibleAt = (pool, atAge, isRetired) => {
+    if (pool.accessAge === NOT_DRAWABLE) return false;
+    if (atAge < pool.accessAge - EPS) return false;
+    if (pool.unconditionalAccessAge === null) return true;
+    if (atAge >= pool.unconditionalAccessAge - EPS) return true;
+    return !!isRetired;
+  };
   const drawSequence = pools
     .filter((x) => x.accessAge !== NOT_DRAWABLE)
     .slice()
@@ -199,6 +222,13 @@ export function runIntegratedPlan(p) {
     payoffAge: null,
   }));
 
+  const recurringCharges = (p.recurringCharges || []).map((c) => ({
+    id: c.id || null,
+    annualAmount: clampZero(num(c.annualAmount)),
+    fromAge: c.fromAge === undefined || c.fromAge === null ? 0 : num(c.fromAge),
+    toAge: c.toAge === undefined || c.toAge === null ? Number.POSITIVE_INFINITY : num(c.toAge),
+    fromPoolIds: Array.isArray(c.fromPoolIds) ? c.fromPoolIds : null,
+  }));
   const insurancePolicies = p.insurancePolicies || [];
   const privatePensionPlans = p.privatePensionPlans || [];
   const publicPensions = p.publicPensions || [];
@@ -229,6 +259,19 @@ export function runIntegratedPlan(p) {
   let cumulativeLoanPrincipal = 0;
   let idecoLumpPaid = false;
   let cumulativeWithdrawalTax = 0;   // 引出時課税として失われた額の累計
+  let cumulativeRecurringCharges = 0; // recurringCharges で資産から出ていった額の累計
+  // 直近ステップで使われた公的年金の月額と、資力調査に使った資産（表示用の読み取り専用）。
+  // 行に載る値はすべて有限の数値でなければならないため、資力調査を行わない場合は 0。
+  let lastPublicPensionMonthly = 0;
+  let lastAssessedAssets = 0;
+  let lastDeemedAssets = 0;
+  // 資力調査つきストリーム（豪Age Pension）だけを別枠で記録する。
+  // publicPensionAnnual は「その他の年収」など他のストリームも合算した総額なので、
+  // 画面カードが Age Pension そのものを読めるように分けておく。
+  // スナップショットの行は「その年齢までの1年」を表すため、受給開始年齢ちょうどの行では
+  // まだ0本になる。画面側が「受給が始まっている最初の行」を選ぶための目印にもなる。
+  let lastMeansTestedStreams = 0;
+  let lastMeansTestedMonthly = 0;
 
   // ---- 余剰金残高（surplusBalance）----
   // 【定義】銀行プールの中にある「余剰金由来（＝収入が使われずに残って積み上がった分、
@@ -287,6 +330,9 @@ export function runIntegratedPlan(p) {
   const totalLoans = () => loans.reduce((s, l) => s + l.balance, 0);
 
   const snapshot = (age) => {
+    // スナップショット時点で退職しているか（condition of release の判定に使う）。
+    // ループ内の retired と同じ定義。
+    const retired = age >= retireAge - EPS;
     const row = {
       // ステップは必ず誕生日ちょうどで区切られるため、表示年齢と exactAge は一致する
       // （「65歳」の行の中身は本当に65.0歳時点の残高）。
@@ -314,6 +360,14 @@ export function runIntegratedPlan(p) {
     row.pensionValue = clampZero(groups.privatePension);
     row.idecoLockedValue = clampZero(groups.ideco);
     row.totalAssets = clampZero(totalAssets());
+    // 【表示専用】この年に投影が実際に使った公的年金の年額と、資力調査の判定資産。
+    // 画面カードが「グラフの内側で使われている値」と同じ数字を出せるようにする。
+    // 読み取り専用の派生値で、totalAssets / netWorth を1円も変えない。
+    row.publicPensionAnnual = clampZero(lastPublicPensionMonthly) * 12;
+    row.meansTestedAssessedAssets = clampZero(lastAssessedAssets);
+    row.meansTestedDeemedAssets = clampZero(lastDeemedAssets);
+    row.meansTestedPensionAnnual = clampZero(lastMeansTestedMonthly) * 12;
+    row.meansTestedStreamsActive = lastMeansTestedStreams;
     row.spendableAssets = clampZero(
       pools.reduce((s, x) => (x.accessAge === NOT_DRAWABLE ? s : s + x.balance), 0)
     );
@@ -329,7 +383,8 @@ export function runIntegratedPlan(p) {
     //   accessibleAssets === accessibleBank + accessibleInvestment + accessibleGold + accessibleStock
     let accBank = 0, accInvestment = 0, accGold = 0, accStock = 0;
     pools.forEach((x) => {
-      const accessibleNow = x.accessAge !== NOT_DRAWABLE && age >= x.accessAge - EPS;
+      // 取り崩し可否と同じ判定を使う（60〜64歳で未退職の豪Superは「使える資産」に入らない）
+      const accessibleNow = poolAccessibleAt(x, age, retired);
       if (!accessibleNow) return;
       if (x.group === "bank") accBank += x.balance;
       else if (x.group === "investment") accInvestment += x.balance;
@@ -430,18 +485,35 @@ export function runIntegratedPlan(p) {
         return sum + (pool ? clampZero(pool.balance) : 0);
       }, 0);
     };
+    // このステップで実際に使われた公的年金額と資力調査の判定資産を記録する。
+    // 画面カード（豪Age Pensionなど）が「投影で使われた値そのもの」を読めるようにするため。
+    // 表示専用の派生値で、どのプール残高にも影響しない。
+    lastPublicPensionMonthly = 0;
+    lastAssessedAssets = 0;
+    lastDeemedAssets = 0;
+    lastMeansTestedStreams = 0;
+    lastMeansTestedMonthly = 0;
     publicPensions.forEach((ps) => {
       if (ageStart < num(ps.startAge) - EPS) return;
       let monthly;
       if (typeof ps.monthlyAmountAt === "function") {
+        const assessed = assessedAssetsOf(ps.assessedPoolIds);
+        const deemed = assessedAssetsOf(ps.deemedPoolIds);
+        if (assessed !== null) lastAssessedAssets = assessed;
+        if (deemed !== null) lastDeemedAssets = deemed;
         monthly = num(ps.monthlyAmountAt(ageStart, {
-          assessedAssets: assessedAssetsOf(ps.assessedPoolIds),
-          deemedAssets: assessedAssetsOf(ps.deemedPoolIds),
+          assessedAssets: assessed,
+          deemedAssets: deemed,
           totalAssets: totalAssets(),
         }));
+        if (assessed !== null || deemed !== null) {
+          lastMeansTestedStreams += 1;
+          lastMeansTestedMonthly += clampZero(monthly);
+        }
       } else {
         monthly = num(ps.monthlyAmount);
       }
+      lastPublicPensionMonthly += clampZero(monthly);
       cash += clampZero(monthly) * months;
     });
 
@@ -487,7 +559,8 @@ export function runIntegratedPlan(p) {
         for (const pool of drawSequence) {
           if (need <= EPS) break;
           if (pool.balance <= EPS) continue;
-          if (ageStart < pool.accessAge) continue; // 引出制限中の退職口座は手を付けない
+          // 引出制限中の退職口座は手を付けない（60〜64歳の豪Superは退職が条件）
+          if (!poolAccessibleAt(pool, ageStart, retired)) continue;
           // 引出時課税：手取り need を得るには gross = need / (1 - 税率) を引き出す必要がある
           const keep = 1 - pool.withdrawalTaxPct / 100;
           const grossWanted = keep > 0 ? need / keep : Infinity;
@@ -531,6 +604,37 @@ export function runIntegratedPlan(p) {
         if (depletionAge === null) depletionAge = age;
       }
     }
+
+    // -------- 5b. 定期的な資産控除（豪 Division 293 を口座外から払う場合など）--------
+    // 生活費とは違い、退職前でも必ず資産から引かれる。
+    // fromPoolIds が指定されていればそのプールから順に、無ければ通常の取り崩し順に従う。
+    recurringCharges.forEach((c) => {
+      if (c.annualAmount <= 0) return;
+      if (ageStart < c.fromAge - EPS || ageStart >= c.toAge - EPS) return;
+      const amount = c.annualAmount * dt;
+      if (amount <= EPS) return;
+      let need = amount;
+      if (c.fromPoolIds) {
+        for (const id of c.fromPoolIds) {
+          if (need <= EPS) break;
+          const pool = poolById.get(id);
+          if (!pool || pool.balance <= EPS) continue;
+          const taken = Math.min(pool.balance, need);
+          pool.balance = clampZero(pool.balance - taken);
+          if (pool.group === "bank") reduceSurplusByBankDraw(taken);
+          need -= taken;
+        }
+      }
+      if (need > EPS) {
+        const r = pay(need);
+        need = r.shortfall;
+      }
+      cumulativeRecurringCharges += amount - Math.max(0, need);
+      if (need > EPS) {
+        cumulativeUnmet += need;
+        if (depletionAge === null) depletionAge = age;
+      }
+    });
 
     // -------- 6. ローン返済 --------
     // 【修正】従来は資産が0でも返済したことにしてローン残高を減らしていた。
@@ -627,6 +731,7 @@ export function runIntegratedPlan(p) {
     finalSurplusBalance: surplusBalance,
     depletionAge,
     cumulativeUnmet,
+    cumulativeRecurringCharges,
     cumulativeUnpaidLoan,
     cumulativePremiums,
     cumulativeLoanInterest,

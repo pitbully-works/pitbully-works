@@ -756,3 +756,742 @@ describe("AU回帰：AU向け翻訳キーが日英そろっている", () => {
       String(EN_TRANSLATIONS[k]).trim() === "" || String(JA_TRANSLATIONS[k]).trim() === "")).toEqual([]);
   });
 });
+
+// ---------------------------------------------------------------------------
+// 8. Division 293（本番投影への接続）
+//
+//   B-2 では税額計算そのものだけを固定していた。ここでは
+//   「画面表示だけでなく、simulateGrowth と buildPlanInput → lifePlanEngine の
+//     本番経路にも反映されているか」を検証する。
+//
+//   前提：Division 293 income は ATO 定義（課税所得＋報告対象フリンジベネフィット＋
+//   純投資損失＋純賃貸損失等）だが本アプリでは完全に再現できないため、
+//   div293Income が未入力なら「年収 − 給与犠牲」を課税所得の概算として代用する。
+//   支払元は "super"（Super残高から）／"outside"（現金・銀行から）を選べる。
+//   どちらでも総資産の減少額は同じ。
+// ---------------------------------------------------------------------------
+describe("AU回帰：Division 293 の課税標準", () => {
+  const cap = tax.superannuation.div293Threshold;      // 250,000
+  const rate = tax.superannuation.div293AdditionalRate; // 0.15
+
+  it("閾値ちょうどでは追加税0", () => {
+    const c = 30000;
+    const r = tax.calculateSuperContributionTax(c, cap - c);
+    expect(r.div293Applies).toBe(false);
+    expect(r.div293Base).toBe(0);
+    expect(r.div293Tax).toBe(0);
+    expect(near(r.total, c * tax.superannuation.contributionsTaxRate)).toBe(true);
+  });
+
+  it("1ドル超過なら追加税0.15ドル", () => {
+    const c = 30000;
+    const r = tax.calculateSuperContributionTax(c, cap - c + 1);
+    expect(r.div293Applies).toBe(true);
+    expect(near(r.div293Base, 1)).toBe(true);
+    expect(near(r.div293Tax, 0.15)).toBe(true);
+  });
+
+  it("超過額が拠出額未満なら超過額だけが課税される", () => {
+    const c = 30000;
+    const excess = 10000;
+    const r = tax.calculateSuperContributionTax(c, cap - c + excess);
+    expect(near(r.div293Base, excess)).toBe(true);
+    expect(near(r.div293Tax, excess * rate)).toBe(true);
+    expect(r.div293Base).toBeLessThan(c);
+  });
+
+  it("超過額が拠出額以上なら拠出全額に15%", () => {
+    const c = 30000;
+    const r = tax.calculateSuperContributionTax(c, 400000);
+    expect(near(r.div293Base, c)).toBe(true);
+    expect(near(r.div293Tax, c * rate)).toBe(true);
+  });
+
+  it("Division 293 income は年収そのものではなく、入力があればそれを使う", () => {
+    const est = tax.resolveDivision293Income(200000, 0);
+    expect(est.income).toBe(200000);
+    expect(est.isEstimated).toBe(true);
+    const explicit = tax.resolveDivision293Income(200000, 320000);
+    expect(explicit.income).toBe(320000);
+    expect(explicit.isEstimated).toBe(false);
+  });
+
+  it("支払元の指定は super / outside に正規化される", () => {
+    expect(tax.normalizeDiv293PaidFrom("outside")).toBe("outside");
+    expect(tax.normalizeDiv293PaidFrom("super")).toBe("super");
+    expect(tax.normalizeDiv293PaidFrom(undefined)).toBe("super");
+    expect(tax.normalizeDiv293PaidFrom("nonsense")).toBe("super");
+  });
+});
+
+describe("AU回帰：Division 293 が simulateGrowth に反映される", () => {
+  // 1年だけ拠出し、成長も取崩しも無い条件にして税額だけを見る
+  const oneYear = (over = {}) => grow({
+    currentAge: 50, retireAge: 65, deathAge: 51,
+    accounts: accounts({ cashSavings: 200000, endAge: 51, returnPct: 0 }),
+    annualSalary: 300000, voluntaryConcessional: 0,
+    ...over,
+  });
+  const concessional = inv.getTotalConcessional(300000, 0);
+  const div293 = tax.calculateSuperContributionTax(concessional, 300000).div293Tax;
+
+  it("Division 293ありのSuper残高は、なしの場合より正確に税額分だけ少ない（Superから支払う）", () => {
+    const without = oneYear({ div293TaxAnnual: 0 });
+    const withTax = oneYear({ div293TaxAnnual: div293, div293PaidFrom: "super" });
+    const diff = without.finalAccounts.superannuation - withTax.finalAccounts.superannuation;
+    expect(div293).toBeGreaterThan(0);
+    expect(near(diff, div293, 1e-9)).toBe(true);
+    // 総資産も同額だけ減る
+    expect(near(without.finalValue - withTax.finalValue, div293, 1e-9)).toBe(true);
+  });
+
+  it("口座外から支払う場合、Superは満額入り現金が税額分だけ減る", () => {
+    const without = oneYear({ div293TaxAnnual: 0 });
+    const outside = oneYear({ div293TaxAnnual: div293, div293PaidFrom: "outside" });
+    expect(near(outside.finalAccounts.superannuation, without.finalAccounts.superannuation, 1e-9)).toBe(true);
+    expect(near(without.finalAccounts.cashSavings - outside.finalAccounts.cashSavings, div293, 1e-9)).toBe(true);
+  });
+
+  it("支払元がどちらでも総資産の減少額は同じ", () => {
+    const fromSuper = oneYear({ div293TaxAnnual: div293, div293PaidFrom: "super" });
+    const outside = oneYear({ div293TaxAnnual: div293, div293PaidFrom: "outside" });
+    expect(near(fromSuper.finalValue, outside.finalValue, 1e-9)).toBe(true);
+    expect(near(fromSuper.div293TaxPaid, div293, 1e-9)).toBe(true);
+    expect(near(outside.div293TaxPaid, div293, 1e-9)).toBe(true);
+  });
+
+  it("閾値以下（追加税0）なら残高は従来と完全に一致する", () => {
+    const base = oneYear({ annualSalary: 100000, div293TaxAnnual: 0 });
+    const zero = oneYear({
+      annualSalary: 100000,
+      div293TaxAnnual: tax.calculateSuperContributionTax(
+        inv.getTotalConcessional(100000, 0), 100000
+      ).div293Tax,
+    });
+    expect(zero.finalValue).toBe(base.finalValue);
+  });
+});
+
+describe("AU回帰：Division 293 が本番経路（buildPlanInput → lifePlanEngine）に反映される", () => {
+  const acct = (o = {}) => ({
+    currentValue: 0, annualContribution: 0, expectedReturnPct: 0,
+    contributionEndAge: 65, withdrawalTaxPct: 0, ...o,
+  });
+  const rules = getCountryRules("AU");
+
+  const ctxFor = (auOver = {}) => {
+    const inputs = {
+      country: "AU", baseCurrency: "AUD", language: "en",
+      currentAge: 50, retireAge: 65, deathAge: 66,
+      livingCostMonthly: 0, inheritanceTarget: 0, inheritancePlans: [],
+      publicPensionStartAge: 67, pensionMonthly: 0, pensionSources: [],
+      healthBrackets: { b60: 0, b70: 0, b80: 0 },
+      tsumitateSchedule: [], growthSchedule: [], lumpSums: [],
+      tsumitateUsed: 0, growthUsed: 0,
+      banks: [{ name: "main", balance: 500000, monthlyDeposit: 0, interestPct: 0 }],
+      loans: [], insurancePolicies: [], privatePensionPlans: [],
+      gold: { currentGrams: 0, pricePerGram: 0, priceGrowthPct: 0, priceGrowthPctAuto: false, monthlyYen: 0, accumulateUntilAge: 65, asOfYears: "", asOfMonths: "" },
+      ideco: { currentValue: 0, principalTotal: 0, monthlyContribution: 0, startAge: 35, endAge: 60, productName: "", returnPct: 0, returnPctAuto: false, expectedReturnPct: 0, payoutStartAge: 60, payoutMethod: "lump", payoutYears: 10, lumpPortionPct: 0, payoutReturnPct: 0, annualIncome: 0, asOfYears: "", asOfMonths: "" },
+      usInvestment: {}, gbInvestment: {}, caInvestment: {},
+      auInvestment: {
+        annualSalary: 300000, voluntaryConcessional: 0,
+        estimatedCapitalGainAnnual: 0, capitalGainHeldOver12Months: true,
+        superannuation: acct(), investmentAccount: acct(), cashSavings: acct(),
+        agePension: { status: "single", homeowner: true, otherAnnualIncome: 0 },
+        healthcare: {}, expensesMonthly: 0,
+        ...auOver,
+      },
+    };
+    return {
+      country: "AU", rules, inputs,
+      effectiveCurrentAge: 50,
+      effectiveCurrentAssets: 0, effectivePostRetireReturn: 0,
+      dynamicFunds: [], stockTotalNow: 0, effectiveStockReturnPct: 0,
+      goldCurrentValue: 0, effectiveGoldReturnPct: 0,
+      effectivePensionMonthly: 0, effectivePublicPensionStartAge: 67,
+      drawdownOrder: DRAWDOWN_CATEGORIES,
+      uncategorizedLabel: "Uncategorised",
+      countryDerived: {
+        auAgePensionAnnual: 0, auAgePensionQualifyingAge: 67,
+        auOtherAnnualIncome: 0, auHealthcareAnnual: 0,
+      },
+    };
+  };
+
+  const concessional = inv.getTotalConcessional(300000, 0);
+  const div293 = tax.calculateSuperContributionTax(concessional, 300000).div293Tax;
+  const superPoolOf = (plan) => plan.pools.find((x) => x.id === "superannuation");
+
+  it("Superから支払う設定では、Superプールの拠出額が税額分だけ減る", () => {
+    const plan = ctxFor({ div293PaidFrom: "super" });
+    const monthly = superPoolOf(buildPlanInput(plan)).monthlyContribution;
+    const expected = (concessional * (1 - tax.superannuation.contributionsTaxRate) - div293) / 12;
+    expect(div293).toBeGreaterThan(0);
+    expect(near(monthly, expected, 1e-9)).toBe(true);
+  });
+
+  it("Superから支払う設定では recurringCharges は生成されない", () => {
+    expect(buildPlanInput(ctxFor({ div293PaidFrom: "super" })).recurringCharges).toEqual([]);
+  });
+
+  it("口座外から支払う設定では、拠出は満額のまま recurringCharges が生成される", () => {
+    const plan = buildPlanInput(ctxFor({ div293PaidFrom: "outside" }));
+    const expected = concessional * (1 - tax.superannuation.contributionsTaxRate) / 12;
+    expect(near(superPoolOf(plan).monthlyContribution, expected, 1e-9)).toBe(true);
+    expect(plan.recurringCharges).toHaveLength(1);
+    expect(near(plan.recurringCharges[0].annualAmount, div293, 1e-9)).toBe(true);
+  });
+
+  it("本番投影でも、Division 293ありの総資産は なしより税額分だけ少ない（Superから支払う）", () => {
+    const withTax = runIntegratedPlan(buildPlanInput(ctxFor({ div293PaidFrom: "super" })));
+    const withoutTax = runIntegratedPlan(buildPlanInput(ctxFor({
+      div293PaidFrom: "super", annualSalary: 300000, div293Income: 1,
+    })));
+    // div293Income=1 は「閾値をはるかに下回る所得」＝追加税0のケース
+    const diff = withoutTax.yearly[withoutTax.yearly.length - 1].totalAssets
+      - withTax.yearly[withTax.yearly.length - 1].totalAssets;
+    const years = 15; // 50歳→65歳（contribEndAge）まで拠出が続く
+    expect(near(diff, div293 * years, 1e-6)).toBe(true);
+  });
+
+  it("本番投影でも、支払元によらず総資産の減少額は同じ", () => {
+    const fromSuper = runIntegratedPlan(buildPlanInput(ctxFor({ div293PaidFrom: "super" })));
+    const outside = runIntegratedPlan(buildPlanInput(ctxFor({ div293PaidFrom: "outside" })));
+    const totalOf = (r) => r.yearly[r.yearly.length - 1].totalAssets;
+    expect(near(totalOf(fromSuper), totalOf(outside), 1e-6)).toBe(true);
+  });
+
+  it("口座外から支払う設定では、減るのは現金・銀行側でSuperは減らない", () => {
+    const fromSuper = runIntegratedPlan(buildPlanInput(ctxFor({ div293PaidFrom: "super" })));
+    const outside = runIntegratedPlan(buildPlanInput(ctxFor({ div293PaidFrom: "outside" })));
+    const last = (r) => r.yearly[r.yearly.length - 1];
+    expect(last(outside).pool_superannuation).toBeGreaterThan(last(fromSuper).pool_superannuation);
+    expect(last(outside).pool_bank_0).toBeLessThan(last(fromSuper).pool_bank_0);
+  });
+});
+
+describe("AU回帰：Division 293 の実装が他4か国を一切変えない", () => {
+  const acctOf = (o = {}) => ({
+    currentValue: 0, annualContribution: 0, expectedReturnPct: 5,
+    contributionEndAge: 65, withdrawalTaxPct: 0, ...o,
+  });
+
+  // recurringCharges を渡さない場合、エンジンの挙動は完全に同一でなければならない
+  const basePlan = () => ({
+    currentAge: 50, retireAge: 65, deathAge: 90,
+    pools: [
+      { id: "bank_0", group: "bank", drawCategory: "cash", balance: 300000, annualReturnPct: 1, monthlyContribution: 500, contribEndAge: 65, drawOrder: 1 },
+      { id: "inv", group: "investment", drawCategory: "taxable", balance: 400000, annualReturnPct: 5, monthlyContribution: 1000, contribEndAge: 65, drawOrder: 2 },
+    ],
+    loans: [], insurancePolicies: [], privatePensionPlans: [],
+    publicPensions: [{ monthlyAmount: 1500, startAge: 67 }],
+    livingCostMonthly: 4000,
+    healthCostAnnual: () => 2000,
+    surplusTargetId: "bank_0",
+  });
+
+  it("recurringCharges 未指定と空配列で結果が完全一致する", () => {
+    const a = runIntegratedPlan(basePlan());
+    const b = runIntegratedPlan({ ...basePlan(), recurringCharges: [] });
+    expect(JSON.stringify(b.yearly)).toBe(JSON.stringify(a.yearly));
+  });
+
+  it("JP・US・GB・CA の残高が Division 293 実装の影響を受けない", () => {
+    const acct = acctOf;
+    const commonInputs = (country, extra) => ({
+      country, baseCurrency: "JPY", language: "ja",
+      currentAge: 50, retireAge: 65, deathAge: 85,
+      livingCostMonthly: 20, inheritanceTarget: 0, inheritancePlans: [],
+      publicPensionStartAge: 65, pensionMonthly: 10, pensionSources: [],
+      healthBrackets: { b60: 0, b70: 0, b80: 0 },
+      tsumitateSchedule: [], growthSchedule: [], lumpSums: [],
+      tsumitateUsed: 0, growthUsed: 0,
+      banks: [{ name: "main", balance: 500, monthlyDeposit: 1, interestPct: 0 }],
+      loans: [], insurancePolicies: [], privatePensionPlans: [],
+      gold: { currentGrams: 0, pricePerGram: 0, priceGrowthPct: 0, priceGrowthPctAuto: false, monthlyYen: 0, accumulateUntilAge: 65, asOfYears: "", asOfMonths: "" },
+      ideco: { currentValue: 0, principalTotal: 0, monthlyContribution: 0, startAge: 35, endAge: 60, productName: "", returnPct: 0, returnPctAuto: false, expectedReturnPct: 0, payoutStartAge: 60, payoutMethod: "lump", payoutYears: 10, lumpPortionPct: 0, payoutReturnPct: 0, annualIncome: 0, asOfYears: "", asOfMonths: "" },
+      // 各国ブランチが参照する最小限の形だけ用意する
+      usInvestment: {
+        socialSecurity: { claimAge: 67 },
+        k401: acct(), traditionalIra: acct(), rothIra: acct(), brokerage: acct(),
+      },
+      gbInvestment: {
+        isa: acct(), pension: acct(), giaGeneral: acct(),
+        statePension: { estimatedAnnual: 0, additionalPensionAnnual: 0, claimAge: 67 },
+      },
+      caInvestment: { tfsa: acct(), rrsp: acct(), nonRegistered: acct() },
+      auInvestment: {},
+      ...extra,
+    });
+
+    ["JP", "US", "GB", "CA"].forEach((country) => {
+      const rules = getCountryRules(country);
+      const ctx = {
+        country, rules, inputs: commonInputs(country),
+        effectiveCurrentAge: 50, effectiveCurrentAssets: 0, effectivePostRetireReturn: 3,
+        dynamicFunds: [], stockTotalNow: 0, effectiveStockReturnPct: 0,
+        goldCurrentValue: 0, effectiveGoldReturnPct: 0,
+        effectivePensionMonthly: 10, effectivePublicPensionStartAge: 65,
+        drawdownOrder: DRAWDOWN_CATEGORIES,
+        uncategorizedLabel: "その他",
+        countryDerived: {},
+      };
+      const plan = buildPlanInput(ctx);
+      // AU以外では recurringCharges は常に空＝エンジンの経路が従来と同一
+      expect(plan.recurringCharges).toEqual([]);
+      const r = runIntegratedPlan(plan);
+      expect(Number.isFinite(r.yearly[r.yearly.length - 1].totalAssets)).toBe(true);
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 9. Concessional cap 超過の扱い（安全側）と condition of release
+//
+//   B-5 cap超過分は投影に入れない（超過分の課税・払戻し／残留の選択・繰越拠出は未実装）
+//   B-6 Super の取り崩しは 60〜64歳は退職が条件、65歳以降は無条件。
+//       simulateGrowth と lifePlanEngine の両経路で同じ規則を使う。
+// ---------------------------------------------------------------------------
+describe("AU回帰：concessional cap を超えた拠出は投影に入れない", () => {
+  const cap = inv.limits.concessionalCap;
+  const sgOf = (salary) => inv.getEmployerSgContribution(salary);
+
+  it("capちょうどなら全額が税引前拠出として扱われる", () => {
+    const salary = 100000;
+    const vol = cap - sgOf(salary);
+    expect(near(inv.getTotalConcessional(salary, vol), cap)).toBe(true);
+    expect(near(inv.getCappedConcessional(salary, vol), cap)).toBe(true);
+  });
+
+  it("A$1超過なら cap までに制限される", () => {
+    const salary = 100000;
+    const vol = cap - sgOf(salary) + 1;
+    expect(near(inv.getTotalConcessional(salary, vol), cap + 1)).toBe(true);
+    expect(near(inv.getCappedConcessional(salary, vol), cap)).toBe(true);
+  });
+
+  it("大幅超過でも cap までに制限される", () => {
+    const salary = 100000;
+    expect(near(inv.getCappedConcessional(salary, 500000), cap)).toBe(true);
+  });
+
+  it("cap超過分だけSuper残高が増えることはない（capちょうどと同じ残高）", () => {
+    const salary = 100000;
+    const exact = cap - sgOf(salary);
+    const atCap = grow({
+      currentAge: 50, retireAge: 65, deathAge: 51,
+      accounts: accounts({ endAge: 51, returnPct: 0 }),
+      annualSalary: salary, voluntaryConcessional: exact,
+    });
+    const over = grow({
+      currentAge: 50, retireAge: 65, deathAge: 51,
+      accounts: accounts({ endAge: 51, returnPct: 0 }),
+      annualSalary: salary, voluntaryConcessional: exact + 50000,
+    });
+    expect(near(over.finalAccounts.superannuation, atCap.finalAccounts.superannuation, 1e-9)).toBe(true);
+    expect(near(atCap.finalAccounts.superannuation, cap * (1 - tax.superannuation.contributionsTaxRate), 1e-9)).toBe(true);
+  });
+
+  it("cap超過が未実装であることが notImplemented に明記されている", () => {
+    expect(inv.notImplemented.join(" / ")).toMatch(/Concessional cap 超過/);
+    expect(inv.notImplemented.join(" / ")).toMatch(/carry-forward/);
+  });
+
+  it("Division 293 と cap超過が同時に起きても、課税標準は cap 適用後の額", () => {
+    const salary = 300000;
+    const vol = 60000; // 明らかに cap 超過
+    const capped = inv.getCappedConcessional(salary, vol);
+    const uncapped = inv.getTotalConcessional(salary, vol);
+    expect(capped).toBeLessThan(uncapped);
+
+    const income = tax.resolveDivision293Income(salary - vol, 0).income;
+    const r = tax.calculateSuperContributionTax(capped, income);
+    // 課税標準は min(cap適用後の拠出額, income + 拠出額 − 250,000)
+    const excess = income + capped - tax.superannuation.div293Threshold;
+    expect(excess).toBeGreaterThan(0);
+    expect(excess).toBeLessThan(capped);
+    expect(near(r.div293Base, excess)).toBe(true);
+    expect(near(r.div293Tax, excess * tax.superannuation.div293AdditionalRate)).toBe(true);
+    // cap を適用しなければ課税標準はもっと大きくなる（＝cap が効いていることの確認）
+    const uncappedBase = tax.calculateSuperContributionTax(uncapped, income).div293Base;
+    expect(uncappedBase).toBeGreaterThan(r.div293Base);
+
+    // 1年だけ投影して、Super残高が「cap分の税引後 − Division 293税」と一致することを確認
+    const sim = grow({
+      currentAge: 50, retireAge: 65, deathAge: 51,
+      accounts: accounts({ endAge: 51, returnPct: 0 }),
+      annualSalary: salary, voluntaryConcessional: vol,
+      div293TaxAnnual: r.div293Tax, div293PaidFrom: "super",
+    });
+    const expected = capped * (1 - tax.superannuation.contributionsTaxRate) - r.div293Tax;
+    expect(near(sim.finalAccounts.superannuation, expected, 1e-9)).toBe(true);
+  });
+});
+
+describe("AU回帰：比較倍率を掛けても Division 293 income が整合する", () => {
+  const acct = (o = {}) => ({
+    currentValue: 0, annualContribution: 0, expectedReturnPct: 0,
+    contributionEndAge: 65, withdrawalTaxPct: 0, ...o,
+  });
+  const rules = getCountryRules("AU");
+
+  const ctxFor = (auOver = {}, multiplier) => {
+    const inputs = {
+      country: "AU", baseCurrency: "AUD", language: "en",
+      currentAge: 50, retireAge: 65, deathAge: 66,
+      livingCostMonthly: 0, inheritanceTarget: 0, inheritancePlans: [],
+      publicPensionStartAge: 67, pensionMonthly: 0, pensionSources: [],
+      healthBrackets: { b60: 0, b70: 0, b80: 0 },
+      tsumitateSchedule: [], growthSchedule: [], lumpSums: [],
+      tsumitateUsed: 0, growthUsed: 0,
+      banks: [{ name: "main", balance: 0, monthlyDeposit: 0, interestPct: 0 }],
+      loans: [], insurancePolicies: [], privatePensionPlans: [],
+      gold: { currentGrams: 0, pricePerGram: 0, priceGrowthPct: 0, priceGrowthPctAuto: false, monthlyYen: 0, accumulateUntilAge: 65, asOfYears: "", asOfMonths: "" },
+      ideco: { currentValue: 0, principalTotal: 0, monthlyContribution: 0, startAge: 35, endAge: 60, productName: "", returnPct: 0, returnPctAuto: false, expectedReturnPct: 0, payoutStartAge: 60, payoutMethod: "lump", payoutYears: 10, lumpPortionPct: 0, payoutReturnPct: 0, annualIncome: 0, asOfYears: "", asOfMonths: "" },
+      usInvestment: {}, gbInvestment: {}, caInvestment: {},
+      auInvestment: {
+        annualSalary: 260000, voluntaryConcessional: 10000,
+        estimatedCapitalGainAnnual: 0, capitalGainHeldOver12Months: true,
+        superannuation: acct(), investmentAccount: acct(), cashSavings: acct(),
+        agePension: { status: "single", homeowner: true, otherAnnualIncome: 0 },
+        healthcare: {}, expensesMonthly: 0,
+        ...auOver,
+      },
+    };
+    return {
+      country: "AU", rules, inputs,
+      effectiveCurrentAge: 50,
+      effectiveCurrentAssets: 0, effectivePostRetireReturn: 0,
+      dynamicFunds: [], stockTotalNow: 0, effectiveStockReturnPct: 0,
+      goldCurrentValue: 0, effectiveGoldReturnPct: 0,
+      effectivePensionMonthly: 0, effectivePublicPensionStartAge: 67,
+      drawdownOrder: DRAWDOWN_CATEGORIES,
+      uncategorizedLabel: "Uncategorised",
+      countryDerived: {
+        auAgePensionAnnual: 0, auAgePensionQualifyingAge: 67,
+        auOtherAnnualIncome: 0, auHealthcareAnnual: 0,
+      },
+      _multiplier: multiplier,
+    };
+  };
+  // 倍率は buildPlanInput の第2引数（overrides）で渡す
+  const planWithMultiplier = (auOver, m) =>
+    buildPlanInput(ctxFor(auOver, m), { contributionMultiplier: m });
+
+  const superOf = (plan) => plan.pools.find((x) => x.id === "superannuation");
+
+  it("倍率1.5倍でも、拠出額と Division 293 income が同じ倍率後の任意拠出を使う", () => {
+    const salary = 260000;
+    const vol = 10000;
+    const m = 1.5;
+    const scaledVol = vol * m;
+    const plan = planWithMultiplier({}, m);
+
+    // 期待値：倍率後の任意拠出で拠出額を作り、同じ倍率後の値を年収から控除して課税所得とする
+    const capped = inv.getCappedConcessional(salary, scaledVol);
+    const income = tax.resolveDivision293Income(salary - scaledVol, 0).income;
+    const div293 = tax.calculateSuperContributionTax(capped, income).div293Tax;
+    const expected = (capped * (1 - tax.superannuation.contributionsTaxRate) - div293) / 12;
+    expect(near(superOf(plan).monthlyContribution, expected, 1e-9)).toBe(true);
+
+    // 倍率前の任意拠出で課税所得を作ると値がずれること（＝この検証が意味を持つこと）を確認
+    const wrongIncome = tax.resolveDivision293Income(salary - vol, 0).income;
+    expect(wrongIncome).not.toBe(income);
+    const wrongDiv293 = tax.calculateSuperContributionTax(capped, wrongIncome).div293Tax;
+    expect(wrongDiv293).not.toBe(div293);
+  });
+
+  it("倍率1.0と1.5でSuper拠出額が変わる（倍率自体は効いている）", () => {
+    const a = superOf(planWithMultiplier({}, 1));
+    const b = superOf(planWithMultiplier({}, 1.5));
+    expect(b.monthlyContribution).toBeGreaterThan(a.monthlyContribution);
+  });
+});
+
+describe("AU回帰：Super の condition of release（60〜64歳は退職が条件・65歳で無条件）", () => {
+  it("canAccessSuperAt：60歳未満は退職していても不可", () => {
+    expect(inv.canAccessSuperAt(59, true)).toBe(false);
+    expect(inv.canAccessSuperAt(59, false)).toBe(false);
+  });
+
+  it("canAccessSuperAt：60〜64歳は退職している場合のみ可", () => {
+    [60, 62, 64].forEach((age) => {
+      expect(inv.canAccessSuperAt(age, true)).toBe(true);
+      expect(inv.canAccessSuperAt(age, false)).toBe(false);
+    });
+  });
+
+  it("canAccessSuperAt：65歳以降は退職状態に関係なく可", () => {
+    [65, 70, 90].forEach((age) => {
+      expect(inv.canAccessSuperAt(age, true)).toBe(true);
+      expect(inv.canAccessSuperAt(age, false)).toBe(true);
+    });
+  });
+
+  it("simulateGrowth：60〜64歳で未退職ならSuperを取り崩さない", () => {
+    // 退職年齢を70歳にして、60〜64歳の間は未退職のまま取崩し需要を出す
+    const sim = grow({
+      currentAge: 58, retireAge: 70, deathAge: 64,
+      accounts: accounts({ superannuation: 500000, endAge: 58, returnPct: 0 }),
+      annualWithdrawalNeeded: 40000,
+    });
+    sim.yearly.forEach((y) => {
+      expect(near(y.accounts.superannuation, 500000, 1e-9)).toBe(true);
+    });
+  });
+
+  // 【注意】simulateGrowth は「退職後のみ取り崩す」構造なので、
+  //   「65歳・未退職での取り崩し」はこの経路では起こり得ない。
+  //   未退職での65歳以降アクセスは、下の lifePlanEngine 側のテストで検証している。
+  it("simulateGrowth：65歳以降（退職済み）はSuperを取り崩せる", () => {
+    const sim = grow({
+      currentAge: 64, retireAge: 64, deathAge: 68,
+      accounts: accounts({ superannuation: 500000, endAge: 64, returnPct: 0 }),
+      annualWithdrawalNeeded: 40000,
+    });
+    const last = sim.yearly[sim.yearly.length - 1];
+    expect(last.accounts.superannuation).toBeLessThan(500000);
+  });
+
+  it("lifePlanEngine：unconditionalAccessAge 未指定なら従来どおり accessAge だけで判定する", () => {
+    const plan = (extra) => runIntegratedPlan({
+      currentAge: 60, retireAge: 70, deathAge: 63,
+      livingCostMonthly: 0, surplusTargetId: "bank_0",
+      pools: [
+        { id: "bank_0", group: "bank", drawCategory: "cash", balance: 0, annualReturnPct: 0, monthlyContribution: 0, drawOrder: 1 },
+        { id: "sup", group: "investment", drawCategory: "restricted", balance: 300000, annualReturnPct: 0, monthlyContribution: 0, accessAge: 60, drawOrder: 2, ...extra },
+      ],
+      insurancePolicies: [{ monthlyPremium: 1000, premiumFromAge: 0, premiumToAge: 99 }],
+      chargeFixedCostsBeforeRetirement: true,
+    });
+    // 従来（他国のプール）：60歳で無条件に引ける＝残高が減る
+    const legacy = plan({});
+    expect(legacy.yearly[legacy.yearly.length - 1].pool_sup).toBeLessThan(300000);
+    // 豪Super：65歳までは退職が条件なので、60〜62歳では一切減らない
+    const au = plan({ unconditionalAccessAge: 65 });
+    expect(near(au.yearly[au.yearly.length - 1].pool_sup, 300000, 1e-9)).toBe(true);
+  });
+
+  it("lifePlanEngine：65歳以降は未退職でもSuperプールを取り崩せる", () => {
+    const r = runIntegratedPlan({
+      currentAge: 65, retireAge: 75, deathAge: 68,
+      livingCostMonthly: 0, surplusTargetId: "bank_0",
+      pools: [
+        { id: "bank_0", group: "bank", drawCategory: "cash", balance: 0, annualReturnPct: 0, monthlyContribution: 0, drawOrder: 1 },
+        { id: "sup", group: "investment", drawCategory: "restricted", balance: 300000, annualReturnPct: 0, monthlyContribution: 0, accessAge: 60, unconditionalAccessAge: 65, drawOrder: 2 },
+      ],
+      insurancePolicies: [{ monthlyPremium: 1000, premiumFromAge: 0, premiumToAge: 99 }],
+      chargeFixedCostsBeforeRetirement: true,
+    });
+    expect(r.yearly[r.yearly.length - 1].pool_sup).toBeLessThan(300000);
+  });
+
+  it("本番経路のSuperプールに unconditionalAccessAge が設定される", () => {
+    const acct = (o = {}) => ({
+      currentValue: 0, annualContribution: 0, expectedReturnPct: 0,
+      contributionEndAge: 65, withdrawalTaxPct: 0, ...o,
+    });
+    const rules = getCountryRules("AU");
+    const plan = buildPlanInput({
+      country: "AU", rules,
+      inputs: {
+        country: "AU", baseCurrency: "AUD", language: "en",
+        currentAge: 50, retireAge: 65, deathAge: 66,
+        livingCostMonthly: 0, inheritanceTarget: 0, inheritancePlans: [],
+        publicPensionStartAge: 67, pensionMonthly: 0, pensionSources: [],
+        healthBrackets: { b60: 0, b70: 0, b80: 0 },
+        tsumitateSchedule: [], growthSchedule: [], lumpSums: [],
+        tsumitateUsed: 0, growthUsed: 0,
+        banks: [{ name: "main", balance: 0, monthlyDeposit: 0, interestPct: 0 }],
+        loans: [], insurancePolicies: [], privatePensionPlans: [],
+        gold: { currentGrams: 0, pricePerGram: 0, priceGrowthPct: 0, priceGrowthPctAuto: false, monthlyYen: 0, accumulateUntilAge: 65, asOfYears: "", asOfMonths: "" },
+        ideco: { currentValue: 0, principalTotal: 0, monthlyContribution: 0, startAge: 35, endAge: 60, productName: "", returnPct: 0, returnPctAuto: false, expectedReturnPct: 0, payoutStartAge: 60, payoutMethod: "lump", payoutYears: 10, lumpPortionPct: 0, payoutReturnPct: 0, annualIncome: 0, asOfYears: "", asOfMonths: "" },
+        usInvestment: {}, gbInvestment: {}, caInvestment: {},
+        auInvestment: {
+          annualSalary: 0, voluntaryConcessional: 0,
+          estimatedCapitalGainAnnual: 0, capitalGainHeldOver12Months: true,
+          superannuation: acct(), investmentAccount: acct(), cashSavings: acct(),
+          agePension: { status: "single", homeowner: true, otherAnnualIncome: 0 },
+          healthcare: {}, expensesMonthly: 0,
+        },
+      },
+      effectiveCurrentAge: 50, effectiveCurrentAssets: 0, effectivePostRetireReturn: 0,
+      dynamicFunds: [], stockTotalNow: 0, effectiveStockReturnPct: 0,
+      goldCurrentValue: 0, effectiveGoldReturnPct: 0,
+      effectivePensionMonthly: 0, effectivePublicPensionStartAge: 67,
+      drawdownOrder: DRAWDOWN_CATEGORIES, uncategorizedLabel: "Uncategorised",
+      countryDerived: { auAgePensionAnnual: 0, auAgePensionQualifyingAge: 67, auOtherAnnualIncome: 0, auHealthcareAnnual: 0 },
+    });
+    const sup = plan.pools.find((x) => x.id === "superannuation");
+    expect(sup.accessAge).toBe(inv.preservationAge);
+    expect(sup.unconditionalAccessAge).toBe(inv.unrestrictedAccessAge);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 10. Age Pension：画面カードと本番投影の一致
+//
+//   【背景】資産テストとDeemingの対象は AU版3口座だけではなく、共通で持っている
+//   銀行預金・個別株・金・民間年金原資も含む。画面カードを3口座だけで別計算すると
+//   カードの金額と総資産グラフの内側で使われる金額が食い違う。
+//   そこで App.jsx はカードの値を runIntegratedPlan の結果から読み取るようにした。
+//   ここでは「その読み取り元となる行の値」が正しいことを検証する。
+// ---------------------------------------------------------------------------
+describe("AU回帰：Age Pension のカード値は本番投影と一致する", () => {
+  const rules = getCountryRules("AU");
+  const acct = (o = {}) => ({
+    currentValue: 0, annualContribution: 0, expectedReturnPct: 0,
+    contributionEndAge: 65, withdrawalTaxPct: 0, ...o,
+  });
+
+  const makeCtx = (over = {}) => {
+    const {
+      banks = [{ name: "main", balance: 0, monthlyDeposit: 0, interestPct: 0 }],
+      stockTotalNow = 0,
+      goldCurrentValue = 0,
+      privatePensionPlans = [],
+      auOver = {},
+    } = over;
+    return {
+      country: "AU", rules,
+      inputs: {
+        country: "AU", baseCurrency: "AUD", language: "en",
+        currentAge: 66, retireAge: 66, deathAge: 80,
+        livingCostMonthly: 0, inheritanceTarget: 0, inheritancePlans: [],
+        publicPensionStartAge: 67, pensionMonthly: 0, pensionSources: [],
+        healthBrackets: { b60: 0, b70: 0, b80: 0 },
+        tsumitateSchedule: [], growthSchedule: [], lumpSums: [],
+        tsumitateUsed: 0, growthUsed: 0,
+        banks,
+        loans: [], insurancePolicies: [], privatePensionPlans,
+        gold: { currentGrams: 0, pricePerGram: 0, priceGrowthPct: 0, priceGrowthPctAuto: false, monthlyYen: 0, accumulateUntilAge: 65, asOfYears: "", asOfMonths: "" },
+        ideco: { currentValue: 0, principalTotal: 0, monthlyContribution: 0, startAge: 35, endAge: 60, productName: "", returnPct: 0, returnPctAuto: false, expectedReturnPct: 0, payoutStartAge: 60, payoutMethod: "lump", payoutYears: 10, lumpPortionPct: 0, payoutReturnPct: 0, annualIncome: 0, asOfYears: "", asOfMonths: "" },
+        usInvestment: {}, gbInvestment: {}, caInvestment: {},
+        auInvestment: {
+          annualSalary: 0, voluntaryConcessional: 0,
+          estimatedCapitalGainAnnual: 0, capitalGainHeldOver12Months: true,
+          superannuation: acct(), investmentAccount: acct(), cashSavings: acct(),
+          agePension: { status: "single", homeowner: true, otherAnnualIncome: 0, bothQualified: true },
+          healthcare: {}, expensesMonthly: 0,
+          ...auOver,
+        },
+      },
+      effectiveCurrentAge: 66,
+      effectiveCurrentAssets: 0, effectivePostRetireReturn: 0,
+      dynamicFunds: [], stockTotalNow, effectiveStockReturnPct: 0,
+      goldCurrentValue, effectiveGoldReturnPct: 0,
+      effectivePensionMonthly: 0, effectivePublicPensionStartAge: 67,
+      drawdownOrder: DRAWDOWN_CATEGORIES,
+      uncategorizedLabel: "Uncategorised",
+      countryDerived: {
+        // App.jsx と同じくシード0を渡す（monthlyAmountAt が必ず上書きする）
+        auAgePensionAnnual: 0, auAgePensionQualifyingAge: ret.getQualifyingAge(),
+        auOtherAnnualIncome: 0, auHealthcareAnnual: 0,
+      },
+    };
+  };
+
+  const qualifyingAge = ret.getQualifyingAge();
+  // App.jsx の auAgePensionFromEngine と同じ読み取りをする
+  const cardValues = (over) => {
+    const plan = buildPlanInput(makeCtx(over));
+    const r = runIntegratedPlan(plan);
+    // App.jsx の auAgePensionFromEngine と同じ行選択にすること
+    const row =
+      r.yearly.find((y) => y.age >= qualifyingAge && y.meansTestedStreamsActive > 0)
+      || r.yearly.find((y) => y.age >= qualifyingAge)
+      || r.yearly[r.yearly.length - 1];
+    return {
+      row, plan,
+      agePensionAnnual: Number(row.meansTestedPensionAnnual) || 0,
+      assessableAssets: Number(row.meansTestedAssessedAssets) || 0,
+      deemedAssets: Number(row.meansTestedDeemedAssets) || 0,
+    };
+  };
+
+  it("受給資格年齢の行に、投影が使った年金額と判定資産が記録されている", () => {
+    const c = cardValues({});
+    expect(c.row.age).toBeGreaterThanOrEqual(qualifyingAge);
+    expect(Number.isFinite(c.agePensionAnnual)).toBe(true);
+    expect(Number.isFinite(c.row.meansTestedAssessedAssets)).toBe(true);
+    expect(Number.isFinite(c.row.meansTestedDeemedAssets)).toBe(true);
+    // 資産ゼロなら満額
+    expect(near(c.agePensionAnnual, ret.getMaxAnnual("single"), 1e-6)).toBe(true);
+  });
+
+  it("共通の銀行預金を増やすと、カードのAge Pensionが減る", () => {
+    const poor = cardValues({});
+    const rich = cardValues({
+      banks: [{ name: "main", balance: 700000, monthlyDeposit: 0, interestPct: 0 }],
+    });
+    expect(rich.assessableAssets).toBeGreaterThan(poor.assessableAssets);
+    expect(rich.agePensionAnnual).toBeLessThan(poor.agePensionAnnual);
+  });
+
+  it("個別株を増やすと、カードのAge Pensionが減る", () => {
+    const poor = cardValues({});
+    const rich = cardValues({ stockTotalNow: 700000 });
+    expect(rich.assessableAssets).toBeGreaterThan(poor.assessableAssets);
+    expect(rich.agePensionAnnual).toBeLessThan(poor.agePensionAnnual);
+  });
+
+  it("金を増やすと、カードのAge Pensionが減る", () => {
+    const poor = cardValues({});
+    const rich = cardValues({ goldCurrentValue: 700000 });
+    expect(rich.assessableAssets).toBeGreaterThan(poor.assessableAssets);
+    expect(rich.agePensionAnnual).toBeLessThan(poor.agePensionAnnual);
+  });
+
+  it("民間年金の原資を増やすと、カードのAge Pensionが減る", () => {
+    const poor = cardValues({});
+    const rich = cardValues({
+      privatePensionPlans: [{
+        name: "annuity", currentBalance: 700000, monthlyContribution: 0,
+        contributionStartAge: 30, contributionEndAge: 60,
+        payoutStartAge: 90, payoutEndAge: 95, monthlyPayout: 0, returnPct: 0,
+      }],
+    });
+    expect(rich.assessableAssets).toBeGreaterThan(poor.assessableAssets);
+    expect(rich.agePensionAnnual).toBeLessThan(poor.agePensionAnnual);
+  });
+
+  it("カードの値と、エンジンが同時点で使うAge Pensionが完全に一致する", () => {
+    [{}, { banks: [{ name: "main", balance: 400000, monthlyDeposit: 0, interestPct: 0 }] },
+     { stockTotalNow: 300000 }, { goldCurrentValue: 250000 }].forEach((over) => {
+      const c = cardValues(over);
+      const stream = c.plan.publicPensions.find((x) => typeof x.monthlyAmountAt === "function");
+      // エンジンがその行で使った判定資産をそのまま渡せば、同じ月額が返るはず
+      const engineMonthly = stream.monthlyAmountAt(c.row.age, {
+        assessedAssets: c.assessableAssets,
+        deemedAssets: c.deemedAssets,
+        totalAssets: c.row.totalAssets,
+      });
+      expect(near(c.agePensionAnnual, engineMonthly * 12, 1e-9)).toBe(true);
+    });
+  });
+
+  it("3口座だけで別計算した値とは一致しない（＝別計算に戻すと不整合になる）", () => {
+    const over = { banks: [{ name: "main", balance: 700000, monthlyDeposit: 0, interestPct: 0 }] };
+    const c = cardValues(over);
+    // 旧実装（3口座だけの projectAgePension）は銀行預金を見ないので満額のまま
+    const threeAccountsOnly = ret.projectAgePension({
+      investmentRules: inv,
+      contributionsTaxRate: tax.superannuation.contributionsTaxRate,
+      earningsTaxAccumulation: tax.superannuation.earningsTaxAccumulation,
+      currentAge: 66, retireAge: 66, deathAge: 80,
+      accounts: makeCtx(over).inputs.auInvestment,
+      annualSalary: 0, voluntaryConcessional: 0,
+      expensesAnnual: 0, healthcareAnnual: 0, otherAnnualIncome: 0,
+      status: "single", homeowner: true, bothQualified: true,
+    });
+    expect(threeAccountsOnly.agePensionAnnual).toBeGreaterThan(c.agePensionAnnual);
+  });
+
+  it("Deemingの判定資産も銀行・株・金を含む", () => {
+    const poor = cardValues({});
+    const rich = cardValues({ stockTotalNow: 500000 });
+    expect(rich.deemedAssets).toBeGreaterThan(poor.deemedAssets);
+    expect(ret.getDeemedIncomeAnnual(rich.deemedAssets, "single"))
+      .toBeGreaterThan(ret.getDeemedIncomeAnnual(poor.deemedAssets, "single"));
+  });
+});

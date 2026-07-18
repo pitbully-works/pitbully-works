@@ -286,3 +286,124 @@ describe("index.js の再エクスポート漏れ", () => {
     }
   });
 });
+
+// ============================================================================
+// 国別ルール関数の呼び出しガード（静的解析）
+//
+// 【背景】rules.tax.implemented / rules.investment.implemented は JP/US/GB/CA/AU
+// すべてで true になる。そのため implemented だけを条件にして AU 専用の関数
+// （resolveDivision293Income など）を呼ぶと、他国を選んだ瞬間に
+//   TypeError: rules.tax.resolveDivision293Income is not a function
+// で画面が真っ白になる。実際にこの事故が起きたため、CI で静的に検出する。
+//
+// 判定ルール：AU_COUNTRY_RULES にしか存在しない関数の呼び出し行は、
+//   ・同じ行または直前4行に auIsAU / country === "AU" があること、または
+//   ・関数名に AU を含むコンポーネント（AU選択時にしか描画されない）の中にあること
+// のいずれかを満たさなければならない。
+// ============================================================================
+describe("国別ルール関数のガード", () => {
+  const readSrc = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
+
+  // AU にしか無いメソッド名を抽出する
+  const methodNames = (src) =>
+    new Set([...src.matchAll(/^\s{4}(\w+)\s*\(/gm)].map((m) => m[1]));
+
+  const auOnlyMethods = () => {
+    const au = methodNames(readSrc("countryRules/AU.js"));
+    const others = ["JP", "US", "GB", "CA"]
+      .map((c) => readSrc(`countryRules/${c}.js`))
+      .join("\n");
+    return [...au].filter((n) => n.length > 3 && !others.includes(`${n}(`));
+  };
+
+  it("AU専用のルール関数は、必ず国の判定でガードされている", () => {
+    const names = auOnlyMethods();
+    expect(names.length).toBeGreaterThan(0); // 抽出自体が壊れていないこと
+
+    const lines = readSrc("App.jsx").split("\n");
+    // 直近に現れた関数・コンポーネント定義の名前を追う
+    let enclosing = "";
+    const violations = [];
+
+    lines.forEach((line, i) => {
+      // トップレベルの定義だけを「囲っているコンポーネント」として追う
+      const def = line.match(/^(?:export\s+default\s+)?(?:function|const)\s+([A-Za-z_]\w*)/);
+      if (def) enclosing = def[1];
+
+      const called = names.find((n) => line.includes(`.${n}(`));
+      if (!called) return;
+
+      // 【厳密な窓】呼び出しを含む「その文」だけを見る。
+      // 直前の別の文にある auIsAU を拾ってしまうと、ガード漏れを見逃す。
+      let start = i;
+      while (start > 0 && !/^\s{0,4}(?:const|let|var|return|if|\}|\)|<)/.test(lines[start])) {
+        start -= 1;
+      }
+      const statement = lines.slice(start, i + 1).join("\n");
+
+      // 早期 return によるガード（if (country !== "AU") return 既定値;）は
+      // 同じ useMemo / 関数の中にあれば有効なので、そこだけ広めに探す。
+      const blockStart = Math.max(0, i - 40);
+      const block = lines.slice(blockStart, i + 1).join("\n");
+      const earlyReturnGuard = /if\s*\(\s*country\s*!==\s*"AU"/.test(block);
+
+      const guarded =
+        /auIsAU/.test(statement) ||
+        /country\s*===\s*"AU"/.test(statement) ||
+        earlyReturnGuard ||
+        /^AU/.test(enclosing);
+
+      if (!guarded) {
+        violations.push(`App.jsx:${i + 1} ${called}() が国の判定でガードされていない`);
+      }
+    });
+
+    expect(violations).toEqual([]);
+  });
+
+  it("AU専用のルール関数が、他国のルールに紛れ込んでいない", () => {
+    const names = auOnlyMethods();
+    ["JP", "US", "GB", "CA"].forEach((c) => {
+      const src = readSrc(`countryRules/${c}.js`);
+      const leaked = names.filter((n) => new RegExp(`^\\s{4}${n}\\s*\\(`, "m").test(src));
+      expect(leaked, `${c}.js に AU 専用メソッドが存在する`).toEqual([]);
+    });
+  });
+});
+
+// ============================================================================
+// 依存配列の静的検査
+//
+// 【背景】豪Age Pensionの画面カードは、本番投影（integrated）の結果から値を読む。
+// useMemo の依存配列に integrated が入っていないと、銀行預金・個別株・金・民間年金を
+// 変更してもカードが更新されない。React の再計算はテストから直接観測しづらいため、
+// 依存配列を静的に検査する。
+// ============================================================================
+describe("useMemo の依存配列", () => {
+  it("auAgePensionFromEngine が integrated に依存している", () => {
+    const app = fs.readFileSync(path.join(ROOT, "App.jsx"), "utf8");
+    const i = app.indexOf("const auAgePensionFromEngine = useMemo(");
+    expect(i, "auAgePensionFromEngine が見つからない").toBeGreaterThan(-1);
+
+    // useMemo の閉じ括弧までを取り出し、末尾の依存配列を読む
+    const body = app.slice(i, app.indexOf("\n\n", i));
+    const deps = body.slice(body.lastIndexOf("}, ["));
+    expect(deps.includes("integrated"), "依存配列に integrated が無い").toBe(true);
+    expect(deps.includes("inputs.auInvestment"), "依存配列に inputs.auInvestment が無い").toBe(true);
+  });
+
+  it("integrated は planCtx に依存し、planCtx は inputs に依存している", () => {
+    const app = fs.readFileSync(path.join(ROOT, "App.jsx"), "utf8");
+    expect(app).toMatch(/const integrated = useMemo\(\(\) => runIntegratedPlan\(buildPlanInput\(planCtx\)\), \[planCtx\]\)/);
+    const i = app.indexOf("const planCtx = useMemo(");
+    const deps = app.slice(i, app.indexOf("]);", i));
+    expect(deps.includes("inputs"), "planCtx が inputs に依存していない").toBe(true);
+    expect(deps.includes("stockTotalNow"), "planCtx が stockTotalNow に依存していない").toBe(true);
+    expect(deps.includes("goldSim.currentValue"), "planCtx が金の評価額に依存していない").toBe(true);
+  });
+
+  it("画面カードが3口座だけの projectAgePension を呼び戻していない", () => {
+    const app = fs.readFileSync(path.join(ROOT, "App.jsx"), "utf8");
+    expect(app.includes("projectAgePension"), "App.jsx が projectAgePension を直接呼んでいる").toBe(false);
+  });
+});

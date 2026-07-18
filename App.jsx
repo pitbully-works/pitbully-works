@@ -738,6 +738,12 @@ function AUInvestmentAccountsPanel({
   const superTax = taxRules.superannuation;
   const split = investmentRules.splitAssets(age, auInvestment);
   const preservationAge = investmentRules.preservationAge;
+  // Division 293：どの所得を使ったか（概算か明示入力か）と、税の支払元
+  const div293Estimated = taxRules.resolveDivision293Income(
+    Math.max(0, (Number(auInvestment.annualSalary) || 0) - (Number(auInvestment.voluntaryConcessional) || 0)),
+    auInvestment.div293Income
+  ).isEstimated;
+  const div293PaidFrom = taxRules.normalizeDiv293PaidFrom(auInvestment.div293PaidFrom);
 
   return (
     <div>
@@ -748,6 +754,27 @@ function AUInvestmentAccountsPanel({
 
       <Field guide={t("auAnnualSalaryGuide")} label={t("auAnnualSalaryLabel")} unit="A$" step={1000} value={auInvestment.annualSalary} onChange={(v) => onUpdate("annualSalary", v)} />
       <Field guide={t("auSalarySacrificeGuide")} label={t("auSalarySacrificeLabel")} unit="A$" step={500} value={auInvestment.voluntaryConcessional} onChange={(v) => onUpdate("voluntaryConcessional", v)} />
+      <Field guide={t("auDiv293IncomeGuide")} label={t("auDiv293IncomeLabel")} unit="A$" step={1000} value={auInvestment.div293Income} onChange={(v) => onUpdate("div293Income", v)} />
+      <div className="note" style={{ marginBottom: 10 }}>
+        <Info size={13} />
+        <span>{div293Estimated ? t("auDiv293IncomeEstimatedNote") : t("auDiv293IncomeExplicitNote")}</span>
+      </div>
+
+      <div className="field-label" style={{ marginBottom: 6 }}>{t("auDiv293PaidFromLabel")}</div>
+      <div className="chip-row" style={{ marginBottom: 6 }}>
+        <button
+          className={`chip ${div293PaidFrom === "super" ? "chip-active" : ""}`}
+          onClick={() => onUpdate("div293PaidFrom", "super")}
+        >{t("auDiv293FromSuperLabel")}</button>
+        <button
+          className={`chip ${div293PaidFrom === "outside" ? "chip-active" : ""}`}
+          onClick={() => onUpdate("div293PaidFrom", "outside")}
+        >{t("auDiv293FromOutsideLabel")}</button>
+      </div>
+      <div className="note" style={{ marginBottom: 10 }}>
+        <Info size={13} />
+        <span>{div293PaidFrom === "super" ? t("auDiv293FromSuperNote") : t("auDiv293FromOutsideNote")}</span>
+      </div>
 
       <div className="stat-grid" style={{ marginTop: 12 }}>
         <StatCard
@@ -768,10 +795,19 @@ function AUInvestmentAccountsPanel({
         />
       </div>
       {concessionalRemaining < 0 && (
-        <div className="note" style={{ borderLeftColor: "#C2694F", marginTop: 10 }}>
-          <Info size={13} style={{ color: "#C2694F" }} />
-          <span>{t("auConcessionalOverLabel", { amount: money(-concessionalRemaining) })}</span>
-        </div>
+        <>
+          <div className="note" style={{ borderLeftColor: "#C2694F", marginTop: 10 }}>
+            <Info size={13} style={{ color: "#C2694F" }} />
+            <span>{t("auConcessionalOverLabel", { amount: money(-concessionalRemaining) })}</span>
+          </div>
+          <div className="note" style={{ borderLeftColor: "#C2694F", marginTop: 6 }}>
+            <Info size={13} style={{ color: "#C2694F" }} />
+            <span>{t("auConcessionalOverProjectionNote", {
+              cap: money(l.concessionalCap),
+              excess: money(-concessionalRemaining),
+            })}</span>
+          </div>
+        </>
       )}
       {superContributionTax.div293Applies && (
         <div className="note" style={{ borderLeftColor: "#D9A54F", marginTop: 10 }}>
@@ -1256,6 +1292,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     auInvestment: {
       annualSalary: 0,             // 年間給与（SG拠出額・所得税・Div293の判定に使用）
       voluntaryConcessional: 0,    // 給与犠牲などの任意の税引前拠出（年額）
+      // Division 293 income（概算）。ATOの定義は課税所得＋報告対象フリンジベネフィット＋
+      // 純投資損失＋純賃貸損失等の合計で、年収そのものではない。0（未入力）なら
+      // annualSalary で代用し、画面に簡易計算である旨を表示する。
+      div293Income: 0,
+      // Division 293 税の支払元："super"（Super残高から）／"outside"（口座外の現金から）
+      div293PaidFrom: "super",
       estimatedCapitalGainAnnual: 0,
       capitalGainHeldOver12Months: true,
       // withdrawalTaxPct：60歳以降のSuperからの引出は非課税(0%)。
@@ -1548,9 +1590,32 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     : { incomeTax: 0, medicareLevy: 0, total: 0 };
   const auMarginalRate = (auIsAU && rules.tax.implemented)
     ? rules.tax.getMarginalRateWithLevy(auTaxableIncome) : 0;
+  // Division 293 income：入力があればそれを、無ければ課税所得の概算（年収 − 給与犠牲）を使う。
+  // 画面カードと本番投影（buildPlanInput）で同じ基準を使うこと。
+  // 【重要】AU専用のルール関数は他国のルールに存在しない。
+  //   rules.tax.implemented は JP/US/GB/CA でも true なので、それだけでは
+  //   ガードにならず、他国選択時に TypeError で画面が真っ白になる。
+  //   必ず auIsAU で country を見たうえで、関数の存在も確認してから呼ぶこと。
+  const auDiv293IncomeResolved =
+    auIsAU
+    && rules.tax.implemented
+    && typeof rules.tax.resolveDivision293Income === "function"
+      ? rules.tax.resolveDivision293Income(auTaxableIncome, auInvestment.div293Income)
+      : { income: 0, isEstimated: true };
+  const auDiv293PaidFrom =
+    auIsAU
+    && rules.tax.implemented
+    && typeof rules.tax.normalizeDiv293PaidFrom === "function"
+      ? rules.tax.normalizeDiv293PaidFrom(auInvestment.div293PaidFrom)
+      : "super";
+  // 拠出課税・Division 293 の課税標準には concessional cap 適用後の額を使う
+  // （cap超過分は low tax contributions ではなく、別枠で課税されるため）。
+  const auCappedConcessional = (auIsAU && rules.investment.implemented)
+    ? rules.investment.getCappedConcessional(auSalary, auVoluntaryConcessional) : 0;
   const auSuperContributionTax = (auIsAU && rules.tax.implemented)
-    ? rules.tax.calculateSuperContributionTax(auTotalConcessional, auTaxableIncome)
+    ? rules.tax.calculateSuperContributionTax(auCappedConcessional, auDiv293IncomeResolved.income)
     : { baseTax: 0, div293Tax: 0, total: 0, effectiveRate: 0, div293Applies: false };
+  const auDiv293Tax = auSuperContributionTax.div293Tax;
   const auSalarySacrificeSaving = (auIsAU && rules.tax.implemented)
     ? rules.tax.calculateSalarySacrificeSaving(auVoluntaryConcessional, auSalary) : 0;
   const auCapitalGainsTax = (auIsAU && rules.tax.implemented)
@@ -1578,43 +1643,17 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     ? rules.retirement.getQualifyingAge() : 67;
   const auOtherAnnualIncome = Number(auInvestment.agePension.otherAnnualIncome) || 0;
   const auExpensesAnnual = (Number(auInvestment.expensesMonthly) || 0) * 12;
-  // 計算そのものは AU_COUNTRY_RULES.retirement.projectAgePension（純関数）に置く。
-  // 画面側は結果を受け取るだけにして、テストから同じ経路を検証できるようにする。
-  const auAgePensionProjection = useMemo(() => {
-    if (country !== "AU" || !rules.retirement.implemented) {
-      return {
-        qualifyingAge: 67, assessableAssets: 0, deemedIncomeAnnual: 0,
-        recipients: 1, agePensionPerPersonAnnual: 0, agePensionAnnual: 0,
-      };
-    }
-    return rules.retirement.projectAgePension({
-      investmentRules: rules.investment,
-      contributionsTaxRate: rules.tax.superannuation.contributionsTaxRate,
-      earningsTaxAccumulation: rules.tax.superannuation.earningsTaxAccumulation,
-      currentAge: effectiveCurrentAge,
-      retireAge: inputs.retireAge,
-      deathAge: inputs.deathAge,
-      accounts: inputs.auInvestment,
-      annualSalary: inputs.auInvestment.annualSalary,
-      voluntaryConcessional: inputs.auInvestment.voluntaryConcessional,
-      expensesAnnual: auExpensesAnnual,
-      healthcareAnnual: auHealthcareAnnual,
-      otherAnnualIncome: auOtherAnnualIncome,
-      status: inputs.auInvestment.agePension.status,
-      homeowner: inputs.auInvestment.agePension.homeowner,
-      bothQualified: inputs.auInvestment.agePension.bothQualified,
-    });
-  }, [
-    country, rules, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, inputs.auInvestment,
-    auExpensesAnnual, auHealthcareAnnual, auOtherAnnualIncome,
-  ]);
-  const auAssessableAssetsAtQualifyingAge = auAgePensionProjection.assessableAssets;
-  const auAgePensionAnnual = auAgePensionProjection.agePensionAnnual;
+  // 【重要】Age Pension の資産テスト／Deemingの対象は、AU版の3口座だけではない。
+  //   共通で持っている銀行預金・個別株・金・民間年金原資も対象に含まれる
+  //   （utils/buildPlanInput.js の assessedPoolIds / deemedPoolIds を参照）。
+  //   3口座だけで画面カード用に別計算すると、カードの金額と総資産グラフの内側で
+  //   使われる金額が食い違う。そこでカードの値は runIntegratedPlan の結果から読み取る。
+  //   ここではまだ integrated が無いので、planCtx へ渡すシードだけを置く。
+  //   buildPlanInput は retirement.implemented のとき publicPensions に monthlyAmountAt を
+  //   積み、monthlyAmount（＝このシード）は必ず上書きされるため、投影結果には影響しない。
+  const auAgePensionAnnualSeed = 0;
   const auAgePensionMaxAnnual = (auIsAU && rules.retirement.implemented)
     ? rules.retirement.getMaxAnnual(auInvestment.agePension.status) : 0;
-  const auRetirementIncomeAnnual = auAgePensionAnnual + auOtherAnnualIncome;
-  const auWithdrawalNeeded = Math.max(0, auExpensesAnnual + auHealthcareAnnual - auRetirementIncomeAnnual);
-  const auIncomeSurplus = Math.max(0, auRetirementIncomeAnnual - (auExpensesAnnual + auHealthcareAnnual));
 
   const money = useCallback((n) => formatMoneyFor(baseCurrency, n), [baseCurrency]);
   const label = useCallback((key) => getCategoryLabel(key, country), [country]);
@@ -2200,22 +2239,6 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
   // オーストラリア選択時：Superannuation / 投資口座 / 現金 の残高推移シミュレーション。
   // AU_COUNTRY_RULES.investment.simulateGrowth のみを使用し、他国とは完全に独立している。
-  const auInvestmentSim = useMemo(() => {
-    if (country !== "AU" || !rules.investment.implemented) {
-      return { yearly: [], finalValue: 0 };
-    }
-    return rules.investment.simulateGrowth({
-      currentAge: effectiveCurrentAge,
-      retireAge: inputs.retireAge,
-      deathAge: inputs.deathAge,
-      accounts: inputs.auInvestment,
-      annualWithdrawalNeeded: auWithdrawalNeeded,
-      annualSalary: inputs.auInvestment.annualSalary,
-      voluntaryConcessional: inputs.auInvestment.voluntaryConcessional,
-      contributionsTaxRate: rules.tax.superannuation.contributionsTaxRate,
-      earningsTaxAccumulation: rules.tax.superannuation.earningsTaxAccumulation,
-    });
-  }, [country, rules, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, inputs.auInvestment, auWithdrawalNeeded]);
 
   // iDeCo 自動計算項目
   const idecoAnnualContribution = (inputs.ideco.monthlyContribution || 0) * 12;
@@ -2280,7 +2303,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       usSSMonthlyBenefit, usTotalHealthcareAnnual, usClaimAge,
       gbStatePensionAnnual, gbAdditionalPensionAnnual, gbEffectiveClaimAge, gbHealthcareAnnual,
       caCppAnnual, caCppStartAge, caOasAnnual, caOasStartAge, caAdditionalPensionAnnual, caHealthcareAnnual,
-      auAgePensionAnnual, auAgePensionQualifyingAge, auOtherAnnualIncome, auHealthcareAnnual,
+      // Age Pension はエンジン側が毎ステップ再判定するため、ここはシード（上書きされる）
+      auAgePensionAnnual: auAgePensionAnnualSeed,
+      auAgePensionQualifyingAge, auOtherAnnualIncome, auHealthcareAnnual,
     },
   }), [
     country, rules, effectiveCurrentAge, effectiveCurrentAssets, effectivePostRetireReturn,
@@ -2291,10 +2316,78 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     usSSMonthlyBenefit, usTotalHealthcareAnnual, usClaimAge,
     gbStatePensionAnnual, gbAdditionalPensionAnnual, gbEffectiveClaimAge, gbHealthcareAnnual,
     caCppAnnual, caCppStartAge, caOasAnnual, caOasStartAge, caAdditionalPensionAnnual, caHealthcareAnnual,
-    auAgePensionAnnual, auAgePensionQualifyingAge, auOtherAnnualIncome, auHealthcareAnnual, t,
+    auAgePensionAnnualSeed, auAgePensionQualifyingAge, auOtherAnnualIncome, auHealthcareAnnual, t,
   ]);
 
   const integrated = useMemo(() => runIntegratedPlan(buildPlanInput(planCtx)), [planCtx]);
+
+  // ---------- Age Pension：画面カードの値は本番投影（integrated）から読み取る ----------
+  // 【なぜ再計算しないのか】
+  //   資産テストとDeemingの対象は AU版3口座 ＋ 銀行預金・個別株・金・民間年金原資。
+  //   これを画面用に別計算すると対象範囲がずれ、カードとグラフで金額が食い違う。
+  //   lifePlanEngine は毎ステップ assessedPoolIds / deemedPoolIds の残高で再判定し、
+  //   実際に使った値を各行に publicPensionAnnual / meansTestedAssessedAssets /
+  //   meansTestedDeemedAssets として残している。カードはそれをそのまま読む。
+  //   これにより、銀行・株・金・民間年金を変えるとカードの金額も必ず動く
+  //   （integrated → planCtx → inputs の依存で再計算される）。
+  const auAgePensionFromEngine = useMemo(() => {
+    const empty = {
+      assessableAssets: 0, deemedAssets: 0, deemedIncomeAnnual: 0,
+      recipients: 1, agePensionPerPersonAnnual: 0, agePensionAnnual: 0,
+    };
+    if (country !== "AU" || !rules.retirement.implemented) return empty;
+    const rows = (integrated && integrated.yearly) || [];
+    if (!rows.length) return empty;
+    // スナップショットの行は「その年齢までの1年」を表すため、受給資格年齢ちょうどの行では
+    // まだ受給が始まっていない。実際に受給が始まっている最初の行を選ぶ。
+    // 想定寿命が受給資格年齢より手前なら最後の行で代用する。
+    const target = Math.round(auAgePensionQualifyingAge);
+    const row =
+      rows.find((y) => y.age >= target && y.meansTestedStreamsActive > 0)
+      || rows.find((y) => y.age >= target)
+      || rows[rows.length - 1];
+    const assessableAssets = Number(row.meansTestedAssessedAssets) || 0;
+    const deemedAssets = Number(row.meansTestedDeemedAssets) || 0;
+    const status = inputs.auInvestment.agePension.status;
+    const recipients = rules.retirement.getHouseholdRecipients(
+      status, inputs.auInvestment.agePension.bothQualified
+    );
+    const agePensionAnnual = Number(row.meansTestedPensionAnnual) || 0;
+    return {
+      assessableAssets,
+      deemedAssets,
+      deemedIncomeAnnual: rules.retirement.getDeemedIncomeAnnual(deemedAssets, status),
+      recipients,
+      agePensionPerPersonAnnual: recipients > 0 ? agePensionAnnual / recipients : 0,
+      agePensionAnnual,
+    };
+  }, [country, rules, integrated, auAgePensionQualifyingAge, inputs.auInvestment]);
+
+  const auAssessableAssetsAtQualifyingAge = auAgePensionFromEngine.assessableAssets;
+  const auAgePensionAnnual = auAgePensionFromEngine.agePensionAnnual;
+  const auRetirementIncomeAnnual = auAgePensionAnnual + auOtherAnnualIncome;
+  const auWithdrawalNeeded = Math.max(0, auExpensesAnnual + auHealthcareAnnual - auRetirementIncomeAnnual);
+  const auIncomeSurplus = Math.max(0, auRetirementIncomeAnnual - (auExpensesAnnual + auHealthcareAnnual));
+
+  const auInvestmentSim = useMemo(() => {
+    if (country !== "AU" || !rules.investment.implemented) {
+      return { yearly: [], finalValue: 0 };
+    }
+    return rules.investment.simulateGrowth({
+      currentAge: effectiveCurrentAge,
+      retireAge: inputs.retireAge,
+      deathAge: inputs.deathAge,
+      accounts: inputs.auInvestment,
+      annualWithdrawalNeeded: auWithdrawalNeeded,
+      annualSalary: inputs.auInvestment.annualSalary,
+      voluntaryConcessional: inputs.auInvestment.voluntaryConcessional,
+      contributionsTaxRate: rules.tax.superannuation.contributionsTaxRate,
+      earningsTaxAccumulation: rules.tax.superannuation.earningsTaxAccumulation,
+      div293TaxAnnual: auDiv293Tax,
+      div293PaidFrom: auDiv293PaidFrom,
+    });
+  }, [country, rules, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, inputs.auInvestment, auWithdrawalNeeded, auDiv293Tax, auDiv293PaidFrom]);
+
 
   // 一時支出（余剰金を使う）の結果を台帳IDで引けるようにする。要求額が余剰金残高を
   // 超えて一部しか使えなかった行に「未処理額」を表示するための対応表。防御的に空扱い。
@@ -5017,9 +5110,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               qualifyingAge={auAgePensionQualifyingAge}
               maxAnnual={auAgePensionMaxAnnual}
               agePensionAnnual={auAgePensionAnnual}
-              agePensionPerPersonAnnual={auAgePensionProjection.agePensionPerPersonAnnual}
-              recipients={auAgePensionProjection.recipients}
-              deemedIncomeAnnual={auAgePensionProjection.deemedIncomeAnnual}
+              agePensionPerPersonAnnual={auAgePensionFromEngine.agePensionPerPersonAnnual}
+              recipients={auAgePensionFromEngine.recipients}
+              deemedIncomeAnnual={auAgePensionFromEngine.deemedIncomeAnnual}
               retirementIncomeAnnual={auRetirementIncomeAnnual}
               assessableAssets={auAssessableAssetsAtQualifyingAge}
               expensesAnnual={auExpensesAnnual}
