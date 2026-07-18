@@ -12,14 +12,18 @@ import { LocaleContext, Field, StatCard } from "../ui/index.js";
 // ---------- オーストラリア選択時：退職後パネル（Age Pension → Expenses → Withdrawal） ----------
 function AURetirementPanel({
   auInvestment, onUpdateAgePension, onUpdate, retirementRules,
-  qualifyingAge, maxAnnual, agePensionAnnual, retirementIncomeAnnual,
+  qualifyingAge, maxAnnual, agePensionAnnual, agePensionPerPersonAnnual, recipients,
+  deemedIncomeAnnual, retirementIncomeAnnual,
   assessableAssets, expensesAnnual, healthcareAnnual, withdrawalNeeded, incomeSurplus, retireAge,
 }) {
   const { t, money } = useContext(LocaleContext);
-  const p = retirementRules.agePension;
   const status = auInvestment.agePension.status;
   const homeowner = !!auInvestment.agePension.homeowner;
+  const bothQualified = auInvestment.agePension.bothQualified !== false;
   const statusLabel = status === "couple" ? t("auCoupleLabel") : t("auSingleLabel");
+  // 所得テストに実際に使われる所得＝入力したその他の年収 ＋ 金融資産のみなし収入
+  const otherIncome = Number(auInvestment.agePension.otherAnnualIncome) || 0;
+  const assessableIncome = otherIncome + (Number(deemedIncomeAnnual) || 0);
 
   return (
     <div>
@@ -58,6 +62,16 @@ function AURetirementPanel({
         />
         <span>{t("auHomeownerLabel")}</span>
       </label>
+      {status === "couple" && (
+        <label className="checkbox-row">
+          <input
+            type="checkbox"
+            checked={bothQualified}
+            onChange={(e) => onUpdateAgePension("bothQualified", e.target.checked)}
+          />
+          <span>{t("auBothQualifiedLabel", { age: qualifyingAge })}</span>
+        </label>
+      )}
 
       <Field
         guide={t("auOtherIncomeGuide")}
@@ -69,10 +83,13 @@ function AURetirementPanel({
       <div className="stat-grid" style={{ marginTop: 10 }}>
         <StatCard
           label={t("auIncomeTestLabel")}
-          value={money(retirementRules.getAgePensionByIncomeTest(auInvestment.agePension.otherAnnualIncome, status))}
+          value={money(retirementRules.getAgePensionByIncomeTest(assessableIncome, status))}
           sub={t("auIncomeTestSub", {
+            // 逓減率は1人あたり。カップルは世帯合計の半分（25セント／隔週1.50ドル）。
             amount: money(retirementRules.getIncomeFreeAreaAnnual(status)),
-            taper: Math.round(p.incomeTaperPerDollar * 100),
+            taper: Math.round(retirementRules.getIncomeTaperPerDollar(status) * 100),
+            deemed: money(Number(deemedIncomeAnnual) || 0),
+            total: money(assessableIncome),
           })}
         />
         <StatCard
@@ -80,12 +97,30 @@ function AURetirementPanel({
           value={money(retirementRules.getAgePensionByAssetsTest(assessableAssets, status, homeowner))}
           sub={t("auAssetsTestSub", {
             amount: money(retirementRules.getAssetsFreeArea(status, homeowner)),
-            taper: p.assetsTaperPerThousandFortnightly,
+            taper: retirementRules.getAssetsTaperPerThousandFortnightly(status),
+            assets: money(assessableAssets),
+            qualifyingAge,
           })}
         />
       </div>
+      <div className="note" style={{ marginTop: 10 }}>
+        <Info size={13} />
+        <span>{t("auDeemingNote", {
+          lower: Number((retirementRules.deeming.lowerRate * 100).toFixed(2)),
+          upper: Number((retirementRules.deeming.upperRate * 100).toFixed(2)),
+          threshold: money(retirementRules.getDeemingThreshold(status)),
+          deemed: money(Number(deemedIncomeAnnual) || 0),
+        })}</span>
+      </div>
+
       <div className="stat-grid" style={{ marginTop: 10, marginBottom: 14 }}>
-        <StatCard label={t("auAgePensionAnnualLabel")} value={money(agePensionAnnual)} sub={t("auAgePensionAnnualSub")} />
+        <StatCard
+          label={t("auAgePensionAnnualLabel")}
+          value={money(agePensionAnnual)}
+          sub={recipients > 1
+            ? t("auAgePensionHouseholdSub", { perPerson: money(agePensionPerPersonAnnual) })
+            : t("auAgePensionAnnualSub")}
+        />
         <StatCard label={t("auRetirementIncomeLabel")} value={money(retirementIncomeAnnual)} sub={t("auRetirementIncomeSub")} tone="good" />
       </div>
       {agePensionAnnual <= 0 && retireAge >= qualifyingAge && (
