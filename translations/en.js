@@ -764,6 +764,8 @@ export const EN_TRANSLATIONS = {
     "saveMessageUnavailable": "Automatic saving is not available in this environment. Please use the backup feature if you need to keep your data.",
     "adviceNotReady": "Not enough information to assess your plan yet. Please enter your current age, living costs and assets.",
     "nominalValueNote": "All amounts are nominal values based on today's prices. Inflation is not taken into account.",
+    "validationDeathAgeMissing": "Life expectancy is not set. Please enter the age up to which you want the projection to run (e.g. 95).",
+    "validationRetireAgeMissing": "Retirement age is not set. Please enter the age at which you plan to retire (e.g. 65).",
     "validationDeathAgeTooLow": "Your life expectancy is at or below your current age. Please enter an age later than your current age (otherwise no future projection can be calculated).",
     "validationRetireAgeTooLow": "Your retirement age is earlier than your current age. That is fine if you have already retired, but if you still plan to contribute, please enter an age at or after your current age.",
     "saveSaved": "Saved",

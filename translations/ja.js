@@ -764,6 +764,8 @@ export const JA_TRANSLATIONS = {
     "saveMessageUnavailable": "この環境では自動保存は利用できません。必要に応じてバックアップ機能をご利用ください。",
     "adviceNotReady": "まだ診断できません。現在年齢・生活費・資産を入力してください。",
     "nominalValueNote": "金額は現在の物価を基準とした名目値です。インフレは考慮していません。",
+    "validationDeathAgeMissing": "想定寿命が未入力です。何歳まで計算するかを入力してください（例：95）。",
+    "validationRetireAgeMissing": "退職年齢が未入力です。退職する予定の年齢を入力してください（例：65）。",
     "validationDeathAgeTooLow": "想定寿命が現在年齢以下になっています。現在年齢より後の年齢を入力してください（このままでは将来の推移が計算できません）。",
     "validationRetireAgeTooLow": "退職年齢が現在年齢より前になっています。すでに退職済みの場合はそのままで構いませんが、これから積み立てる予定がある場合は現在年齢以降の年齢を入力してください。",
     "saveSaved": "保存済み",
