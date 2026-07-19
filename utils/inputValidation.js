@@ -13,13 +13,16 @@
 
 // 警告の種類。翻訳キーは "validation" + 名前（ja.js / en.js 側）。
 export const AGE_VALIDATION = {
+  DEATH_MISSING: "deathAgeMissing",         // 想定寿命が未入力（0歳）
   DEATH_BEFORE_CURRENT: "deathAgeTooLow",   // 想定寿命 ≤ 現在年齢
+  RETIRE_MISSING: "retireAgeMissing",       // 退職年齢が未入力（0歳）
   RETIRE_BEFORE_CURRENT: "retireAgeTooLow", // 退職年齢 < 現在年齢
 };
 
 /**
  * 年齢入力の整合チェック。
  *
+ * ・想定寿命 0 / 退職年齢 0 … 欄を空にすると 0 が入る作りなので「未入力」として案内する。
  * ・想定寿命 ≤ 現在年齢 … 将来が1行も無いグラフになるため、必ず知らせる。
  * ・退職年齢 < 現在年齢 … 「すでに退職済み」という意味になり得るが、
  *   積立の入力が無視されるなど結果が直感と食い違うため、注意として知らせる。
@@ -37,10 +40,17 @@ export function validateAgeInputs({ currentAge, retireAge, deathAge } = {}) {
   const ret = toAge(retireAge);
   const death = toAge(deathAge);
   const warnings = [];
-  if (Number.isFinite(cur) && Number.isFinite(death) && death <= cur) {
+  // 【0歳は「未入力」として扱う】年齢の入力欄は、欄を空にすると 0 を保存する作りになっている。
+  // 0 を「想定寿命が現在年齢以下」と伝えると、入力を消しただけの人には意味が通らないので、
+  // 「未入力です」という別の案内を出す（原因と直し方が一致するようにする）。
+  if (Number.isFinite(death) && death <= 0) {
+    warnings.push(AGE_VALIDATION.DEATH_MISSING);
+  } else if (Number.isFinite(cur) && Number.isFinite(death) && death <= cur) {
     warnings.push(AGE_VALIDATION.DEATH_BEFORE_CURRENT);
   }
-  if (Number.isFinite(cur) && Number.isFinite(ret) && ret < cur) {
+  if (Number.isFinite(ret) && ret <= 0) {
+    warnings.push(AGE_VALIDATION.RETIRE_MISSING);
+  } else if (Number.isFinite(cur) && Number.isFinite(ret) && ret < cur) {
     warnings.push(AGE_VALIDATION.RETIRE_BEFORE_CURRENT);
   }
   return warnings;

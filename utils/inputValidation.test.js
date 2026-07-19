@@ -168,6 +168,34 @@ describe("公開前4：年齢の矛盾入力を検出する", () => {
     expect(w).toContain(AGE_VALIDATION.RETIRE_BEFORE_CURRENT);
   });
 
+  it("空欄（0歳として保存される）は『未入力です』として案内する", () => {
+    // 【回帰】年齢の入力欄は空にすると 0 を保存する（AgeField の commit(raw === "" ? 0 : ...)）。
+    // 0 を「想定寿命が現在年齢以下」と伝えると、入力を消しただけの人には意味が通らない。
+    expect(validateAgeInputs({ currentAge: 57.66, retireAge: 65, deathAge: 0 }))
+      .toEqual([AGE_VALIDATION.DEATH_MISSING]);
+    expect(validateAgeInputs({ currentAge: 57.66, retireAge: 0, deathAge: 95 }))
+      .toEqual([AGE_VALIDATION.RETIRE_MISSING]);
+    expect(validateAgeInputs({ currentAge: 57.66, retireAge: 0, deathAge: 0 }))
+      .toEqual([AGE_VALIDATION.DEATH_MISSING, AGE_VALIDATION.RETIRE_MISSING]);
+  });
+
+  it("未入力の案内は、矛盾の警告と同時には出さない（重複して出さない）", () => {
+    const w = validateAgeInputs({ currentAge: 57.66, retireAge: 0, deathAge: 0 });
+    expect(w).not.toContain(AGE_VALIDATION.DEATH_BEFORE_CURRENT);
+    expect(w).not.toContain(AGE_VALIDATION.RETIRE_BEFORE_CURRENT);
+  });
+
+  it("未入力の警告文が ja・en にあり、入れるべき値の例を示している", () => {
+    ["validationDeathAgeMissing", "validationRetireAgeMissing"].forEach((k) => {
+      expect(typeof JA_TRANSLATIONS[k]).toBe("string");
+      expect(JA_TRANSLATIONS[k].includes("未入力")).toBe(true);
+      expect(typeof EN_TRANSLATIONS[k]).toBe("string");
+      expect(EN_TRANSLATIONS[k].toLowerCase().includes("not set")).toBe(true);
+    });
+    expect(JA_TRANSLATIONS.validationDeathAgeMissing.includes("95")).toBe(true);
+    expect(JA_TRANSLATIONS.validationRetireAgeMissing.includes("65")).toBe(true);
+  });
+
   it("未入力・非数値のときは判定しない（入力途中に警告を出さない）", () => {
     expect(validateAgeInputs()).toEqual([]);
     expect(validateAgeInputs({})).toEqual([]);
@@ -207,10 +235,14 @@ describe("公開前4：年齢の矛盾入力を検出する", () => {
     });
   });
 
-  it("警告の種類の名前は翻訳キーと対応している", () => {
-    expect(`validation${AGE_VALIDATION.DEATH_BEFORE_CURRENT.charAt(0).toUpperCase()}${AGE_VALIDATION.DEATH_BEFORE_CURRENT.slice(1)}`)
-      .toBe("validationDeathAgeTooLow");
-    expect(`validation${AGE_VALIDATION.RETIRE_BEFORE_CURRENT.charAt(0).toUpperCase()}${AGE_VALIDATION.RETIRE_BEFORE_CURRENT.slice(1)}`)
-      .toBe("validationRetireAgeTooLow");
+  it("すべての警告の種類が、ja・en の翻訳キーと1対1で対応している", () => {
+    // App.jsx は種類名から翻訳キーを組み立てるため、対応が崩れるとキー名が画面に出る。
+    Object.values(AGE_VALIDATION).forEach((name) => {
+      const key = `validation${name.charAt(0).toUpperCase()}${name.slice(1)}`;
+      expect(typeof JA_TRANSLATIONS[key], `ja に ${key} が無い`).toBe("string");
+      expect(JA_TRANSLATIONS[key].length).toBeGreaterThan(0);
+      expect(typeof EN_TRANSLATIONS[key], `en に ${key} が無い`).toBe("string");
+      expect(EN_TRANSLATIONS[key].length).toBeGreaterThan(0);
+    });
   });
 });
