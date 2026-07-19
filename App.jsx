@@ -184,7 +184,7 @@ export {
 };
 
 // 統合プラン入力の組み立て（React の外に出した純粋関数）。
-import { buildPlanInput, CONTRIBUTION_MULTIPLIERS } from "./utils/buildPlanInput.js";
+import { buildPlanInput, CONTRIBUTION_MULTIPLIERS, readLivingCostMonthly } from "./utils/buildPlanInput.js";
 import {
   SURPLUS_CATEGORIES, surplusKindForCategory, normalizeSurplusLedger,
   removeSurplusEntry, summarizeSurplusUsage, SURPLUS_USE_STATUS, surplusBalanceNow,
@@ -192,6 +192,7 @@ import {
 import { nearTermPlannedExpenses, freeToSpendNow, availableToSpendAtAge, withWhatIfExpense, summarizeWhatIfImpact, NEAR_TERM_HORIZON_YEARS } from "./utils/walletMetrics.js";
 // シナリオ比較（現在プラン vs 比較プラン）。既存エンジンを2回呼ぶだけで、新しい計算式は無い。
 import { runScenarioComparison, createComparisonDraft, attachComparisonLine } from "./utils/scenarioComparison.js";
+import { validateAgeInputs, hasEnoughInputForAdvice, AGE_VALIDATION } from "./utils/inputValidation.js";
 
 // ---------- default watchlist ----------
 // 以前はサンプルの保有銘柄を初期表示していたが、初回起動時の画面を完全に空にするため、
@@ -3067,9 +3068,34 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       netWorthFinal, effectiveInheritanceTarget,
     ]
   );
-  // 総合評価（配列の先頭）の重さで、カードの枠線の色を決める
+  // 【診断のゲート】最低限の入力（現在年齢・生活費・資産）が揃うまで診断を出さない。
+  // 初期状態は生活費0のため資産が減らず、何も入力していないのに「資産が持ちます」と
+  // 緑の判定が出てしまう。未入力の人に安心を与えないよう、案内文に差し替える。
+  // 生活費は国ごとに置き場所が違うため、エンジンへ渡すのと同じ readLivingCostMonthly で読む。
+  const adviceReady = useMemo(
+    () => hasEnoughInputForAdvice({
+      currentAge: effectiveCurrentAge,
+      livingCostMonthly: readLivingCostMonthly(country, inputs),
+      totalAssets: integrated.yearly[0]?.totalAssets ?? 0,
+    }),
+    [effectiveCurrentAge, country, inputs, integrated]
+  );
+
+  // 【年齢の整合チェック】表示専用。計算は止めず、入力欄の近くに理由を出すためだけに使う。
+  const ageWarnings = useMemo(
+    () => validateAgeInputs({
+      currentAge: effectiveCurrentAge,
+      retireAge: inputs.retireAge,
+      deathAge: inputs.deathAge,
+    }),
+    [effectiveCurrentAge, inputs.retireAge, inputs.deathAge]
+  );
+
+  // 総合評価（配列の先頭）の重さで、カードの枠線の色を決める。
+  // 診断できる状態でないときは、緑（＝良い状態）に見えないよう中立色にする。
   const adviceBorderColor =
-    advice[0]?.severity === "danger" ? "#C2694F"
+    !adviceReady ? "#2A363C"
+    : advice[0]?.severity === "danger" ? "#C2694F"
     : advice[0]?.severity === "warning" ? "#D9A54F"
     : "#6FA88A";
 
@@ -4397,6 +4423,24 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           )}
           <AgeField guide={t("retireAgeGuide")} label={t("retireAgeFieldLabel")} value={inputs.retireAge} onChange={(v) => update({ retireAge: v })} />
           <AgeField guide={t("deathAgeGuide")} label={t("lifeExpectancyLabel")} value={inputs.deathAge} onChange={(v) => update({ deathAge: v })} />
+          {/* 【入力チェック】矛盾した年齢でもエンジンは例外を出さずに走るが、結果（例：想定寿命が
+              現在年齢以下だと将来の行が1つも作られない）は利用者には理解できない。
+              計算は止めず、直し方が分かる警告を入力欄の直下に出す。 */}
+          {ageWarnings.map((w) => (
+            <div
+              key={w}
+              className="note"
+              style={{ marginTop: 8, borderColor: "#C2694F", color: "#C2694F" }}
+              role="alert"
+            >
+              <Info size={13} />
+              <span>
+                {w === AGE_VALIDATION.DEATH_BEFORE_CURRENT
+                  ? t("validationDeathAgeTooLow")
+                  : t("validationRetireAgeTooLow")}
+              </span>
+            </div>
+          ))}
 
           </div>
           <div className="section-block" style={{ borderColor: "#8FBF7F" }}>
@@ -6188,7 +6232,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <div className="field-label-row">
               <span className="field-label">{t("adviceCardTitle")}</span>
             </div>
-            {advice.map((a) => (
+            {!adviceReady ? (
+              <div className="guide-text" style={{ margin: "8px 0" }}>{t("adviceNotReady")}</div>
+            ) : advice.map((a) => (
               <div
                 key={a.id}
                 style={{
@@ -6212,7 +6258,13 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 </div>
               </div>
             ))}
-            <div className="guide-text" style={{ marginTop: 4 }}>{t("adviceNote")}</div>
+            {adviceReady && <div className="guide-text" style={{ marginTop: 4 }}>{t("adviceNote")}</div>}
+            {/* 【名目値の注記】すべての金額は現在の物価のままで計算している（インフレ非考慮）。
+                計算は一切変えず、誤解を避けるための表示のみ。 */}
+            <div className="note" style={{ marginTop: 8 }}>
+              <Info size={13} />
+              <span>{t("nominalValueNote")}</span>
+            </div>
           </div>
 
           {/* シナリオ比較カード（総資産推移グラフの上）。比較中だけ結果が表示される。 */}
@@ -6229,6 +6281,11 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           </div>
 
           <SectionGuide guide={t("netWorthChartGuide")} />
+          {/* 【名目値の注記】グラフの数字を「将来のその金額の価値」と誤解されないようにする。 */}
+          <div className="note" style={{ marginBottom: 8 }}>
+            <Info size={13} />
+            <span>{t("nominalValueNote")}</span>
+          </div>
           <div className="chart-frame" id="section-networth-chart">
             {/* 【修正】年齢に端数があると「57.66478859472867歳」と表示されていたため、整数に丸める。 */}
             <div className="chart-label">{t("netWorthChartTitle", { currentAge: t("ageYears", { age: Math.round(effectiveCurrentAge) }), deathAge: t("ageYears", { age: Math.round(inputs.deathAge) }) })}</div>
