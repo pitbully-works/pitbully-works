@@ -4434,11 +4434,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               role="alert"
             >
               <Info size={13} />
-              <span>
-                {w === AGE_VALIDATION.DEATH_BEFORE_CURRENT
-                  ? t("validationDeathAgeTooLow")
-                  : t("validationRetireAgeTooLow")}
-              </span>
+              {/* 警告の種類名（例 deathAgeTooLow）は翻訳キー（validationDeathAgeTooLow）と
+                  1対1で対応させてあるので、種類が増えてもここは変更しなくてよい。 */}
+              <span>{t(`validation${w.charAt(0).toUpperCase()}${w.slice(1)}`)}</span>
             </div>
           ))}
 
