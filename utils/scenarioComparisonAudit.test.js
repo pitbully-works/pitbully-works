@@ -373,11 +373,7 @@ describe("監査5：保存→復元しても同じ比較結果になる", () => 
     expect(after.diff.netWorthFinal).toBeCloseTo(before.diff.netWorthFinal, 6);
   });
 
-  it("余剰金の使用履歴を含む入力でも、復元後の比較結果が一致する", () => {
-    const ledger = [
-      { id: "a", age: 70, kind: "consume", category: "travel", amount: 300000 },
-      { id: "b", age: 72, kind: "transfer", category: "toNisa", amount: 500000 },
-    ];
+  it("余剰金残高の系列は、保存・復元をはさんでも一致する", () => {
     const ctx = ctxFor("JP", { livingCostMonthly: 50000 });
     const draft = { ...createComparisonDraft("JP", ctx.inputs), livingCostMonthly: 200000 };
     const before = runScenarioComparison(ctx, draft, { inheritanceTarget: 0 });

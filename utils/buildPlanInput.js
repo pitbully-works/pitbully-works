@@ -48,7 +48,6 @@
 // ============================================================================
 
 import { NOT_DRAWABLE } from "../lifePlanEngine.js";
-import { normalizeExpenseAge } from "./walletMetrics.js";
 import {
   ACCOUNT_DRAW_CATEGORY,
   drawOrderOf,
@@ -235,8 +234,7 @@ export function buildPlanInput(ctx, overrides = {}) {
     Object.values(inputs.auInvestment).forEach((a) => { if (a && a.contributionEndAge) boundaries.push(a.contributionEndAge); });
   }
   // 【Ver.1.0】余剰金の「使う」機能は廃止。余剰金は銀行預金の内訳を説明する表示専用の
-  // 値になったため、一時支出（oneTimeExpenses）へ変換する処理は持たない。
-  const oneTimeExpenses = [];
+  // 値なので、支出可否や使用上限を余剰金で決める入力（oneTimeExpenses）は持たない。
   const planBoundaries = boundaries.filter((v) => Number.isFinite(Number(v))).map(Number);
 
   // ==========================================================================
@@ -678,7 +676,6 @@ export function buildPlanInput(ctx, overrides = {}) {
     idecoLumpAmount,
     idecoLumpAge,
     idecoAnnuityMonthly,
-    oneTimeExpenses,
     // Division 293 を口座外から払う設定のときだけ、現金・銀行から毎年引く。
     // Super から払う設定のときは拠出額の側で控除済みなので、ここは空にする。
     // 拠出が続いている間（Superの contribEndAge まで）だけ課税される。
