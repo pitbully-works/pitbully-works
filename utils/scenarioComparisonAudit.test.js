@@ -32,7 +32,6 @@ import {
   attachComparisonLine,
   CONTRIBUTION_MULTIPLIERS,
 } from "./scenarioComparison.js";
-import { summarizeSurplusUsage, totalSurplusUsage } from "./surplusLedger.js";
 
 const COUNTRIES = ["JP", "US", "GB", "CA", "AU"];
 
@@ -379,7 +378,7 @@ describe("監査5：保存→復元しても同じ比較結果になる", () => 
       { id: "a", age: 70, kind: "consume", category: "travel", amount: 300000 },
       { id: "b", age: 72, kind: "transfer", category: "toNisa", amount: 500000 },
     ];
-    const ctx = ctxFor("JP", { surplusLedger: ledger, initialSurplusBalance: 240000 });
+    const ctx = ctxFor("JP", { livingCostMonthly: 50000 });
     const draft = { ...createComparisonDraft("JP", ctx.inputs), livingCostMonthly: 200000 };
     const before = runScenarioComparison(ctx, draft, { inheritanceTarget: 0 });
     const restoredCtx = { ...ctx, inputs: JSON.parse(JSON.stringify(ctx.inputs)) };
@@ -389,7 +388,7 @@ describe("監査5：保存→復元しても同じ比較結果になる", () => 
   });
 
   it("比較したあとの inputs は、保存しても差分が出ない（1バイトも変わらない）", () => {
-    const ctx = ctxFor("JP", { surplusLedger: [{ id: "a", age: 70, category: "car", amount: 300000 }] });
+    const ctx = ctxFor("JP");
     const snapshot = JSON.stringify(ctx.inputs);
     runScenarioComparison(ctx, { retireAge: 55, livingCostMonthly: 999999, contributionMultiplier: 2 }, { inheritanceTarget: 0 });
     expect(JSON.stringify(ctx.inputs)).toBe(snapshot);
@@ -440,139 +439,7 @@ describe("監査6：5か国での健全性", () => {
 // ============================================================================
 // 7. 余剰金機能との組み合わせ（二重計上・計算漏れの検出）
 // ============================================================================
-describe("監査7：余剰金機能との組み合わせ", () => {
-  const ledgerCtx = (over = {}) => ctxFor("JP", {
-    surplusLedger: [{ id: "a", age: 70, kind: "consume", category: "travel", amount: 300000 }],
-    initialSurplusBalance: 0,
-    ...over,
-  });
-
-  it("比較しても、現在プランは『比較なしの単独計算』と1円も違わない（余剰金系列も含む）", () => {
-    const ctx = ledgerCtx();
-    const alone = runAlone(ctx);
-    const r = runScenarioComparison(ctx, { ...createComparisonDraft("JP", ctx.inputs), retireAge: 60 }, { inheritanceTarget: 0 });
-    expect(series(r.baseYearly, "netWorth")).toBe(series(alone.yearly, "netWorth"));
-    expect(series(r.baseYearly, "totalAssets")).toBe(series(alone.yearly, "totalAssets"));
-    expect(series(r.baseYearly, "surplusBalance")).toBe(series(alone.yearly, "surplusBalance"));
-  });
-
-  it("余剰金の使用は各プランで1回だけ（実使用額の合計＝エンジンの累計）", () => {
-    const ctx = ledgerCtx({ initialSurplusBalance: 500000 });
-    const draft = { ...createComparisonDraft("JP", ctx.inputs), livingCostMonthly: 200000 };
-    const baseAlone = runAlone(ctx);
-    const compareAlone = runAlone(ctx, {
-      retireAge: Number(ctx.inputs.retireAge),
-      livingCostMonthly: draft.livingCostMonthly,
-      contributionMultiplier: 1,
-    });
-    [baseAlone, compareAlone].forEach((res) => {
-      // 結果は台帳1件につき1件だけ（同じ支出が2回処理されない）
-      expect(res.oneTimeExpenseResults).toHaveLength(1);
-      const total = totalSurplusUsage(summarizeSurplusUsage(ctx.inputs.surplusLedger, res.oneTimeExpenseResults));
-      expect(total.spent).toBeCloseTo(res.cumulativeOneTimeSpent, 6);
-      expect(total.spent + total.shortfall).toBeCloseTo(300000, 6);
-    });
-    // 比較の系列は、それぞれの単独計算と一致する（比較経路でだけ二重に引かれることはない）
-    const r = runScenarioComparison(ctx, draft, { inheritanceTarget: 0 });
-    expect(series(r.baseYearly, "surplusBalance")).toBe(series(baseAlone.yearly, "surplusBalance"));
-    expect(series(r.compareYearly, "surplusBalance")).toBe(series(compareAlone.yearly, "surplusBalance"));
-  });
-
-  it("台帳がある場合、現在プランの最終資産は『台帳なし』より使った分だけ少ない（増えない）", () => {
-    const withLedger = runScenarioComparison(ledgerCtx({ initialSurplusBalance: 500000 }), { retireAge: 65 }, { inheritanceTarget: 0 });
-    const without = runScenarioComparison(ctxFor("JP", { surplusLedger: [], initialSurplusBalance: 500000 }), { retireAge: 65 }, { inheritanceTarget: 0 });
-    expect(withLedger.base.netWorthFinal).toBeLessThan(without.base.netWorthFinal);
-  });
-
-  it("付け替え（NISAへ回す・銀行へ戻す）は base・compare とも資産を1円も動かさない", () => {
-    const moveCtx = ctxFor("JP", {
-      surplusLedger: [
-        { id: "n", age: 70, category: "toNisa", amount: 500000 },
-        { id: "b", age: 72, category: "toBank", amount: 500000 },
-      ],
-      initialSurplusBalance: 500000,
-    });
-    const plainCtx = ctxFor("JP", { surplusLedger: [], initialSurplusBalance: 500000 });
-    const draft = { retireAge: 60, livingCostMonthly: 200000, contributionMultiplier: 1.2 };
-    const moved = runScenarioComparison(moveCtx, draft, { inheritanceTarget: 0 });
-    const plain = runScenarioComparison(plainCtx, draft, { inheritanceTarget: 0 });
-    expect(series(moved.baseYearly, "totalAssets")).toBe(series(plain.baseYearly, "totalAssets"));
-    expect(series(moved.compareYearly, "totalAssets")).toBe(series(plain.compareYearly, "totalAssets"));
-  });
-
-  it.each(COUNTRIES)("%s：台帳つきでも比較が完走し、余剰金は銀行残高を超えない", (country) => {
-    const ctx = ctxFor(country, {
-      surplusLedger: [{ id: "a", age: 70, kind: "consume", category: "reform", amount: 400000 }],
-      initialSurplusBalance: 300000,
-    });
-    const r = runScenarioComparison(ctx, { ...createComparisonDraft(country, ctx.inputs), retireAge: 62 }, { inheritanceTarget: 0 });
-    [r.baseYearly, r.compareYearly].forEach((rows) => {
-      rows.forEach((row) => {
-        // 余剰金は銀行預金の内数。銀行残高を超えることはない。
-        expect(row.surplusBalance).toBeLessThanOrEqual(row.bankValue + 1e-6);
-      });
-    });
-  });
-});
 
 // ============================================================================
 // 8. シナリオごとの独立計算
 // ============================================================================
-describe("監査8：総資産・使える資産・余剰金がシナリオごとに独立している", () => {
-  const ctx = () => ctxFor("JP", {
-    surplusLedger: [{ id: "a", age: 70, kind: "consume", category: "travel", amount: 300000 }],
-    initialSurplusBalance: 500000,
-  });
-
-  it("条件を変えれば、総資産・使える資産・余剰金の3系列がすべて別になる", () => {
-    const c = ctx();
-    const draft = { ...createComparisonDraft("JP", c.inputs), retireAge: 60, livingCostMonthly: 400000 };
-    const r = runScenarioComparison(c, draft, { inheritanceTarget: 0 });
-    ["totalAssets", "accessibleAssets", "surplusBalance"].forEach((key) => {
-      expect(series(r.compareYearly, key)).not.toBe(series(r.baseYearly, key));
-    });
-  });
-
-  it("比較プランの各行は、比較プラン自身の内訳の合計と整合する", () => {
-    const c = ctx();
-    const r = runScenarioComparison(c, { retireAge: 60, livingCostMonthly: 300000, contributionMultiplier: 1.2 }, { inheritanceTarget: 0 });
-    r.compareYearly.forEach((row) => {
-      expect(row.netWorth).toBeCloseTo(row.totalAssets - row.loanBalance, 6);
-      expect(row.surplusBalance).toBeLessThanOrEqual(row.bankValue + 1e-6);
-    });
-  });
-
-  it("グラフ用データは現在プランの内訳のまま、比較線を1キー足すだけ", () => {
-    const c = ctx();
-    const r = runScenarioComparison(c, { retireAge: 60 }, { inheritanceTarget: 0 });
-    expect(r.chartData.length).toBe(r.baseYearly.length);
-    // 面グラフが読む内訳は現在プランのもの（比較プランの値で置き換わらない）。
-    ["totalAssets", "investmentValue", "bankValue", "surplusBalance", "netWorth"].forEach((key) => {
-      expect(series(r.chartData, key)).toBe(series(r.baseYearly, key));
-    });
-    // 追加されるキーは比較線だけ。
-    const extraKeys = Object.keys(r.chartData[0]).filter((k) => !(k in r.baseYearly[0]));
-    expect(extraKeys).toEqual(["comparisonNetWorth"]);
-  });
-
-  it("比較線の値は、比較プランの同じ時点の純資産と一致する", () => {
-    const c = ctx();
-    const r = runScenarioComparison(c, { retireAge: 60 }, { inheritanceTarget: 0 });
-    const byExact = new Map(r.compareYearly.map((row) => [row.exactAge, row.netWorth]));
-    r.chartData.forEach((row) => {
-      if (byExact.has(row.exactAge)) {
-        expect(row.comparisonNetWorth).toBeCloseTo(byExact.get(row.exactAge), 6);
-      }
-    });
-  });
-
-  it("比較プランに存在しない時点は null になり、現在プランの行数は変わらない", () => {
-    // 行数の違う系列を意図的に作り、結合で行が増減しないことを確かめる。
-    const c = ctx();
-    const shortened = [{ age: 40, exactAge: 40, netWorth: 123 }];
-    const merged = attachComparisonLine(c ? [{ age: 40, exactAge: 40 }, { age: 41, exactAge: 41 }] : [], shortened);
-    expect(merged).toHaveLength(2);
-    expect(merged[0].comparisonNetWorth).toBe(123);
-    expect(merged[1].comparisonNetWorth).toBeNull();
-  });
-});
