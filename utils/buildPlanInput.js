@@ -49,7 +49,6 @@
 
 import { NOT_DRAWABLE } from "../lifePlanEngine.js";
 import { normalizeExpenseAge } from "./walletMetrics.js";
-import { normalizeSurplusLedger } from "./surplusLedger.js";
 import {
   ACCOUNT_DRAW_CATEGORY,
   drawOrderOf,
@@ -204,7 +203,6 @@ export function buildPlanInput(ctx, overrides = {}) {
     const a = (bag || {})[key] || {};
     return { ...a, annualContribution: scale(a.annualContribution, m) };
   };
-
   // ==========================================================================
   // 境界年齢。上書きされた retireAge を使う点だけが移設前と異なる。
   // ==========================================================================
@@ -236,27 +234,9 @@ export function buildPlanInput(ctx, overrides = {}) {
     boundaries.push(D.auAgePensionQualifyingAge, rules.investment.preservationAge);
     Object.values(inputs.auInvestment).forEach((a) => { if (a && a.contributionEndAge) boundaries.push(a.contributionEndAge); });
   }
-  // 余剰金の「使う」台帳（第4段階4b）。consume だけをエンジンの一時支出として渡す
-  // （銀行プールから一度だけ引く＝総資産がその分だけ減る）。transfer（預金へ回す・銀行へ戻す等）は
-  // 総資産不変のラベル移動なので、エンジンには渡さない。ctx.inputs は読み取り専用のまま。
-  // 【正規化】保存データ由来の欠損（kind 無し・id 無し・id 重複）をここで吸収する。
-  // 正規化しないと、古い保存データの行が consume 判定から漏れて「使ったのに引かれない」、
-  // あるいは id 重複で実使用額の紐付けが崩れる。ctx.inputs は読み取り専用のまま
-  // （normalizeSurplusLedger は入力を一切書き換えず、新しい配列を返す）。
-  const surplusLedger = normalizeSurplusLedger(inputs.surplusLedger);
-  const oneTimeExpenses = surplusLedger
-    .filter((e) => e && e.kind === "consume" && Number(e.amount) > 0 && Number.isFinite(Number(e.age)))
-    // id を引き継ぐ（エンジンが oneTimeExpenseResults で id 付きの実使用額/不足額を返し、
-    // UI が該当の台帳行に「未処理額」を表示できるようにするため）。
-    // age は normalizeExpenseAge で正規化：現在年齢が小数（例58.66）でも、画面表示上の
-    // 現在年齢（floor=58）で入力された支出を「現在時点の支出」として扱い、エンジンの
-    // `age >= currentAge` 判定で過去扱いされて無視されるのを防ぐ。
-    .map((e) => ({
-      id: e.id === undefined ? null : e.id,
-      age: normalizeExpenseAge(Number(e.age), effectiveCurrentAge),
-      amount: Number(e.amount),
-    }));
-  oneTimeExpenses.forEach((e) => boundaries.push(e.age));
+  // 【Ver.1.0】余剰金の「使う」機能は廃止。余剰金は銀行預金の内訳を説明する表示専用の
+  // 値になったため、一時支出（oneTimeExpenses）へ変換する処理は持たない。
+  const oneTimeExpenses = [];
   const planBoundaries = boundaries.filter((v) => Number.isFinite(Number(v))).map(Number);
 
   // ==========================================================================
@@ -713,8 +693,8 @@ export function buildPlanInput(ctx, overrides = {}) {
         }]
       : [],
     surplusTargetId: "bank_0",
-    // 現在までに貯まっている余剰金の初期残高（既存の銀行残高の内数）。エンジン側で
-    // 銀行残高合計を上限に頭打ちする。未入力なら 0。
-    initialSurplusBalance: Number(inputs.initialSurplusBalance) || 0,
+    // 【Ver.1.0】初期余剰金の入力は持たない。余剰金は「アプリ利用開始後に、年金等の収入から
+    // 生活費・医療費・保険料・ローン返済を引いて実際に余った分」だけを自動で積み上げる
+    // （エンジンは残高0から開始する）。
   };
 }
