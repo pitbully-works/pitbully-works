@@ -185,7 +185,7 @@ export {
 
 // 統合プラン入力の組み立て（React の外に出した純粋関数）。
 import { buildPlanInput, CONTRIBUTION_MULTIPLIERS, readLivingCostMonthly } from "./utils/buildPlanInput.js";
-import { freeToSpendNow, availableToSpendAtAge } from "./utils/walletMetrics.js";
+import { availableToSpendAtAge } from "./utils/walletMetrics.js";
 // シナリオ比較（現在プラン vs 比較プラン）。既存エンジンを2回呼ぶだけで、新しい計算式は無い。
 import { runScenarioComparison, createComparisonDraft, attachComparisonLine } from "./utils/scenarioComparison.js";
 import { validateAgeInputs, hasEnoughInputForAdvice, AGE_VALIDATION } from "./utils/inputValidation.js";
@@ -1126,9 +1126,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     publicPensionStartAge: 65,
     pensionSources: [],
     livingCostMonthly: 0,
-    // 現在までに貯まっている余剰金（既存の銀行残高の内数・円単位）。既定0。
-    // 生活防衛資金（残しておきたい最低現金・円単位・表示専用）。既定0。エンジンには渡さない。
-    emergencyFund: 0,
+    // 【Ver.1.0で廃止】生活防衛資金（emergencyFund）の入力欄は削除した。
+    // 旧保存データに emergencyFund が残っていても読み込みは壊さないが、どこからも参照しない。
     postRetireReturn: 3,
     postRetireReturnAuto: true,
     healthBrackets: { b60: 0, b70: 0, b80: 0 },
@@ -2574,14 +2573,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const surplusAtCurrent = integrated.yearly[0]?.surplusBalance ?? 0;
   const surplusAtFocus = integratedRowAt(effectiveSurplusFocusAge)?.surplusBalance ?? 0;
 
-  // 【表示専用】現在自由に使える金額。すべて単一の integrated と inputs から導出する。
-  //   = max(0, 現在使える資産 − 生活防衛資金)
+  // 【表示専用】現在使える資産。単一の integrated から読み出すだけ。
   // エンジンには一切渡さないので、資産・純資産・余剰金の計算は 1 円も変わらない。
   const accessibleNow = integrated.yearly[0]?.accessibleAssets ?? 0;
-  const freeToSpend = freeToSpendNow({
-    accessibleAssets: accessibleNow,
-    emergencyFund: Number(inputs.emergencyFund) || 0,
-  });
 
   // 【表示専用】選択年齢で使用可能な金額（静的版）。
   //   = max(0, accessibleAssets(age) − 最低残したい資産)
@@ -4289,8 +4283,6 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 })()}
               />
               <StatCard label={t("dashSurplusLabel")} value={money(surplusAtCurrent)} hint={t("dashSurplusHint")} />
-              <StatCard label={t("dashEmergencyLabel")} value={money(Number(inputs.emergencyFund) || 0)} hint={t("dashEmergencyHint")} />
-              <StatCard label={t("dashFreeToSpendLabel")} value={money(freeToSpend)} tone="good" hint={t("dashFreeToSpendHint")} />
               {[65, 75, 95].map((age) => (
                 <StatCard
                   key={age}
@@ -5332,27 +5324,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               利用者に説明するための参考表示。入力欄は持たず、表示だけを行う。 */}
           <div id="section-surplus-balance" style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #2A363C" }}>
             <div className="stat-sub" style={{ marginBottom: 8 }}>{t("surplusBalanceTitle")}</div>
-            {/* 生活防衛資金（表示専用・エンジンには渡さない）と、現在自由に使える金額。
-                現在使える資産（integrated.yearly[0].accessibleAssets）− 生活防衛資金。
-                すべて単一の integrated と inputs から導出。 */}
-            <div style={{ maxWidth: 260, marginBottom: 10 }}>
-              <MoneyField
-                label={t("emergencyFundLabel")}
-                value={inputs.emergencyFund}
-                onChange={(v) => update({ emergencyFund: v })}
-              />
-              <div className="note" style={{ marginTop: 6 }}>
-                <Info size={13} />
-                <span>{t("emergencyFundExplain")}</span>
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end", marginBottom: 8 }}>
-              <StatCard label={t("freeToSpendLabel")} value={money(freeToSpend)} tone="good" />
-            </div>
-            <div className="note" style={{ marginBottom: 10 }}>
-              <Info size={13} />
-              <span>{t("freeToSpendExplain")}</span>
-            </div>
+            {/* 【Ver.1.0】このセクションは入力欄を持たない。銀行預金がなぜ増えるのかを
+                説明するための表示だけを行う（生活防衛資金・現在自由に使える金額は廃止）。 */}
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
               <StatCard label={t("surplusBalanceCurrentLabel")} value={money(surplusAtCurrent)} sub={t("surplusBalanceCurrentSub")} />
               <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>

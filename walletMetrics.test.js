@@ -3,7 +3,7 @@
 //   ここで検証するのは表示用の派生値だけで、エンジンのキャッシュフロー計算には影響しない。
 // ============================================================================
 import { describe, it, expect } from "vitest";
-import { freeToSpendNow, availableToSpendAtAge, normalizeExpenseAge } from "./utils/walletMetrics.js";
+import { availableToSpendAtAge, normalizeExpenseAge } from "./utils/walletMetrics.js";
 import { runIntegratedPlan } from "./lifePlanEngine.js";
 
 const assert = {
@@ -11,30 +11,6 @@ const assert = {
   equal: (a, b, msg) => expect(a, msg).toBe(b),
 };
 
-
-describe("freeToSpendNow（現在自由に使える金額）", () => {
-  it("= max(0, 使える資産 − 生活防衛資金)", () => {
-    assert.equal(
-      freeToSpendNow({ accessibleAssets: 4300000, emergencyFund: 1000000 }),
-      3300000
-    );
-  });
-
-  it("0円未満にはしない", () => {
-    assert.equal(freeToSpendNow({ accessibleAssets: 100000, emergencyFund: 500000 }), 0);
-  });
-
-  it("省略時は生活防衛資金を0として扱う", () => {
-    assert.equal(freeToSpendNow({ accessibleAssets: 500000 }), 500000);
-  });
-
-  it("生活防衛資金を差し引く", () => {
-    assert.equal(
-      freeToSpendNow({ accessibleAssets: 1000000, emergencyFund: 300000 }),
-      700000
-    );
-  });
-});
 
 describe("availableToSpendAtAge（年齢別使用可能額・静的版）", () => {
   it("= max(0, spendableAssets − minimumResidual)", () => {
