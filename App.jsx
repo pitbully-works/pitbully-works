@@ -185,7 +185,6 @@ export {
 
 // 統合プラン入力の組み立て（React の外に出した純粋関数）。
 import { buildPlanInput, CONTRIBUTION_MULTIPLIERS, readLivingCostMonthly } from "./utils/buildPlanInput.js";
-import { availableToSpendAtAge } from "./utils/walletMetrics.js";
 // シナリオ比較（現在プラン vs 比較プラン）。既存エンジンを2回呼ぶだけで、新しい計算式は無い。
 import { runScenarioComparison, createComparisonDraft, attachComparisonLine } from "./utils/scenarioComparison.js";
 import { validateAgeInputs, hasEnoughInputForAdvice, AGE_VALIDATION } from "./utils/inputValidation.js";
@@ -1126,8 +1125,6 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     publicPensionStartAge: 65,
     pensionSources: [],
     livingCostMonthly: 0,
-    // 【Ver.1.0で廃止】生活防衛資金（emergencyFund）の入力欄は削除した。
-    // 旧保存データに emergencyFund が残っていても読み込みは壊さないが、どこからも参照しない。
     postRetireReturn: 3,
     postRetireReturnAuto: true,
     healthBrackets: { b60: 0, b70: 0, b80: 0 },
@@ -1167,12 +1164,6 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     loans: [],
     insurancePolicies: [],
     privatePensionPlans: [],
-    // 余剰金の「使う」台帳（第4段階4b）。各要素は
-    //   { id, age, kind: "consume"|"transfer", category, amount, memo, source }
-    // inputs の一部なので、保存・バックアップ・スナップショット・import に自動で乗る。
-    // 旧データには存在しないが、mergeSavedInputs が既定の [] を残すため自動的に移行される。
-    // consume だけが buildPlanInput 経由でエンジンの一時支出になる（transfer は総資産不変）。
-
     // アメリカ選択時の投資口座（401(k) / Traditional IRA / Roth IRA / Brokerage）。
     // JP側のNISA関連フィールド（tsumitateSchedule等）とは完全に独立した専用データ。
     usInvestment: {
@@ -2384,11 +2375,6 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   }, [country, rules, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, inputs.auInvestment, auWithdrawalNeeded, auDiv293Tax, auDiv293PaidFrom]);
 
 
-  // 余剰金の使用状況（表示専用）。台帳の各行に、エンジンが返した
-  //   要求額 / 実際に使えた金額 / 不足額 / 状態（全額・一部・0円・未反映・付け替え）
-  // を突き合わせる。台帳を1件削除すると inputs が変わり planCtx → integrated が
-  // 再計算されるので、この要約も余剰金残高も自動で作り直される（差分の巻き戻しはしない）。
-
   // チャート用データ。行の age は「その時点で実際に到達している年齢」（整数）で、
   // 計算に使った小数年齢は exactAge に保持されている。
   const netWorthYearly = useMemo(() => {
@@ -2567,26 +2553,13 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   // これにより、公的年金・iDeCo・民間年金いずれの余剰も、総資産グラフと同じ計算源から
   // 一貫して表示される（旧 surplusPrivateUpTo の民間年金だけの別計算は廃止）。
   // 【現在時点の残高】先頭スナップショット（yearly[0]）は「現在年齢の処理を行う前」の値なので、
-  // 現在年齢で余剰金を使ってもそのままでは減って見えない。エンジンが返した実使用額のうち
-  // 現在年齢までに済んだ分を差し引いて、利用者の感覚（使ったら減る）と一致させる。
-  // 引かれた額はエンジン側で銀行残高に反映済みなので、ここで二重に引くことはない。
+  // 積み上がりの起点として必ず 0 になる。以降の年齢の残高は integrated から読むだけ。
   const surplusAtCurrent = integrated.yearly[0]?.surplusBalance ?? 0;
   const surplusAtFocus = integratedRowAt(effectiveSurplusFocusAge)?.surplusBalance ?? 0;
 
-  // 【表示専用】現在使える資産。単一の integrated から読み出すだけ。
+  // 【表示専用】現在使える資産（ダッシュボード表示用）。単一の integrated から読み出すだけで、
   // エンジンには一切渡さないので、資産・純資産・余剰金の計算は 1 円も変わらない。
   const accessibleNow = integrated.yearly[0]?.accessibleAssets ?? 0;
-
-  // 【表示専用】選択年齢で使用可能な金額（静的版）。
-  //   = max(0, accessibleAssets(age) − 最低残したい資産)
-  // 「◯歳で使える金額」なので、その年齢で実際に引き出せる accessibleAssets を使う
-  // （spendableAssets は accessAge 未到達の口座も含むため、55歳で59.5歳解禁の401k等を
-  //   誤って含めてしまう）。最低残したい資産は既存の相続で残す額を流用。エンジン非依存。
-  const focusRow = integratedRowAt(effectiveSurplusFocusAge);
-  const availableAtFocus = availableToSpendAtAge({
-    spendableAssets: focusRow?.accessibleAssets ?? 0,
-    minimumResidual: Number(effectiveInheritanceTarget) || 0,
-  });
 
   const fundBreakdownAtRetire = useMemo(() => {
     if (country !== "JP") return [];
@@ -3531,11 +3504,6 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         }
         .stat-card.danger::before { background: var(--danger); }
         .stat-card.good::before { background: var(--green); }
-        /* 「余剰金残高（◯歳時点）」「◯歳で使える金額」の2枚を、高さ・幅そろえて同じ大きさにする。
-           包みだけでなく中の .stat-card 自体を伸ばすことで、ラベルの行数差があっても箱が揃う。 */
-        .surplus-focus-cards { display: flex; gap: 12px; margin-top: 12px; align-items: stretch; }
-        .surplus-focus-cards > div { flex: 1 1 0; min-width: 0; display: flex; }
-        .surplus-focus-cards > div > .stat-card { flex: 1; width: 100%; }
         .surplus-why {
           border: 1px solid var(--line);
           border-left: 3px solid #7FB3A6;
@@ -5324,8 +5292,6 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               利用者に説明するための参考表示。入力欄は持たず、表示だけを行う。 */}
           <div id="section-surplus-balance" style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #2A363C" }}>
             <div className="stat-sub" style={{ marginBottom: 8 }}>{t("surplusBalanceTitle")}</div>
-            {/* 【Ver.1.0】このセクションは入力欄を持たない。銀行預金がなぜ増えるのかを
-                説明するための表示だけを行う（生活防衛資金・現在自由に使える金額は廃止）。 */}
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
               <StatCard label={t("surplusBalanceCurrentLabel")} value={money(surplusAtCurrent)} sub={t("surplusBalanceCurrentSub")} />
               <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
@@ -5357,22 +5323,13 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               <p>{t("surplusWhyPurpose")}</p>
               <p>{t("surplusWhyNoDoubleCount")}</p>
             </div>
-            {/* 「余剰金残高（◯歳時点）」と「◯歳で使える金額」を横並び＆同じ大きさに揃える */}
-            <div className="surplus-focus-cards">
-              <div>
-                <StatCard label={t("surplusBalanceAtAgeLabel", { age: effectiveSurplusFocusAge })} value={money(surplusAtFocus)} tone="good" />
-              </div>
-              <div>
-                <StatCard label={t("availableAtAgeLabel", { age: effectiveSurplusFocusAge })} value={money(availableAtFocus)} tone="good" />
-              </div>
+            {/* 選択した年齢時点の余剰金残高（銀行預金の内数・表示専用） */}
+            <div style={{ marginTop: 12 }}>
+              <StatCard label={t("surplusBalanceAtAgeLabel", { age: effectiveSurplusFocusAge })} value={money(surplusAtFocus)} tone="good" />
             </div>
             <div className="note" style={{ marginTop: 8 }}>
               <Info size={13} />
               <span>{t("surplusBalanceAtAgeExplain")}</span>
-            </div>
-            <div className="note" style={{ marginTop: 8 }}>
-              <Info size={13} />
-              <span>{t("availableAtAgeExplain")}</span>
             </div>
             <div className="note" style={{ marginTop: 8 }}>
               <Info size={13} />

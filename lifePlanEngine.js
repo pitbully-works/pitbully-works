@@ -205,8 +205,7 @@ export function runIntegratedPlan(p) {
     .filter((x) => x.accessAge !== NOT_DRAWABLE)
     .slice()
     .sort((a, b) => a.drawOrder - b.drawOrder);
-  // 一時支出（第4段階4a）が引き落とす先＝銀行グループのプールのみ。drawOrder 昇順。
-  // 余剰金は銀行預金プールの内数なので、その消費はこの銀行プールからだけ差し引く。
+  // 銀行グループのプールのみ。drawOrder 昇順。
   const bankDrawPools = pools
     .filter((x) => x.group === "bank")
     .slice()
@@ -279,9 +278,10 @@ export function runIntegratedPlan(p) {
   // 【初期値】必ず 0。Ver.1.0 では初期余剰金の手入力を持たず、シミュレーション開始後に
   //   実際に余った分だけを積み上げる。
   // 【増える時】surplusDepositPool（既定は銀行）へ余剰の cash を入金したとき、同額だけ増える。
-  // 【減る時】銀行プールを取り崩したとき（生活費・医療費・保険料・ローン返済・一時支出の
-  //   いずれでも）、reduceSurplusByBankDraw を通して実際に引かれた額だけ減る（余剰金を
-  //   先に使う仕様＝surplus-first）。0未満にはしない。
+  // 【減る時】銀行預金を取り崩したとき（生活費・医療費・保険料・ローン返済・recurringCharges）、
+  //   reduceSurplusByBankDraw を通して実際に引かれた額だけ減る。これは「表示上の余剰金内訳から
+  //   先に減少したものとして記録する」という記録上の扱いであって、支出可否・取り崩し上限・
+  //   銀行残高には影響しない。0未満にはしない。
   //
   // 【不変条件】常に 0 ≤ surplusBalance ≤ 銀行プール残高の合計。
   //   （初期値0から始まり、増加は銀行入金と同額、減少は銀行取崩しと同額を上限に
@@ -292,32 +292,20 @@ export function runIntegratedPlan(p) {
   //   surplusBalance を丸ごと消しても、資産・純資産の数値は 1 円も変わらない。
   let surplusBalance = 0;
 
-  // 銀行プールから実際に引かれた額だけ、余剰金台帳を減らす共通関数。
-  // 通常支出（pay 経由）も一時支出も、銀行の取り崩しはすべてここを一元的に通す。
-  // 余剰金を先に使う（surplus-first）ので、引かれた額をそのまま減じて 0 で頭打ちする。
+  // 銀行プールから実際に引かれた額だけ、表示上の余剰金内訳を減らす共通関数。
+  // 銀行預金の取り崩しはすべてここを一元的に通す。
+  // 銀行預金を取り崩した場合、表示上の余剰金内訳から先に減少したものとして記録する。
+  // 支出可否・取り崩し上限・銀行残高には影響しない（記録だけを更新し、0で頭打ちする）。
   const reduceSurplusByBankDraw = (bankGrossDrawn) => {
     if (!(bankGrossDrawn > EPS)) return;
     surplusBalance = clampZero(surplusBalance - bankGrossDrawn);
   };
 
-  // ---- 一時支出（余剰金の範囲内で引く汎用機能）----
-  // 指定年齢に到達したとき、余剰金の範囲で銀行プールから「一度だけ」差し引く一時支出。
-  // oneTimeExpenses が未指定/空なら、このブロックは完全に無効（従来と1円も変わらない）。
-  // 関数スコープの paid フラグで、シミュレーション再実行でも二重に引かれない。
-  //
-  // 【Problem 3 対策】現在年齢より過去の一時支出は無視する。過去の支出は既に現在の
-  //   銀行残高へ反映済みのはずで、最初のステップで現在残高から引くと二重控除になるため。
-  const oneTimeExpenses = (p.oneTimeExpenses || [])
-    .map((e) => ({
-      id: e.id === undefined || e.id === null ? null : e.id,
-      age: num(e.age),
-      amount: clampZero(num(e.amount)),
-      paid: false,
-    }))
-    .filter((e) => e.amount > 0 && e.age >= currentAge - EPS);
-  let cumulativeOneTimeSpent = 0; // 実際に銀行から引けた一時支出の累計
-  // 各一時支出の結果（UI表示用）。要求額・実使用額・不足額をエンジンが返す。
-  const oneTimeExpenseResults = [];
+  // ---- 【Ver.1.0】余剰金の範囲内でだけ引く支出機能は廃止 ----
+  // 余剰金は「銀行預金がなぜ増えたのか」を説明する表示上の内訳であって別財布ではないため、
+  // 支出可否や使用上限を余剰金残高で決める仕組み（p.oneTimeExpenses）は削除した。
+  // 旧い保存データがその項目を渡してきても、単に無視される（渡さない場合と結果は同一）。
+  // 支出は生活費・医療費・保険料・ローン返済・recurringCharges のみで、通常の取り崩しで処理する。
 
   const totalAssets = () => pools.reduce((s, x) => s + x.balance, 0);
   const totalLoans = () => loans.reduce((s, l) => s + l.balance, 0);
@@ -670,45 +658,6 @@ export function runIntegratedPlan(p) {
       cash = 0;
     }
 
-    // -------- 8. 一時支出（余剰金の範囲内で引く汎用機能）--------
-    // 【新仕様】余剰金の範囲でだけ使う。実際に使える額は
-    //     actuallySpent = min(requestedAmount, surplusBalance, availableBankBalance)
-    //   に制限し、この額だけを銀行プールから引く。要求額が余剰金残高を超えても、
-    //   超過分を通常の銀行預金からは引かない（通常預金からの臨時支出は将来別機能で扱う）。
-    //   余剰金残高からの減算も、銀行取り崩しの一元管理（reduceSurplusByBankDraw）を通す。
-    //   結果（要求額・実使用額・不足額）を oneTimeExpenseResults に記録して UI へ返す。
-    if (oneTimeExpenses.length) {
-      oneTimeExpenses.forEach((e) => {
-        if (e.paid || age < e.age - EPS) return;
-        const requestedAmount = e.amount;
-        const availableBank = bankDrawPools.reduce((s, bp) => s + Math.max(0, bp.balance), 0);
-        const actuallySpent = Math.max(
-          0,
-          Math.min(requestedAmount, clampZero(surplusBalance), clampZero(availableBank))
-        );
-        // 実際に使える額だけを銀行から引く（余剰金以外＝通常預金には波及させない）。
-        let need = actuallySpent;
-        for (const bp of bankDrawPools) {
-          if (need <= EPS) break;
-          const take = Math.min(bp.balance, need);
-          bp.balance = clampZero(bp.balance - take);
-          need -= take;
-        }
-        const spent = actuallySpent - Math.max(0, need); // 端数丸め対策。実質 actuallySpent。
-        cumulativeOneTimeSpent += spent;
-        reduceSurplusByBankDraw(spent); // 共通台帳から実使用額を減らす（spent ≤ surplusBalance）。
-        oneTimeExpenseResults.push({
-          id: e.id,
-          age: e.age,
-          requestedAmount,
-          actuallySpent: spent,
-          // 余剰金残高が足りず使えなかった額。UI で「未処理額」として表示する。
-          insufficientSurplusAmount: clampZero(requestedAmount - spent),
-        });
-        e.paid = true;
-      });
-    }
-
     pools.forEach((x) => { x.balance = clampZero(Number.isFinite(x.balance) ? x.balance : 0); });
 
     if (isBirthday) yearly.push(snapshot(age));
@@ -730,10 +679,6 @@ export function runIntegratedPlan(p) {
     cumulativeLoanInterest,
     cumulativeLoanPrincipal,
     cumulativeWithdrawalTax,
-    // 一時支出で実際に銀行から引けた累計。既存フィールドには影響しない。
-    cumulativeOneTimeSpent,
-    // 各一時支出の結果（要求額・実使用額・不足額）。UI が不足時の案内表示に使う。
-    oneTimeExpenseResults,
     loanPayoffAges: loans.map((l) => l.payoffAge),
     peakNetWorth: yearly.reduce((mx, r) => Math.max(mx, r.netWorth), -Infinity),
   };
