@@ -10,7 +10,8 @@
 //
 // 入力の出どころ（すべて単一の integrated 結果 or 既存 inputs）：
 //   ・accessibleAssets … integrated.yearly[0].accessibleAssets（フェーズ1で追加済み）
-//   ・emergencyFund   … inputs.emergencyFund（フェーズ2で追加・表示専用・円単位）
+//
+// 【Ver.1.0で廃止】生活防衛資金（emergencyFund）と freeToSpendNow は入力欄ごと削除した。
 // ============================================================================
 
 
@@ -35,24 +36,6 @@ export function normalizeExpenseAge(age, currentAge) {
   const cur = Number(currentAge);
   if (!Number.isFinite(a) || !Number.isFinite(cur)) return a;
   return a === Math.floor(cur) ? cur : a;
-}
-
-
-/**
- * 現在自由に使える金額。
- *   freeToSpendNow = max(0, accessibleAssets − emergencyFund)
- * ＝「今すぐ使える資産」から「生活防衛資金（残しておきたい最低現金）」を差し引いた、
- *   当面自由に使える金額。0 未満にはしない。
- *
- * 【Ver.1.0】余剰金の使用登録を廃止したため「近い将来の予定支出」の概念は無い。
- *
- * @param {object} args { accessibleAssets, emergencyFund }
- * @returns {number} 円。0 以上。
- */
-export function freeToSpendNow({ accessibleAssets, emergencyFund = 0 }) {
-  const acc = Number(accessibleAssets) || 0;
-  const ef = Number(emergencyFund) || 0;
-  return Math.max(0, acc - ef);
 }
 
 /**
