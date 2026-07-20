@@ -185,11 +185,7 @@ export {
 
 // 統合プラン入力の組み立て（React の外に出した純粋関数）。
 import { buildPlanInput, CONTRIBUTION_MULTIPLIERS, readLivingCostMonthly } from "./utils/buildPlanInput.js";
-import {
-  SURPLUS_CATEGORIES, surplusKindForCategory, normalizeSurplusLedger,
-  removeSurplusEntry, summarizeSurplusUsage, SURPLUS_USE_STATUS, surplusBalanceNow,
-} from "./utils/surplusLedger.js";
-import { nearTermPlannedExpenses, freeToSpendNow, availableToSpendAtAge, withWhatIfExpense, summarizeWhatIfImpact, NEAR_TERM_HORIZON_YEARS } from "./utils/walletMetrics.js";
+import { freeToSpendNow, availableToSpendAtAge } from "./utils/walletMetrics.js";
 // シナリオ比較（現在プラン vs 比較プラン）。既存エンジンを2回呼ぶだけで、新しい計算式は無い。
 import { runScenarioComparison, createComparisonDraft, attachComparisonLine } from "./utils/scenarioComparison.js";
 import { validateAgeInputs, hasEnoughInputForAdvice, AGE_VALIDATION } from "./utils/inputValidation.js";
@@ -1131,7 +1127,6 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     pensionSources: [],
     livingCostMonthly: 0,
     // 現在までに貯まっている余剰金（既存の銀行残高の内数・円単位）。既定0。
-    initialSurplusBalance: 0,
     // 生活防衛資金（残しておきたい最低現金・円単位・表示専用）。既定0。エンジンには渡さない。
     emergencyFund: 0,
     postRetireReturn: 3,
@@ -1178,7 +1173,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     // inputs の一部なので、保存・バックアップ・スナップショット・import に自動で乗る。
     // 旧データには存在しないが、mergeSavedInputs が既定の [] を残すため自動的に移行される。
     // consume だけが buildPlanInput 経由でエンジンの一時支出になる（transfer は総資産不変）。
-    surplusLedger: [],
+
     // アメリカ選択時の投資口座（401(k) / Traditional IRA / Roth IRA / Brokerage）。
     // JP側のNISA関連フィールド（tsumitateSchedule等）とは完全に独立した専用データ。
     usInvestment: {
@@ -1690,7 +1685,6 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     fromYears: "", fromMonths: "", toYears: "", toMonths: "", monthlyYen: "",
   });
   const [newBank, setNewBank] = useState({ name: "", balance: "", monthlyDeposit: "", interestPct: "" });
-  const [newSurplusUse, setNewSurplusUse] = useState({ amount: "", age: "", category: "living", memo: "" });
   const [newInheritance, setNewInheritance] = useState({ name: "", relation: "", amount: "" });
   const [newPensionSource, setNewPensionSource] = useState({ name: "", monthlyAmount: "" });
   const [newAssetHolding, setNewAssetHolding] = useState({ name: "", value: "" });
@@ -1758,8 +1752,6 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   // 余剰金残高の表示対象年齢（第3段階・表示専用）。inputs とは別の一時 state なので
   // 保存処理・自動保存・入力履歴には一切影響しない。null＝既定（想定寿命）を表示する。
   const [surplusFocusAge, setSurplusFocusAge] = useState(null);
-  // What-if（急な出費シミュレーション）で「余剰金から使う金額」（円・表示専用の試算）。既定0。
-  const [whatIfAmount, setWhatIfAmount] = useState(0);
   const [importText, setImportText] = useState("");
   const [importError, setImportError] = useState("");
   const [importOk, setImportOk] = useState(false);
@@ -2397,10 +2389,6 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   //   要求額 / 実際に使えた金額 / 不足額 / 状態（全額・一部・0円・未反映・付け替え）
   // を突き合わせる。台帳を1件削除すると inputs が変わり planCtx → integrated が
   // 再計算されるので、この要約も余剰金残高も自動で作り直される（差分の巻き戻しはしない）。
-  const surplusUsage = useMemo(
-    () => summarizeSurplusUsage(inputs.surplusLedger, integrated?.oneTimeExpenseResults),
-    [inputs.surplusLedger, integrated]
-  );
 
   // チャート用データ。行の age は「その時点で実際に到達している年齢」（整数）で、
   // 計算に使った小数年齢は exactAge に保持されている。
@@ -2583,25 +2571,16 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   // 現在年齢で余剰金を使ってもそのままでは減って見えない。エンジンが返した実使用額のうち
   // 現在年齢までに済んだ分を差し引いて、利用者の感覚（使ったら減る）と一致させる。
   // 引かれた額はエンジン側で銀行残高に反映済みなので、ここで二重に引くことはない。
-  const surplusAtCurrent = surplusBalanceNow({
-    snapshotBalance: integrated.yearly[0]?.surplusBalance ?? (Number(inputs.initialSurplusBalance) || 0),
-    oneTimeExpenseResults: integrated.oneTimeExpenseResults,
-    currentAge: effectiveCurrentAge,
-  });
+  const surplusAtCurrent = integrated.yearly[0]?.surplusBalance ?? 0;
   const surplusAtFocus = integratedRowAt(effectiveSurplusFocusAge)?.surplusBalance ?? 0;
 
   // 【表示専用】現在自由に使える金額。すべて単一の integrated と inputs から導出する。
-  //   = max(0, 現在使える資産 − 生活防衛資金 − 今後 N 年以内の予定支出)
+  //   = max(0, 現在使える資産 − 生活防衛資金)
   // エンジンには一切渡さないので、資産・純資産・余剰金の計算は 1 円も変わらない。
   const accessibleNow = integrated.yearly[0]?.accessibleAssets ?? 0;
-  const nearTermPlanned = useMemo(
-    () => nearTermPlannedExpenses(inputs.surplusLedger, effectiveCurrentAge, NEAR_TERM_HORIZON_YEARS),
-    [inputs.surplusLedger, effectiveCurrentAge]
-  );
   const freeToSpend = freeToSpendNow({
     accessibleAssets: accessibleNow,
     emergencyFund: Number(inputs.emergencyFund) || 0,
-    nearTermPlanned,
   });
 
   // 【表示専用】選択年齢で使用可能な金額（静的版）。
@@ -2614,21 +2593,6 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     spendableAssets: focusRow?.accessibleAssets ?? 0,
     minimumResidual: Number(effectiveInheritanceTarget) || 0,
   });
-
-  // 【What-if・非破壊の一時試算】「余剰金から◯円使ったら」を、基のプランに一時支出を
-  // 1件だけ加えたクローンで再計算する。inputs・台帳・保存データは書き換えない。
-  // 金額0のときは計算しない（null）。単一エンジン（runIntegratedPlan）を使い、
-  // 基の integrated（現在の総資産推移）とは独立した一時結果として持つ。
-  const whatIfIntegrated = useMemo(() => {
-    const amt = Number(whatIfAmount) || 0;
-    if (!(amt > 0)) return null;
-    return runIntegratedPlan(withWhatIfExpense(buildPlanInput(planCtx), { amount: amt, age: effectiveCurrentAge }));
-  }, [planCtx, whatIfAmount, effectiveCurrentAge]);
-  // before/after/delta の要約（表示専用）。現在値は integrated から、将来値は What-if 結果から。
-  const whatIfSummary = useMemo(
-    () => (whatIfIntegrated ? summarizeWhatIfImpact(integrated, whatIfIntegrated, [65, 75, 95]) : null),
-    [integrated, whatIfIntegrated]
-  );
 
   const fundBreakdownAtRetire = useMemo(() => {
     if (country !== "JP") return [];
@@ -2751,34 +2715,6 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     setNewBank({ name: "", balance: "", monthlyDeposit: "", interestPct: "" });
   };
   const removeBank = (idx) => setInputs((prev) => ({ ...prev, banks: prev.banks.filter((_, i) => i !== idx) }));
-
-  // 余剰金を「使う」（第4段階4c）。用途から種別（consume/transfer）を自動判定して
-  // surplusLedger に1件追加する。amount は MoneyInput 経由なので円。計算側（4a/4b）は
-  // buildPlanInput が consume だけを一時支出に写す形で既に完成しているため、ここは記録のみ。
-  const addSurplusUse = () => {
-    const amount = Number(newSurplusUse.amount) || 0;
-    const age = Number(newSurplusUse.age);
-    if (!(amount > 0) || !Number.isFinite(age)) return;
-    const category = SURPLUS_CATEGORIES.includes(newSurplusUse.category) ? newSurplusUse.category : "other";
-    const entry = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      age,
-      kind: surplusKindForCategory(category),
-      category,
-      amount,
-      memo: (newSurplusUse.memo || "").trim(),
-      source: "privatePension",
-    };
-    // 追加時に台帳全体を正規化しておく（古い保存データ由来の欠損行や id 重複をここで解消し、
-    // 表示・計算・削除がすべて同じ正規化済みの1本のデータを見るようにする）。
-    setInputs((prev) => ({ ...prev, surplusLedger: normalizeSurplusLedger([...(prev.surplusLedger || []), entry]) }));
-    setNewSurplusUse({ amount: "", age: "", category: "living", memo: "" });
-  };
-  // 使用履歴の削除。純粋関数で1行だけ取り除いた新しい台帳を入れ直す。
-  // 余剰金残高はこの台帳から毎回まるごと再計算されるため、削除した分の使用は
-  // 自動的に無かったことになる（手動での戻し入れ処理は不要＝二重戻しが起きない）。
-  const removeSurplusUse = (id) =>
-    setInputs((prev) => ({ ...prev, surplusLedger: removeSurplusEntry(prev.surplusLedger, id) }));
 
   const addInheritancePlan = () => {
     if (!newInheritance.name.trim()) return;
@@ -3606,6 +3542,21 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         .surplus-focus-cards { display: flex; gap: 12px; margin-top: 12px; align-items: stretch; }
         .surplus-focus-cards > div { flex: 1 1 0; min-width: 0; display: flex; }
         .surplus-focus-cards > div > .stat-card { flex: 1; width: 100%; }
+        .surplus-why {
+          border: 1px solid var(--line);
+          border-left: 3px solid #7FB3A6;
+          background: rgba(127, 179, 166, 0.06);
+          border-radius: 6px;
+          padding: 12px 14px;
+          margin-top: 12px;
+          font-size: 12.5px;
+          line-height: 1.75;
+        }
+        .surplus-why-title { font-weight: 600; font-size: 13px; margin-bottom: 8px; }
+        .surplus-why p { margin: 0 0 8px; }
+        .surplus-why p:last-child { margin-bottom: 0; }
+        .surplus-why ul { margin: 0 0 8px; padding-left: 1.2em; }
+        .surplus-why li { margin: 2px 0; }
         .stat-label { font-size: 11px; color: var(--muted); margin-bottom: 6px; }
         .stat-value { font-size: 19px; font-weight: 600; }
         .stat-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
@@ -4312,7 +4263,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           C: 「資産寿命（枯渇年齢）」「生涯の最終純資産」を結論として表示
           D: モバイルでも見やすい自動2列グリッド
           E: 「使える資産」の内訳（銀行・投資・金・株）を sub に表示（accessible* から）
-          F: 余剰金・急な出費（What-if）セクションへのジャンプ導線 */}
+          F: 余剰金セクションへのジャンプ導線 */}
       <div className="section-block wallet-dashboard" id="section-wallet" style={{ borderColor: "#5FB0A0", marginBottom: 12 }}>
         <div className="stat-sub" style={{ marginBottom: 8 }}>{t("walletDashboardTitle")}</div>
         {(integrated.yearly[0]?.totalAssets ?? 0) <= 0 ? (
@@ -5376,24 +5327,14 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           {/* 余剰金残高（surplusBalance）— 総資産グラフ・銀行残高と同一の integrated から
               読み出して表示する。余剰金は銀行預金の内数（bankValue に一度だけ含まれる）で、
               別帯にはしない（二重計上防止）。公的年金・iDeCo・民間年金いずれの余剰も
-              同じ計算源で反映される。使用（消費）は下の「余剰金を使う」で surplusLedger に
-              記録し、engine の oneTimeExpenseResults を使って使用履歴に未処理額を表示する。 */}
+              同じ計算源で反映される。
+              【Ver.1.0の位置づけ】これは「使う」機能ではなく、銀行預金がなぜ増えるのかを
+              利用者に説明するための参考表示。入力欄は持たず、表示だけを行う。 */}
           <div id="section-surplus-balance" style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #2A363C" }}>
             <div className="stat-sub" style={{ marginBottom: 8 }}>{t("surplusBalanceTitle")}</div>
-            <div style={{ maxWidth: 260, marginBottom: 10 }}>
-              <MoneyField
-                label={t("initialSurplusLabel")}
-                value={inputs.initialSurplusBalance}
-                onChange={(v) => update({ initialSurplusBalance: v })}
-              />
-              <div className="note" style={{ marginTop: 6 }}>
-                <Info size={13} />
-                <span>{t("initialSurplusExplain")}</span>
-              </div>
-            </div>
             {/* 生活防衛資金（表示専用・エンジンには渡さない）と、現在自由に使える金額。
-                現在使える資産（integrated.yearly[0].accessibleAssets）− 生活防衛資金 −
-                今後N年以内の予定支出。すべて単一の integrated と inputs から導出。 */}
+                現在使える資産（integrated.yearly[0].accessibleAssets）− 生活防衛資金。
+                すべて単一の integrated と inputs から導出。 */}
             <div style={{ maxWidth: 260, marginBottom: 10 }}>
               <MoneyField
                 label={t("emergencyFundLabel")}
@@ -5410,7 +5351,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             </div>
             <div className="note" style={{ marginBottom: 10 }}>
               <Info size={13} />
-              <span>{t("freeToSpendExplain", { years: NEAR_TERM_HORIZON_YEARS })}</span>
+              <span>{t("freeToSpendExplain")}</span>
             </div>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
               <StatCard label={t("surplusBalanceCurrentLabel")} value={money(surplusAtCurrent)} sub={t("surplusBalanceCurrentSub")} />
@@ -5427,6 +5368,22 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 </select>
               </label>
             </div>
+            {/* 「現在の余剰金残高とは？」— この機能の主目的。銀行預金がなぜ増えるのかを
+                最初に読ませる。箇条書きは翻訳側で1行1項目に分けて持つ。 */}
+            <div className="surplus-why">
+              <div className="surplus-why-title">{t("surplusWhyTitle")}</div>
+              <p>{t("surplusWhyLead")}</p>
+              <p>{t("surplusWhyFormulaIntro")}</p>
+              <ul>
+                {["living", "health", "insurance", "loan", "other"].map((k) => (
+                  <li key={k}>{t("surplusWhyItem_" + k)}</li>
+                ))}
+              </ul>
+              <p>{t("surplusWhyZeroDeposit")}</p>
+              <p>{t("surplusWhyStartsAtZero")}</p>
+              <p>{t("surplusWhyPurpose")}</p>
+              <p>{t("surplusWhyNoDoubleCount")}</p>
+            </div>
             {/* 「余剰金残高（◯歳時点）」と「◯歳で使える金額」を横並び＆同じ大きさに揃える */}
             <div className="surplus-focus-cards">
               <div>
@@ -5438,6 +5395,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             </div>
             <div className="note" style={{ marginTop: 8 }}>
               <Info size={13} />
+              <span>{t("surplusBalanceAtAgeExplain")}</span>
+            </div>
+            <div className="note" style={{ marginTop: 8 }}>
+              <Info size={13} />
               <span>{t("availableAtAgeExplain")}</span>
             </div>
             <div className="note" style={{ marginTop: 8 }}>
@@ -5445,201 +5406,6 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               <span>{t("surplusBalanceExplain")}</span>
             </div>
 
-            {/* 余剰金を使う（第4段階4c）。用途を選ぶだけで、種別（消費/付け替え）は自動判定。
-                計算側（4a/4b）は完成済みで、ここは surplusLedger に1件足す/消すだけ。 */}
-            <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid #2A363C" }}>
-              <div className="stat-sub" style={{ marginBottom: 8 }}>{t("surplusUseTitle")}</div>
-              <div className="add-row" style={{ flexWrap: "wrap" }}>
-                <MoneyInput
-                  placeholder={t("surplusUseAmountPlaceholder")}
-                  value={newSurplusUse.amount}
-                  onChange={(v) => setNewSurplusUse((p) => ({ ...p, amount: v }))}
-                />
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  placeholder={t("surplusUseAgePlaceholder")}
-                  value={newSurplusUse.age}
-                  onChange={(e) => setNewSurplusUse((p) => ({ ...p, age: e.target.value }))}
-                />
-              </div>
-              <div className="add-row" style={{ flexWrap: "wrap" }}>
-                <select
-                  aria-label={t("surplusUseCategoryLabel")}
-                  value={newSurplusUse.category}
-                  onChange={(e) => setNewSurplusUse((p) => ({ ...p, category: e.target.value }))}
-                  style={{ fontSize: 13, padding: "6px 8px" }}
-                >
-                  {SURPLUS_CATEGORIES.map((c) => (
-                    <option key={c} value={c}>{t("surplusCategory_" + c)}</option>
-                  ))}
-                </select>
-                <input
-                  placeholder={t("surplusUseMemoPlaceholder")}
-                  value={newSurplusUse.memo}
-                  onChange={(e) => setNewSurplusUse((p) => ({ ...p, memo: e.target.value }))}
-                />
-                <button className="add-btn" onClick={addSurplusUse}><Plus size={15} /></button>
-              </div>
-              {surplusKindForCategory(newSurplusUse.category) === "transfer" && (
-                <div className="note" style={{ marginTop: 6 }}>
-                  <Info size={13} />
-                  <span>{t("surplusTransferNote")}</span>
-                </div>
-              )}
-
-              <div className="stat-sub" style={{ marginTop: 12, marginBottom: 6 }}>{t("surplusHistoryTitle")}</div>
-              {surplusUsage.length === 0 ? (
-                <div className="stat-sub" style={{ opacity: 0.7 }}>{t("surplusHistoryEmpty")}</div>
-              ) : (
-                <table className="watchlist">
-                  {/* table-layout:fixed の等幅列だと金額が隣の列に被るため、列幅を明示する。
-                      金額は1つの列（要求額・実使用・不足額）にまとめ、重複表示をなくす。 */}
-                  <colgroup>
-                    <col style={{ width: "15%" }} />
-                    <col style={{ width: "30%" }} />
-                    <col style={{ width: "32%" }} />
-                    <col style={{ width: "13%" }} />
-                    <col style={{ width: "10%" }} />
-                  </colgroup>
-                  <tbody>
-                    {surplusUsage.slice().reverse().map((e) => {
-                      const cat = SURPLUS_CATEGORIES.includes(e.category) ? e.category : "other";
-                      // エンジンが実際に処理した消費行（全額・一部・0円）だけ金額の内訳を出す。
-                      // 付け替え（総資産不変）と未反映の行は、金額そのものだけを出す。
-                      const isSpendRow =
-                        e.status === SURPLUS_USE_STATUS.FULL ||
-                        e.status === SURPLUS_USE_STATUS.PARTIAL ||
-                        e.status === SURPLUS_USE_STATUS.NONE;
-                      return (
-                        <tr key={e.id}>
-                          <td>{t("ageYears", { age: e.age })}</td>
-                          <td>
-                            {t("surplusCategory_" + cat)}
-                            {e.memo ? <span style={{ opacity: 0.7 }}>{" · " + e.memo}</span> : null}
-                            {/* 現在年齢より過去、または想定寿命より先の年齢の行は計算に入らない。
-                                黙って無視すると「使ったのに残高が減らない」ように見えるため明示する。 */}
-                            {e.status === SURPLUS_USE_STATUS.NOT_APPLIED && (
-                              <div style={{ fontSize: 11, opacity: 0.75, marginTop: 2 }}>
-                                {t("surplusNotApplied")}
-                              </div>
-                            )}
-                          </td>
-                          {/* 消費した行は「要求額・実使用・不足額」を常に3行で出す（全額使えた場合も、
-                              いくら要求していくら使えたのかが履歴として残るようにする）。
-                              エンジンが返した値をそのまま表示するだけで、ここでは再計算しない。 */}
-                          <td>
-                            {isSpendRow ? (
-                              <div style={{ fontSize: 11, lineHeight: 1.6 }}>
-                                {[
-                                  { key: "requested", label: t("surplusRequestedLabel"), value: e.requestedAmount, warn: false },
-                                  { key: "spent", label: t("surplusSpentLabel"), value: e.actuallySpent, warn: false },
-                                  { key: "short", label: t("surplusShortfallLabel"), value: e.insufficientSurplusAmount, warn: e.insufficientSurplusAmount > 0 },
-                                ].map((row) => (
-                                  <div
-                                    key={row.key}
-                                    style={{
-                                      display: "flex", justifyContent: "space-between", gap: 6,
-                                      color: row.warn ? "#C2694F" : undefined,
-                                      opacity: row.warn ? 1 : 0.9,
-                                    }}
-                                  >
-                                    <span>{row.label}</span>
-                                    <span className="mono" style={{ whiteSpace: "nowrap" }}>{money(row.value)}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <span className="mono">{money(e.amount)}</span>
-                            )}
-                          </td>
-                          <td>
-                            <span style={{ fontSize: 11, opacity: 0.8 }}>
-                              {e.kind === "transfer" ? t("surplusTransferTag") : t("surplusConsumeTag")}
-                            </span>
-                          </td>
-                          <td>
-                            <button className="del-btn" onClick={() => removeSurplusUse(e.id)}><Trash2 size={13} /></button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              )}
-            </div>
-
-            {/* 急な出費の What-if（表示専用・非破壊の一時試算）。「余剰金から◯円使ったら」を
-                基のプランに一時支出を1件だけ加えたクローンで再計算し、使用前後を比較する。
-                入力・台帳・保存データは変更しない。余剰金の範囲でだけ使える（超過分は通常預金から
-                引かない）。将来（65/75/95歳）の資産と資産枯渇年齢への影響も表示する。 */}
-            <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid #2A363C" }}>
-              <div className="stat-sub" style={{ marginBottom: 8 }}>{t("whatIfTitle")}</div>
-              <div style={{ maxWidth: 260, marginBottom: 8 }}>
-                <MoneyField
-                  label={t("whatIfAmountLabel")}
-                  value={whatIfAmount}
-                  onChange={(v) => setWhatIfAmount(Number(v) || 0)}
-                />
-              </div>
-              {whatIfSummary && (
-                <div>
-                  {whatIfSummary.insufficientSurplusAmount > 0 && (
-                    <div className="note" style={{ marginBottom: 8 }}>
-                      <Info size={13} />
-                      <span>{t("whatIfInsufficient", {
-                        requested: money(whatIfSummary.requestedAmount),
-                        spent: money(whatIfSummary.actuallySpent),
-                        shortfall: money(whatIfSummary.insufficientSurplusAmount),
-                      })}</span>
-                    </div>
-                  )}
-                  <table className="watchlist">
-                    <thead>
-                      <tr>
-                        <th>{t("whatIfColItem")}</th>
-                        <th>{t("whatIfColBefore")}</th>
-                        <th>{t("whatIfColAfter")}</th>
-                        <th>{t("whatIfColDelta")}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {[
-                        { label: t("whatIfSurplusLabel"), cell: whatIfSummary.surplus },
-                        { label: t("whatIfBankLabel"), cell: whatIfSummary.bank },
-                        { label: t("whatIfTotalLabel"), cell: whatIfSummary.totalAssets },
-                        ...whatIfSummary.byAge.map((a) => ({ label: t("dashAssetsAtAgeLabel", { age: a.age }), cell: a })),
-                      ].map((row, i) => (
-                        <tr key={i}>
-                          <td>{row.label}</td>
-                          <td className="mono">{money(row.cell.before)}</td>
-                          <td className="mono">{money(row.cell.after)}</td>
-                          <td
-                            className="mono"
-                            style={{ color: row.cell.delta < 0 ? "#C2694F" : row.cell.delta > 0 ? "#5FB0A0" : undefined }}
-                          >
-                            {row.cell.delta === 0 ? "±0" : (row.cell.delta > 0 ? "+" : "-") + money(Math.abs(row.cell.delta))}
-                          </td>
-                        </tr>
-                      ))}
-                      <tr>
-                        <td>{t("whatIfDepletionLabel")}</td>
-                        <td>{whatIfSummary.depletionAge.before ? t("ageYears", { age: Math.round(whatIfSummary.depletionAge.before) }) : t("statNeverDepletes")}</td>
-                        <td>{whatIfSummary.depletionAge.after ? t("ageYears", { age: Math.round(whatIfSummary.depletionAge.after) }) : t("statNeverDepletes")}</td>
-                        <td>—</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                  <div className="note" style={{ marginTop: 8 }}>
-                    <Info size={13} />
-                    <span>{t("whatIfNote")}</span>
-                  </div>
-                </div>
-              )}
-              {!whatIfSummary && (
-                <div className="stat-sub" style={{ opacity: 0.7 }}>{t("whatIfEmpty")}</div>
-              )}
-            </div>
           </div>
 
           </div>

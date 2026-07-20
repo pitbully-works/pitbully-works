@@ -136,8 +136,6 @@ export function buildAgeSteps(currentAge, deathAge, boundaries) {
  * @param {function} p.idecoAnnuityMonthly (age) => iDeCo年金の月額
  * @param {string}   p.idecoPoolId
  * @param {string}   p.surplusTargetId    余剰金・一時金の受け皿プールid
- * @param {number}   p.initialSurplusBalance 現在までに貯まっている余剰金の初期残高。
- *        既存の銀行残高の内数として扱い、銀行残高合計を上限に頭打ちする。総資産には加算しない。
  * @param {Array}  p.recurringCharges
  *        [{ id, annualAmount, fromAge, toAge, fromPoolIds }]
  *        生活費・保険料とは別に、資産から直接引かれる定期的な支出。
@@ -274,30 +272,25 @@ export function runIntegratedPlan(p) {
   let lastMeansTestedMonthly = 0;
 
   // ---- 余剰金残高（surplusBalance）----
-  // 【定義】銀行プールの中にある「余剰金由来（＝収入が使われずに残って積み上がった分、
-  //   および利用者が初期入力した既存の余剰金）」の元本残高。単なる発生累計ではなく、
-  //   実際に銀行に残っている余剰金の残高を表す。関数スコープの局所変数なので、呼ぶたびに
-  //   必ず initialSurplusBalance から始まる（再実行で二重加算されない）。
+  // 【定義】銀行プールの中にある「余剰金由来（＝収入が使われずに残って積み上がった分）」の
+  //   元本残高。単なる発生累計ではなく、実際に銀行に残っている余剰金の残高を表す。
+  //   関数スコープの局所変数なので、呼ぶたびに必ず 0 から始まる（再実行で二重加算されない）。
   //
-  // 【初期値】p.initialSurplusBalance（利用者が「現在までに貯まっている余剰金」として入力）。
-  //   これは既存の銀行残高の一部を「余剰金」として区別するラベルなので、銀行残高の合計を
-  //   上限に頭打ちする（銀行残高を超える初期余剰は指定できない＝二重計上・不変条件破りを防ぐ）。
-  //   総資産には一切加算しない（銀行残高の内数）。
+  // 【初期値】必ず 0。Ver.1.0 では初期余剰金の手入力を持たず、シミュレーション開始後に
+  //   実際に余った分だけを積み上げる。
   // 【増える時】surplusDepositPool（既定は銀行）へ余剰の cash を入金したとき、同額だけ増える。
   // 【減る時】銀行プールを取り崩したとき（生活費・医療費・保険料・ローン返済・一時支出の
   //   いずれでも）、reduceSurplusByBankDraw を通して実際に引かれた額だけ減る（余剰金を
   //   先に使う仕様＝surplus-first）。0未満にはしない。
   //
   // 【不変条件】常に 0 ≤ surplusBalance ≤ 銀行プール残高の合計。
-  //   （初期値も銀行合計で頭打ち。増加は銀行入金と同額、減少は銀行取崩しと同額を上限に
+  //   （初期値0から始まり、増加は銀行入金と同額、減少は銀行取崩しと同額を上限に
   //     減らすため、破れない。）
   //
   // 【重要・この値は表示専用】どのプール残高にも足し込まないため、totalAssets /
   //   netWorth / bankValue などの資産計算には一切算入されない。したがって
-  //   surplusBalance を丸ごと消しても、資産・純資産の数値は 1 円も変わらない
-  //   （＝初期余剰金を入力しても総資産は増えない）。
-  const initialBankTotal = bankDrawPools.reduce((s, bp) => s + Math.max(0, bp.balance), 0);
-  let surplusBalance = Math.min(clampZero(num(p.initialSurplusBalance)), initialBankTotal);
+  //   surplusBalance を丸ごと消しても、資産・純資産の数値は 1 円も変わらない。
+  let surplusBalance = 0;
 
   // 銀行プールから実際に引かれた額だけ、余剰金台帳を減らす共通関数。
   // 通常支出（pay 経由）も一時支出も、銀行の取り崩しはすべてここを一元的に通す。
@@ -307,7 +300,7 @@ export function runIntegratedPlan(p) {
     surplusBalance = clampZero(surplusBalance - bankGrossDrawn);
   };
 
-  // ---- 一時支出（余剰金を使う）----
+  // ---- 一時支出（余剰金の範囲内で引く汎用機能）----
   // 指定年齢に到達したとき、余剰金の範囲で銀行プールから「一度だけ」差し引く一時支出。
   // oneTimeExpenses が未指定/空なら、このブロックは完全に無効（従来と1円も変わらない）。
   // 関数スコープの paid フラグで、シミュレーション再実行でも二重に引かれない。
@@ -677,7 +670,7 @@ export function runIntegratedPlan(p) {
       cash = 0;
     }
 
-    // -------- 8. 一時支出（余剰金を使う）--------
+    // -------- 8. 一時支出（余剰金の範囲内で引く汎用機能）--------
     // 【新仕様】余剰金の範囲でだけ使う。実際に使える額は
     //     actuallySpent = min(requestedAmount, surplusBalance, availableBankBalance)
     //   に制限し、この額だけを銀行プールから引く。要求額が余剰金残高を超えても、
