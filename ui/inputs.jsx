@@ -35,11 +35,21 @@ function useMoneyScale() {
 }
 
 // 円 <-> 万円 の相互変換を行う入力欄（行内の小さな入力用）
-function MoneyInput({ value, onChange, placeholder, className, style, disabled }) {
+//
+// 【max（上限）】円単位で上限を渡すと、それを超える入力を受け付けない。
+// 超える値が打たれたときは弾いて黙って止めるのではなく、上限値そのものに
+// 丸めて表示を書き換える（スマホでは入力が無反応になると壊れて見えるため）。
+// max を渡さなければ従来どおり上限なしで、既存の呼び出しは一切影響を受けない。
+function MoneyInput({ value, onChange, placeholder, className, style, disabled, max }) {
   const scale = useMoneyScale();
   const toDisplay = (yen) => (yen === "" || yen === null || yen === undefined ? "" : String(Number(yen) / scale));
   const [text, setText] = useState(toDisplay(value));
   const [editing, setEditing] = useState(false);
+
+  // 上限は「円」で受け取り、表示単位（万円 or そのまま）へ換算して比較する。
+  const maxYen = Number(max);
+  const hasMax = Number.isFinite(maxYen);
+  const maxDisplay = hasMax ? maxYen / scale : undefined;
 
   // 外部から値が変わったとき（他の操作でリセットされた等）に表示を同期する
   useEffect(() => {
@@ -53,14 +63,27 @@ function MoneyInput({ value, onChange, placeholder, className, style, disabled }
       className={className}
       style={style}
       disabled={disabled}
+      max={hasMax ? maxDisplay : undefined}
       placeholder={placeholder}
       value={text}
       onFocus={(e) => { setEditing(true); e.target.select(); }}
       onBlur={() => { setEditing(false); setText(toDisplay(value)); }}
       onChange={(e) => {
         const raw = e.target.value;
+        if (raw === "") {
+          setText("");
+          onChange("");
+          return;
+        }
+        const num = Number(raw);
+        // 上限超過は上限値に丸める（例：上限15万で「16」→「15」）。
+        if (hasMax && Number.isFinite(num) && num > maxDisplay) {
+          setText(String(maxDisplay));
+          onChange(maxYen);
+          return;
+        }
         setText(raw);
-        onChange(raw === "" ? "" : Number(raw) * scale);
+        onChange(num * scale);
       }}
     />
   );
