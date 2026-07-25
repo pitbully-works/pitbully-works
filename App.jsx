@@ -57,6 +57,34 @@ import {
 
 
 // ============================================================================
+// ---------- 家計簿アプリ（同シリーズの関連機能）への入口 ----------
+// 家計簿アプリは別プロジェクト（別リポジトリ・別ドメイン）として公開しているため、
+// ここではリンク先URLだけを持つ。ソースコードの統合も iframe 埋め込みも行わない。
+// このアプリの計算・保存データ・ルーティングには一切関与しない。
+// ============================================================================
+const KAKEIBO_APP_URL = "https://kakeibo-lemon.vercel.app/";
+
+// ホーム画面に追加したPWA（standalone表示）で開いているかどうか。
+// iPhoneでは開き方によって最適な挙動が異なるため、この判定で target を切り替える。
+//   ・PWA（standalone）  … target="_blank"。iOSはPWA内のブラウザで開き、「完了」または
+//                          左端からのスワイプでこの画面へ戻れる。_blank を付けない場合、
+//                          戻ったときにライフプラン側が読み込み直しになる。
+//   ・通常のSafariのタブ … 同じタブで開く。戻るボタン／左端スワイプで一発で戻れるうえ、
+//                          新しいタブが増えない（iPhoneではタブ切り替えより押しやすい）。
+// jsdom など matchMedia を持たない環境でも落ちないよう、必ず存在確認をしてから呼ぶ。
+function isStandalonePWA() {
+  if (typeof window === "undefined") return false;
+  try {
+    if (window.navigator && window.navigator.standalone === true) return true;
+    if (typeof window.matchMedia !== "function") return false;
+    return window.matchMedia("(display-mode: standalone)").matches === true;
+  } catch {
+    return false;
+  }
+}
+
+
+// ============================================================================
 // ---------- 国際化（i18n）基盤 ----------
 // 目的：既存の日本版の挙動・計算ロジック・見た目は一切変更せず、
 // 「国を選択すると表示ラベル・通貨表記だけが切り替わる」土台を追加する。
@@ -3858,6 +3886,32 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         .landing-audience ul { margin: 0; padding-left: 18px; }
         .landing-audience li { font-size: 13px; line-height: 1.9; color: var(--text); }
 
+        /* 家計簿への入口カード。コラムのカード（.landing-blog-section）と
+           枠線・余白・角丸・背景・文字サイズをすべて同じにして、
+           別サイトではなく同じサービス内の関連機能として見えるようにする。 */
+        .landing-kakeibo {
+          max-width: 640px; margin: 34px auto 0; padding: 30px 24px;
+          text-align: center; border: 1px solid var(--line); border-radius: 8px;
+          background: var(--panel);
+        }
+        .landing-kakeibo h3 {
+          font-family: 'Zen Kaku Gothic New', sans-serif; font-size: 18px; font-weight: 700;
+          margin: 0 0 12px; color: var(--text);
+        }
+        .landing-kakeibo p {
+          font-size: 13px; line-height: 1.8; color: var(--muted);
+          margin: 0 0 20px;
+        }
+        /* 見た目は既存のボタン（.landing-cta）と完全に同じ。<a> なので下線を消し、
+           文字を上下中央に置く。高さはiOSの推奨タップ領域（44px）より大きい52pxにして、
+           スマートフォンで指を置くだけで押せるようにする。 */
+        .landing-cta-link {
+          display: inline-flex; align-items: center; justify-content: center;
+          min-height: 52px; text-decoration: none;
+          -webkit-tap-highlight-color: transparent;
+        }
+        .landing-cta-link:active { background: #6BB8E0; }
+
         .landing-blog-section {
           max-width: 640px; margin: 34px auto 0; padding: 30px 24px;
           text-align: center; border: 1px solid var(--line); border-radius: 8px;
@@ -3881,6 +3935,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         .landing-sub,
         .landing-screenshot p,
         .landing-blog-section p,
+        .landing-kakeibo p,
         .landing-disclaimer,
         .titleblock .sub,
         .titleblock .meta { color: var(--text); }
@@ -3955,6 +4010,24 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <li>{t("landingAudience5")}</li>
           </ul>
         </div>
+
+        {/* 家計簿アプリへの入口（同じシリーズの関連機能として表示する）。
+            日本語表示のときだけ出す。家計簿アプリ側の画面が日本語のみのため、
+            英語版・各国版では見せない。全言語で出したい場合はこの条件を外す。 */}
+        {language === "ja" && (
+          <div className="landing-kakeibo">
+            <h3>{t("landingKakeiboTitle")}</h3>
+            <p>{t("landingKakeiboDesc")}</p>
+            <a
+              className="landing-cta landing-cta-link"
+              href={KAKEIBO_APP_URL}
+              target={isStandalonePWA() ? "_blank" : "_self"}
+              rel="noopener noreferrer"
+            >
+              {t("landingKakeiboCta")}
+            </a>
+          </div>
+        )}
 
         {onOpenBlog && (
           <div className="landing-blog-section" id="section-column">
