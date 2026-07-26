@@ -80,7 +80,6 @@ export const blogPosts = [
     "このアプリが、皆さまの人生設計を考えるきっかけとなり、安心して未来へ進むための小さな道しるべになれば幸いです。"
   ]
 },
-];
 {
   slug: "saving-and-investing-balance",
   title: "貯金だけでは増えない。でも投資だけでも危ない。",
