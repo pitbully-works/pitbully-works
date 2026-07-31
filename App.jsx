@@ -34,6 +34,7 @@ import {
   SectionGuide,
   GuideLabel,
   MoneyInput,
+  RateInput,
   MoneyField,
   Field,
   AgeField,
@@ -1896,6 +1897,16 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const update = (patch) => setInputs((prev) => ({ ...prev, ...patch }));
   const updateExtraFundReturn = (name, val) =>
     setInputs((prev) => ({ ...prev, extraFundReturns: { ...prev.extraFundReturns, [name]: val } }));
+  // 上書きを1件消して、自動の想定値（guessDefaultReturn）へ戻す
+  const clearExtraFundReturn = (name) =>
+    setInputs((prev) => {
+      const next = { ...prev.extraFundReturns };
+      delete next[name];
+      return { ...prev, extraFundReturns: next };
+    });
+  // 「想定配分に戻す」：手動で書き換えた想定年率をすべて消し、全銘柄を自動の想定値へ戻す
+  const resetExtraFundReturns = () =>
+    setInputs((prev) => ({ ...prev, extraFundReturns: {} }));
   const updateHealth = (key, val) =>
     setInputs((prev) => ({ ...prev, healthBrackets: { ...prev.healthBrackets, [key]: val } }));
   const updateGold = (key, val) =>
@@ -2436,6 +2447,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     { index: "00", title: label("personalInfo"), icon: Users },
     { index: "01", title: label("basicInfo"), icon: Ruler },
     { index: "02", title: label("investmentTaxAdvantaged"), icon: TrendingUp },
+    // NISA資産の配分（スライダー）へ直接飛ぶ。JPのNISA画面にだけある区画なので、他国では出さない。
+    ...(country === "JP" ? [{ anchor: "section-allocation", title: t("sectionNavAllocation"), icon: TrendingUp }] : []),
     { index: "03", title: label("retirementAccount"), icon: Landmark },
     { index: "04", title: label("pensionRetirement"), icon: Landmark },
     { index: "05", title: label("healthCost"), icon: HeartPulse },
@@ -2450,7 +2463,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     { anchor: "section-comparison", title: t("scenarioCompareTitle") }, // シナリオ比較
     { anchor: "section-networth-chart", title: t("navFullChart") },     // 総資産推移グラフ
     { anchor: "section-stock", title: t("stockWatchlistTitle") },       // 個別株 保有一覧
-  ]), [label, t]);
+  ]), [label, t, country]);
 
   // 画面右下に縦並びで出す「クイックジャンプ」用の短縮ラベル一覧。
   // 各入力セクション（section-00〜11）に加えて、個別株と総資産グラフへも飛べる。
@@ -2465,6 +2478,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     { anchor: "section-00", short: t("navShortPersonal") },            // 本人
     { anchor: "section-01", short: t("navShortBasic") },               // 基本
     { anchor: "section-02", short: t("navShortInvestment") },          // NISA
+    // 配分（NISA資産の配分スライダー）。JPのNISA画面にだけある区画なので、他国では出さない。
+    // このリストは画面下端を基準に上へ積み上がる（.quicknav-wrap が bottom 固定）ため、
+    // 途中に足しても一番下の「個別株」の位置は変わらず、上側が1コマぶん上へ伸びる。
+    ...(country === "JP" ? [{ anchor: "section-allocation", short: t("navShortAllocation") }] : []),
     { anchor: "section-03", short: t("navShortRetirementAcct") },      // iDeCo
     { anchor: "section-04", short: t("navShortPension") },             // 年金
     { anchor: "section-05", short: t("navShortHealth") },              // 健康
@@ -2479,7 +2496,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     { anchor: "section-comparison", short: t("navShortComparison") },  // 比較
     { anchor: "section-networth-chart", short: t("navShortChart") },   // グラフ
     { anchor: "section-stock", short: t("navShortStock") },            // 個別株
-  ]), [t]);
+  ]), [t, country]);
 
   const netWorthFinal = integrated.finalNetWorth;
   const inheritanceTotal = inputs.inheritancePlans.reduce((s, p) => s + (p.amount || 0), 0);
@@ -3397,7 +3414,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         /* 上部固定ヘッダーに隠れないよう、ジャンプ先に余白を確保する */
         #simulator { scroll-margin-top: 12px; }
         #section-overview, #section-column, #section-wallet, #section-nav,
-        #section-surplus-balance, #section-advice, #section-comparison { scroll-margin-top: 12px; }
+        #section-surplus-balance, #section-advice, #section-comparison, #section-allocation { scroll-margin-top: 12px; }
 
         /* 上部固定ヘッダーに隠れないよう、ジャンプ先に余白を確保する */
         .section-title { scroll-margin-top: 16px; }
@@ -4736,6 +4753,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           />
           </div>
 
+          {/* id="section-allocation" は、右のクイックジャンプと「入力する項目を選ぶ」からの着地先 */}
+          <div id="section-allocation">
           <GuideLabel guide={t("expectedReturnGuide")} style={{ marginTop: 16 }}>
             {t("nisaAllocationSlidersLabel")}
           </GuideLabel>
@@ -4753,10 +4772,11 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: -4, marginBottom: 10, paddingLeft: 24 }}>
                     <span style={{ fontSize: 10, color: "#7C8A90" }}>{t("expectedReturnLabel")}</span>
-                    <input
-                      type="number" step={0.5} className="inline-num" style={{ width: 60 }}
+                    <RateInput
+                      className="inline-num" style={{ width: 60 }}
                       value={inputs.extraFundReturns[f.id] !== undefined ? inputs.extraFundReturns[f.id] : guessDefaultReturn(f.id)}
-                      onChange={(e) => updateExtraFundReturn(f.id, Number(e.target.value))}
+                      onChange={(v) => updateExtraFundReturn(f.id, v)}
+                      onEmpty={() => clearExtraFundReturn(f.id)}
                     />
                     <span style={{ fontSize: 10, color: "#7C8A90" }}>%</span>
                   </div>
@@ -4769,6 +4789,14 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 <Info size={13} />
                 <span>{t("expectedReturnAutoNote")}</span>
               </div>
+              <button
+                type="button"
+                className="history-action"
+                style={{ marginTop: 8 }}
+                onClick={resetExtraFundReturns}
+              >
+                {t("resetAssumedReturnsButton")}
+              </button>
             </>
           ) : (
             <div className="note">
@@ -4776,6 +4804,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               <span>{t("noFundsYetNote")}</span>
             </div>
           )}
+          </div>
 
           <div className="note">
             <Info size={13} />
