@@ -89,7 +89,64 @@ function MoneyInput({ value, onChange, placeholder, className, style, disabled, 
   );
 }
 
-// ラベル付きの金額入力欄（Field の金額版）
+// 想定年率（%）などの小さな率入力欄。
+//
+// 【なぜ必要か（2026-07）】NISA資産の配分の「想定年率」は、素の
+// <input type="number" value={数値}> に onChange で Number(...) を流していた。
+// iOSでは type="number" に e.target.select()（全選択）が効かないため、
+// 自動値「0.4」等の枠でカーソルが既存文字の後ろに置かれ、「0」＋「4」＝「04」の
+// ような表示が残っていた（保存される値は正しいが、見た目が壊れる）。
+// Field / MoneyInput と同じく表示用テキストを自前で持ち、フォーカス時に全選択
+// （0なら空にする）、離れたときに String(Number(...)) で正規化して解決する。
+// 空のまま離れたときは onEmpty を呼ぶ（呼び出し側が「自動の値へ戻す」等を行う）。
+// 表示形式・計算・保存データ構造は一切変えていない。
+function RateInput({ value, onChange, onEmpty, step = 0.5, className, style }) {
+  const toDisplay = (v) => (v === "" || v === null || v === undefined ? "" : String(v));
+  const [text, setText] = useState(toDisplay(value));
+  const [editing, setEditing] = useState(false);
+
+  // 外部から値が変わったとき（自動値への復帰・保存データの読み込み等）に表示を同期する
+  useEffect(() => {
+    if (!editing) setText(toDisplay(value));
+  }, [value]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <input
+      type="number"
+      inputMode="decimal"
+      step={step}
+      className={className}
+      style={style}
+      value={text}
+      onFocus={(e) => {
+        setEditing(true);
+        // 0 のときは枠を空にして、先頭に 0 が残らないようにする
+        if (Number(text) === 0) setText("");
+        else e.target.select();
+      }}
+      onBlur={() => {
+        setEditing(false);
+        if (text === "") {
+          // 空のまま離れた：呼び出し側に任せる（自動の値へ戻す等）。同期は上の useEffect が行う
+          if (onEmpty) onEmpty();
+          else setText(toDisplay(value));
+        } else {
+          // 「04」→「4」のように先頭の 0 を落として正規化する
+          const n = Number(text);
+          setText(String(n));
+          onChange(n);
+        }
+      }}
+      onChange={(e) => {
+        const raw = e.target.value;
+        setText(raw);
+        if (raw !== "" && Number.isFinite(Number(raw))) onChange(Number(raw));
+      }}
+    />
+  );
+}
+
+
 function MoneyField({ label, value, onChange, unitPer, guide, disabled, mono = true }) {
   const { t, baseCurrency, currencySymbol } = useContext(LocaleContext);
   const [showGuide, setShowGuide] = useState(false);
@@ -381,6 +438,7 @@ export {
   MAN,
   useMoneyScale,
   MoneyInput,
+  RateInput,
   MoneyField,
   Field,
   AgeField,

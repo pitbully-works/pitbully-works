@@ -11,6 +11,7 @@ export {
   MAN,
   useMoneyScale,
   MoneyInput,
+  RateInput,
   MoneyField,
   Field,
   AgeField,
