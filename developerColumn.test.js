@@ -24,7 +24,7 @@ describe("開発者コラム", () => {
     const slugs = blogPosts.map((p) => p.slug);
     expect(slugs).toContain("nisa-life-plan-basics");
     expect(slugs).toContain("why-i-built-total-assets-app");
-    expect(blogPosts.length).toBe(4);
+    expect(blogPosts.length).toBe(5);
   });
 
   it("既存コラムと同じ形式（slug/title/date/excerpt/body）を満たす", () => {
