@@ -25,6 +25,7 @@ import { translateWith } from "./translations/index.js";
 // 診断コメント：既存の計算結果だけを見てルールで判定する純粋関数（外部AIは使わない）。
 import { generateAdvice } from "./utils/generateAdvice.js";
 import { pickCurrentAnchor } from "./utils/currentSection.js";
+import { buildNisaBreakdown, breakdownPrincipalItems, breakdownReturnBars, breakdownTotals } from "./utils/nisaBreakdown.js";
 // 国に依存しない共通UI部品（入力欄・ガイド・内訳グラフ）と表示基盤（LocaleContext等）は ui/ 配下へ分離。
 import {
   yen,
@@ -2152,6 +2153,48 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   ];
   const autoHoldingsTotal = lumpElapsedTotal;
 
+  // 現在のNISA資産を「どこから来たお金か」で4つに分ける（表示専用）。
+  // 元本＝入れた金額、評価額＝いまいくらか。どちらも上の計算をそのまま使い、
+  // ここで計算し直さない（画面上部の合計と必ず一致させるため）。
+  const initialHoldingsPrincipal =
+    (inputs.tsumitateHoldings || []).reduce((s, h) => s + (h.value || 0), 0) +
+    (inputs.growthHoldings || []).reduce((s, h) => s + (h.value || 0), 0);
+  const initialHoldingsValue = tsumitateHoldingsManualTotal + growthHoldingsManualTotal;
+  // 最初の残高の年率は、銘柄ごとの想定年率を金額で重みづけした平均。
+  const initialHoldingsReturn = (() => {
+    const all = [...(inputs.tsumitateHoldings || []), ...(inputs.growthHoldings || [])];
+    const total = all.reduce((s, h) => s + (h.value || 0), 0);
+    if (total <= 0) return 0;
+    return all.reduce((s, h) => s + ((h.value || 0) / total) * getFundReturnPct(h.name), 0);
+  })();
+
+  const nisaBreakdownRows = buildNisaBreakdown(
+    {
+      initial: { principal: initialHoldingsPrincipal, value: initialHoldingsValue, returnPct: initialHoldingsReturn },
+      tsumitate: {
+        principal: elapsedScheduleAmount(inputs.tsumitateSchedule, effectiveCurrentAge),
+        value: tsumitateCatchUp, returnPct: tsumitateScheduleReturn,
+      },
+      growth: {
+        principal: elapsedScheduleAmount(inputs.growthSchedule, effectiveCurrentAge),
+        value: growthCatchUp, returnPct: growthScheduleReturn,
+      },
+      lump: {
+        principal: elapsedLumpSumAmount(inputs.lumpSums, effectiveCurrentAge),
+        value: lumpElapsedTotal, returnPct: lumpScheduleReturn,
+      },
+    },
+    {
+      initial: t("nisaBreakInitialLabel"),
+      tsumitate: t("nisaBreakTsumitateLabel"),
+      growth: t("nisaBreakGrowthLabel"),
+      lump: t("nisaBreakLumpLabel"),
+    }
+  );
+  const nisaBreakdownPrincipalItems = breakdownPrincipalItems(nisaBreakdownRows);
+  const nisaBreakdownReturnBars = breakdownReturnBars(nisaBreakdownRows);
+  const nisaBreakdownTotals = breakdownTotals(nisaBreakdownRows);
+
   // 現在のNISA資産は手入力せず、つみたて/成長投資枠の実際の残高（＋基準年齢以降の複利成長分）＋一括投資の自動計算分から完全に自動算出する
   const currentAssetHoldingsTotal = tsumitateHoldingsTotal + growthHoldingsTotal + autoHoldingsTotal;
   const effectiveCurrentAssets = currentAssetHoldingsTotal;
@@ -3127,12 +3170,6 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const computedTsumitateUsed = inputs.tsumitateUsed + tsumitateElapsed;
   const computedGrowthUsed = inputs.growthUsed + growthElapsed;
 
-  // 現在のNISA資産の内訳（つみたて投資枠 / 成長投資枠）— 円グラフ・棒グラフ用
-  const nisaFrameAllocationItems = [
-    { name: t("tsumitateFrameLabel"), amount: Math.max(0, computedTsumitateUsed) },
-    { name: t("growthFrameLabel"), amount: Math.max(0, computedGrowthUsed) },
-  ];
-
   const growthDiff = NISA_LIMITS.growthLifetime - computedGrowthUsed;
   const remainingGrowth = Math.max(0, growthDiff);
   const growthOverage = Math.max(0, -growthDiff);
@@ -3458,6 +3495,50 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           font-weight: 800;
           box-shadow: 0 0 0 2px rgba(111, 192, 236, 0.35);
         }
+
+        /* 年率の棒グラフ。年率は「割合」ではないので円グラフにせず、
+           いちばん高い区分を基準にした長さの棒だけで並べる。 */
+        .rate-bars { padding: 6px 12px 2px; }
+        .rate-bar-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 5px 0;
+        }
+        .rate-bar-name {
+          flex: 0 0 34%;
+          font-size: 11.5px;
+          color: #B7C2C7;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .rate-bar-track {
+          flex: 1;
+          height: 9px;
+          border-radius: 5px;
+          background: #1B2429;
+          overflow: hidden;
+        }
+        .rate-bar-track i {
+          display: block;
+          height: 100%;
+          border-radius: 5px;
+          background: #4FA8D8;
+        }
+        .rate-bar-value { flex: 0 0 46px; text-align: right; font-size: 11.5px; color: #E7ECEE; }
+
+        /* 元本・年率・評価額を数字で確かめるための小さな表。 */
+        .mini-table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+        .mini-table th, .mini-table td {
+          padding: 6px 8px;
+          border-bottom: 1px solid #222C31;
+          text-align: left;
+        }
+        .mini-table th { color: #8FA0A8; font-weight: 600; }
+        .mini-table td { color: #E7ECEE; }
+        .mini-table .num { text-align: right; white-space: nowrap; }
+        .mini-table .total-row td { border-bottom: 0; font-weight: 700; }
 
         /* 「トップへ戻る」ボタン。項目ボタンと同じ小型・背景透明のピル。
            区別できるよう文字色だけピンクにする。着地先は #simulator（入力フォーム先頭）。 */
@@ -5934,10 +6015,63 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 </div>
               )}
 
-              <div className="chart-frame" style={{ marginBottom: 22 }}>
-                <div className="chart-label">{t("nisaBreakdownChartTitle")}</div>
-                <AllocationCharts items={nisaFrameAllocationItems} height={160} />
-              </div>
+              {/* 【置き換え】以前はここに「つみたて枠 × 成長投資枠」の円グラフがあったが、
+                  見出しが「現在のNISA資産の内訳」なのに中身は枠の使用額（元本）で、
+                  上の評価額と食い違って読めてしまっていた。
+                  お金の出どころ（最初の残高／つみたて積立／成長投資積立／一括投資）で
+                  分け、元本と年率を別々のグラフにする。 */}
+              {nisaBreakdownRows.length > 0 && (
+                <div className="chart-frame" style={{ marginBottom: 22 }}>
+                  <div className="chart-label">{t("nisaBreakPrincipalChartTitle")}</div>
+                  <AllocationCharts items={nisaBreakdownPrincipalItems} height={160} />
+
+                  <div className="chart-label" style={{ marginTop: 14 }}>{t("nisaBreakReturnChartTitle")}</div>
+                  {/* 年率は「割合」ではないので円グラフにしない。いちばん高い区分を基準にした棒で並べる。 */}
+                  <div className="rate-bars">
+                    {nisaBreakdownReturnBars.map((b) => (
+                      <div className="rate-bar-row" key={b.key}>
+                        <span className="rate-bar-name">{b.name}</span>
+                        <span className="rate-bar-track">
+                          <i style={{ width: `${b.widthPct}%` }} />
+                        </span>
+                        <span className="rate-bar-value mono">{b.returnPct.toFixed(1)}%</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <table className="mini-table" style={{ marginTop: 14 }}>
+                    <thead>
+                      <tr>
+                        <th>{t("nisaBreakColSource")}</th>
+                        <th className="num">{t("nisaBreakColPrincipal")}</th>
+                        <th className="num">{t("nisaBreakColReturn")}</th>
+                        <th className="num">{t("nisaBreakColValue")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {nisaBreakdownRows.map((r) => (
+                        <tr key={r.key}>
+                          <td>{r.name}</td>
+                          <td className="num mono">{money(r.principal)}</td>
+                          <td className="num mono">{r.returnPct.toFixed(1)}%</td>
+                          <td className="num mono">{money(r.value)}</td>
+                        </tr>
+                      ))}
+                      <tr className="total-row">
+                        <td>{t("nisaBreakColTotal")}</td>
+                        <td className="num mono">{money(nisaBreakdownTotals.principal)}</td>
+                        <td className="num">—</td>
+                        <td className="num mono">{money(nisaBreakdownTotals.value)}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  <div className="note" style={{ margin: "10px 12px 2px" }}>
+                    <Info size={13} />
+                    <span>{t("nisaBreakChartNote")}</span>
+                  </div>
+                </div>
+              )}
 
               <div className="stat-grid" style={{ marginBottom: 14 }}>
                 <StatCard
