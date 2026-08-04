@@ -1166,10 +1166,20 @@ function SectionNav({ items }) {
 // 既定値をまるごと置き換えてしまい、後から追加したフィールドが undefined になっていた。
 // undefined が Field の value に入ると React が非制御コンポーネント警告を出し、計算もNaNになりうる。
 // 配列（銘柄リスト等）は「保存された内容そのもの」が正しいため、マージせず置き換える。
+// 使わなくなった入力項目。保存データに残っていても読み込まない。
+//
+// 【不具合】以前は「すでに使った枠」を手で入れる欄があり、その値が保存されていた。
+// のちに欄だけを画面から外したが、保存済みの値は残り続け、NISA枠の使用額へ
+// 足され続けていた。一括投資と同じお金を二重に数えるうえ、画面のどこにも出ないため
+// 気づけず、利用者が消す手段も無かった。項目ごと廃止して、取り残しを断ち切る。
+export const RETIRED_INPUT_KEYS = ["tsumitateUsed", "growthUsed"];
+
 export function mergeSavedInputs(defaults, saved) {
   if (!saved || typeof saved !== "object") return defaults;
   const out = { ...defaults };
   Object.keys(saved).forEach((key) => {
+    // 廃止した項目は、既定値に無いので入れ子の中まで消える心配がない
+    if (RETIRED_INPUT_KEYS.includes(key) && !(key in defaults)) return;
     const savedValue = saved[key];
     const defaultValue = defaults[key];
     const bothPlainObjects =
@@ -1209,8 +1219,6 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     growthHoldingsAsOfYears: "", growthHoldingsAsOfMonths: "", // この残高の基準年齢（未入力なら現在の年齢＝追加計算なし）
     tsumitateSchedule: [],
     growthSchedule: [],
-    tsumitateUsed: 0,
-    growthUsed: 0,
     lumpSums: [],
     lumpAllocation: [],
     tsumitateAllocation: [],
@@ -1916,8 +1924,6 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         date,
         currentAssets: (nextInputs.tsumitateHoldings || []).reduce((s, h) => s + (h.value || 0), 0)
           + (nextInputs.growthHoldings || []).reduce((s, h) => s + (h.value || 0), 0),
-        tsumitateUsed: nextInputs.tsumitateUsed,
-        growthUsed: nextInputs.growthUsed,
         goldGrams: nextInputs.gold?.currentGrams ?? 0,
         bankTotal,
         inputs: nextInputs,
@@ -2156,21 +2162,28 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   // 現在のNISA資産を「どこから来たお金か」で4つに分ける（表示専用）。
   // 元本＝入れた金額、評価額＝いまいくらか。どちらも上の計算をそのまま使い、
   // ここで計算し直さない（画面上部の合計と必ず一致させるため）。
-  const initialHoldingsPrincipal =
-    (inputs.tsumitateHoldings || []).reduce((s, h) => s + (h.value || 0), 0) +
-    (inputs.growthHoldings || []).reduce((s, h) => s + (h.value || 0), 0);
-  const initialHoldingsValue = tsumitateHoldingsManualTotal + growthHoldingsManualTotal;
-  // 最初の残高の年率は、銘柄ごとの想定年率を金額で重みづけした平均。
-  const initialHoldingsReturn = (() => {
-    const all = [...(inputs.tsumitateHoldings || []), ...(inputs.growthHoldings || [])];
-    const total = all.reduce((s, h) => s + (h.value || 0), 0);
+  // 「最初の残高」は、つみたて投資枠と成長投資枠で分けて見せる（枠ごとに銘柄も年率も違うため）。
+  const holdingsPrincipalOf = (list) => (list || []).reduce((s, h) => s + (h.value || 0), 0);
+  // 年率は、銘柄ごとの想定年率を金額で重みづけした平均。
+  const holdingsReturnOf = (list) => {
+    const all = list || [];
+    const total = holdingsPrincipalOf(all);
     if (total <= 0) return 0;
     return all.reduce((s, h) => s + ((h.value || 0) / total) * getFundReturnPct(h.name), 0);
-  })();
+  };
+  const tsumitateHoldingsPrincipal = holdingsPrincipalOf(inputs.tsumitateHoldings);
+  const growthHoldingsPrincipal = holdingsPrincipalOf(inputs.growthHoldings);
 
   const nisaBreakdownRows = buildNisaBreakdown(
     {
-      initial: { principal: initialHoldingsPrincipal, value: initialHoldingsValue, returnPct: initialHoldingsReturn },
+      initialTsumitate: {
+        principal: tsumitateHoldingsPrincipal, value: tsumitateHoldingsManualTotal,
+        returnPct: holdingsReturnOf(inputs.tsumitateHoldings),
+      },
+      initialGrowth: {
+        principal: growthHoldingsPrincipal, value: growthHoldingsManualTotal,
+        returnPct: holdingsReturnOf(inputs.growthHoldings),
+      },
       tsumitate: {
         principal: elapsedScheduleAmount(inputs.tsumitateSchedule, effectiveCurrentAge),
         value: tsumitateCatchUp, returnPct: tsumitateScheduleReturn,
@@ -2185,7 +2198,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       },
     },
     {
-      initial: t("nisaBreakInitialLabel"),
+      initialTsumitate: t("nisaBreakInitialTsumitateLabel"),
+      initialGrowth: t("nisaBreakInitialGrowthLabel"),
       tsumitate: t("nisaBreakTsumitateLabel"),
       growth: t("nisaBreakGrowthLabel"),
       lump: t("nisaBreakLumpLabel"),
@@ -3167,8 +3181,13 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const growthElapsed =
     elapsedScheduleAmount(inputs.growthSchedule, effectiveCurrentAge) +
     elapsedLumpSumAmount(inputs.lumpSums, effectiveCurrentAge);
-  const computedTsumitateUsed = inputs.tsumitateUsed + tsumitateElapsed;
-  const computedGrowthUsed = inputs.growthUsed + growthElapsed;
+  // 【不具合の修正】以前はここに inputs.tsumitateUsed / inputs.growthUsed を足していた。
+  // これは画面から入力欄が消えたあとも保存データに値が残り続けていた項目で、
+  // 一括投資と同じお金を二重に数え、枠の使用額をふくらませていた。
+  // 代わりに「実際の残高」（＝すでにNISAで買ってあるぶん）を枠の使用として数える。
+  // 買った時点で枠は使われているため、これを数えないと残り枠を多く見せてしまう。
+  const computedTsumitateUsed = tsumitateHoldingsPrincipal + tsumitateElapsed;
+  const computedGrowthUsed = growthHoldingsPrincipal + growthElapsed;
 
   const growthDiff = NISA_LIMITS.growthLifetime - computedGrowthUsed;
   const remainingGrowth = Math.max(0, growthDiff);
@@ -3498,6 +3517,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
         /* 年率の棒グラフ。年率は「割合」ではないので円グラフにせず、
            いちばん高い区分を基準にした長さの棒だけで並べる。 */
+        .rate-axis { font-size: 10.5px; color: #8FA0A8; margin-left: 6px; font-weight: 400; }
         .rate-bars { padding: 6px 12px 2px; }
         .rate-bar-row {
           display: flex;
@@ -6025,7 +6045,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                   <div className="chart-label">{t("nisaBreakPrincipalChartTitle")}</div>
                   <AllocationCharts items={nisaBreakdownPrincipalItems} height={160} />
 
-                  <div className="chart-label" style={{ marginTop: 14 }}>{t("nisaBreakReturnChartTitle")}</div>
+                  <div className="chart-label" style={{ marginTop: 14 }}>
+                    {t("nisaBreakReturnChartTitle")}
+                    {nisaBreakdownReturnBars.length > 0 && (
+                      <span className="rate-axis">{t("nisaBreakReturnAxis", { max: nisaBreakdownReturnBars[0].axisMax })}</span>
+                    )}
+                  </div>
                   {/* 年率は「割合」ではないので円グラフにしない。いちばん高い区分を基準にした棒で並べる。 */}
                   <div className="rate-bars">
                     {nisaBreakdownReturnBars.map((b) => (
