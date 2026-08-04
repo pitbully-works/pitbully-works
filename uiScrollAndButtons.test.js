@@ -173,7 +173,8 @@ describe("UI改善：クイックジャンプ（各項目ボタン）", () => {
   });
 
   it("各項目ボタンは quicknav-btn クラスで、背景透明・アクセント色", () => {
-    expect(app).toContain('className="quicknav-btn"');
+    // いま見ている項目には is-current を足すため、className は三項式になっている
+    expect(app).toContain('"quicknav-btn is-current" : "quicknav-btn"');
     // 背景 transparent とアクセント色の指定がCSSにある
     const cssIdx = app.indexOf(".quicknav-btn {");
     expect(cssIdx).toBeGreaterThan(0);
@@ -194,5 +195,81 @@ describe("UI改善：クイックジャンプ（各項目ボタン）", () => {
         expect(dict[k]).toBeTruthy();
       }
     }
+  });
+});
+
+// ============================================================================
+// UI改善：いま見ているセクションの印（縦スクロールに追従）
+// ============================================================================
+describe("UI改善：クイックジャンプに「いまここ」の印がつく", () => {
+  const app = read("./App.jsx");
+
+  it("押したときに黒い影が残らない（濃い文字がにじんで見えるのを防ぐ)", () => {
+    // 通常時は暗い背景の上に薄い水色なので、読みやすさのため黒い光を敷いている。
+    const base = app.slice(app.indexOf(".quicknav-btn {"), app.indexOf(".quicknav-btn:active"));
+    expect(base).toContain("text-shadow: 0 0 4px #000");
+    // 塗りつぶし（押した／いまここ）の状態では、その影を必ず消す。
+    const active = app.slice(app.indexOf(".quicknav-btn:active"), app.indexOf(".back-to-top {"));
+    expect(active).toContain("text-shadow: none");
+    // ピンクの「トップへ戻る」も同じ扱い。
+    const top = app.slice(app.indexOf(".back-to-top:active"), app.indexOf(".back-to-top-inline {"));
+    expect(top).toContain("text-shadow: none");
+  });
+
+  it("指で触る端末に :hover が残らないよう、hover はマウスのある端末だけにする", () => {
+    const css = app.slice(app.indexOf(".quicknav-btn {"), app.indexOf(".back-to-top {"));
+    expect(css).toContain("@media (hover: hover)");
+    // hover を無条件で当てる書き方が残っていない
+    expect(css).not.toContain(".quicknav-btn:hover, .quicknav-btn:active");
+  });
+
+  it("いまいる項目は色・太さ・輪の3つで分かる（色だけに頼らない）", () => {
+    const idx = app.indexOf(".quicknav-btn.is-current {");
+    expect(idx).toBeGreaterThan(0);
+    const css = app.slice(idx, idx + 260);
+    expect(css).toContain("font-weight: 800");
+    expect(css).toContain("box-shadow");
+  });
+
+  it("いまいる項目のボタンに is-current と aria-current がつく", () => {
+    expect(app).toContain('aria-current={anchor === currentAnchor ? "true" : undefined}');
+    expect(app).toContain("data-anchor={anchor}");
+  });
+
+  it("スクロールに合わせて印を付け替える（スクロール・画面回転を見ている）", () => {
+    const idx = app.indexOf("function useCurrentSection");
+    expect(idx).toBeGreaterThan(0);
+    const block = app.slice(idx, app.indexOf("function useKeepCurrentVisible"));
+    expect(block).toContain('window.addEventListener("scroll"');
+    expect(block).toContain('window.addEventListener("resize"');
+    // 毎回測らず、次の描画までに1回にまとめている
+    expect(block).toContain("requestAnimationFrame");
+    // 後片付けをしている（画面を離れても見張り続けない）
+    expect(block).toContain('window.removeEventListener("scroll"');
+    expect(block).toContain('window.removeEventListener("resize"');
+  });
+
+  it("スクロールの監視は passive で、ページのスクロールを妨げない", () => {
+    const idx = app.indexOf("function useCurrentSection");
+    const block = app.slice(idx, app.indexOf("function useKeepCurrentVisible"));
+    expect((block.match(/\{ passive: true \}/g) || []).length).toBe(2);
+    expect(block).not.toContain("preventDefault");
+  });
+
+  it("判定は純粋関数に任せている（App.jsx が計算を持たない）", () => {
+    expect(app).toContain('import { pickCurrentAnchor } from "./utils/currentSection.js"');
+    expect(app).toContain("pickCurrentAnchor(sections, { atBottom })");
+  });
+
+  it("印のついたボタンが隠れないよう、ジャンプ欄の中だけをずらす（ページは動かさない）", () => {
+    const idx = app.indexOf("function useKeepCurrentVisible");
+    expect(idx).toBeGreaterThan(0);
+    const end = app.indexOf("// ---------- セクションへのショートカット", idx);
+    expect(end).toBeGreaterThan(idx);
+    const block = app.slice(idx, end);
+    expect(block).toContain("wrap.scrollTop");
+    // ページ全体を動かす scrollIntoView / window.scrollTo は使わない
+    expect(block).not.toContain("scrollIntoView");
+    expect(block).not.toContain("window.scrollTo");
   });
 });
