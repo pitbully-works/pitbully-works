@@ -24,6 +24,7 @@ import {
 import { translateWith } from "./translations/index.js";
 // 診断コメント：既存の計算結果だけを見てルールで判定する純粋関数（外部AIは使わない）。
 import { generateAdvice } from "./utils/generateAdvice.js";
+import { pickCurrentAnchor } from "./utils/currentSection.js";
 // 国に依存しない共通UI部品（入力欄・ガイド・内訳グラフ）と表示基盤（LocaleContext等）は ui/ 配下へ分離。
 import {
   yen,
@@ -1062,6 +1063,72 @@ function SectionTitle({ index, title, icon: Icon }) {
       </button>
     </div>
   );
+}
+
+// ---------- いま見ているセクションを追いかける ----------
+// 画面を縦にスクロールしたとき、右のクイックジャンプへ「いまここ」の印をつける。
+// どこを見ているかの判定そのものは utils/currentSection.js の純粋関数が持つ。
+// ここは座標を測って渡すだけ。表示のためだけの仕組みで、資産計算には関与しない。
+function useCurrentSection(items) {
+  // items は毎回作り直されるので、アンカーの並びが同じなら測り直さないようにする。
+  const anchorKey = (items || []).map((i) => i && i.anchor).join("|");
+  const [current, setCurrent] = useState(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof document === "undefined") return undefined;
+    const anchors = anchorKey ? anchorKey.split("|") : [];
+    let raf = 0;
+
+    const measure = () => {
+      raf = 0;
+      const sections = [];
+      anchors.forEach((anchor) => {
+        if (!anchor) return;
+        const el = document.getElementById(anchor);
+        if (!el || typeof el.getBoundingClientRect !== "function") return;
+        sections.push({ anchor, top: el.getBoundingClientRect().top });
+      });
+      // ページの一番下まで来たかどうか。最後のセクションが短いと
+      // 基準線まで届かず、いつまでも印が付かないため。
+      const doc = document.documentElement;
+      const atBottom = !!doc && (window.innerHeight + window.scrollY) >= (doc.scrollHeight - 2);
+      setCurrent(pickCurrentAnchor(sections, { atBottom }));
+    };
+
+    // スクロールのたびに測ると重いので、次の描画までに1回だけにまとめる。
+    const onScroll = () => {
+      if (raf) return;
+      if (typeof window.requestAnimationFrame === "function") raf = window.requestAnimationFrame(measure);
+      else measure();
+    };
+
+    measure();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll, { passive: true });
+    return () => {
+      if (raf && typeof window.cancelAnimationFrame === "function") window.cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, [anchorKey]);
+
+  return current;
+}
+
+// 印のついたボタンが、縦に長いジャンプ欄の外へ隠れないようにする。
+// ページ自体は動かさず、ジャンプ欄の中だけを最小限ずらす。
+function useKeepCurrentVisible(currentAnchor) {
+  useEffect(() => {
+    if (!currentAnchor || typeof document === "undefined") return;
+    const wrap = document.querySelector(".quicknav-wrap");
+    if (!wrap || typeof wrap.querySelector !== "function") return;
+    const btn = wrap.querySelector(`[data-anchor="${currentAnchor}"]`);
+    if (!btn) return;
+    const top = btn.offsetTop;
+    const bottom = top + btn.offsetHeight;
+    if (top < wrap.scrollTop) wrap.scrollTop = Math.max(0, top - 8);
+    else if (bottom > wrap.scrollTop + wrap.clientHeight) wrap.scrollTop = bottom - wrap.clientHeight + 8;
+  }, [currentAnchor]);
 }
 
 // ---------- セクションへのショートカット（トップ画面のジャンプボタン） ----------
@@ -2498,6 +2565,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     { anchor: "section-stock", short: t("navShortStock") },            // 個別株
   ]), [t, country]);
 
+  // いま画面に出ているセクション。右のクイックジャンプに印をつけるためだけに使う。
+  const currentAnchor = useCurrentSection(quickNavItems);
+  useKeepCurrentVisible(currentAnchor);
+
   const netWorthFinal = integrated.finalNetWorth;
   const inheritanceTotal = inputs.inheritancePlans.reduce((s, p) => s + (p.amount || 0), 0);
   const effectiveInheritanceTarget = inputs.inheritancePlans.length > 0 ? inheritanceTotal : inputs.inheritanceTarget;
@@ -3357,10 +3428,35 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           text-shadow: 0 0 4px #000, 0 0 3px #000;
           transition: color .12s, border-color .12s, background .12s;
         }
-        .quicknav-btn:hover, .quicknav-btn:active {
+        /* 押したとき・いまいる項目のときは、文字色が濃くなる。
+           そのまま text-shadow（黒い光）を残すと、濃い文字のまわりに黒がにじんで
+           字がぼやけて見える。塗りつぶしの状態では影を必ず消す。 */
+        .quicknav-btn:active {
           color: #0E1316;
           background: #6FC0EC;
           border-color: #6FC0EC;
+          text-shadow: none;
+        }
+        /* 指で操作する端末では、一度触れたボタンに :hover が残り続ける。
+           そのままだと「いまいる項目」の印と2つ光って紛らわしいので、
+           マウスのある端末だけに絞る。 */
+        @media (hover: hover) {
+          .quicknav-btn:hover {
+            color: #0E1316;
+            background: #6FC0EC;
+            border-color: #6FC0EC;
+            text-shadow: none;
+          }
+        }
+        /* いま画面に出ているセクションの印。
+           色だけに頼らず「太さ」と「まわりの輪」でも分かるようにする。 */
+        .quicknav-btn.is-current {
+          color: #0E1316;
+          background: #6FC0EC;
+          border-color: #DCF1FC;
+          text-shadow: none;
+          font-weight: 800;
+          box-shadow: 0 0 0 2px rgba(111, 192, 236, 0.35);
         }
 
         /* 「トップへ戻る」ボタン。項目ボタンと同じ小型・背景透明のピル。
@@ -3382,10 +3478,19 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           text-shadow: 0 0 4px #000, 0 0 3px #000;
           transition: color .12s, border-color .12s, background .12s;
         }
-        .back-to-top:hover, .back-to-top:active {
+        .back-to-top:active {
           color: #0E1316;
           background: #F0A6C4;
           border-color: #F0A6C4;
+          text-shadow: none;   /* 濃い文字に黒い影が重なってにじむのを防ぐ */
+        }
+        @media (hover: hover) {
+          .back-to-top:hover {
+            color: #0E1316;
+            background: #F0A6C4;
+            border-color: #F0A6C4;
+            text-shadow: none;
+          }
         }
 
         /* 入力フォーム末尾に置く、通常フローの「トップへ戻る」ボタン（全幅）。 */
@@ -6347,7 +6452,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <button
               key={anchor}
               type="button"
-              className="quicknav-btn"
+              data-anchor={anchor}
+              className={anchor === currentAnchor ? "quicknav-btn is-current" : "quicknav-btn"}
+              aria-current={anchor === currentAnchor ? "true" : undefined}
               onClick={() => {
                 const el = document.getElementById(anchor);
                 if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
