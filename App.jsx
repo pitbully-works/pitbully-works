@@ -26,6 +26,7 @@ import { translateWith } from "./translations/index.js";
 import { generateAdvice } from "./utils/generateAdvice.js";
 import { pickCurrentAnchor } from "./utils/currentSection.js";
 import { buildNisaBreakdown, breakdownPrincipalItems, breakdownReturnBars, breakdownTotals } from "./utils/nisaBreakdown.js";
+import { describeSchedulePace } from "./utils/schedulePace.js";
 // 国に依存しない共通UI部品（入力欄・ガイド・内訳グラフ）と表示基盤（LocaleContext等）は ui/ 配下へ分離。
 import {
   yen,
@@ -2205,6 +2206,19 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       lump: t("nisaBreakLumpLabel"),
     }
   );
+  // 年間上限カードの下に出す一行。まだ始まっていない／もう終わったを言い分ける。
+  const paceNote = (pace, monthly, annual) => {
+    if (pace.status === "upcoming") {
+      return t("pacePendingNote", {
+        age: formatAge(pace.nextFromAge),
+        monthly: money(pace.nextMonthly),
+      });
+    }
+    if (pace.status === "ended") return t("paceEndedNote");
+    if (pace.status === "none") return t("paceNoneNote");
+    return t("monthlyPaceNote", { monthly: money(monthly), annual: money(annual) });
+  };
+
   const nisaBreakdownPrincipalItems = breakdownPrincipalItems(nisaBreakdownRows);
   const nisaBreakdownReturnBars = breakdownReturnBars(nisaBreakdownRows);
   const nisaBreakdownTotals = breakdownTotals(nisaBreakdownRows);
@@ -3208,6 +3222,11 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const tsumitateAnnualDiff = NISA_LIMITS.tsumitateAnnual - tsumitateAnnualPace;
   const tsumitateAnnualRemaining = Math.max(0, tsumitateAnnualDiff);
   const tsumitateAnnualOverage = Math.max(0, -tsumitateAnnualDiff);
+
+  // 「月¥0のペース」だけでは、入力を間違えたのか、まだ始まっていないだけなのか
+  // 区別がつかない。開始前・終了後を言い分けるための状態を持つ。
+  const tsumitatePace = describeSchedulePace(inputs.tsumitateSchedule, effectiveCurrentAge);
+  const growthPace = describeSchedulePace(inputs.growthSchedule, effectiveCurrentAge);
 
   const currentGrowthMonthly = scheduledAmount(inputs.growthSchedule, effectiveCurrentAge);
   const growthAnnualPace = currentGrowthMonthly * 12;
@@ -6105,7 +6124,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                   sub={
                     tsumitateAnnualOverage > 0
                       ? t("annualOverPaceNote", { amount: money(tsumitateAnnualOverage) })
-                      : t("monthlyPaceNote", { monthly: money(currentTsumitateMonthly), annual: money(tsumitateAnnualPace) })
+                      : paceNote(tsumitatePace, currentTsumitateMonthly, tsumitateAnnualPace)
                   }
                   tone={tsumitateAnnualOverage > 0 ? "danger" : "good"}
                 />
@@ -6115,7 +6134,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                   sub={
                     growthAnnualOverage > 0
                       ? t("annualOverPaceNoteGrowth", { amount: money(growthAnnualOverage) })
-                      : t("monthlyPaceNote", { monthly: money(currentGrowthMonthly), annual: money(growthAnnualPace) })
+                      : paceNote(growthPace, currentGrowthMonthly, growthAnnualPace)
                   }
                   tone={growthAnnualOverage > 0 ? "danger" : "good"}
                 />
