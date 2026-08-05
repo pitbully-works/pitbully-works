@@ -139,9 +139,17 @@ export function buildScaledNisaPlan({ inputs, effectiveCurrentAge, retireAge, co
   };
 
   // 過去に使ったNISA枠。倍率は掛けない（過去は変えられない）。
-  const tsumitateUsedForPlan = (Number(inputs.tsumitateUsed) || 0)
+  //
+  // 【修正】以前は inputs.tsumitateUsed / inputs.growthUsed（手入力の「すでに使った枠」）を
+  // 足していたが、この入力欄は画面から無くなったのに保存データにだけ値が残り、
+  // 一括投資と同じお金を二重に数えていた。項目ごと廃止した。
+  // 代わりに「実際の残高」（すでにNISAで買ってあるぶん）を数える。
+  // 買った時点で枠は使われているので、数えないと残り枠を多く見せてしまう。
+  const holdingsPrincipal = (list) => (Array.isArray(list) ? list : [])
+    .reduce((sum, h) => sum + (Number(h && h.value) || 0), 0);
+  const tsumitateUsedForPlan = holdingsPrincipal(inputs.tsumitateHoldings)
     + elapsedScheduleAmount(inputs.tsumitateSchedule, effectiveCurrentAge);
-  const growthUsedForPlan = (Number(inputs.growthUsed) || 0)
+  const growthUsedForPlan = holdingsPrincipal(inputs.growthHoldings)
     + elapsedScheduleAmount(inputs.growthSchedule, effectiveCurrentAge);
 
   const tsumitateSchedule = futureSchedule(inputs.tsumitateSchedule);

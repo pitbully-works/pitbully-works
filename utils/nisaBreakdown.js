@@ -3,10 +3,11 @@
 //
 // 現在のNISA資産を「どこから来たお金か」で4つに分けて並べる。
 //
-//   ① 最初の残高   … 基準年齢の時点で実際にいくらあったか（つみたて枠＋成長枠 合算）
-//   ② つみたて積立 … 積立スケジュールで、これまでに引き落とされてきた分
-//   ③ 成長投資積立 … 成長投資枠スケジュールで、これまでに引き落とされてきた分
-//   ④ 一括投資     … 今日までに実行済みの一括投資
+//   ① つみたて 最初の残高 … 基準年齢の時点で、つみたて投資枠に実際にいくらあったか
+//   ② 成長投資 最初の残高 … 基準年齢の時点で、成長投資枠に実際にいくらあったか
+//   ③ つみたて積立       … 積立スケジュールで、これまでに引き落とされてきた分
+//   ④ 成長投資 積立      … 成長投資枠スケジュールで、これまでに引き落とされてきた分
+//   ⑤ 一括投資           … 今日までに実行済みの一括投資
 //
 // それぞれ「元本（入れた金額）」と「年率」と「現在の評価額」を持つ。
 // 元本と評価額を並べて見られるようにするのが目的で、
@@ -18,13 +19,15 @@
 // 【重要】表示のための整形だけで、シミュレーションの計算には一切関与しない。
 // ============================================================================
 
-// 4区分の並び順。画面でも、この順で左から並べる。
-export const NISA_BREAKDOWN_KEYS = ["initial", "tsumitate", "growth", "lump"];
+// 5区分の並び順。画面でも、この順で並べる。
+export const NISA_BREAKDOWN_KEYS = [
+  "initialTsumitate", "initialGrowth", "tsumitate", "growth", "lump",
+];
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
 /**
- * 4区分の一覧を作る。
+ * 5区分の一覧を作る。
  *
  * @param {object} parts 区分ごとの { principal, value, returnPct }
  * @param {object} labels 区分ごとの表示名（key → 文字列）
@@ -62,17 +65,22 @@ export function breakdownPrincipalItems(rows) {
 /**
  * 年率の棒グラフに渡す形。
  * 年率は「割合」ではなく「率そのもの」なので、円グラフにはしない。
- * いちばん高い区分を100%として、棒の長さの比だけを返す。
+ *
+ * 目もりは必ず 0% から始める。いちばん高い区分を100%にしてしまうと、
+ * 5.0% と 6.5% の差が実際より大きく見えてしまい、読み手を誤らせる。
+ * 目もりの上限は「いちばん高い年率を整数%へ切り上げた値」に固定する。
  */
 export function breakdownReturnBars(rows) {
   const list = (Array.isArray(rows) ? rows : []).filter((r) => r && (num(r.principal) > 0 || num(r.value) > 0));
   const max = list.reduce((m, r) => Math.max(m, num(r.returnPct)), 0);
+  const axisMax = max > 0 ? Math.max(1, Math.ceil(max)) : 0;
   return list.map((r) => ({
     key: r.key,
     name: r.name,
     returnPct: num(r.returnPct),
+    axisMax,
     // 年率0%のときに棒が消えてしまわないよう、最低でも少しは見せる
-    widthPct: max > 0 ? Math.max(2, (num(r.returnPct) / max) * 100) : 0,
+    widthPct: axisMax > 0 ? Math.max(2, (num(r.returnPct) / axisMax) * 100) : 0,
   }));
 }
 
