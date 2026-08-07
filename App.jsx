@@ -2579,6 +2579,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     // 表示ページの順番（上→下）。各セクションの見出しをそのまま名前に使う。
     // 「概要」と「トップページ」だけは見出しが同じ（資産形成 総合ライフプラン）で紛らわしいため専用名。
     { anchor: "section-overview", title: t("navFullOverview") },        // 概要（一番上の紹介ページ）
+    // 家計簿アプリへの入口カード。カード自体が日本語表示のときだけ出るため、
+    // ここも同じ条件にする。条件を外すと「押しても何も起きないボタン」になる。
+    ...(language === "ja" ? [{ anchor: "section-kakeibo", title: t("navFullKakeibo") }] : []),
     { anchor: "section-column", title: t("landingBlogTitle") },         // 資産形成コラム
     { anchor: "simulator", title: t("navFullTop") },                    // トップページ（国切り替え）
     { anchor: "section-wallet", title: t("walletDashboardTitle") },     // 統合財布ダッシュボード
@@ -2597,11 +2600,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     { index: "09", title: label("loan"), icon: Landmark },
     { index: "10", title: label("insurance"), icon: HeartPulse },
     { index: "11", title: label("privatePension"), icon: PiggyBank },
+    { anchor: "section-summary", title: t("summarySectionTitle") },     // 資産サマリー（右側ダッシュボードの先頭）
     { anchor: "section-advice", title: t("adviceCardTitle") },          // 診断コメント
     { anchor: "section-comparison", title: t("scenarioCompareTitle") }, // シナリオ比較
     { anchor: "section-networth-chart", title: t("navFullChart") },     // 総資産推移グラフ
     { anchor: "section-stock", title: t("stockWatchlistTitle") },       // 個別株 保有一覧
-  ]), [label, t, country]);
+  ]), [label, t, country, language]);
 
   // 画面右下に縦並びで出す「クイックジャンプ」用の短縮ラベル一覧。
   // 各入力セクション（section-00〜11）に加えて、個別株と総資産グラフへも飛べる。
@@ -2609,6 +2613,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const quickNavItems = useMemo(() => ([
     // 表示ページの順番（上→下）に合わせて並べている。
     { anchor: "section-overview", short: t("navShortOverview") },      // 概要（一番上の紹介ページ）
+    // 家計簿（家計簿アプリへの入口カード）。カードが日本語表示のときだけ出るので、
+    // ボタンも同じ条件にする。押すとカードまでスクロールし、開くかどうかは利用者が選ぶ。
+    ...(language === "ja" ? [{ anchor: "section-kakeibo", short: t("navShortKakeibo") }] : []),
     { anchor: "section-column", short: t("navShortColumn") },          // コラム（資産形成コラム）
     { anchor: "simulator", short: t("backToTopShort") },              // トップ（国切り替えのある見出し）
     { anchor: "section-wallet", short: t("navShortWallet") },          // 総財布（統合財布ダッシュボード）
@@ -2629,12 +2636,13 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     { anchor: "section-surplus-balance", short: t("navShortSurplus") },// 余剰金（※預金の下）
     { anchor: "section-09", short: t("navShortLoan") },                // 借入
     { anchor: "section-10", short: t("navShortInsurance") },           // 保険
-    { anchor: "section-11", short: t("navShortPrivatePension") },      // 私年金
+    { anchor: "section-11", short: t("navShortPrivatePension") },      // 民年金
+    { anchor: "section-summary", short: t("navShortSummary") },        // サマリ（資産サマリーの先頭）
     { anchor: "section-advice", short: t("navShortDiagnosis") },       // 診断
     { anchor: "section-comparison", short: t("navShortComparison") },  // 比較
     { anchor: "section-networth-chart", short: t("navShortChart") },   // グラフ
     { anchor: "section-stock", short: t("navShortStock") },            // 個別株
-  ]), [t, country]);
+  ]), [t, country, language]);
 
   // いま画面に出ているセクション。右のクイックジャンプに印をつけるためだけに使う。
   const currentAnchor = useCurrentSection(quickNavItems);
@@ -3639,7 +3647,27 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         /* 上部固定ヘッダーに隠れないよう、ジャンプ先に余白を確保する */
         #simulator { scroll-margin-top: 12px; }
         #section-overview, #section-column, #section-wallet, #section-nav,
-        #section-surplus-balance, #section-advice, #section-comparison, #section-allocation { scroll-margin-top: 12px; }
+        #section-surplus-balance, #section-advice, #section-comparison, #section-allocation,
+        #section-kakeibo, #section-summary { scroll-margin-top: 12px; }
+
+        /* 資産サマリーの見出し。右側ダッシュボードの先頭に置き、
+           入力欄の続きではなく「結果のまとめ」だと分かるようにする。 */
+        .summary-heading {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin: 2px 0 12px;
+          font-size: 13px;
+          font-weight: 700;
+          letter-spacing: .04em;
+          color: var(--blue);
+        }
+        .summary-heading::after {
+          content: "";
+          flex: 1;
+          height: 1px;
+          background: var(--line);
+        }
 
         /* 上部固定ヘッダーに隠れないよう、ジャンプ先に余白を確保する */
         .section-title { scroll-margin-top: 16px; }
@@ -4257,7 +4285,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             日本語表示のときだけ出す。家計簿アプリ側の画面が日本語のみのため、
             英語版・各国版では見せない。全言語で出したい場合はこの条件を外す。 */}
         {language === "ja" && (
-          <div className="landing-kakeibo">
+          <div className="landing-kakeibo" id="section-kakeibo">
             <h3>{t("landingKakeiboTitle")}</h3>
             <p>{t("landingKakeiboDesc")}</p>
             <a
@@ -5909,6 +5937,11 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
         {/* -------- RIGHT: DASHBOARD -------- */}
         <div className="content">
+          {/* 資産サマリー：ここから下が「入力した結果をまとめて見るカード群」。
+              見出しが無いと、入力欄との境目が分からず延々とカードが続いて見えるため、
+              先頭に名前を置く。id は右のクイックジャンプ「サマリ」と
+              「入力する項目を選ぶ」の着地先。 */}
+          <div className="summary-heading" id="section-summary">{t("summarySectionTitle")}</div>
           <div className="stat-grid" style={{ marginBottom: 10 }}>
             {country === "US" ? (
               <>

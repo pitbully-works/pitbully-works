@@ -88,7 +88,7 @@ describe("UI改善：トップへ戻るボタンとスクロール着地点", ()
     // 以前は右下に別枠の .back-to-top ボタンを置いていたが、
     // ジャンプボタンをページ順に並べ替えた際に列の中へ統合した。
     const idx = app.indexOf("const quickNavItems = useMemo");
-    const block = app.slice(idx, app.indexOf("]), [t, country]);", idx));
+    const block = app.slice(idx, app.indexOf("]), [t, country, language]);", idx));
     expect(block).toContain('anchor: "simulator"');
     expect(block).toContain('t("backToTopShort")');
     // 翻訳キーが解決できる
@@ -103,7 +103,7 @@ describe("UI改善：トップへ戻るボタンとスクロール着地点", ()
   it("「トップ」の着地先は入力フォーム先頭（#simulator）", () => {
     const idx = app.indexOf("const quickNavItems = useMemo");
     expect(idx).toBeGreaterThan(0);
-    const block = app.slice(idx, app.indexOf("]), [t, country]);", idx));
+    const block = app.slice(idx, app.indexOf("]), [t, country, language]);", idx));
     expect(block).toContain('anchor: "simulator"');
     // クイックジャンプは anchor を getElementById でそのまま解決している
     expect(app).toContain("document.getElementById(anchor)");
@@ -144,15 +144,16 @@ describe("UI改善：トップへ戻るボタンとスクロール着地点", ()
 describe("UI改善：クイックジャンプ（各項目ボタン）", () => {
   const app = read("./App.jsx");
 
-  it("クイックジャンプの項目一覧に23個ある（ページ表示順：概要〜個別株）", () => {
-    // 12の入力セクションに加え、概要・コラム・トップ・総財布・項目・配分・余剰金・
-    // 診断・比較・グラフ・個別株を足して23個。
-    // （配分は country === "JP" のときだけ画面に出るが、一覧の定義としては1個）
+  it("クイックジャンプの項目一覧に25個ある（ページ表示順：概要〜個別株）", () => {
+    // 12の入力セクションに加え、概要・家計簿・コラム・トップ・総財布・項目・配分・余剰金・
+    // 民年金の下のサマリ・診断・比較・グラフ・個別株を足して25個。
+    // （配分は country === "JP"、家計簿は language === "ja" のときだけ画面に出るが、
+    //   一覧の定義としてはそれぞれ1個）
     const idx = app.indexOf("const quickNavItems = useMemo");
     expect(idx).toBeGreaterThan(0);
-    const block = app.slice(idx, app.indexOf("]), [t, country]);", idx));
+    const block = app.slice(idx, app.indexOf("]), [t, country, language]);", idx));
     const anchors = block.match(/anchor: "/g) || [];
-    expect(anchors.length).toBe(23);
+    expect(anchors.length).toBe(25);
   });
 
   it("追加したジャンプ先のアンカーがすべて実在する", () => {
