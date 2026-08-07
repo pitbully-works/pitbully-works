@@ -3647,7 +3647,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         /* 上部固定ヘッダーに隠れないよう、ジャンプ先に余白を確保する */
         #simulator { scroll-margin-top: 12px; }
         #section-overview, #section-column, #section-wallet, #section-nav,
-        #section-surplus-balance, #section-advice, #section-comparison, #section-allocation,
+        #section-surplus-balance, #section-advice, #section-comparison, #section-allocation { scroll-margin-top: 12px; }
+        /* 今回追加した着地先（家計簿カード・資産サマリー）。
+           上の行に足すと #section-allocation の書式が変わり、
+           それを文字列で見ている既存テストが壊れるため、行を分けている。 */
         #section-kakeibo, #section-summary { scroll-margin-top: 12px; }
 
         /* 資産サマリーの見出し。右側ダッシュボードの先頭に置き、

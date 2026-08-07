@@ -131,8 +131,9 @@ describe("配分セクションへのジャンプ", () => {
     expect(EN_TRANSLATIONS.sectionNavAllocation).toBeTruthy();
   });
 
-  it("項目リストは country に依存するようになった（useMemo の依存に country がある）", () => {
-    expect(app).toContain("]), [t, country]);");
-    expect(app).toContain("]), [label, t, country]);");
+  it("項目リストは country と language に依存する（useMemo の依存に両方がある）", () => {
+    // country：配分（JPのみ）／language：家計簿（日本語表示のときのみ）の出し分けに使う。
+    expect(app).toContain("]), [t, country, language]);");
+    expect(app).toContain("]), [label, t, country, language]);");
   });
 });
