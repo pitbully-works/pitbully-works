@@ -236,6 +236,29 @@ describe("壊れたデータでも落ちない", () => {
     expect(mergeList(null, null)).toEqual([]);
   });
 
+  it("配列内の null・文字列・数値を state に入れない", () => {
+    const r = mergeKakeiboInputs(
+      { banks: [{ name: "既存", balance: 50 }] },
+      payload({ banks: [null, undefined, "こわれ", 123, { name: "正常", balance: 100 }] })
+    );
+    expect(r.inputs.banks).toEqual([
+      { name: "既存", balance: 50 },
+      { name: "正常", balance: 100 },
+    ]);
+    expect(r.inputs.banks.every((row) => row && typeof row === "object" && !Array.isArray(row))).toBe(true);
+  });
+
+  it("既存配列に残った不正行も、家計簿連携時に除去する", () => {
+    const r = mergeKakeiboInputs(
+      { banks: [null, "こわれ", { name: "既存", balance: 50 }] },
+      payload({ banks: [{ name: "正常", balance: 100 }] })
+    );
+    expect(r.inputs.banks).toEqual([
+      { name: "既存", balance: 50 },
+      { name: "正常", balance: 100 },
+    ]);
+  });
+
   it("もとのデータを書き換えない（複製して返す）", () => {
     const cur = CURRENT();
     const before = JSON.stringify(cur);
