@@ -5772,10 +5772,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                       <div>{t("premiumRangeLabel")} {formatAge(p.premiumFromAge)}〜{formatAge(p.premiumToAge)}：{money(p.monthlyPremium)}{t("perMonthSuffix")}</div>
                       <div style={{ color: "#7C8A90" }}>{t("coverageUntilLabel", { age: formatAge(p.coverageUntilAge) })}</div>
                       <div style={{ color: "#7C8A90" }}>
-                        {t("benefitHospitalization", { amount: money(p.benefits.hospitalizationPerDay), limit: p.benefits.hospitalizationDaysLimit || 0 })}{t("benefitSeparator")}
-                        {t("benefitSurgery", { amount: money(p.benefits.hospitalizationSurgery) })}{t("benefitSeparator")}
-                        {t("benefitDaySurgery", { amount: money(p.benefits.daySurgery) })}{t("benefitSeparator")}{t("benefitRadiation", { amount: money(p.benefits.radiationPerSession) })}{t("benefitSeparator")}
-                        {t("benefitAdvancedMedical", { amount: money(p.benefits.advancedMedical) })}{t("benefitSeparator")}{t("benefitDeath", { amount: money(p.benefits.death) })}
+                        {t("benefitHospitalization", { amount: money(p.benefits?.hospitalizationPerDay), limit: p.benefits?.hospitalizationDaysLimit || 0 })}{t("benefitSeparator")}
+                        {t("benefitSurgery", { amount: money(p.benefits?.hospitalizationSurgery) })}{t("benefitSeparator")}
+                        {t("benefitDaySurgery", { amount: money(p.benefits?.daySurgery) })}{t("benefitSeparator")}{t("benefitRadiation", { amount: money(p.benefits?.radiationPerSession) })}{t("benefitSeparator")}
+                        {t("benefitAdvancedMedical", { amount: money(p.benefits?.advancedMedical) })}{t("benefitSeparator")}{t("benefitDeath", { amount: money(p.benefits?.death) })}
                       </div>
                       {(p.customBenefits || []).length > 0 && (
                         <div style={{ color: "#7C8A90", marginTop: 4 }}>

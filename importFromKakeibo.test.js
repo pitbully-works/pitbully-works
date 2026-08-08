@@ -259,6 +259,32 @@ describe("壊れたデータでも落ちない", () => {
     ]);
   });
 
+
+  it("家計簿から新規保険が来ても benefits 欠落で白画面にならない形にする", () => {
+    const r = mergeKakeiboInputs(
+      { insurancePolicies: [] },
+      payload({
+        insurancePolicies: [{
+          id: "ins-new", name: "新しい保険", monthlyPremium: 5000,
+          premiumFromAge: 50, premiumToAge: 65, coverageUntilAge: 80,
+        }],
+      })
+    );
+    expect(r.inputs.insurancePolicies).toHaveLength(1);
+    expect(r.inputs.insurancePolicies[0].benefits).toEqual({});
+    expect(r.inputs.insurancePolicies[0].customBenefits).toEqual([]);
+    expect(() => r.inputs.insurancePolicies[0].benefits.hospitalizationPerDay).not.toThrow();
+  });
+
+  it("古い保険データで benefits が欠けていても、家計簿連携時に補修する", () => {
+    const r = mergeKakeiboInputs(
+      { insurancePolicies: [{ id: "old", name: "古い保険", monthlyPremium: 1000 }] },
+      payload({ banks: [{ name: "A", balance: 1 }] })
+    );
+    expect(r.inputs.insurancePolicies[0].benefits).toEqual({});
+    expect(r.inputs.insurancePolicies[0].customBenefits).toEqual([]);
+  });
+
   it("もとのデータを書き換えない（複製して返す）", () => {
     const cur = CURRENT();
     const before = JSON.stringify(cur);
