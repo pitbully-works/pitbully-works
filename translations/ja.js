@@ -586,6 +586,7 @@ export const JA_TRANSLATIONS = {
     "idecoPrincipalLabel": "投資元本（これまでの掛金累計）",
     "idecoProductDefault": "全世界株式",
     "idecoProductNameLabel": "運用商品名",
+    "birthMismatchWarning": "家計簿（{kakeibo}）とライフプラン（{lifePlan}）で生年月日が違います。どちらかを直してください（自動では書き換えません）。",
     "importFailedError": "読み込みに失敗しました。正しいバックアップテキストか確認してください。（{message}）",
     "importInputsNotFoundError": "入力データが見つかりません",
     "inheritanceAmountPlaceholder": "残したい金額（円）",

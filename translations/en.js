@@ -586,6 +586,7 @@ export const EN_TRANSLATIONS = {
     "idecoPrincipalLabel": "Principal (Total Contributions So Far)",
     "idecoProductDefault": "Global Equity Index Fund",
     "idecoProductNameLabel": "Investment Product Name",
+    "birthMismatchWarning": "The date of birth differs between the household app ({kakeibo}) and this plan ({lifePlan}). Please correct one of them; nothing was changed automatically.",
     "importFailedError": "Failed to load. Please check that this is the correct backup text. ({message})",
     "importInputsNotFoundError": "Input data not found",
     "inheritanceAmountPlaceholder": "Amount to leave",
