@@ -25,6 +25,7 @@ import { translateWith } from "./translations/index.js";
 // 診断コメント：既存の計算結果だけを見てルールで判定する純粋関数（外部AIは使わない）。
 import { generateAdvice } from "./utils/generateAdvice.js";
 import { pickCurrentAnchor } from "./utils/currentSection.js";
+import { isKakeiboPayload, mergeKakeiboInputs } from "./utils/importFromKakeibo.js";
 import { buildNisaBreakdown, breakdownPrincipalItems, breakdownReturnBars, breakdownTotals } from "./utils/nisaBreakdown.js";
 import { describeSchedulePace } from "./utils/schedulePace.js";
 // 国に依存しない共通UI部品（入力欄・ガイド・内訳グラフ）と表示基盤（LocaleContext等）は ui/ 配下へ分離。
@@ -1850,6 +1851,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const [surplusFocusAge, setSurplusFocusAge] = useState(null);
   const [importText, setImportText] = useState("");
   const [importError, setImportError] = useState("");
+  /* 家計簿とライフプランで生年月日が違うときに知らせる。勝手に書き換えない。 */
+  const [importBirthMismatch, setImportBirthMismatch] = useState(null);
   const [importOk, setImportOk] = useState(false);
 
   const backupText = useMemo(() => {
@@ -1866,6 +1869,17 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     try {
       const parsed = JSON.parse(importText);
       if (!parsed.inputs) throw new Error(t("importInputsNotFoundError"));
+      /* 家計簿から来たデータは、通常のバックアップ復元とは別あつかい。
+         向こうは一部の項目しか持っていないので、丸ごと入れ替えると
+         こちらで入れた保障内容などが消えてしまう。届いた項目だけを重ねる。 */
+      if (isKakeiboPayload(parsed)) {
+        const merged = mergeKakeiboInputs(inputs, parsed);
+        setInputs(merged.inputs);
+        setImportBirthMismatch(merged.birthMismatch);
+        setImportOk(true);
+        return;
+      }
+      setImportBirthMismatch(null);
       setInputs((prev) => mergeSavedInputs(prev, parsed.inputs));
       if (parsed.watchlist) setWatchlist(parsed.watchlist);
       setImportOk(true);
@@ -4522,6 +4536,11 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           <button className="history-action" onClick={importBackup}>{t("backupImportButton")}</button>
           {importOk && <span style={{ fontSize: 11, color: "var(--green)", marginLeft: 8 }}>{t("backupImportSuccess")}</span>}
           {importError && <div style={{ fontSize: 11, color: "var(--danger)", marginTop: 6 }}>{importError}</div>}
+          {importBirthMismatch && (
+            <div style={{ fontSize: 11, color: "var(--warn, #E0A030)", marginTop: 6 }}>
+              {t("birthMismatchWarning", { kakeibo: importBirthMismatch.kakeibo, lifePlan: importBirthMismatch.lifePlan })}
+            </div>
+          )}
         </div>
       )}
 
