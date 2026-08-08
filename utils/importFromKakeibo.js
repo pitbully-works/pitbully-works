@@ -142,5 +142,18 @@ export function mergeKakeiboInputs(current, payload) {
     birthMismatch = { kakeibo: fromKakeibo, lifePlan: mine };
   }
 
+  // 家計簿は保険料・払込期間までは持つが、ライフプラン固有の保障詳細
+  // (benefits / customBenefits) を持たない。新規契約として追加された行では
+  // benefits 自体が無いままになるため、App の描画で p.benefits.xxx を参照すると
+  // React が例外で停止し、画面が真っ白になる。
+  // 既存の古い保存データに欠落があっても同じ事故が起きないよう、入口で形を保証する。
+  if (Array.isArray(out.insurancePolicies)) {
+    out.insurancePolicies = out.insurancePolicies.filter(isPlainObject).map((p) => ({
+      ...p,
+      benefits: isPlainObject(p.benefits) ? p.benefits : {},
+      customBenefits: Array.isArray(p.customBenefits) ? p.customBenefits.filter(isPlainObject) : [],
+    }));
+  }
+
   return { inputs: out, touched, birthMismatch };
 }
