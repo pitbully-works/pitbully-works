@@ -79,10 +79,14 @@ function findMatch(list, incoming, usedIndexes) {
  *  ・届かなかった既存の行は、そのまま残す（消さない）
  */
 export function mergeList(mine, incoming) {
-  const current = Array.isArray(mine) ? mine : [];
-  const rows = Array.isArray(incoming) ? incoming : [];
+  // 配列の各行は「オブジェクト」であることが前提。
+  // null / 文字列 / 数値などを state に混ぜると、App 側の自動保存や集計で
+  // row.balance のような参照をした瞬間に白画面になる可能性がある。
+  // 入口で不正行を捨て、既存側に残っていた不正行もここで除去する。
+  const current = Array.isArray(mine) ? mine.filter(isPlainObject) : [];
+  const rows = Array.isArray(incoming) ? incoming.filter(isPlainObject) : [];
   if (rows.length === 0) return current;      // 空配列は「全部消せ」ではない
-  const out = current.map((r) => (isPlainObject(r) ? { ...r } : r));
+  const out = current.map((r) => ({ ...r }));
   const used = new Set();
   const added = [];
   rows.forEach((row) => {
@@ -91,7 +95,7 @@ export function mergeList(mine, incoming) {
       used.add(at);
       out[at] = overlayItem(out[at], row);
     } else {
-      added.push(isPlainObject(row) ? { ...row } : row);
+      added.push({ ...row });
     }
   });
   return out.concat(added);
