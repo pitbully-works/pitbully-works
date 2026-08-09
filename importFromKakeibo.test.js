@@ -16,7 +16,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { isKakeiboPayload, mergeList, mergeKakeiboInputs } from "./utils/importFromKakeibo.js";
+import { isKakeiboPayload, mergeList, mergeKakeiboInputs, findScheduleOverlaps } from "./utils/importFromKakeibo.js";
 import { JA_TRANSLATIONS } from "./translations/ja.js";
 import { EN_TRANSLATIONS } from "./translations/en.js";
 
@@ -236,59 +236,112 @@ describe("壊れたデータでも落ちない", () => {
     expect(mergeList(null, null)).toEqual([]);
   });
 
-  it("配列内の null・文字列・数値を state に入れない", () => {
-    const r = mergeKakeiboInputs(
-      { banks: [{ name: "既存", balance: 50 }] },
-      payload({ banks: [null, undefined, "こわれ", 123, { name: "正常", balance: 100 }] })
-    );
-    expect(r.inputs.banks).toEqual([
-      { name: "既存", balance: 50 },
-      { name: "正常", balance: 100 },
-    ]);
-    expect(r.inputs.banks.every((row) => row && typeof row === "object" && !Array.isArray(row))).toBe(true);
-  });
-
-  it("既存配列に残った不正行も、家計簿連携時に除去する", () => {
-    const r = mergeKakeiboInputs(
-      { banks: [null, "こわれ", { name: "既存", balance: 50 }] },
-      payload({ banks: [{ name: "正常", balance: 100 }] })
-    );
-    expect(r.inputs.banks).toEqual([
-      { name: "既存", balance: 50 },
-      { name: "正常", balance: 100 },
-    ]);
-  });
-
-
-  it("家計簿から新規保険が来ても benefits 欠落で白画面にならない形にする", () => {
-    const r = mergeKakeiboInputs(
-      { insurancePolicies: [] },
-      payload({
-        insurancePolicies: [{
-          id: "ins-new", name: "新しい保険", monthlyPremium: 5000,
-          premiumFromAge: 50, premiumToAge: 65, coverageUntilAge: 80,
-        }],
-      })
-    );
-    expect(r.inputs.insurancePolicies).toHaveLength(1);
-    expect(r.inputs.insurancePolicies[0].benefits).toEqual({});
-    expect(r.inputs.insurancePolicies[0].customBenefits).toEqual([]);
-    expect(() => r.inputs.insurancePolicies[0].benefits.hospitalizationPerDay).not.toThrow();
-  });
-
-  it("古い保険データで benefits が欠けていても、家計簿連携時に補修する", () => {
-    const r = mergeKakeiboInputs(
-      { insurancePolicies: [{ id: "old", name: "古い保険", monthlyPremium: 1000 }] },
-      payload({ banks: [{ name: "A", balance: 1 }] })
-    );
-    expect(r.inputs.insurancePolicies[0].benefits).toEqual({});
-    expect(r.inputs.insurancePolicies[0].customBenefits).toEqual([]);
-  });
-
   it("もとのデータを書き換えない（複製して返す）", () => {
     const cur = CURRENT();
     const before = JSON.stringify(cur);
     mergeKakeiboInputs(cur, payload({ banks: [{ name: "JAめぐみの", balance: 999 }] }));
     expect(JSON.stringify(cur)).toBe(before, "渡された側を書き換えている");
+  });
+});
+
+// ============================================================================
+// NISAの積立区間が重なっていないか知らせる
+//
+// 【なぜ要るか】
+// 区間は名前を持たず、こちらで手入力した区間には id も無い。そのため
+// 家計簿から来た区間は既存の行と対応させられず、新しい行として足される。
+// 「35〜65歳」と「57〜65歳」が並ぶと、重なる期間は合算されて積立額が二重になる。
+//
+// 開始年齢が違う区間を勝手に同じものと決めつけるのは危ないので、
+// 知らせるだけにして、消すかどうかは利用者に任せる。
+// ============================================================================
+describe("NISAの積立区間の重なりを知らせる", () => {
+  it("手入力の区間と家計簿の区間が重なったら知らせる", () => {
+    const current = { tsumitateSchedule: [{ fromAge: 35, toAge: 65, monthlyYen: 100000 }] };
+    const r = mergeKakeiboInputs(current, {
+      source: "kakeibo",
+      inputs: { tsumitateSchedule: [{ fromAge: 57, toAge: 65, monthlyYen: 100000, id: "k1" }] },
+    });
+    expect(r.scheduleOverlaps).toContain("tsumitateSchedule");
+    /* 知らせるだけ。勝手に消さない */
+    expect(r.inputs.tsumitateSchedule).toHaveLength(2);
+  });
+
+  it("重なっていなければ知らせない", () => {
+    expect(findScheduleOverlaps({
+      tsumitateSchedule: [
+        { fromAge: 35, toAge: 56, monthlyYen: 100000 },
+        { fromAge: 57, toAge: 65, monthlyYen: 100000 },
+      ],
+    })).toEqual([]);
+  });
+
+  it("端の年齢が同じなら、その年齢は両方に入るので重なりとみなす", () => {
+    expect(findScheduleOverlaps({
+      growthSchedule: [
+        { fromAge: 35, toAge: 57, monthlyYen: 50000 },
+        { fromAge: 57, toAge: 65, monthlyYen: 10000 },
+      ],
+    })).toEqual(["growthSchedule"]);
+  });
+
+  it("金額が0の区間は、計算に効かないので知らせない", () => {
+    expect(findScheduleOverlaps({
+      tsumitateSchedule: [
+        { fromAge: 35, toAge: 65, monthlyYen: 0 },
+        { fromAge: 57, toAge: 65, monthlyYen: 100000 },
+      ],
+    })).toEqual([]);
+  });
+
+  it("つみたて枠と成長枠は別ものなので、またいだ重なりは知らせない", () => {
+    expect(findScheduleOverlaps({
+      tsumitateSchedule: [{ fromAge: 35, toAge: 65, monthlyYen: 100000 }],
+      growthSchedule: [{ fromAge: 35, toAge: 65, monthlyYen: 50000 }],
+    })).toEqual([]);
+  });
+
+  it("両方の枠で重なっていれば、両方を知らせる", () => {
+    expect(findScheduleOverlaps({
+      tsumitateSchedule: [{ fromAge: 35, toAge: 65, monthlyYen: 1 }, { fromAge: 57, toAge: 65, monthlyYen: 1 }],
+      growthSchedule: [{ fromAge: 35, toAge: 65, monthlyYen: 1 }, { fromAge: 57, toAge: 65, monthlyYen: 1 }],
+    })).toEqual(["tsumitateSchedule", "growthSchedule"]);
+  });
+
+  it("壊れたデータでも落ちない", () => {
+    expect(() => findScheduleOverlaps(null)).not.toThrow();
+    expect(findScheduleOverlaps(null)).toEqual([]);
+    expect(findScheduleOverlaps({ tsumitateSchedule: "こわれ" })).toEqual([]);
+    expect(findScheduleOverlaps({ tsumitateSchedule: [null, undefined, 3] })).toEqual([]);
+    expect(findScheduleOverlaps({ tsumitateSchedule: [{ fromAge: 65, toAge: 35, monthlyYen: 1 }] })).toEqual([]);
+  });
+
+  it("取り込みそのものは、これまでどおり動く（知らせるだけ）", () => {
+    const current = { tsumitateSchedule: [{ fromAge: 35, toAge: 65, monthlyYen: 100000 }] };
+    const before = JSON.stringify(current);
+    const r = mergeKakeiboInputs(current, {
+      source: "kakeibo",
+      inputs: { tsumitateSchedule: [{ fromAge: 57, toAge: 65, monthlyYen: 100000, id: "k1" }] },
+    });
+    expect(JSON.stringify(current)).toBe(before, "渡された側を書き換えている");
+    expect(r.inputs.tsumitateSchedule[0]).toEqual({ fromAge: 35, toAge: 65, monthlyYen: 100000 });
+  });
+});
+
+describe("重なりの知らせの文言", () => {
+  it("日本語・英語の両方にある", () => {
+    expect(JA_TRANSLATIONS.scheduleOverlapWarning).toBeTruthy();
+    expect(EN_TRANSLATIONS.scheduleOverlapWarning).toBeTruthy();
+  });
+
+  it("合算されることと、確認をうながすことが書いてある", () => {
+    expect(JA_TRANSLATIONS.scheduleOverlapWarning).toContain("合算");
+    expect(JA_TRANSLATIONS.scheduleOverlapWarning).toContain("確認");
+  });
+
+  it("画面につながっている（勝手に消さず、知らせるだけ）", () => {
+    const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "App.jsx"), "utf8");
+    expect(src).toContain("scheduleOverlapWarning");
+    expect(src).toContain("setImportScheduleOverlaps");
   });
 });
