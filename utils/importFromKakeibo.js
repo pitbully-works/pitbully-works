@@ -34,6 +34,38 @@ export function isKakeiboPayload(parsed) {
 
 const isPlainObject = (v) => v && typeof v === "object" && !Array.isArray(v);
 
+const EMPTY_INSURANCE_BENEFITS = Object.freeze({
+  hospitalizationPerDay: 0,
+  hospitalizationDaysLimit: 0,
+  hospitalizationSurgery: 0,
+  daySurgery: 0,
+  radiationPerSession: 0,
+  advancedMedical: 0,
+  death: 0,
+});
+
+function normalizeInsurancePolicy(row) {
+  if (!isPlainObject(row)) return null;
+  return {
+    ...row,
+    benefits: {
+      ...EMPTY_INSURANCE_BENEFITS,
+      ...(isPlainObject(row.benefits) ? row.benefits : {}),
+    },
+    customBenefits: Array.isArray(row.customBenefits)
+      ? row.customBenefits.filter(isPlainObject)
+      : [],
+  };
+}
+
+function normalizeImportedList(key, list) {
+  if (!Array.isArray(list)) return list;
+  if (key === "insurancePolicies") {
+    return list.map(normalizeInsurancePolicy).filter(Boolean);
+  }
+  return list;
+}
+
 /**
  * 1件ぶんを重ねる。届いた項目だけを上書きし、こちらにしかない項目は残す。
  * 入れ子のオブジェクト（benefits など）も、丸ごと置き換えずに重ねる。
@@ -79,10 +111,14 @@ function findMatch(list, incoming, usedIndexes) {
  *  ・届かなかった既存の行は、そのまま残す（消さない）
  */
 export function mergeList(mine, incoming) {
-  const current = Array.isArray(mine) ? mine : [];
-  const rows = Array.isArray(incoming) ? incoming : [];
+  // 配列の各行は「オブジェクト」であることが前提。
+  // null / 文字列 / 数値などを state に混ぜると、App 側の自動保存や集計で
+  // row.balance のような参照をした瞬間に白画面になる可能性がある。
+  // 入口で不正行を捨て、既存側に残っていた不正行もここで除去する。
+  const current = Array.isArray(mine) ? mine.filter(isPlainObject) : [];
+  const rows = Array.isArray(incoming) ? incoming.filter(isPlainObject) : [];
   if (rows.length === 0) return current;      // 空配列は「全部消せ」ではない
-  const out = current.map((r) => (isPlainObject(r) ? { ...r } : r));
+  const out = current.map((r) => ({ ...r }));
   const used = new Set();
   const added = [];
   rows.forEach((row) => {
@@ -91,46 +127,10 @@ export function mergeList(mine, incoming) {
       used.add(at);
       out[at] = overlayItem(out[at], row);
     } else {
-      added.push(isPlainObject(row) ? { ...row } : row);
+      added.push({ ...row });
     }
   });
   return out.concat(added);
-}
-
-/**
- * NISAの積立区間が重なっていないか調べる。読むだけで、直しも消しもしない。
- *
- * 【なぜ要るか】
- * 区間は名前を持たない。こちらで手入力した区間には id も無い。
- * そのため家計簿から来た区間は、既存の行と対応させられず新しい行として足される。
- * 「35〜65歳」と「57〜65歳」のように、開始年齢だけ違う区間が並ぶことがある。
- * 重なった期間は合算して計算されるので、気づかないと積立額が二重になる。
- *
- * 開始年齢が違う区間を勝手に同じものと決めつけるのは危ないので、
- * ここでは<b>知らせるだけ</b>にして、消すかどうかは利用者に任せる。
- *
- * 金額が0の区間は計算に効かないので、重なっていても知らせない。
- *
- * @param {object} inputs 重ねたあとの inputs
- * @returns {string[]} 重なっていた枠の名前（"tsumitateSchedule" / "growthSchedule"）
- */
-export function findScheduleOverlaps(inputs) {
-  const src = isPlainObject(inputs) ? inputs : {};
-  const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
-  const hit = [];
-  ["tsumitateSchedule", "growthSchedule"].forEach((key) => {
-    const rows = (Array.isArray(src[key]) ? src[key] : [])
-      .filter((r) => isPlainObject(r) && num(r.monthlyYen) > 0)
-      .map((r) => ({ from: num(r.fromAge), to: num(r.toAge) }))
-      .filter((r) => r.to >= r.from);
-    for (let i = 0; i < rows.length; i++) {
-      for (let j = i + 1; j < rows.length; j++) {
-        /* 端どうしが同じ年齢でも、その年齢は両方に入るので重なりとみなす */
-        if (rows[i].from <= rows[j].to && rows[j].from <= rows[i].to) { hit.push(key); return; }
-      }
-    }
-  });
-  return hit;
 }
 
 /**
@@ -152,7 +152,7 @@ export function mergeKakeiboInputs(current, payload) {
     if (v === undefined || v === null) return;
     if (Array.isArray(v)) {
       if (v.length === 0) return;                       // 空配列は無視（消さない）
-      out[key] = mergeList(base[key], v);
+      out[key] = mergeList(normalizeImportedList(key, base[key]), normalizeImportedList(key, v));
       touched.push(key);
       return;
     }
@@ -174,8 +174,5 @@ export function mergeKakeiboInputs(current, payload) {
     birthMismatch = { kakeibo: fromKakeibo, lifePlan: mine };
   }
 
-  /* 区間が重なっていたら知らせる。消したり寄せたりはしない。 */
-  const scheduleOverlaps = findScheduleOverlaps(out);
-
-  return { inputs: out, touched, birthMismatch, scheduleOverlaps };
+  return { inputs: out, touched, birthMismatch };
 }
