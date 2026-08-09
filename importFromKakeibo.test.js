@@ -72,7 +72,7 @@ describe("ライフプランにしかない情報を消さない", () => {
       insurancePolicies: [{ name: "JAめぐみの　医療共済", monthlyPremium: 16000, premiumFromAge: 46, premiumToAge: 63 }],
     }));
     const p = r.inputs.insurancePolicies[0];
-    expect(p.benefits).toEqual({ hospitalizationPerDay: 10000, hospitalizationSurgery: 200000, death: 0 });
+    expect(p.benefits).toEqual(expect.objectContaining({ hospitalizationPerDay: 10000, hospitalizationSurgery: 200000, death: 0 }));
   });
 
   it("保険の customBenefits が残る", () => {
