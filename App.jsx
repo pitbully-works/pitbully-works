@@ -1853,6 +1853,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const [importError, setImportError] = useState("");
   /* 家計簿とライフプランで生年月日が違うときに知らせる。勝手に書き換えない。 */
   const [importBirthMismatch, setImportBirthMismatch] = useState(null);
+  /* NISAの積立区間が重なっていたら知らせる。消したり寄せたりはしない。 */
+  const [importScheduleOverlaps, setImportScheduleOverlaps] = useState([]);
   const [importOk, setImportOk] = useState(false);
 
   const backupText = useMemo(() => {
@@ -1876,10 +1878,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         const merged = mergeKakeiboInputs(inputs, parsed);
         setInputs(merged.inputs);
         setImportBirthMismatch(merged.birthMismatch);
+        setImportScheduleOverlaps(merged.scheduleOverlaps || []);
         setImportOk(true);
         return;
       }
       setImportBirthMismatch(null);
+      setImportScheduleOverlaps([]);
       setInputs((prev) => mergeSavedInputs(prev, parsed.inputs));
       if (parsed.watchlist) setWatchlist(parsed.watchlist);
       setImportOk(true);
@@ -4541,6 +4545,11 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               {t("birthMismatchWarning", { kakeibo: importBirthMismatch.kakeibo, lifePlan: importBirthMismatch.lifePlan })}
             </div>
           )}
+          {importScheduleOverlaps.length > 0 && (
+            <div style={{ fontSize: 11, color: "var(--warn, #E0A030)", marginTop: 6 }}>
+              {t("scheduleOverlapWarning")}
+            </div>
+          )}
         </div>
       )}
 
@@ -5772,10 +5781,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                       <div>{t("premiumRangeLabel")} {formatAge(p.premiumFromAge)}〜{formatAge(p.premiumToAge)}：{money(p.monthlyPremium)}{t("perMonthSuffix")}</div>
                       <div style={{ color: "#7C8A90" }}>{t("coverageUntilLabel", { age: formatAge(p.coverageUntilAge) })}</div>
                       <div style={{ color: "#7C8A90" }}>
-                        {t("benefitHospitalization", { amount: money(p.benefits?.hospitalizationPerDay), limit: p.benefits?.hospitalizationDaysLimit || 0 })}{t("benefitSeparator")}
-                        {t("benefitSurgery", { amount: money(p.benefits?.hospitalizationSurgery) })}{t("benefitSeparator")}
-                        {t("benefitDaySurgery", { amount: money(p.benefits?.daySurgery) })}{t("benefitSeparator")}{t("benefitRadiation", { amount: money(p.benefits?.radiationPerSession) })}{t("benefitSeparator")}
-                        {t("benefitAdvancedMedical", { amount: money(p.benefits?.advancedMedical) })}{t("benefitSeparator")}{t("benefitDeath", { amount: money(p.benefits?.death) })}
+                        {t("benefitHospitalization", { amount: money(p.benefits.hospitalizationPerDay), limit: p.benefits.hospitalizationDaysLimit || 0 })}{t("benefitSeparator")}
+                        {t("benefitSurgery", { amount: money(p.benefits.hospitalizationSurgery) })}{t("benefitSeparator")}
+                        {t("benefitDaySurgery", { amount: money(p.benefits.daySurgery) })}{t("benefitSeparator")}{t("benefitRadiation", { amount: money(p.benefits.radiationPerSession) })}{t("benefitSeparator")}
+                        {t("benefitAdvancedMedical", { amount: money(p.benefits.advancedMedical) })}{t("benefitSeparator")}{t("benefitDeath", { amount: money(p.benefits.death) })}
                       </div>
                       {(p.customBenefits || []).length > 0 && (
                         <div style={{ color: "#7C8A90", marginTop: 4 }}>
