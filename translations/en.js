@@ -587,6 +587,7 @@ export const EN_TRANSLATIONS = {
     "idecoProductDefault": "Global Equity Index Fund",
     "idecoProductNameLabel": "Investment Product Name",
     "birthMismatchWarning": "The date of birth differs between the household app ({kakeibo}) and this plan ({lifePlan}). Please correct one of them; nothing was changed automatically.",
+    "scheduleOverlapWarning": "Your NISA contribution periods overlap. Overlapping years are added together in the calculation. Please check that this duplication is intended.",
     "importFailedError": "Failed to load. Please check that this is the correct backup text. ({message})",
     "importInputsNotFoundError": "Input data not found",
     "inheritanceAmountPlaceholder": "Amount to leave",

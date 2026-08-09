@@ -587,6 +587,7 @@ export const JA_TRANSLATIONS = {
     "idecoProductDefault": "全世界株式",
     "idecoProductNameLabel": "運用商品名",
     "birthMismatchWarning": "家計簿（{kakeibo}）とライフプラン（{lifePlan}）で生年月日が違います。どちらかを直してください（自動では書き換えません）。",
+    "scheduleOverlapWarning": "NISAの積立区間が重なっています。重なる期間は合算して計算されます。意図しない重複でないか確認してください。",
     "importFailedError": "読み込みに失敗しました。正しいバックアップテキストか確認してください。（{message}）",
     "importInputsNotFoundError": "入力データが見つかりません",
     "inheritanceAmountPlaceholder": "残したい金額（円）",
