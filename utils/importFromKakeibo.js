@@ -152,7 +152,12 @@ export function mergeKakeiboInputs(current, payload) {
     if (v === undefined || v === null) return;
     if (Array.isArray(v)) {
       if (v.length === 0) return;                       // 空配列は無視（消さない）
-      out[key] = mergeList(normalizeImportedList(key, base[key]), normalizeImportedList(key, v));
+      // 既存側だけ先に補修する。家計簿から来た行を先に補完すると、
+      // 「届いていない customBenefits」を []、「届いていない benefits」を 0 として
+      // 既存の保障内容へ上書きしてしまうため、incoming はそのまま重ねる。
+      // マージ後に最終結果を補修すれば、新規保険にも安全な既定値が入る。
+      const merged = mergeList(normalizeImportedList(key, base[key]), v);
+      out[key] = normalizeImportedList(key, merged);
       touched.push(key);
       return;
     }
