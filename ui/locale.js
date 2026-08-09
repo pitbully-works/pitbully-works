@@ -89,7 +89,7 @@ const CATEGORY_LABELS = {
     AU: "Loans (Repayment Simulation)",
   },
   insurance: {
-    JP: "生命保険",
+    JP: "各種保険",
     US: "Insurance (Life)",
     GB: "Life Insurance",
     CA: "Insurance (Life)",
