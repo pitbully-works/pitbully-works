@@ -1203,8 +1203,15 @@ const formatDateLabel = (d) => {
   return `${dt.getFullYear()}/${dt.getMonth() + 1}/${dt.getDate()}`;
 };
 
-export default function NisaLifePlan({ onOpenBlog } = {}) {
-  const [inputs, setInputs] = useState({
+/* 入力欄のはじめの値。
+   「すべて初期値に戻す」でも使うので、コンポーネントの外に出して1か所にまとめた。
+   中身は変えていない。定数なので、戻すときは必ず複製してから渡すこと。 */
+/* 初期値を複製して渡す。定数をそのまま渡すと、書き換えたときに
+   初期値そのものが変わってしまう。中身はただのデータなので JSON で複製する
+   （structuredClone より古い端末でも動く）。 */
+const cloneDefaults = () => JSON.parse(JSON.stringify(DEFAULT_INPUTS));
+
+const DEFAULT_INPUTS = {
     country: "JP", // 表示名の切替に使用。計算ロジックは現状すべて日本のルールのまま
     baseCurrency: "JPY", // 金額表示に使用。countryとは別データ（将来、国と通貨の組み合わせを自由に変更可能にするため）
     language: "ja", // 将来のUI言語切替用（現時点ではlabel()は country ベースの表示名切替のみ）
@@ -1424,8 +1431,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       },
       expensesMonthly: 0,
     },
-  });
+};
+
+export default function NisaLifePlan({ onOpenBlog } = {}) {
+  const [inputs, setInputs] = useState(() => cloneDefaults());
   const [watchlist, setWatchlist] = useState(DEFAULT_WATCHLIST);
+
 
   // ---------- 国際化（i18n）：国が"JP"のままなら、moneyはyenと完全に同じ結果を返す ----------
   // 重要：このブロックはファイル内で最初期（他のuseMemo/useCallbackより前）に置くこと。
@@ -1754,6 +1765,17 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const money = useCallback((n) => formatMoneyFor(baseCurrency, n), [baseCurrency]);
   const label = useCallback((key) => getCategoryLabel(key, country), [country]);
   const t = useCallback((key, vars) => translateWith(language, key, vars), [language]);
+  /* すべて初期値に戻す。
+     取り返しがつかないので二度たずねる。
+     一度目は何が消えるか、二度目は本当に押したのかを確かめる。
+     保存済みのデータも消すため、書き出しを先に促す。 */
+  const resetAllInputs = () => {
+    if (typeof window === "undefined" || typeof window.confirm !== "function") return;
+    if (!window.confirm(t("resetAllConfirm1"))) return;
+    if (!window.confirm(t("resetAllConfirm2"))) return;
+    setInputs(cloneDefaults());
+    setWatchlist(defaultWatchlistFor("JP"));
+  };
   // 海外（日本語以外）でコラムを開こうとしたときに「準備中」表示を出すためのフラグ
   const [blogComingSoon, setBlogComingSoon] = useState(false);
   // Field/表示用の単位文字列（通貨のみ切替、円建て表示のロジック自体は変更しない）
@@ -3337,6 +3359,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           .chart-frame .chart-label { padding-left: 10px; padding-right: 10px; }
           .add-row { flex-wrap: wrap; }
           .add-row input { flex: 1 1 140px; }
+          /* 表のセルの中にある追加欄は、幅が狭いので1行ずつに折り返す。
+             2つの入力欄とボタンを横に並べると、文字が読めないほど細くなる。 */
+          table.watchlist .add-row input { flex: 1 1 100%; }
+          table.watchlist .add-row .add-btn { flex: 1 1 100%; justify-content: center; }
           .add-btn { min-height: 36px; }
           table.watchlist { width: 100%; table-layout: fixed; }
           table.watchlist th, table.watchlist td { white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
@@ -3870,10 +3896,15 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         }
         table.watchlist td { padding: 7px 8px; border-bottom: 1px solid rgba(42,54,60,0.5); }
         table.watchlist tr:hover { background: rgba(79,168,216,0.05); }
+        /* ゴミ箱は、どの表でも同じ大きさ・同じ位置にする。
+           保険と民間年金だけ列幅の合計が100%を超えていて、
+           この列が潰れて小さく見えていた。 */
         .del-btn {
           background: none; border: none; color: var(--muted); cursor: pointer;
-          display: flex; align-items: center; padding: 2px;
+          display: flex; align-items: center; justify-content: center;
+          padding: 2px; width: 24px; min-width: 24px; height: 24px;
         }
+        .del-btn svg { width: 13px; height: 13px; flex: none; }
         .del-btn:hover { color: var(--danger); }
 
         .add-row {
@@ -3890,6 +3921,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           display: flex; align-items: center; cursor: pointer;
         }
         .add-btn:hover { background: var(--blue); }
+
+        /* 取り返しのつかない操作は、見た目でも他と区別する */
+        .history-toggle.danger { border-color: var(--danger); color: var(--danger); }
+        .history-toggle.danger:hover { background: rgba(224,80,80,0.12); }
 
         .history-toggle {
           background: var(--panel-2); border: 1px solid var(--line);
@@ -4448,6 +4483,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             {showTodayTotal
               ? t("todayTotalShown", { amount: money(netWorthYearly[0]?.netWorth ?? netWorthFinal) })
               : t("todayTotalHidden")}
+          </button>
+          <button className="history-toggle danger no-print" onClick={resetAllInputs}>
+            {t("resetAllButton")}
           </button>
         </div>
       </div>
@@ -5772,7 +5810,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           <SectionGuide guide={t("insuranceGuide")} />
           {inputs.insurancePolicies.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 10 }}>
-              <thead><tr><th style={{ width: "26%" }}>{t("insuranceNameCol")}</th><th style={{ width: "62%" }}>{t("premiumCoverageCol")}</th><th style={{ width: "24px" }}></th></tr></thead>
+              <thead><tr><th style={{ width: "26%" }}>{t("insuranceNameCol")}</th><th>{t("premiumCoverageCol")}</th><th style={{ width: 24 }}></th></tr></thead>
               <tbody>
                 {inputs.insurancePolicies.map((p, i) => (
                   <tr key={i}>
@@ -5791,7 +5829,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                           {p.customBenefits.map((cb, j) => (
                             <div key={j} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                               <span>{cb.name}：{money(cb.amount)}</span>
-                              <button className="del-btn" onClick={() => removeCustomBenefit(i, j)}><Trash2 size={11} /></button>
+                              <button className="del-btn" onClick={() => removeCustomBenefit(i, j)}><Trash2 size={13} /></button>
                             </div>
                           ))}
                         </div>
@@ -5868,7 +5906,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           <SectionGuide guide={t("privatePensionGuide")} />
           {inputs.privatePensionPlans.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 10 }}>
-              <thead><tr><th style={{ width: "26%" }}>{t("pensionNameCol")}</th><th style={{ width: "62%" }}>{t("contribPayoutCol")}</th><th style={{ width: "24px" }}></th></tr></thead>
+              <thead><tr><th style={{ width: "26%" }}>{t("pensionNameCol")}</th><th>{t("contribPayoutCol")}</th><th style={{ width: 24 }}></th></tr></thead>
               <tbody>
                 {inputs.privatePensionPlans.map((pl, i) => (
                   <tr key={i}>

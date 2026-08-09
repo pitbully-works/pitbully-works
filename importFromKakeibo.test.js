@@ -345,3 +345,62 @@ describe("重なりの知らせの文言", () => {
     expect(src).toContain("setImportScheduleOverlaps");
   });
 });
+
+// ============================================================================
+// 画面の決めごと（保険の名前・ゴミ箱の大きさ・入力欄・初期値に戻す）
+// ============================================================================
+describe("画面の決めごと", () => {
+  const app = () => readFileSync(join(dirname(fileURLToPath(import.meta.url)), "App.jsx"), "utf8");
+
+  it("保険の見出しは「各種保険」（項目一覧も同じ言葉を使う）", async () => {
+    const { CATEGORY_LABELS, getCategoryLabel } = await import("./ui/locale.js");
+    expect(CATEGORY_LABELS.insurance.JP).toBe("各種保険");
+    expect(getCategoryLabel("insurance", "JP")).toBe("各種保険");
+  });
+
+  it("ゴミ箱は、どの表でも同じ大きさになる", () => {
+    const src = app();
+    /* 大きさ違いの Trash2 が残っていないこと */
+    const sizes = [...src.matchAll(/<Trash2 size=\{(\d+)\}/g)].map((m) => m[1]);
+    expect(new Set(sizes).size).toBe(1);
+    /* 押せる範囲も CSS でそろえる */
+    expect(src).toMatch(/\.del-btn \{[^}]*width: 24px/);
+    expect(src).toMatch(/\.del-btn svg \{[^}]*width: 13px/);
+  });
+
+  it("保険と民間年金の表で、列幅の合計が100%を超えない", () => {
+    const src = app();
+    /* 26% + 62% + 24px で溢れ、ゴミ箱の列が潰れていた */
+    expect(src).not.toContain('<th style={{ width: "62%" }}>{t("premiumCoverageCol")}</th>');
+    expect(src).not.toContain('<th style={{ width: "62%" }}>{t("contribPayoutCol")}</th>');
+  });
+
+  it("表のセルの中の追加欄は、狭いときに折り返す", () => {
+    expect(app()).toMatch(/table\.watchlist \.add-row input \{ flex: 1 1 100%/);
+  });
+
+  it("初期値はひとつの定数にまとまっていて、複製して渡す", () => {
+    const src = app();
+    expect(src).toContain("const DEFAULT_INPUTS = {");
+    expect(src).toContain("const cloneDefaults = () => JSON.parse(JSON.stringify(DEFAULT_INPUTS));");
+    expect(src).toContain("useState(() => cloneDefaults())");
+  });
+
+  it("「すべて初期値に戻す」はトップページにあり、二度たずねる", () => {
+    const src = app();
+    expect(src).toContain("onClick={resetAllInputs}");
+    const fn = src.slice(src.indexOf("const resetAllInputs"), src.indexOf("const resetAllInputs") + 600);
+    expect(fn).toContain("resetAllConfirm1");
+    expect(fn).toContain("resetAllConfirm2");
+    expect(fn).toContain("cloneDefaults()");
+  });
+
+  it("初期値に戻すの文言が、日本語・英語の両方にある", () => {
+    ["resetAllButton", "resetAllConfirm1", "resetAllConfirm2"].forEach((k) => {
+      expect(JA_TRANSLATIONS[k]).toBeTruthy();
+      expect(EN_TRANSLATIONS[k]).toBeTruthy();
+    });
+    expect(JA_TRANSLATIONS.resetAllConfirm1).toContain("元に戻せません");
+    expect(JA_TRANSLATIONS.resetAllConfirm1).toContain("バックアップ");
+  });
+});
