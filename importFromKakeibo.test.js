@@ -60,9 +60,15 @@ describe("家計簿から来たデータだと見分ける", () => {
 
   it("画面が、家計簿由来のときだけ専用の取り込みを使う", () => {
     expect(app).toContain("isKakeiboPayload(parsed)");
-    expect(app).toContain("mergeKakeiboInputs(inputs, parsed)");
-    /* 通常のバックアップは、これまでどおり mergeSavedInputs のまま */
-    expect(app).toContain("mergeSavedInputs(prev, parsed.inputs)");
+    /* 重ねる相手は、5か国プロファイル対応で inputs から
+       「取り込み先の国のプロファイル」へ変わった。
+       ここで見張りたいのは相手の名前ではなく、
+       **家計簿由来のときは専用の重ね方を通ること**。 */
+    expect(app).toMatch(/mergeKakeiboInputs\(\s*\w+\s*,\s*parsed\s*\)/);
+    /* 通常のバックアップは、これまでどおり mergeSavedInputs で重ねる。
+       5か国プロファイル対応で、重ねる相手が「その国のまっさらなプロファイル」に
+       変わったので、呼び出しの形ではなく **専用の重ね方を通ること** を見る。 */
+    expect(app).toMatch(/mergeSavedInputs\([^)]*parsed\.inputs\)/);
   });
 });
 
@@ -407,9 +413,15 @@ describe("受信ガード：金額の単位", () => {
 
   it("App は、単位を確かめてから重ねる", () => {
     const at = app.indexOf("checkKakeiboAmountUnit(parsed)");
-    const merge = app.indexOf("mergeKakeiboInputs(inputs, parsed)");
+    const merge = app.indexOf("mergeKakeiboInputs(");
+    /* プロファイルへ書き込む前に止めること。あとから止めても、
+       countryProfilesRef が書き換わったあとでは手遅れになる。 */
+    const touchProfiles = app.indexOf("countryProfilesRef.current = { ...countryProfilesRef.current, [currentCode]: inputs }");
     expect(at, "単位を確かめていない").toBeGreaterThan(0);
     expect(at, "重ねたあとに確かめている").toBeLessThan(merge);
+    if (touchProfiles > 0) {
+      expect(at, "プロファイルを書き換えたあとに確かめている").toBeLessThan(touchProfiles);
+    }
     expect(app).toMatch(/importUnitMissingError/);
     expect(app).toMatch(/importUnitUnknownError/);
   });
