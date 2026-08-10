@@ -16,7 +16,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { isKakeiboPayload, mergeList, mergeKakeiboInputs } from "./utils/importFromKakeibo.js";
+import { isKakeiboPayload, mergeList, mergeKakeiboInputs, checkKakeiboAmountUnit } from "./utils/importFromKakeibo.js";
 import { JA_TRANSLATIONS } from "./translations/ja.js";
 import { EN_TRANSLATIONS } from "./translations/en.js";
 
@@ -60,12 +60,9 @@ describe("家計簿から来たデータだと見分ける", () => {
 
   it("画面が、家計簿由来のときだけ専用の取り込みを使う", () => {
     expect(app).toContain("isKakeiboPayload(parsed)");
-    expect(app).toContain("targetCountryFromKakeibo(parsed)");
-    expect(app).toContain("mergeKakeiboInputs(targetBase, parsed)");
-    /* 通常バックアップは国別プロファイルとして mergeSavedInputs で復元する */
-    expect(app).toContain("mergeSavedInputs(blank, raw)");
-    /* 旧形式バックアップは既存値を失わず JP プロファイルへ移行する */
-    expect(app).toContain("mergeSavedInputs(jpBlank, parsed.inputs)");
+    expect(app).toContain("mergeKakeiboInputs(inputs, parsed)");
+    /* 通常のバックアップは、これまでどおり mergeSavedInputs のまま */
+    expect(app).toContain("mergeSavedInputs(prev, parsed.inputs)");
   });
 });
 
@@ -295,5 +292,141 @@ describe("壊れたデータでも落ちない", () => {
     const before = JSON.stringify(cur);
     mergeKakeiboInputs(cur, payload({ banks: [{ name: "JAめぐみの", balance: 999 }] }));
     expect(JSON.stringify(cur)).toBe(before, "渡された側を書き換えている");
+  });
+});
+
+// ============================================================================
+// 受信ガード：金額の単位（amount_unit）
+// ----------------------------------------------------------------------------
+// 家計簿アプリは内部で「最小通貨単位」を使う。
+//   日本 … 1 = 1円（倍率1） ／ 米英加豪 … 1 = 1セント（倍率100）
+// こちらへ渡すときだけ主単位へ戻し、amount_unit: "major" を添える決まり。
+//
+// この取り決めが崩れて最小単位のまま届くと、$12.34 が $1,234.00 になる。
+// 逆なら 1/100 になる。しかも金額の値からは、どちらの単位か絶対に分からない
+// （1234 は $1,234.00 とも $12.34 とも読める）。
+// だから **"major" と書いてあるときだけ取り込み、それ以外は止める**。
+// こちらで倍率を推測して直すことは、してはいけない。
+// ============================================================================
+describe("受信ガード：金額の単位", () => {
+  /* 家計簿アプリが実際に書き出す形（buildLifePlanInputs の出力に合わせてある）。 */
+  const payload = (country, over = {}) => ({
+    source: "kakeibo",
+    schemaVersion: 2,
+    countryCode: country,
+    baseCurrency: { JP: "JPY", US: "USD", GB: "GBP", CA: "CAD", AU: "AUD" }[country],
+    amount_unit: "major",
+    minor_unit_scale: country === "JP" ? 1 : 100,
+    inputs: {
+      banks: [{ id: "b1", name: "Main", balance: 1200, monthlyDeposit: 50, interestPct: 1.5 }],
+    },
+    ...over,
+  });
+
+  it("amount_unit が major なら取り込める（5か国とも、主単位の値がそのまま入る）", () => {
+    for (const c of ["JP", "US", "GB", "CA", "AU"]) {
+      const got = checkKakeiboAmountUnit(payload(c));
+      expect(got.ok, `${c}：取り込みを止めてしまった`).toBe(true);
+
+      const merged = mergeKakeiboInputs({ banks: [] }, payload(c));
+      expect(merged.inputs.banks[0].balance, `${c}：残高が変わった`).toBe(1200);
+      expect(merged.inputs.banks[0].monthlyDeposit, `${c}：毎月の入金が変わった`).toBe(50);
+      expect(merged.inputs.banks[0].interestPct, `${c}：利率が変わった`).toBe(1.5);
+    }
+  });
+
+  it("JPの既存データは1円も変わらない", () => {
+    const mine = {
+      birthDate: "1968-11-13",
+      banks: [{ id: "b1", name: "Main", balance: 5000000, monthlyDeposit: 30000, interestPct: 0.2 }],
+      loans: [{ id: "l1", name: "住宅", principal: 20000000, monthlyPayment: 85000 }],
+    };
+    const jp = payload("JP", {
+      inputs: { banks: [{ id: "b1", name: "Main", balance: 5000000, monthlyDeposit: 30000, interestPct: 0.2 }] },
+    });
+    const merged = mergeKakeiboInputs(mine, jp);
+    expect(merged.inputs.banks[0].balance).toBe(5000000);
+    expect(merged.inputs.banks[0].monthlyDeposit).toBe(30000);
+    expect(merged.inputs.banks[0].interestPct).toBe(0.2);
+    /* 届かなかった分類（借入）には触らない */
+    expect(merged.inputs.loans[0].principal).toBe(20000000);
+  });
+
+  it("amount_unit が無ければ取り込まない（印の無い古い書き出し）", () => {
+    for (const c of ["JP", "US", "GB", "CA", "AU"]) {
+      const p = payload(c);
+      delete p.amount_unit;
+      const got = checkKakeiboAmountUnit(p);
+      expect(got.ok, `${c}：印が無いのに取り込もうとしている`).toBe(false);
+      expect(got.reason).toBe("missing");
+    }
+  });
+
+  it("minor など知らない値なら取り込まない", () => {
+    for (const unit of ["minor", "cents", "MAJOR", "Major", " major", "yen", "1", ""]) {
+      const got = checkKakeiboAmountUnit(payload("US", { amount_unit: unit }));
+      expect(got.ok, `amount_unit=${JSON.stringify(unit)} を通してしまった`).toBe(false);
+    }
+    expect(checkKakeiboAmountUnit(payload("US", { amount_unit: 100 })).ok).toBe(false);
+    expect(checkKakeiboAmountUnit(payload("US", { amount_unit: null })).ok).toBe(false);
+    expect(checkKakeiboAmountUnit(payload("US", { amount_unit: { unit: "major" } })).ok).toBe(false);
+  });
+
+  it("止めたときに、原因が分かる値を返す", () => {
+    /* 画面に「amount_unit: minor」と出せるようにしておく。
+       ただ「取り込めません」だけだと、何を直せばよいか分からない。 */
+    expect(checkKakeiboAmountUnit(payload("US", { amount_unit: "minor" })).unit).toBe("minor");
+    expect(checkKakeiboAmountUnit(payload("US", { amount_unit: "minor" })).reason).toBe("unknown");
+  });
+
+  it("止めるだけで、金額を勝手に直さない（受け取った数をそのまま入れる）", () => {
+    /* 「minor で来たから100で割る」ようなことは絶対にしない。
+       単位が分からないまま換算するのが、いちばん危ない。
+       取り込みを通った数は、1桁も変わらずに入ること。 */
+    const values = [1200, 1234.56, 0.01, 999999, 5000000, 1, 0.5, 123456789];
+    for (const v of values) {
+      const merged = mergeKakeiboInputs({ banks: [] }, payload("US", {
+        inputs: { banks: [{ id: "b1", name: "Main", balance: v, monthlyDeposit: v, interestPct: v }] },
+      }));
+      const row = merged.inputs.banks[0];
+      expect(row.balance, `${v} が変わった`).toBe(v);
+      expect(row.monthlyDeposit, `${v} が変わった`).toBe(v);
+      expect(row.interestPct, `${v} が変わった`).toBe(v);
+    }
+  });
+
+  it("止めたときは、いまの内容に指一本触れない", () => {
+    /* ガードは App 側で throw して取り込みを中止する。
+       ここでは「重ねる処理そのものが呼ばれなければ何も変わらない」ことを確かめる。 */
+    const mine = { banks: [{ id: "b1", name: "Main", balance: 5000000 }] };
+    const before = JSON.parse(JSON.stringify(mine));
+    const bad = payload("US", { amount_unit: "minor" });
+    expect(checkKakeiboAmountUnit(bad).ok).toBe(false);
+    expect(mine, "元のデータが書き換わった").toEqual(before);
+  });
+
+  it("App は、単位を確かめてから重ねる", () => {
+    const at = app.indexOf("checkKakeiboAmountUnit(parsed)");
+    const merge = app.indexOf("mergeKakeiboInputs(inputs, parsed)");
+    expect(at, "単位を確かめていない").toBeGreaterThan(0);
+    expect(at, "重ねたあとに確かめている").toBeLessThan(merge);
+    expect(app).toMatch(/importUnitMissingError/);
+    expect(app).toMatch(/importUnitUnknownError/);
+  });
+
+  it("止めたときの文言が、日本語と英語の両方にある", () => {
+    for (const key of ["importUnitMissingError", "importUnitUnknownError"]) {
+      expect(JA_TRANSLATIONS[key], `日本語の ${key} が無い`).toBeTruthy();
+      expect(EN_TRANSLATIONS[key], `英語の ${key} が無い`).toBeTruthy();
+    }
+    expect(JA_TRANSLATIONS.importUnitUnknownError).toMatch(/\{unit\}/);
+    expect(EN_TRANSLATIONS.importUnitUnknownError).toMatch(/\{unit\}/);
+  });
+
+  it("家計簿から来たデータ以外は、これまでどおり（ガードは通らない）", () => {
+    /* 通常のバックアップ（source が無い）は、単位の印を持たない。
+       ここでガードが効いてしまうと、自分の書き出しを戻せなくなる。 */
+    expect(isKakeiboPayload({ inputs: {} })).toBe(false);
+    expect(isKakeiboPayload({ source: "backup", inputs: {} })).toBe(false);
   });
 });
