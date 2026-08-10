@@ -1438,7 +1438,9 @@ const DEFAULT_INPUTS = {
 };
 
 export default function NisaLifePlan({ onOpenBlog } = {}) {
-  const [inputs, setInputs] = useState(() => cloneDefaults());
+  /* はじめて開いたときも、その国の参考初期値を通す
+     （日本の医療・健康予備費など、makeCountryProfile が用意する）。 */
+  const [inputs, setInputs] = useState(() => makeCountryProfile(DEFAULT_INPUTS, "JP", {}));
   const [watchlist, setWatchlist] = useState(DEFAULT_WATCHLIST);
   // 5か国の金額・資産・年金・保険・ローン・生活費を混ぜない。
   // active国だけinputsへ展開し、他国はrefで保持する。
@@ -1781,8 +1783,31 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     if (typeof window === "undefined" || typeof window.confirm !== "function") return;
     if (!window.confirm(t("resetAllConfirm1"))) return;
     if (!window.confirm(t("resetAllConfirm2"))) return;
-    setInputs(cloneDefaults());
-    setWatchlist(defaultWatchlistFor("JP"));
+    /* 消すのは「いま開いている国」のぶんだけ。
+       -----------------------------------------------------------------------
+       ・打ち込んだ値（名前・生年月日・資産額・毎月の額など）→ 未入力に戻す
+       ・アプリが最初から持っている値（想定利回り・税率・年齢の既定など）
+         → その国の初期値へ戻す。0にはしない
+       ・ほかの国のプロファイルには指一本触れない
+       makeCountryProfile がこの2つをまとめて用意してくれるので、
+       ここで項目を並べ直さない（並べ直すと、増えた項目を書き忘れる）。
+       第2引数に何も渡さないので、名前・生年月日といった共有の身元も
+       初期値（未入力）に戻る。 */
+    const code = normalizeProfileCountry(inputs.country);
+    const fresh = makeCountryProfile(DEFAULT_INPUTS, code, {});
+    const freshWatchlist = defaultWatchlistFor(code);
+    countryProfilesRef.current = { ...countryProfilesRef.current, [code]: fresh };
+    countryWatchlistsRef.current = { ...countryWatchlistsRef.current, [code]: freshWatchlist };
+    setInputs(fresh);
+    setWatchlist(freshWatchlist);
+    /* 貼り付け欄も、この国のぶんだけ消す（ほかの国のぶんは残す）。 */
+    importTextsRef.current = { ...importTextsRef.current, [code]: "" };
+    importNoticesRef.current = { ...importNoticesRef.current, [code]: {} };
+    setImportText("");
+    setImportError("");
+    setImportOk(false);
+    setImportBirthMismatch(null);
+    setImportScheduleOverlaps([]);
   };
   // 海外（日本語以外）でコラムを開こうとしたときに「準備中」表示を出すためのフラグ
   const [blogComingSoon, setBlogComingSoon] = useState(false);
@@ -1896,6 +1921,15 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   // 保存処理・自動保存・入力履歴には一切影響しない。null＝既定（想定寿命）を表示する。
   const [surplusFocusAge, setSurplusFocusAge] = useState(null);
   const [importText, setImportText] = useState("");
+  /* 復元用テキストは、国ごとに別々に覚える。
+     -----------------------------------------------------------------------
+     1つの箱で持つと、日本で貼り付けた文字列がアメリカへ切り替えても残り、
+     「この国のデータのように見えるのに、中身は別の国のもの」という
+     いちばん紛らわしい状態になる。金額は国ごとに分かれているのだから、
+     貼り付け欄と、その結果の知らせも国ごとに分ける。
+     ※ 保存はしない。画面を開いている間だけの覚え書き。 */
+  const importTextsRef = useRef({});
+  const importNoticesRef = useRef({});
   const [importError, setImportError] = useState("");
   /* 家計簿とライフプランで生年月日が違うときに知らせる。勝手に書き換えない。 */
   const [importBirthMismatch, setImportBirthMismatch] = useState(null);
@@ -1921,6 +1955,27 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       return "";
     }
   }, [inputs, watchlist]);
+
+  /* 国を切り替えるときに、貼り付け欄と、その結果の知らせを入れ替える。
+     いまの国のぶんをしまってから、次の国のぶんを出す。
+     知らせ（成功・エラー・生年月日の食い違い・区間の重なり）も
+     その国のものなので、一緒に持ち替える。 */
+  const switchImportTextCountry = (fromCountry, toCountry) => {
+    const from = normalizeProfileCountry(fromCountry);
+    const to = normalizeProfileCountry(toCountry);
+    importTextsRef.current = { ...importTextsRef.current, [from]: importText };
+    importNoticesRef.current = {
+      ...importNoticesRef.current,
+      [from]: { error: importError, ok: importOk, birthMismatch: importBirthMismatch, overlaps: importScheduleOverlaps },
+    };
+    const nextText = importTextsRef.current[to];
+    const nextNotice = importNoticesRef.current[to] || {};
+    setImportText(typeof nextText === "string" ? nextText : "");
+    setImportError(nextNotice.error || "");
+    setImportOk(!!nextNotice.ok);
+    setImportBirthMismatch(nextNotice.birthMismatch || null);
+    setImportScheduleOverlaps(Array.isArray(nextNotice.overlaps) ? nextNotice.overlaps : []);
+  };
 
   const importBackup = () => {
     setImportError("");
@@ -4539,6 +4594,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                   : defaultWatchlistFor(nextCountry);
                 countryProfilesRef.current = { ...countryProfilesRef.current, [nextCountry]: nextInputs };
                 countryWatchlistsRef.current = { ...countryWatchlistsRef.current, [nextCountry]: nextWatchlist };
+                switchImportTextCountry(currentCountry, nextCountry);
                 setInputs(nextInputs);
                 setWatchlist(nextWatchlist);
               }}
