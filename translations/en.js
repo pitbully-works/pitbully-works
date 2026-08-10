@@ -592,6 +592,8 @@ export const EN_TRANSLATIONS = {
     "resetAllConfirm1": "This clears everything you have entered and returns to the initial state.\nThis cannot be undone.\n\nHave you exported a backup first?",
     "resetAllConfirm2": "Are you sure you want to erase everything and start over?",
     "importFailedError": "Failed to load. Please check that this is the correct backup text. ({message})",
+    "importUnitMissingError": "The amount unit from Kakeibo is missing (no amount_unit). The import was stopped because the figures could come in 100x or 1/100 of their true size. Please update the Kakeibo app and export again.",
+    "importUnitUnknownError": "The amount unit from Kakeibo is not supported (amount_unit: {unit}). This app only accepts data exported in major units. The import was stopped because the figures could come in 100x or 1/100 of their true size.",
     "importInputsNotFoundError": "Input data not found",
     "inheritanceAmountPlaceholder": "Amount to leave",
     "inheritanceAutoNote": "Once you register one or more heirs, this field is automatically filled with their combined total and can no longer be edited. To go back to manual entry, remove all registered heirs.",
