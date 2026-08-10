@@ -27,12 +27,48 @@
 // ここは純粋関数だけ。DOM も React も触らない。
 // ============================================================================
 
+const isPlainObject = (v) => v && typeof v === "object" && !Array.isArray(v);
+
 /** 家計簿から来たデータかどうか。通常のバックアップと見分けるための印。 */
 export function isKakeiboPayload(parsed) {
   return !!(parsed && typeof parsed === "object" && parsed.source === "kakeibo");
 }
 
-const isPlainObject = (v) => v && typeof v === "object" && !Array.isArray(v);
+// ----------------------------------------------------------------------------
+// 金額の単位の見張り（受信ガード）
+// ----------------------------------------------------------------------------
+// 家計簿アプリは、内部では「最小通貨単位」で金額を持っている。
+//   日本   … 1 = 1円          （倍率 1）
+//   米英加豪 … 1 = 1セント/ペニー （倍率 100）
+// こちらへ渡すときは主単位（ドル・円）へ戻したうえで、
+//   amount_unit: "major"
+//   minor_unit_scale: 1 or 100
+// を必ず添えることになっている。
+//
+// もしこの取り決めが崩れて最小単位のまま届いたら、$12.34 が $1,234.00 になる。
+// 逆向きなら 1/100 になる。どちらも黙って通ると、その場では気づけない。
+//
+// そこで、**"major" と明記されているときだけ取り込む**。
+// 印が無い・別の値・知らない値なら、金額にはいっさい触れず取り込みを止める。
+// こちらで倍率を推測して直す、ということは絶対にしない。
+// 金額の値から単位を当てるのは不可能だから（1234 は $1,234.00 とも $12.34 とも読める）。
+export const KAKEIBO_AMOUNT_UNIT = "major";
+
+/**
+ * 家計簿から来たデータの金額の単位を確かめる。
+ * @returns {{ok: boolean, unit: string, reason: string}}
+ *   ok     … true のときだけ取り込んでよい
+ *   unit   … 実際に届いた値（画面に出して原因が分かるようにする）
+ *   reason … "" / "missing"（印が無い） / "unknown"（別の値）
+ */
+export function checkKakeiboAmountUnit(payload) {
+  const raw = isPlainObject(payload) ? payload.amount_unit : undefined;
+  if (raw === undefined || raw === null || raw === "") {
+    return { ok: false, unit: "", reason: "missing" };
+  }
+  if (raw === KAKEIBO_AMOUNT_UNIT) return { ok: true, unit: raw, reason: "" };
+  return { ok: false, unit: typeof raw === "string" ? raw : String(raw), reason: "unknown" };
+}
 
 const EMPTY_INSURANCE_BENEFITS = Object.freeze({
   hospitalizationPerDay: 0,
