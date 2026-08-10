@@ -9,6 +9,47 @@ const META = Object.freeze({
   AU: { baseCurrency: "AUD", language: "en" },
 });
 const clone = (v) => v === undefined ? undefined : JSON.parse(JSON.stringify(v));
+
+// ----------------------------------------------------------------------------
+// 国ごとの参考初期値
+// ----------------------------------------------------------------------------
+// DEFAULT_INPUTS は「全部の国で共通の出発点」。
+// そこへ、国ごとに違う出発点だけをここで上書きする。
+//
+// ★ 金額を勝手に作らないこと。
+//   ここに書いてよいのは、アプリがもともと持っていた値か、
+//   出典がはっきりしている値だけ。根拠のない額を推測で置くと、
+//   利用者はそれを「アプリが調べた数字」と受け取ってしまう。
+//
+// JP.healthBrackets（医療・健康予備費）:
+//   60代15万円 / 70代25万円 / 80代以降40万円。
+//   これは以前からこのアプリが持っていた **資金計画のための参考初期値** で、
+//   公的制度から算出した自己負担額ではない。
+//   厚生労働省には年齢階級別の医療費統計があるが、この3つの額を
+//   公的制度上の自己負担額として直接裏づける根拠は確認できていない。
+//   だから画面でも、公的な金額であるかのようには書かない。
+//
+// US / GB / CA / AU:
+//   医療・健康予備費の国別初期値は、もともとコードに存在しない。
+//   根拠のない額を作らないので、空のままにしてある（＝共通の初期値0）。
+//   これらの国は画面でも healthBrackets を使わず、各国専用の医療費欄を持つ。
+export const COUNTRY_INPUT_DEFAULTS = Object.freeze({
+  JP: Object.freeze({ healthBrackets: Object.freeze({ b60: 150000, b70: 250000, b80: 400000 }) }),
+  US: Object.freeze({}),
+  GB: Object.freeze({}),
+  CA: Object.freeze({}),
+  AU: Object.freeze({}),
+});
+
+/* 国ごとの参考初期値を、共通の初期値へ重ねる。
+   入れ子（healthBrackets など）は中身ごと差し替える。 */
+function applyCountryDefaults(base, country) {
+  const extra = COUNTRY_INPUT_DEFAULTS[normalizeProfileCountry(country)];
+  if (!extra) return base;
+  const out = { ...base };
+  Object.keys(extra).forEach((k) => { out[k] = clone(extra[k]); });
+  return out;
+}
 export function normalizeProfileCountry(value, fallback = "JP") {
   const safeFallback = PROFILE_COUNTRIES.includes(fallback) ? fallback : "JP";
   return PROFILE_COUNTRIES.includes(value) ? value : safeFallback;
@@ -33,7 +74,11 @@ export function forceCountryMeta(inputs, country) {
 }
 export function makeCountryProfile(defaultInputs, country, sharedSource = {}) {
   const base = clone(defaultInputs && typeof defaultInputs === "object" ? defaultInputs : {});
-  return forceCountryMeta(applySharedIdentity(base, sharedSource), country);
+  /* 共通の初期値 → その国の参考初期値 → 共有の身元 → 国の印、の順で重ねる。
+     「初期値に戻す」もここを通るので、戻したときに
+     その国の参考初期値がちゃんと戻る。 */
+  const withCountry = applyCountryDefaults(base, country);
+  return forceCountryMeta(applySharedIdentity(withCountry, sharedSource), country);
 }
 export function migrateCountryProfiles(defaultInputs, parsed) {
   const p = parsed && typeof parsed === "object" ? parsed : {};
