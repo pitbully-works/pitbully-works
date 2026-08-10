@@ -60,9 +60,12 @@ describe("家計簿から来たデータだと見分ける", () => {
 
   it("画面が、家計簿由来のときだけ専用の取り込みを使う", () => {
     expect(app).toContain("isKakeiboPayload(parsed)");
-    expect(app).toContain("mergeKakeiboInputs(inputs, parsed)");
-    /* 通常のバックアップは、これまでどおり mergeSavedInputs のまま */
-    expect(app).toContain("mergeSavedInputs(prev, parsed.inputs)");
+    expect(app).toContain("targetCountryFromKakeibo(parsed)");
+    expect(app).toContain("mergeKakeiboInputs(targetBase, parsed)");
+    /* 通常バックアップは国別プロファイルとして mergeSavedInputs で復元する */
+    expect(app).toContain("mergeSavedInputs(blank, raw)");
+    /* 旧形式バックアップは既存値を失わず JP プロファイルへ移行する */
+    expect(app).toContain("mergeSavedInputs(jpBlank, parsed.inputs)");
   });
 });
 
