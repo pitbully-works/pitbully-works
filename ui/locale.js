@@ -54,7 +54,11 @@ const CATEGORY_LABELS = {
     AU: "Retirement & Age Pension",
   },
   healthCost: {
-    JP: "健康リスク費用（自己負担目安）",
+    /* 日本の項目名。公的制度上の自己負担額ではなく、資金計画上の予備費なので
+       「自己負担」という言い方はしない。
+       ほかの4か国は healthBrackets を使わず各国専用の医療費欄を持つため、
+       名前は今までのまま。 */
+    JP: "医療・健康予備費（年間）",
     US: "Healthcare Costs (Out-of-Pocket Estimate)",
     GB: "Healthcare Costs",
     CA: "Healthcare Costs (Out-of-Pocket Estimate)",
