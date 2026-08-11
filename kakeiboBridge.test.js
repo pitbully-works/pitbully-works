@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
-const app = readFileSync(new URL('./App.jsx', import.meta.url), 'utf8');
+const app = readFileSync(resolve(process.cwd(), 'App.jsx'), 'utf8');
 
 describe('lifeplan -> kakeibo bridge', () => {
   it('家計簿リンクはNISA橋渡しURLを使う', () => {
