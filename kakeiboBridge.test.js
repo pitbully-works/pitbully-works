@@ -10,6 +10,8 @@ describe('lifeplan -> kakeibo bridge', () => {
     expect(app).toContain('href={buildKakeiboBridgeUrl(inputs)}');
     expect(app).toContain('tsumitateSchedule: cleanSchedule(inputs?.tsumitateSchedule)');
     expect(app).toContain('growthSchedule: cleanSchedule(inputs?.growthSchedule)');
+    expect(app).toContain('funds,');
+    expect(app).toContain('monthlyYen: funds.length ? fundsTotal');
     expect(app).toContain('birth: String(inputs?.birthDate || "")');
   });
 });

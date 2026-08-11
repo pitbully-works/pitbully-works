@@ -77,11 +77,20 @@ const KAKEIBO_APP_URL = "https://kakeibo-lemon.vercel.app/";
 // URL の # 以降（fragment）はサーバーへ送信されないため、別ドメイン間でも
 // NISA に必要な最小限の情報だけを一時的に渡せる。家計簿側では読み取り後に削除する。
 function buildKakeiboBridgeUrl(inputs) {
-  const cleanSchedule = (rows) => (Array.isArray(rows) ? rows : []).map((row) => ({
-    fromAge: Number(row?.fromAge) || 0,
-    toAge: Number(row?.toAge) || 0,
-    monthlyYen: Math.max(0, Number(row?.monthlyYen) || 0),
-  })).filter((row) => row.toAge >= row.fromAge && row.monthlyYen > 0);
+  const cleanSchedule = (rows) => (Array.isArray(rows) ? rows : []).map((row) => {
+    const funds = (Array.isArray(row?.funds) ? row.funds : []).map((fund) => ({
+      name: String(fund?.name || "").slice(0, 80),
+      amount: Math.max(0, Number(fund?.amount) || 0),
+    })).filter((fund) => fund.name || fund.amount > 0);
+    const fundsTotal = funds.reduce((sum, fund) => sum + fund.amount, 0);
+    return {
+      fromAge: Number(row?.fromAge) || 0,
+      toAge: Number(row?.toAge) || 0,
+      funds,
+      // 銘柄内訳がある場合は、その合計を月額の唯一の正にする。
+      monthlyYen: funds.length ? fundsTotal : Math.max(0, Number(row?.monthlyYen) || 0),
+    };
+  }).filter((row) => row.toAge >= row.fromAge && row.monthlyYen > 0);
 
   const payload = {
     source: "lifeplan",
