@@ -73,6 +73,30 @@ import {
 // ============================================================================
 const KAKEIBO_APP_URL = "https://kakeibo-lemon.vercel.app/";
 
+// ライフプラン → 家計簿の受け渡し。
+// URL の # 以降（fragment）はサーバーへ送信されないため、別ドメイン間でも
+// NISA に必要な最小限の情報だけを一時的に渡せる。家計簿側では読み取り後に削除する。
+function buildKakeiboBridgeUrl(inputs) {
+  const cleanSchedule = (rows) => (Array.isArray(rows) ? rows : []).map((row) => ({
+    fromAge: Number(row?.fromAge) || 0,
+    toAge: Number(row?.toAge) || 0,
+    monthlyYen: Math.max(0, Number(row?.monthlyYen) || 0),
+  })).filter((row) => row.toAge >= row.fromAge && row.monthlyYen > 0);
+
+  const payload = {
+    source: "lifeplan",
+    schemaVersion: 1,
+    birth: String(inputs?.birthDate || ""),
+    country: String(inputs?.country || "JP"),
+    currency: String(inputs?.baseCurrency || "JPY"),
+    nisa: {
+      tsumitateSchedule: cleanSchedule(inputs?.tsumitateSchedule),
+      growthSchedule: cleanSchedule(inputs?.growthSchedule),
+    },
+  };
+  return `${KAKEIBO_APP_URL}#lpbridge=${encodeURIComponent(JSON.stringify(payload))}`;
+}
+
 // ホーム画面に追加したPWA（standalone表示）で開いているかどうか。
 // iPhoneでは開き方によって最適な挙動が異なるため、この判定で target を切り替える。
 //   ・PWA（standalone）  … target="_blank"。iOSはPWA内のブラウザで開き、「完了」または
@@ -4513,7 +4537,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <p>{t("landingKakeiboDesc")}</p>
             <a
               className="landing-cta landing-cta-link"
-              href={KAKEIBO_APP_URL}
+              href={buildKakeiboBridgeUrl(inputs)}
               target={isStandalonePWA() ? "_blank" : "_self"}
               rel="noopener noreferrer"
             >
