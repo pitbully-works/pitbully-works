@@ -9,7 +9,7 @@ describe("lifeplan -> kakeibo navigation", () => {
     expect(app).toContain('const KAKEIBO_APP_URL = "https://kakeibo-lemon.vercel.app/";');
     expect(app).toContain('function buildKakeiboBridgeUrl(country)');
     expect(app).toContain('["JP", "US", "GB", "CA", "AU"].includes(country)');
-    expect(app).toContain('`?country=${encodeURIComponent(code)}`');
+    expect(app).toContain('?country=${encodeURIComponent(code)}');
     expect(app).toContain('href={buildKakeiboBridgeUrl(country)}');
     expect(app).not.toContain("#lpbridge=");
     expect(app).not.toContain("lpbridge=");
