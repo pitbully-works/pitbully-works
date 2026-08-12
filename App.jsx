@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback, useContext, useRef } 
 import { createPortal } from "react-dom";
 import {
   ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip,
-  ReferenceLine, ResponsiveContainer, BarChart, Bar, Legend, Cell
+  ReferenceLine, ResponsiveContainer, BarChart, Bar, Legend, Cell, LabelList
 } from "recharts";
 import { Plus, Trash2, TrendingUp, HeartPulse, Landmark, Users, Ruler, Info, Coins, PiggyBank, ChevronUp } from "lucide-react";
 import "./storageShim.js";
@@ -2940,6 +2940,30 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   // そのため表示時だけ銀行残高の合計から余剰金相当額を順番に控除し、最後に
   // 「余剰金」行として同額を足す。銀行＋余剰金の合計は元の bankValue と一致し、
   // 総資産・純資産などの計算値には一切影響しない。
+  const renderLoanBalanceLabel = useCallback(({ x = 0, y = 0, width = 0, height = 0, value = 0 }) => {
+    const amount = Math.max(0, Number(value) || 0);
+    const text = amount <= 0
+      ? `${t("loanBalanceChartLegend")}：${money(0)}（${t("paidOffLabel")}）`
+      : `${t("loanBalanceChartLegend")}：${money(amount)}`;
+    const inside = width >= 145;
+    return (
+      <text
+        x={inside ? x + width - 8 : x + width + 8}
+        y={y + height / 2 + 4}
+        textAnchor={inside ? "end" : "start"}
+        fill="#E6EDF1"
+        stroke="#0B1115"
+        strokeWidth="3"
+        paintOrder="stroke"
+        fontSize="12"
+        fontWeight="600"
+        pointerEvents="none"
+      >
+        {text}
+      </text>
+    );
+  }, [t]);
+
   const bankBreakdownByAge = useMemo(() => {
     const rows = inputs.banks.map((b, i) => ({
       name: b.name || t("unnamedBankLabel", { index: i + 1 }),
@@ -4718,7 +4742,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       <div className="app-credit">
         <div>{"© 2026 Kunihiko Hioki"}</div>
         <div>{"Developed by Kunihiko Hioki"}</div>
-        <div>{"Version 1.0.3"}</div>
+        <div>{"Version 1.0.4"}</div>
         <div>
           <a className="footer-mail" href="mailto:pdr.gifu@gmail.com">{"✉️ pdr.gifu@gmail.com"}</a>
         </div>
@@ -6861,9 +6885,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                   <CartesianGrid stroke="#2A363C" strokeDasharray="3 3" horizontal={false} />
                   <XAxis type="number" stroke="#7C8A90" fontSize={11} tickFormatter={(v) => money(v)} />
                   <YAxis type="category" dataKey="label" stroke="#7C8A90" fontSize={11} width={125} />
-                  <Tooltip contentStyle={{ background: "transparent", border: "none", boxShadow: "none", fontSize: 12 }} itemStyle={{ textShadow: "0 0 3px #000, 0 0 3px #000, 0 0 2px #000" }} labelStyle={{ textShadow: "0 0 3px #000, 0 0 3px #000, 0 0 2px #000" }} formatter={(v) => money(v)} />
-                  <Bar dataKey="balance" name={t("loanBalanceChartLegend")} radius={[0, 2, 2, 0]}>
+                  <Bar dataKey="balance" name={t("loanBalanceChartLegend")} radius={[0, 2, 2, 0]} isAnimationActive={false}>
                     {loanBreakdownByAge.map((row, i) => <Cell key={i} fill={row.fill} />)}
+                    <LabelList dataKey="balance" content={renderLoanBalanceLabel} />
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
@@ -6913,7 +6937,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       <div className="footer-credit">
         <div>{"© 2026 Kunihiko Hioki"}</div>
         <div>{"Developed by Kunihiko Hioki"}</div>
-        <div>{"Version 1.0.3"}</div>
+        <div>{"Version 1.0.4"}</div>
         <div>
           <a className="footer-mail" href="mailto:pdr.gifu@gmail.com">{"✉️ pdr.gifu@gmail.com"}</a>
         </div>
