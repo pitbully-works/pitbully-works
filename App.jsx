@@ -32,6 +32,7 @@ import {
 } from "./utils/countryProfiles.js";
 import { buildNisaBreakdown, breakdownPrincipalItems, breakdownReturnBars, breakdownTotals } from "./utils/nisaBreakdown.js";
 import { describeSchedulePace } from "./utils/schedulePace.js";
+import { newSci, sciPress, sciExpr, sciFormat, sciTokensFromExpr, normalizeSciHistory, sciClearHistory } from "./utils/scientificCalculator.js";
 // 国に依存しない共通UI部品（入力欄・ガイド・内訳グラフ）と表示基盤（LocaleContext等）は ui/ 配下へ分離。
 import {
   yen,
@@ -1502,6 +1503,114 @@ const DEFAULT_INPUTS = {
       expensesMonthly: 0,
     },
 };
+
+
+const LIFEPLAN_SCI_HISTORY_KEY = "lifeplan-scientific-calculator-history-v1";
+
+function readSciHistory() {
+  if (typeof window === "undefined") return [];
+  try { return normalizeSciHistory(JSON.parse(window.localStorage.getItem(LIFEPLAN_SCI_HISTORY_KEY) || "[]")); }
+  catch { return []; }
+}
+function saveSciHistory(history) {
+  if (typeof window === "undefined") return;
+  try { window.localStorage.setItem(LIFEPLAN_SCI_HISTORY_KEY, JSON.stringify(normalizeSciHistory(history))); } catch { /* 保存不能でも電卓自体は使える */ }
+}
+
+function FloatingScientificCalculator() {
+  const { language, baseCurrency, currencySymbol } = useContext(LocaleContext);
+  const ja = language === "ja";
+  const [open, setOpen] = useState(false);
+  const [target, setTarget] = useState(null);
+  const [sci, setSci] = useState(() => ({ ...newSci(), history: readSciHistory() }));
+
+  useEffect(() => {
+    const onMoneyFocus = (event) => {
+      const d = event && event.detail ? event.detail : {};
+      const raw = Number(d.value);
+      const text = Number.isFinite(raw) && raw !== 0 ? String(raw) : "";
+      setTarget({ apply: typeof d.apply === "function" ? d.apply : null, label: d.label || "" });
+      setSci((prev) => ({ ...prev, tokens: text ? text.split("") : [], result: null, error: "" }));
+      setOpen(true);
+    };
+    window.addEventListener("lifeplan-money-focus", onMoneyFocus);
+    return () => window.removeEventListener("lifeplan-money-focus", onMoneyFocus);
+  }, []);
+
+  const press = (key) => {
+    setSci((before) => {
+      const next = sciPress(before, key);
+      if (next.history.length !== before.history.length) saveSciHistory(next.history);
+      if (key === "=" && next.result !== null && Number.isFinite(next.result) && target && target.apply) {
+        // 金額欄から自動表示された場合だけ「＝」でその欄へ戻す。
+        // 手動で開いた電卓は通常の関数電卓として計算だけを行う。
+        if (next.result >= 0) {
+          const answer = next.result;
+          const apply = target.apply;
+          setTimeout(() => apply(answer), 0);
+        }
+      }
+      return next;
+    });
+  };
+  const useHistory = (h) => setSci((prev) => ({ ...prev, tokens: sciTokensFromExpr(h.expr), result: null, error: "" }));
+  const clearHistory = () => {
+    setSci((prev) => { const next = sciClearHistory(prev); saveSciHistory([]); return next; });
+  };
+  const close = () => { setOpen(false); setTarget(null); };
+  const manualOpen = () => { setTarget(null); setOpen(true); };
+  const unit = baseCurrency === "JPY" ? (ja ? "万円入力" : "¥10k input") : currencySymbol;
+  const k = (key, label, cls = "") => <button type="button" className={cls} onClick={() => press(key)}>{label}</button>;
+
+  if (!open) {
+    return createPortal(
+      <button type="button" className="floating-calc-launch no-print" onClick={manualOpen} aria-label={ja ? "関数電卓を開く" : "Open scientific calculator"}>
+        🧮 {ja ? "計算機" : "Calc"}
+      </button>, document.body
+    );
+  }
+
+  return createPortal(
+    <section className="floating-sci no-print" aria-label={ja ? "関数電卓" : "Scientific calculator"}>
+      <div className="floating-sci-head">
+        <div>
+          <strong>🧮 {ja ? "関数電卓" : "Scientific calculator"}</strong>
+          <span>{target?.apply ? (target.label ? `${ja ? "入力先" : "Target"}: ${target.label}` : (ja ? `＝で金額欄へ入力（${unit}）` : `= enters amount (${unit})`)) : (ja ? "通常計算" : "Calculator")}</span>
+        </div>
+        <button type="button" onClick={close}>▼ {ja ? "戻る" : "Back"}</button>
+      </div>
+      <div className="floating-sci-scroll">
+        <div className="lp-scidisp">
+          <button type="button" className="lp-sciunit" onClick={() => press("deg")}>{sci.deg ? "Deg" : "Rad"}</button>
+          <div className="lp-sciexpr mono">{sciExpr(sci) || "\u00a0"}</div>
+          <div className="lp-scians mono">{sci.result !== null ? sciFormat(sci.result) : "\u00a0"}</div>
+          <div className="lp-scierr">{sci.error || "\u00a0"}</div>
+        </div>
+        <div className="lp-scifn">
+          {k("sin","sin")}{k("cos","cos")}{k("tan","tan")}{k("log","log")}{k("ln","ln")}
+          {k("√","√")}{k("^","x^y")}{k("π","π")}{k("e","e")}{k("Ans","Ans")}
+        </div>
+        <div className="lp-scipad">
+          {k("AC","AC","fn ac")}{k("DEL","⌫","fn")}{k("(","(","fn")}{k(")",")","fn")}
+          {k("7","7")}{k("8","8")}{k("9","9")}{k("/","÷","op")}
+          {k("4","4")}{k("5","5")}{k("6","6")}{k("*","×","op")}
+          {k("1","1")}{k("2","2")}{k("3","3")}{k("-","−","op")}
+          {k("0","0")}{k(".",".")}{k("00","00")}{k("+","＋","op")}
+        </div>
+        <button type="button" className="lp-scieq" onClick={() => press("=")}>＝</button>
+        <div className="lp-sci-history-title">
+          <strong>{ja ? "計算の履歴" : "Calculation history"}</strong>
+          {sci.history.length > 0 && <button type="button" onClick={clearHistory}>{ja ? "履歴を消す" : "Clear history"}</button>}
+        </div>
+        <div className="lp-sci-history">
+          {sci.history.length === 0 ? <div className="lp-sci-empty">{ja ? "まだ計算していません" : "Nothing calculated yet"}</div> : sci.history.map((h, i) => (
+            <button type="button" key={`${h.expr}-${i}`} onClick={() => useHistory(h)}><span className="mono">{h.expr}</span><b className="mono">{sciFormat(h.value)}</b></button>
+          ))}
+        </div>
+      </div>
+    </section>, document.body
+  );
+}
 
 export default function NisaLifePlan({ onOpenBlog } = {}) {
   /* はじめて開いたときも、その国の参考初期値を通す
@@ -3815,6 +3924,48 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
         /* 右下に常駐するフローティング領域（クイックジャンプ＋トップへ戻る）。
            領域を fixed にし、中のボタンは通常フローで縦積みする。 */
+
+        /* 家計簿と同仕様の関数電卓。ボタンは常時画面下、展開時は画面高さの半分未満。 */
+        .floating-calc-launch {
+          position: fixed; left: 50%; bottom: calc(10px + env(safe-area-inset-bottom)); transform: translateX(-50%);
+          z-index: 10030; min-height: 46px; padding: 0 20px; border-radius: 999px;
+          border: 2px solid #4FA8D8; background: #142027; color: #72C9F3; font-weight: 800; font-size: 15px;
+          box-shadow: 0 8px 24px rgba(0,0,0,.38); touch-action: manipulation;
+        }
+        .floating-sci {
+          position: fixed; left: 0; right: 0; bottom: 0; z-index: 10040;
+          height: min(46dvh, 430px); background: #10191E; border-top: 2px solid #397EA1;
+          box-shadow: 0 -12px 30px rgba(0,0,0,.48); color: #E8F0F3;
+          padding-bottom: env(safe-area-inset-bottom); display: flex; flex-direction: column;
+        }
+        .floating-sci-head { flex: none; min-height: 48px; display:flex; align-items:center; justify-content:space-between; gap:10px; padding:7px 12px; border-bottom:1px solid #2B3B43; }
+        .floating-sci-head > div { min-width:0; display:flex; flex-direction:column; gap:1px; }
+        .floating-sci-head strong { font-size:14px; }
+        .floating-sci-head span { font-size:10.5px; color:#9EB0B8; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .floating-sci-head button { flex:none; border:1px solid #397EA1; background:#142027; color:#72C9F3; border-radius:9px; padding:7px 10px; font-weight:800; }
+        .floating-sci-scroll { overflow-y:auto; overscroll-behavior:contain; padding:7px 10px 12px; -webkit-overflow-scrolling:touch; }
+        .lp-scidisp { position:relative; background:#162127; border:1px solid #2B3B43; border-radius:10px; padding:7px 10px 5px; }
+        .lp-sciunit { position:absolute; left:8px; top:7px; min-height:25px; padding:2px 8px; border:1px solid #355865; border-radius:7px; background:#142027; color:#72C9F3; font-size:10px; font-weight:800; }
+        .lp-sciexpr { text-align:right; min-height:17px; color:#9EB0B8; font-size:12px; word-break:break-all; }
+        .lp-scians { text-align:right; min-height:29px; color:#F4FAFC; font-size:23px; font-weight:800; word-break:break-all; }
+        .lp-scierr { text-align:right; min-height:12px; color:#FF886D; font-size:10px; font-weight:800; }
+        .lp-scifn { display:grid; grid-template-columns:repeat(5,1fr); gap:4px; margin-top:6px; }
+        .lp-scifn button { min-height:31px; border-radius:8px; border:1px solid #2B3B43; background:#17313B; color:#72C9F3; font-size:11px; font-weight:800; }
+        .lp-scipad { display:grid; grid-template-columns:repeat(4,1fr); gap:5px; margin-top:5px; }
+        .lp-scipad button { min-height:34px; border-radius:8px; border:1px solid #2B3B43; background:#162127; color:#F4FAFC; font-size:16px; font-weight:800; }
+        .lp-scipad .fn { background:#20292E; color:#C7D1D5; font-size:13px; }
+        .lp-scipad .fn.ac { color:#FF886D; }
+        .lp-scipad .op { background:#17313B; color:#72C9F3; }
+        .lp-scifn button:active,.lp-scipad button:active,.lp-scieq:active { transform:scale(.96); }
+        .lp-scieq { width:100%; min-height:42px; margin-top:6px; border:0; border-radius:9px; background:#2D88B5; color:white; font-size:25px; font-weight:900; box-shadow:0 5px 14px rgba(45,136,181,.3); }
+        .lp-sci-history-title { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:8px; padding:4px 1px; font-size:12px; }
+        .lp-sci-history-title button { border:0; background:transparent; color:#72C9F3; font-size:11px; font-weight:800; }
+        .lp-sci-history { border-top:1px solid #2B3B43; }
+        .lp-sci-history > button { width:100%; display:flex; justify-content:space-between; gap:10px; padding:8px 3px; border:0; border-bottom:1px solid #25343B; background:transparent; color:#C7D1D5; text-align:left; font-size:11px; }
+        .lp-sci-history > button b { flex:none; color:#F4FAFC; font-size:12px; }
+        .lp-sci-empty { padding:10px; text-align:center; color:#82949C; font-size:11px; }
+        @media print { .floating-calc-launch,.floating-sci { display:none !important; } }
+
         .quicknav-wrap {
           position: fixed;
           right: 10px;
@@ -7030,6 +7181,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         しまい、固定されずに一緒にスクロールして流れる。
         createPortal で document.body の直下に出すことで、いかなる祖先の
         overflow / transform の影響も受けず、確実に画面へ固定する。 */}
+    {typeof document !== "undefined" && <FloatingScientificCalculator />}
+
     {typeof document !== "undefined" && createPortal(
       <div className="quicknav-wrap no-print">
         {/* 各入力項目・個別株・総資産グラフへ飛ぶ小さなボタン群。
