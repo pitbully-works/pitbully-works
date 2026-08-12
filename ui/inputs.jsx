@@ -73,6 +73,7 @@ function MoneyInput({ value, onChange, placeholder, className, style, disabled, 
           window.dispatchEvent(new window.CustomEvent("lifeplan-money-focus", { detail: {
             value: Number(value || 0) / scale,
             apply: (answer) => { const v = Number(answer) * scale; onChange(hasMax ? Math.min(v, maxYen) : v); },
+            clear: () => onChange(""),
           }}));
           // 金額入力は下部の関数電卓を使う。iPhoneの数字キーボードは重ねて出さない。
           requestAnimationFrame(() => e.target.blur());
@@ -197,6 +198,7 @@ function MoneyField({ label, value, onChange, unitPer, guide, disabled, mono = t
                 value: Number(value || 0) / scale,
                 label,
                 apply: (answer) => onChange(Number(answer) * scale),
+                clear: () => onChange(""),
               }}));
               requestAnimationFrame(() => e.target.blur());
             }
