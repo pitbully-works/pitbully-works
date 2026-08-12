@@ -34,7 +34,7 @@ export const EN_GB_OVERRIDES = {
   bankTotalNowLabel: "Total Cash Savings (Current)",
   statBankTotalNowLabel: "Total Cash Savings (Current)",
   statBankAtRetireLabel: "Total Cash Savings — at {age}",
-  bankBreakdownChartTitle: "Cash Savings Balance by Bank — Projected by Age (Current / {retireAge} / {deathAge})",
+  bankBreakdownChartTitle: "Cash Savings & Surplus — Projected by Age (Current / {retireAge} / {deathAge})",
   goldPriceRefNote: "The gold price uses the retail spot price as of July 2026 (about £125/g) as a reference. Actual prices fluctuate daily, so replace this with the latest price when using the tool.",
   growthScheduleExampleNote: "Example: you can split growth allocation contributions into ranges by year and month, such as \u201c50y0m to 55y11m: \u00a31,500/month\u201d and \u201c56y0m to 65y0m: \u00a3500/month.\u201d Overlapping ranges are added together.",
   scheduleExampleNote: "Example: you can split contributions into ranges by year and month, such as \u201c58y0m to 61y11m: \u00a31,100/month\u201d and \u201c62y0m to 65y0m: \u00a3900/month.\u201d Overlapping ranges are added together.",
