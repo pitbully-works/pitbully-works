@@ -2918,27 +2918,57 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     { label: t("ageYears", { age: inputs.deathAge }), age: inputs.deathAge },
   ]), [effectiveCurrentAge, inputs.retireAge, inputs.deathAge, t]);
 
+  // 借入グラフは「借入名 × 時点」を1行ずつ表示する。
+  // 以前は1つの借入名の横に3本の棒を並べていたため、縦軸ラベルが中央の棒にだけ
+  // 対応して見え、どの棒が現在/退職時/想定寿命時なのか分かりにくかった。
   const loanBreakdownByAge = useMemo(() => {
-    return inputs.loans.map((l, i) => {
-      const row = { name: l.name };
-      breakdownAges.forEach(({ label, age }) => {
+    const colors = ["#C2694F", "#D9877A", "#E6B0A6"];
+    return inputs.loans.flatMap((l, i) =>
+      breakdownAges.map(({ label, age }, stageIndex) => {
         const yr = integratedRowAt(age);
-        row[label] = Math.round(yr ? (yr[`loan_${i}`] ?? 0) : l.principal);
-      });
-      return row;
-    });
-  }, [inputs.loans, breakdownAges, integratedRowAt]);
+        return {
+          label: `${l.name || t("unnamedLoanLabel", { index: i + 1 })}｜${label}`,
+          balance: Math.round(yr ? (yr[`loan_${i}`] ?? 0) : l.principal),
+          fill: colors[stageIndex % colors.length],
+        };
+      })
+    );
+  }, [inputs.loans, breakdownAges, integratedRowAt, t]);
 
+  // 銀行残高グラフでは「余剰金」を銀行名から切り離して表示する。
+  // エンジン上の surplusBalance は銀行預金の内数で、銀行別の帰属情報は持たない。
+  // そのため表示時だけ銀行残高の合計から余剰金相当額を順番に控除し、最後に
+  // 「余剰金」行として同額を足す。銀行＋余剰金の合計は元の bankValue と一致し、
+  // 総資産・純資産などの計算値には一切影響しない。
   const bankBreakdownByAge = useMemo(() => {
-    return inputs.banks.map((b, i) => {
-      const row = { name: b.name };
-      breakdownAges.forEach(({ label, age }) => {
-        const yr = integratedRowAt(age);
-        row[label] = Math.round(yr ? (yr[`pool_bank_${i}`] ?? 0) : b.balance);
+    const rows = inputs.banks.map((b, i) => ({
+      name: b.name || t("unnamedBankLabel", { index: i + 1 }),
+    }));
+    const surplusRow = { name: t("surplusChartCategory") };
+
+    breakdownAges.forEach(({ label, age }) => {
+      const yr = integratedRowAt(age);
+      const raw = inputs.banks.map((b, i) =>
+        Math.max(0, Math.round(yr ? (yr[`pool_bank_${i}`] ?? 0) : b.balance))
+      );
+      const bankTotal = raw.reduce((sum, v) => sum + v, 0);
+      let remainingSurplus = Math.min(
+        bankTotal,
+        Math.max(0, Math.round(yr?.surplusBalance ?? 0))
+      );
+
+      // surplusBalance は銀行グループ全体の内訳台帳なので、特定銀行へ帰属させない。
+      // グラフ上で二重表示しないため、銀行一覧順に余剰金相当分だけ控除する。
+      raw.forEach((balance, i) => {
+        const surplusPart = Math.min(balance, remainingSurplus);
+        rows[i][label] = balance - surplusPart;
+        remainingSurplus -= surplusPart;
       });
-      return row;
+      surplusRow[label] = Math.min(bankTotal, Math.max(0, Math.round(yr?.surplusBalance ?? 0)));
     });
-  }, [inputs.banks, breakdownAges, integratedRowAt]);
+
+    return [...rows, surplusRow];
+  }, [inputs.banks, breakdownAges, integratedRowAt, t]);
 
   // 余剰金残高（surplusBalance）の表示用。第3段階：表示のみ。エンジン計算は不変。
   const surplusAgeOptions = useMemo(
@@ -4688,7 +4718,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       <div className="app-credit">
         <div>{"© 2026 Kunihiko Hioki"}</div>
         <div>{"Developed by Kunihiko Hioki"}</div>
-        <div>{"Version 1.0.2"}</div>
+        <div>{"Version 1.0.3"}</div>
         <div>
           <a className="footer-mail" href="mailto:pdr.gifu@gmail.com">{"✉️ pdr.gifu@gmail.com"}</a>
         </div>
@@ -6822,16 +6852,19 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           {inputs.loans.length > 0 && (
             <div className="chart-frame" style={{ marginTop: 16 }}>
               <div className="chart-label">{t("loanBreakdownChartTitle", { retireAge: t("ageYears", { age: inputs.retireAge }), deathAge: t("ageYears", { age: inputs.deathAge }) })}</div>
-              <ResponsiveContainer width="100%" height={Math.max(180, inputs.loans.length * 46)}>
+              <div className="note" style={{ margin: "4px 0 8px" }}>
+                <Info size={13} />
+                <span>{t("loanBreakdownChartExplain")}</span>
+              </div>
+              <ResponsiveContainer width="100%" height={Math.max(190, loanBreakdownByAge.length * 34)}>
                 <BarChart data={loanBreakdownByAge} layout="vertical" margin={{ left: 8, right: 16 }}>
                   <CartesianGrid stroke="#2A363C" strokeDasharray="3 3" horizontal={false} />
                   <XAxis type="number" stroke="#7C8A90" fontSize={11} tickFormatter={(v) => money(v)} />
-                  <YAxis type="category" dataKey="name" stroke="#7C8A90" fontSize={11} width={90} />
+                  <YAxis type="category" dataKey="label" stroke="#7C8A90" fontSize={11} width={125} />
                   <Tooltip contentStyle={{ background: "transparent", border: "none", boxShadow: "none", fontSize: 12 }} itemStyle={{ textShadow: "0 0 3px #000, 0 0 3px #000, 0 0 2px #000" }} labelStyle={{ textShadow: "0 0 3px #000, 0 0 3px #000, 0 0 2px #000" }} formatter={(v) => money(v)} />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Bar dataKey={t("currentLabelShort")} fill="#C2694F" radius={[0, 2, 2, 0]} />
-                  <Bar dataKey={t("ageYears", { age: inputs.retireAge })} fill="#D9877A" radius={[0, 2, 2, 0]} />
-                  <Bar dataKey={t("ageYears", { age: inputs.deathAge })} fill="#E6B0A6" radius={[0, 2, 2, 0]} />
+                  <Bar dataKey="balance" name={t("loanBalanceChartLegend")} radius={[0, 2, 2, 0]}>
+                    {loanBreakdownByAge.map((row, i) => <Cell key={i} fill={row.fill} />)}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -6840,11 +6873,24 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           {inputs.banks.length > 0 && (
             <div className="chart-frame" style={{ marginTop: 16 }}>
               <div className="chart-label">{t("bankBreakdownChartTitle", { retireAge: t("ageYears", { age: inputs.retireAge }), deathAge: t("ageYears", { age: inputs.deathAge }) })}</div>
-              <ResponsiveContainer width="100%" height={Math.max(180, inputs.banks.length * 46)}>
+              <div className="note" style={{ margin: "4px 0 8px", alignItems: "flex-start" }}>
+                <Info size={13} style={{ marginTop: 2, flexShrink: 0 }} />
+                <span>
+                  {t("bankSurplusChartExplain")}
+                  <button
+                    type="button"
+                    style={{ display: "inline", marginLeft: 6, padding: 0, border: "none", background: "none", color: "#4FA8D8", textDecoration: "underline", cursor: "pointer", font: "inherit" }}
+                    onClick={() => document.getElementById("section-surplus-balance")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                  >
+                    {t("readSurplusExplanationLink")}
+                  </button>
+                </span>
+              </div>
+              <ResponsiveContainer width="100%" height={Math.max(210, bankBreakdownByAge.length * 46)}>
                 <BarChart data={bankBreakdownByAge} layout="vertical" margin={{ left: 8, right: 16 }}>
                   <CartesianGrid stroke="#2A363C" strokeDasharray="3 3" horizontal={false} />
                   <XAxis type="number" stroke="#7C8A90" fontSize={11} tickFormatter={(v) => money(v)} />
-                  <YAxis type="category" dataKey="name" stroke="#7C8A90" fontSize={11} width={90} />
+                  <YAxis type="category" dataKey="name" stroke="#7C8A90" fontSize={11} width={100} />
                   <Tooltip contentStyle={{ background: "transparent", border: "none", boxShadow: "none", fontSize: 12 }} itemStyle={{ textShadow: "0 0 3px #000, 0 0 3px #000, 0 0 2px #000" }} labelStyle={{ textShadow: "0 0 3px #000, 0 0 3px #000, 0 0 2px #000" }} formatter={(v) => money(v)} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                   <Bar dataKey={t("currentLabelShort")} fill="#4FA8D8" radius={[0, 2, 2, 0]} />
@@ -6867,7 +6913,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       <div className="footer-credit">
         <div>{"© 2026 Kunihiko Hioki"}</div>
         <div>{"Developed by Kunihiko Hioki"}</div>
-        <div>{"Version 1.0.2"}</div>
+        <div>{"Version 1.0.3"}</div>
         <div>
           <a className="footer-mail" href="mailto:pdr.gifu@gmail.com">{"✉️ pdr.gifu@gmail.com"}</a>
         </div>
