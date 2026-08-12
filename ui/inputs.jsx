@@ -70,7 +70,7 @@ function MoneyInput({ value, onChange, placeholder, className, style, disabled, 
         setEditing(true);
         e.target.select();
         if (typeof window !== "undefined" && !disabled) {
-          window.dispatchEvent(new CustomEvent("lifeplan-money-focus", { detail: {
+          window.dispatchEvent(new window.CustomEvent("lifeplan-money-focus", { detail: {
             value: Number(value || 0) / scale,
             apply: (answer) => { const v = Number(answer) * scale; onChange(hasMax ? Math.min(v, maxYen) : v); },
           }}));
@@ -193,7 +193,7 @@ function MoneyField({ label, value, onChange, unitPer, guide, disabled, mono = t
             setEditing(true);
             e.target.select();
             if (typeof window !== "undefined" && !disabled) {
-              window.dispatchEvent(new CustomEvent("lifeplan-money-focus", { detail: {
+              window.dispatchEvent(new window.CustomEvent("lifeplan-money-focus", { detail: {
                 value: Number(value || 0) / scale,
                 label,
                 apply: (answer) => onChange(Number(answer) * scale),
