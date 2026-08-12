@@ -95,6 +95,18 @@ beforeEach(() => {
   consoleErrors = [];
   unhandledErrors = [];
 
+  // この回帰テストは「日本から初回アクセスした状態」を起点にする。
+  // App 本体には初回アクセス国の自動判定があるため、jsdom の既定言語
+  // (en-US) にテスト結果を左右されないよう、このテスト内だけ ja-JP に固定する。
+  Object.defineProperty(window.navigator, "languages", {
+    configurable: true,
+    value: ["ja-JP"],
+  });
+  Object.defineProperty(window.navigator, "language", {
+    configurable: true,
+    value: "ja-JP",
+  });
+
   consoleErrorSpy = vi.spyOn(console, "error").mockImplementation((...args) => {
     const message = args
       .map((a) => (a instanceof Error ? `${a.name}: ${a.message}` : String(a)))
