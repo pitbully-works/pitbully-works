@@ -116,7 +116,7 @@ describe("家計簿：概要とコラムの間から入口カードへ飛べる"
 
   it("右のクイックジャンプでは、概要とコラムの間に入る", () => {
     const iOv = app.indexOf('{ anchor: "section-overview", short: t("navShortOverview") }');
-    const iKa = app.indexOf('{ anchor: "section-kakeibo", short: t("navShortKakeibo") }');
+    const iKa = app.indexOf('{ anchor: "section-kakeibo", short: t("navShortKakeibo"), kakeibo: true }');
     const iCol = app.indexOf('{ anchor: "section-column", short: t("navShortColumn") }');
     expect(iOv).toBeGreaterThan(0);
     expect(iKa).toBeGreaterThan(iOv);
@@ -125,7 +125,7 @@ describe("家計簿：概要とコラムの間から入口カードへ飛べる"
 
   it("「入力する項目を選ぶ」でも、概要とコラムの間に入る", () => {
     const iOv = app.indexOf('{ anchor: "section-overview", title: t("navFullOverview") }');
-    const iKa = app.indexOf('{ anchor: "section-kakeibo", title: t("navFullKakeibo") }');
+    const iKa = app.indexOf('{ anchor: "section-kakeibo", title: t("navFullKakeibo"), kakeibo: true }');
     const iCol = app.indexOf('{ anchor: "section-column", title: t("landingBlogTitle") }');
     expect(iOv).toBeGreaterThan(0);
     expect(iKa).toBeGreaterThan(iOv);
@@ -133,8 +133,8 @@ describe("家計簿：概要とコラムの間から入口カードへ飛べる"
   });
 
   it("家計簿カードとジャンプボタンは5カ国すべてで表示する", () => {
-    expect(app).toContain('{ anchor: "section-kakeibo", short: t("navShortKakeibo") }');
-    expect(app).toContain('{ anchor: "section-kakeibo", title: t("navFullKakeibo") }');
+    expect(app).toContain('{ anchor: "section-kakeibo", short: t("navShortKakeibo"), kakeibo: true }');
+    expect(app).toContain('{ anchor: "section-kakeibo", title: t("navFullKakeibo"), kakeibo: true }');
     expect(app).not.toContain('language === "ja" && (\n          <div className="landing-kakeibo"');
   });
 
