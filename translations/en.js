@@ -435,6 +435,7 @@ export const EN_TRANSLATIONS = {
     "backupToggleOpen": "Manual Backup",
     "balanceCol": "Balance",
     "loanBreakdownChartExplain": 'Each bar is labelled “loan | point in time”. A zero balance means that loan is projected to be fully repaid by then.',
+    "paidOffLabel": "Paid off",
     "loanBalanceChartLegend": 'Loan balance',
     "bankSurplusChartExplain": 'Surplus is money left after pension and other income is reduced by living costs, healthcare, insurance premiums, loan repayments and other outgoings. It is included within bank savings in the calculation, but this chart separates it from bank names so the reason for the increase is clear. Total assets are unchanged.',
     "readSurplusExplanationLink": 'Read the surplus explanation →',

@@ -435,6 +435,7 @@ export const JA_TRANSLATIONS = {
     "backupToggleOpen": "手動バックアップ",
     "balanceCol": "残高",
     "loanBreakdownChartExplain": '棒ごとに「借入名｜時点」を表示しています。0円はその時点までに完済していることを表します。',
+    "paidOffLabel": "完済",
     "loanBalanceChartLegend": '借入残高',
     "bankSurplusChartExplain": '余剰金は、年金などの収入から生活費・医療費・保険料・ローン返済などを差し引いて残ったお金です。銀行預金の内数ですが、このグラフでは理由が分かるよう銀行名から切り離して「余剰金」として表示しています。総資産額は変わりません。',
     "readSurplusExplanationLink": '余剰金の詳しい説明を見る →',
