@@ -129,6 +129,62 @@ export const SUPPORTED_COUNTRIES = [
 const DEFAULT_CURRENCY_BY_COUNTRY = { JP: "JPY", US: "USD", GB: "GBP", CA: "CAD", AU: "AUD" };
 const DEFAULT_LANGUAGE_BY_COUNTRY = { JP: "ja", US: "en", GB: "en-GB", CA: "en", AU: "en" };
 
+const AUTO_COUNTRY_CODES = new Set(["JP", "US", "GB", "CA", "AU"]);
+
+// 初回アクセス時だけ、端末のタイムゾーンとブラウザ言語から5か国の初期表示を推定する。
+// GPSや外部APIは使わないため許可ダイアログや位置情報送信は発生しない。
+// 保存済みの activeCountry がある場合は、そちらを必ず優先する。
+export function detectInitialCountry({ languages = [], timeZone = "" } = {}) {
+  const tz = String(timeZone || "");
+
+  // タイムゾーンは端末側で「自動設定」が有効なら現在地に追従しやすいため、言語より先に見る。
+  if (tz === "Asia/Tokyo") return "JP";
+  if (tz === "Europe/London") return "GB";
+  if (tz.startsWith("Australia/")) return "AU";
+
+  const canadaZones = new Set([
+    "America/Toronto", "America/Vancouver", "America/Edmonton", "America/Winnipeg",
+    "America/Halifax", "America/St_Johns", "America/Regina", "America/Moncton",
+    "America/Whitehorse", "America/Yellowknife", "America/Iqaluit",
+  ]);
+  if (canadaZones.has(tz)) return "CA";
+
+  const usZones = new Set([
+    "America/New_York", "America/Detroit", "America/Chicago", "America/Denver",
+    "America/Phoenix", "America/Los_Angeles", "America/Anchorage", "Pacific/Honolulu",
+  ]);
+  if (usZones.has(tz) || tz.startsWith("America/Indiana/") || tz.startsWith("America/Kentucky/") || tz.startsWith("America/North_Dakota/")) return "US";
+
+  // タイムゾーンだけで特定できない場合は、ブラウザ言語タグの地域コードを使う。
+  for (const value of Array.isArray(languages) ? languages : []) {
+    const tag = String(value || "").replace("_", "-");
+    const parts = tag.split("-");
+    const region = parts.find((part, index) => index > 0 && /^[A-Za-z]{2}$/.test(part));
+    if (!region) continue;
+    const code = region.toUpperCase();
+    if (AUTO_COUNTRY_CODES.has(code)) return code;
+  }
+
+  // 判定できない国からのアクセスは、従来どおり日本版を初期表示にする。
+  return "JP";
+}
+
+function detectBrowserInitialCountry() {
+  if (typeof window === "undefined") return "JP";
+  try {
+    const nav = window.navigator || {};
+    const languages = Array.isArray(nav.languages) && nav.languages.length
+      ? nav.languages
+      : [nav.language].filter(Boolean);
+    const timeZone = typeof Intl !== "undefined"
+      ? (Intl.DateTimeFormat().resolvedOptions().timeZone || "")
+      : "";
+    return detectInitialCountry({ languages, timeZone });
+  } catch {
+    return "JP";
+  }
+}
+
 
 
 // ============================================================================
@@ -1885,6 +1941,11 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   useEffect(() => {
     (async () => {
       if (!window.storage) {
+        const detectedCountry = detectBrowserInitialCountry();
+        const detectedInputs = makeCountryProfile(DEFAULT_INPUTS, detectedCountry, {});
+        countryProfilesRef.current = { [detectedCountry]: detectedInputs };
+        setInputs(detectedInputs);
+        setWatchlist(defaultWatchlistFor(detectedCountry));
         setSaveStatus("unavailable");
         setSaveMessage(t("saveMessageUnavailable"));
         setLoaded(true);
@@ -1912,9 +1973,24 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           countryWatchlistsRef.current = savedWatchlists;
           setInputs(activeInputs);
           setWatchlist(Array.isArray(savedWatchlists[activeCountry]) ? savedWatchlists[activeCountry] : defaultWatchlistFor(activeCountry));
+        } else {
+          // 保存データがまったく無い「本当の初回」だけ自動判定する。
+          // 2回目以降は保存された activeCountry を上の分岐で復元するため、旅行やVPN等で勝手に国は変わらない。
+          const detectedCountry = detectBrowserInitialCountry();
+          const detectedInputs = makeCountryProfile(DEFAULT_INPUTS, detectedCountry, {});
+          countryProfilesRef.current = { [detectedCountry]: detectedInputs };
+          countryWatchlistsRef.current = { [detectedCountry]: defaultWatchlistFor(detectedCountry) };
+          setInputs(detectedInputs);
+          setWatchlist(defaultWatchlistFor(detectedCountry));
         }
       } catch (e) {
-        // no saved data yet — this is normal on first use, not an error
+        // 保存キーが存在しない実装では get() が例外を返すことがあるため、ここも初回として自動判定する。
+        const detectedCountry = detectBrowserInitialCountry();
+        const detectedInputs = makeCountryProfile(DEFAULT_INPUTS, detectedCountry, {});
+        countryProfilesRef.current = { [detectedCountry]: detectedInputs };
+        countryWatchlistsRef.current = { [detectedCountry]: defaultWatchlistFor(detectedCountry) };
+        setInputs(detectedInputs);
+        setWatchlist(defaultWatchlistFor(detectedCountry));
       } finally {
         setLoaded(true);
       }
