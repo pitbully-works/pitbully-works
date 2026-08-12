@@ -1160,8 +1160,8 @@ function SectionNav({ items, country }) {
           const target = anchor || `section-${index}`;
           const openKakeibo = () => {
             const url = buildKakeiboBridgeUrl(country);
-            if (isStandalonePWA()) window.open(url, "_blank", "noopener,noreferrer");
-            else window.location.href = url;
+            // JPを含む5カ国すべて、家計簿カードへスクロールせず現在の画面から直接家計簿へ移動する。
+            window.location.href = url;
           };
           return (
             <button key={target} className="section-nav-btn" onClick={() => kakeibo ? openKakeibo() : jump(target)}>
@@ -6970,8 +6970,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               onClick={() => {
                 if (kakeibo) {
                   const url = buildKakeiboBridgeUrl(country);
-                  if (isStandalonePWA()) window.open(url, "_blank", "noopener,noreferrer");
-                  else window.location.href = url;
+                  // JPを含む5カ国すべて、現在の画面から家計簿へ直接移動する。
+                  window.location.href = url;
                   return;
                 }
                 const el = document.getElementById(anchor);
