@@ -66,7 +66,18 @@ function MoneyInput({ value, onChange, placeholder, className, style, disabled, 
       max={hasMax ? maxDisplay : undefined}
       placeholder={placeholder}
       value={text}
-      onFocus={(e) => { setEditing(true); e.target.select(); }}
+      onFocus={(e) => {
+        setEditing(true);
+        e.target.select();
+        if (typeof window !== "undefined" && !disabled) {
+          window.dispatchEvent(new CustomEvent("lifeplan-money-focus", { detail: {
+            value: Number(value || 0) / scale,
+            apply: (answer) => { const v = Number(answer) * scale; onChange(hasMax ? Math.min(v, maxYen) : v); },
+          }}));
+          // 金額入力は下部の関数電卓を使う。iPhoneの数字キーボードは重ねて出さない。
+          requestAnimationFrame(() => e.target.blur());
+        }
+      }}
       onBlur={() => { setEditing(false); setText(toDisplay(value)); }}
       onChange={(e) => {
         const raw = e.target.value;
@@ -178,7 +189,18 @@ function MoneyField({ label, value, onChange, unitPer, guide, disabled, mono = t
           min={0}
           disabled={disabled}
           className={mono ? "mono" : ""}
-          onFocus={(e) => { setEditing(true); e.target.select(); }}
+          onFocus={(e) => {
+            setEditing(true);
+            e.target.select();
+            if (typeof window !== "undefined" && !disabled) {
+              window.dispatchEvent(new CustomEvent("lifeplan-money-focus", { detail: {
+                value: Number(value || 0) / scale,
+                label,
+                apply: (answer) => onChange(Number(answer) * scale),
+              }}));
+              requestAnimationFrame(() => e.target.blur());
+            }
+          }}
           onBlur={() => { setEditing(false); setText(toDisplay(value)); }}
           onChange={(e) => {
             const raw = e.target.value;
