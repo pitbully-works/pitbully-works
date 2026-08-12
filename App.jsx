@@ -1144,7 +1144,7 @@ function useKeepCurrentVisible(currentAnchor) {
 }
 
 // ---------- セクションへのショートカット（トップ画面のジャンプボタン） ----------
-function SectionNav({ items }) {
+function SectionNav({ items, country }) {
   const { t } = useContext(LocaleContext);
   const jump = (anchor) => {
     const el = document.getElementById(anchor);
@@ -1155,11 +1155,16 @@ function SectionNav({ items }) {
     <div className="card section-block no-print" id="section-nav" style={{ borderColor: "#4FA8D8", marginBottom: 18 }}>
       <div className="chart-label">{t("sectionNavTitle")}</div>
       <div className="section-nav">
-        {items.map(({ index, anchor, title, icon: Icon }) => {
-          // 入力セクション（00〜11）は section-NN、それ以外は anchor を直接使う。
+        {items.map(({ index, anchor, title, icon: Icon, kakeibo }) => {
+          // 家計簿だけはカードへのスクロールではなく、選択中の国コードを渡して直接開く。
           const target = anchor || `section-${index}`;
+          const openKakeibo = () => {
+            const url = buildKakeiboBridgeUrl(country);
+            if (isStandalonePWA()) window.open(url, "_blank", "noopener,noreferrer");
+            else window.location.href = url;
+          };
           return (
-            <button key={target} className="section-nav-btn" onClick={() => jump(target)}>
+            <button key={target} className="section-nav-btn" onClick={() => kakeibo ? openKakeibo() : jump(target)}>
               {Icon && <Icon size={14} strokeWidth={1.75} />}
               <span>{title}</span>
             </button>
@@ -2792,7 +2797,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     // 「概要」と「トップページ」だけは見出しが同じ（資産形成 総合ライフプラン）で紛らわしいため専用名。
     { anchor: "section-overview", title: t("navFullOverview") },        // 概要（一番上の紹介ページ）
     // 家計簿アプリは5カ国対応済み。選択中の国に関係なく入口を表示する。
-    { anchor: "section-kakeibo", title: t("navFullKakeibo") },
+    { anchor: "section-kakeibo", title: t("navFullKakeibo"), kakeibo: true },
     { anchor: "section-column", title: t("landingBlogTitle") },         // 資産形成コラム
     { anchor: "simulator", title: t("navFullTop") },                    // トップページ（国切り替え）
     { anchor: "section-wallet", title: t("walletDashboardTitle") },     // 統合財布ダッシュボード
@@ -2825,7 +2830,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     // 表示ページの順番（上→下）に合わせて並べている。
     { anchor: "section-overview", short: t("navShortOverview") },      // 概要（一番上の紹介ページ）
     // 家計簿（5カ国共通）。押すと入口カードまでスクロールする。
-    { anchor: "section-kakeibo", short: t("navShortKakeibo") },
+    { anchor: "section-kakeibo", short: t("navShortKakeibo"), kakeibo: true },
     { anchor: "section-column", short: t("navShortColumn") },          // コラム（資産形成コラム）
     { anchor: "simulator", short: t("backToTopShort") },              // トップ（国切り替えのある見出し）
     { anchor: "section-wallet", short: t("navShortWallet") },          // 総財布（統合財布ダッシュボード）
@@ -4910,7 +4915,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         {/* -------- LEFT: INPUT PANEL -------- */}
         <div className="panel">
           {/* 各入力セクションへのショートカット */}
-          <SectionNav items={sectionNavItems} />
+          <SectionNav items={sectionNavItems} country={country} />
           <div className="section-block" style={{ borderColor: "#4FA8D8" }}>
           <SectionTitle index="00" title={label("personalInfo")} icon={Users} />
           <label className="field">
@@ -6955,7 +6960,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             背景は透明、文字はアクセント色。指で押せる最小サイズを確保しつつ、
             画面になるべく被らないよう右端に縦並びで置く。 */}
         <nav className="quicknav" aria-label={t("quickNavLabel")}>
-          {quickNavItems.map(({ anchor, short }) => (
+          {quickNavItems.map(({ anchor, short, kakeibo }) => (
             <button
               key={anchor}
               type="button"
@@ -6963,6 +6968,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               className={anchor === currentAnchor ? "quicknav-btn is-current" : "quicknav-btn"}
               aria-current={anchor === currentAnchor ? "true" : undefined}
               onClick={() => {
+                if (kakeibo) {
+                  const url = buildKakeiboBridgeUrl(country);
+                  if (isStandalonePWA()) window.open(url, "_blank", "noopener,noreferrer");
+                  else window.location.href = url;
+                  return;
+                }
                 const el = document.getElementById(anchor);
                 if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
               }}
