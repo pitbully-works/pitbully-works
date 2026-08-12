@@ -1529,7 +1529,11 @@ function FloatingScientificCalculator() {
       const d = event && event.detail ? event.detail : {};
       const raw = Number(d.value);
       const text = Number.isFinite(raw) && raw !== 0 ? String(raw) : "";
-      setTarget({ apply: typeof d.apply === "function" ? d.apply : null, label: d.label || "" });
+      setTarget({
+        apply: typeof d.apply === "function" ? d.apply : null,
+        clear: typeof d.clear === "function" ? d.clear : null,
+        label: d.label || "",
+      });
       setSci((prev) => ({ ...prev, tokens: text ? text.split("") : [], result: null, error: "" }));
       setOpen(true);
     };
@@ -1549,6 +1553,12 @@ function FloatingScientificCalculator() {
           const apply = target.apply;
           setTimeout(() => apply(answer), 0);
         }
+      }
+      if (key === "AC" && target && target.clear) {
+        // 入力欄から開いた電卓では、ACで電卓だけでなく入力先の金額も空に戻す。
+        // 手動で開いた場合は target が無いので、従来どおり電卓だけをクリアする。
+        const clearTarget = target.clear;
+        setTimeout(() => clearTarget(), 0);
       }
       return next;
     });
@@ -3934,7 +3944,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         }
         .floating-sci {
           position: fixed; left: 0; right: 0; bottom: 0; z-index: 10040;
-          height: min(46dvh, 430px); background: #10191E; border-top: 2px solid #397EA1;
+          height: min(62dvh, 570px); background: #10191E; border-top: 2px solid #397EA1;
           box-shadow: 0 -12px 30px rgba(0,0,0,.48); color: #E8F0F3;
           padding-bottom: env(safe-area-inset-bottom); display: flex; flex-direction: column;
         }
@@ -3943,7 +3953,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         .floating-sci-head strong { font-size:14px; }
         .floating-sci-head span { font-size:10.5px; color:#9EB0B8; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         .floating-sci-head button { flex:none; border:1px solid #397EA1; background:#142027; color:#72C9F3; border-radius:9px; padding:7px 10px; font-weight:800; }
-        .floating-sci-scroll { overflow-y:auto; overscroll-behavior:contain; padding:7px 10px 12px; -webkit-overflow-scrolling:touch; }
+        .floating-sci-scroll { overflow:hidden; padding:7px 10px 10px; }
         .lp-scidisp { position:relative; background:#162127; border:1px solid #2B3B43; border-radius:10px; padding:7px 10px 5px; }
         .lp-sciunit { position:absolute; left:8px; top:7px; min-height:25px; padding:2px 8px; border:1px solid #355865; border-radius:7px; background:#142027; color:#72C9F3; font-size:10px; font-weight:800; }
         .lp-sciexpr { text-align:right; min-height:17px; color:#9EB0B8; font-size:12px; word-break:break-all; }
@@ -3960,7 +3970,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         .lp-scieq { width:100%; min-height:42px; margin-top:6px; border:0; border-radius:9px; background:#2D88B5; color:white; font-size:25px; font-weight:900; box-shadow:0 5px 14px rgba(45,136,181,.3); }
         .lp-sci-history-title { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:8px; padding:4px 1px; font-size:12px; }
         .lp-sci-history-title button { border:0; background:transparent; color:#72C9F3; font-size:11px; font-weight:800; }
-        .lp-sci-history { border-top:1px solid #2B3B43; }
+        .lp-sci-history { border-top:1px solid #2B3B43; max-height:38px; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
         .lp-sci-history > button { width:100%; display:flex; justify-content:space-between; gap:10px; padding:8px 3px; border:0; border-bottom:1px solid #25343B; background:transparent; color:#C7D1D5; text-align:left; font-size:11px; }
         .lp-sci-history > button b { flex:none; color:#F4FAFC; font-size:12px; }
         .lp-sci-empty { padding:10px; text-align:center; color:#82949C; font-size:11px; }
