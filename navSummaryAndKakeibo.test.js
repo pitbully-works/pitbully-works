@@ -132,14 +132,13 @@ describe("家計簿：概要とコラムの間から入口カードへ飛べる"
     expect(iCol).toBeGreaterThan(iKa);
   });
 
-  it("家計簿カードが出るのは日本語表示のときだけなので、ボタンも同じ条件で出す", () => {
-    // カード側の条件（language === "ja"）と、両方のリストの条件が揃っていること。
-    expect(app).toContain('...(language === "ja" ? [{ anchor: "section-kakeibo", short: t("navShortKakeibo") }] : [])');
-    expect(app).toContain('...(language === "ja" ? [{ anchor: "section-kakeibo", title: t("navFullKakeibo") }] : [])');
+  it("家計簿カードとジャンプボタンは5カ国すべてで表示する", () => {
+    expect(app).toContain('{ anchor: "section-kakeibo", short: t("navShortKakeibo") }');
+    expect(app).toContain('{ anchor: "section-kakeibo", title: t("navFullKakeibo") }');
+    expect(app).not.toContain('language === "ja" && (\n          <div className="landing-kakeibo"');
   });
 
-  it("言語で出し分けるため、両方のリストの依存配列に language が入っている", () => {
-    // language を依存に入れ忘れると、言語を切り替えてもボタンが増減しない。
+  it("国切替時も家計簿URLが更新されるよう依存配列にcountryを持つ", () => {
     expect(app).toContain("]), [label, t, country, language]);");
     expect(app).toContain("]), [t, country, language]);");
   });

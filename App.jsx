@@ -73,8 +73,9 @@ import {
 // ============================================================================
 const KAKEIBO_APP_URL = "https://kakeibo-lemon.vercel.app/";
 
-function buildKakeiboBridgeUrl() {
-  return KAKEIBO_APP_URL;
+function buildKakeiboBridgeUrl(country) {
+  const code = ["JP", "US", "GB", "CA", "AU"].includes(country) ? country : "JP";
+  return `${KAKEIBO_APP_URL}?country=${encodeURIComponent(code)}`;
 }
 
 // ホーム画面に追加したPWA（standalone表示）で開いているかどうか。
@@ -2790,9 +2791,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     // 表示ページの順番（上→下）。各セクションの見出しをそのまま名前に使う。
     // 「概要」と「トップページ」だけは見出しが同じ（資産形成 総合ライフプラン）で紛らわしいため専用名。
     { anchor: "section-overview", title: t("navFullOverview") },        // 概要（一番上の紹介ページ）
-    // 家計簿アプリへの入口カード。カード自体が日本語表示のときだけ出るため、
-    // ここも同じ条件にする。条件を外すと「押しても何も起きないボタン」になる。
-    ...(language === "ja" ? [{ anchor: "section-kakeibo", title: t("navFullKakeibo") }] : []),
+    // 家計簿アプリは5カ国対応済み。選択中の国に関係なく入口を表示する。
+    { anchor: "section-kakeibo", title: t("navFullKakeibo") },
     { anchor: "section-column", title: t("landingBlogTitle") },         // 資産形成コラム
     { anchor: "simulator", title: t("navFullTop") },                    // トップページ（国切り替え）
     { anchor: "section-wallet", title: t("walletDashboardTitle") },     // 統合財布ダッシュボード
@@ -2824,9 +2824,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const quickNavItems = useMemo(() => ([
     // 表示ページの順番（上→下）に合わせて並べている。
     { anchor: "section-overview", short: t("navShortOverview") },      // 概要（一番上の紹介ページ）
-    // 家計簿（家計簿アプリへの入口カード）。カードが日本語表示のときだけ出るので、
-    // ボタンも同じ条件にする。押すとカードまでスクロールし、開くかどうかは利用者が選ぶ。
-    ...(language === "ja" ? [{ anchor: "section-kakeibo", short: t("navShortKakeibo") }] : []),
+    // 家計簿（5カ国共通）。押すと入口カードまでスクロールする。
+    { anchor: "section-kakeibo", short: t("navShortKakeibo") },
     { anchor: "section-column", short: t("navShortColumn") },          // コラム（資産形成コラム）
     { anchor: "simulator", short: t("backToTopShort") },              // トップ（国切り替えのある見出し）
     { anchor: "section-wallet", short: t("navShortWallet") },          // 総財布（統合財布ダッシュボード）
@@ -4562,23 +4561,20 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           </ul>
         </div>
 
-        {/* 家計簿アプリへの入口（同じシリーズの関連機能として表示する）。
-            日本語表示のときだけ出す。家計簿アプリ側の画面が日本語のみのため、
-            英語版・各国版では見せない。全言語で出したい場合はこの条件を外す。 */}
-        {language === "ja" && (
-          <div className="landing-kakeibo" id="section-kakeibo">
+        {/* 家計簿アプリへの入口。家計簿側も5カ国対応のため全ての国で表示し、
+            現在選択中の国コードをURLで渡して同じ国の家計簿を開く。 */}
+        <div className="landing-kakeibo" id="section-kakeibo">
             <h3>{t("landingKakeiboTitle")}</h3>
             <p>{t("landingKakeiboDesc")}</p>
             <a
               className="landing-cta landing-cta-link"
-              href={buildKakeiboBridgeUrl(inputs)}
+              href={buildKakeiboBridgeUrl(country)}
               target={isStandalonePWA() ? "_blank" : "_self"}
               rel="noopener noreferrer"
             >
               {t("landingKakeiboCta")}
             </a>
           </div>
-        )}
 
         {onOpenBlog && (
           <div className="landing-blog-section" id="section-column">
