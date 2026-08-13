@@ -188,8 +188,9 @@ function detectBrowserInitialCountry() {
 
 export function countryFromLaunchUrl(search) {
   try {
-    const params = new URLSearchParams(String(search || ""));
-    const raw = String(params.get("country") || "").toUpperCase();
+    const query = String(search || "").replace(/^\?/, "");
+    const entry = query.split("&").find((part) => part.startsWith("country="));
+    const raw = String(entry ? entry.slice("country=".length) : "").toUpperCase();
     return PROFILE_COUNTRIES.includes(raw) ? raw : null;
   } catch {
     return null;
