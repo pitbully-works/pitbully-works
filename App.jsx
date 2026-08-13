@@ -186,6 +186,33 @@ function detectBrowserInitialCountry() {
   }
 }
 
+export function countryFromLaunchUrl(search) {
+  try {
+    const params = new URLSearchParams(String(search || ""));
+    const raw = String(params.get("country") || "").toUpperCase();
+    return PROFILE_COUNTRIES.includes(raw) ? raw : null;
+  } catch {
+    return null;
+  }
+}
+
+function launchCountry() {
+  if (typeof window === "undefined") return null;
+  return countryFromLaunchUrl(window.location?.search || "");
+}
+
+function consumeLaunchCountryParam() {
+  try {
+    if (typeof window === "undefined" || !launchCountry() || !window.history?.replaceState) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete("country");
+    const query = url.searchParams.toString();
+    window.history.replaceState(null, "", `${url.pathname}${query ? `?${query}` : ""}${url.hash}`);
+  } catch {
+    // URL cleanup failure must never block the app.
+  }
+}
+
 
 
 // ============================================================================
@@ -2060,7 +2087,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   useEffect(() => {
     (async () => {
       if (!window.storage) {
-        const detectedCountry = detectBrowserInitialCountry();
+        const detectedCountry = launchCountry() || detectBrowserInitialCountry();
         const detectedInputs = makeCountryProfile(DEFAULT_INPUTS, detectedCountry, {});
         countryProfilesRef.current = { [detectedCountry]: detectedInputs };
         setInputs(detectedInputs);
@@ -2084,7 +2111,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             const merged = mergeSavedInputs(blank, raw);
             profiles[code] = forceCountryMeta(applySharedIdentity(merged, sharedSource), code);
           });
-          const activeCountry = normalizeProfileCountry(migrated.activeCountry);
+          const activeCountry = launchCountry() || normalizeProfileCountry(migrated.activeCountry);
           const activeInputs = profiles[activeCountry] || makeCountryProfile(DEFAULT_INPUTS, activeCountry, sharedSource);
           countryProfilesRef.current = { ...profiles, [activeCountry]: activeInputs };
           const savedWatchlists = parsed.watchlists && typeof parsed.watchlists === "object" ? { ...parsed.watchlists } : {};
@@ -2095,7 +2122,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         } else {
           // 保存データがまったく無い「本当の初回」だけ自動判定する。
           // 2回目以降は保存された activeCountry を上の分岐で復元するため、旅行やVPN等で勝手に国は変わらない。
-          const detectedCountry = detectBrowserInitialCountry();
+          const detectedCountry = launchCountry() || detectBrowserInitialCountry();
           const detectedInputs = makeCountryProfile(DEFAULT_INPUTS, detectedCountry, {});
           countryProfilesRef.current = { [detectedCountry]: detectedInputs };
           countryWatchlistsRef.current = { [detectedCountry]: defaultWatchlistFor(detectedCountry) };
@@ -2104,13 +2131,14 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         }
       } catch (e) {
         // 保存キーが存在しない実装では get() が例外を返すことがあるため、ここも初回として自動判定する。
-        const detectedCountry = detectBrowserInitialCountry();
+        const detectedCountry = launchCountry() || detectBrowserInitialCountry();
         const detectedInputs = makeCountryProfile(DEFAULT_INPUTS, detectedCountry, {});
         countryProfilesRef.current = { [detectedCountry]: detectedInputs };
         countryWatchlistsRef.current = { [detectedCountry]: defaultWatchlistFor(detectedCountry) };
         setInputs(detectedInputs);
         setWatchlist(defaultWatchlistFor(detectedCountry));
       } finally {
+        consumeLaunchCountryParam();
         setLoaded(true);
       }
     })();

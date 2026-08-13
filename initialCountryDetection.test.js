@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { detectInitialCountry } from "./App.jsx";
+import { countryFromLaunchUrl, detectInitialCountry } from "./App.jsx";
 
 describe("初回アクセスの国自動判定", () => {
   it("5か国の代表タイムゾーンを正しく判定する", () => {
@@ -19,5 +19,17 @@ describe("初回アクセスの国自動判定", () => {
 
   it("対応5か国を判定できない場合は従来どおりJPにする", () => {
     expect(detectInitialCountry({ timeZone: "Europe/Paris", languages: ["fr-FR"] })).toBe("JP");
+  });
+});
+
+
+describe("家計簿からの起動国", () => {
+  it("countryクエリの5か国だけを受け入れる", () => {
+    expect(countryFromLaunchUrl("?country=JP")).toBe("JP");
+    expect(countryFromLaunchUrl("?country=US")).toBe("US");
+    expect(countryFromLaunchUrl("?country=GB")).toBe("GB");
+    expect(countryFromLaunchUrl("?country=CA")).toBe("CA");
+    expect(countryFromLaunchUrl("?country=AU")).toBe("AU");
+    expect(countryFromLaunchUrl("?country=xx")).toBeNull();
   });
 });
