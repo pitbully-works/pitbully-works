@@ -15,6 +15,13 @@
 
 // ---------- countryRules/US.js 相当 ----------
 export const US_COUNTRY_RULES = {
+  meta: {
+    verifiedAsOf: "2026-08-17",
+    effectivePeriod: "2026 tax year",
+    updateCycle: "毎年10〜11月（翌年IRS/CMS公表後）＋法改正時",
+    noteJa: "2026課税年度のIRS・SSA・CMS公表値を2026年8月17日に再確認しています。",
+    noteEn: "2026 tax-year IRS, SSA and CMS figures re-verified on 17 Aug 2026.",
+  },
   investment: {
     implemented: true,
     accountTypes: ["401k", "traditionalIra", "rothIra", "brokerage"],
@@ -662,6 +669,24 @@ export const US_COUNTRY_RULES = {
         { upTo: 768700, rate: 0.35 },
         { upTo: Infinity, rate: 0.37 },
       ],
+      marriedSeparate: [
+        { upTo: 12400, rate: 0.10 },
+        { upTo: 50400, rate: 0.12 },
+        { upTo: 105700, rate: 0.22 },
+        { upTo: 201775, rate: 0.24 },
+        { upTo: 256225, rate: 0.32 },
+        { upTo: 384350, rate: 0.35 },
+        { upTo: Infinity, rate: 0.37 },
+      ],
+      headOfHousehold: [
+        { upTo: 17700, rate: 0.10 },
+        { upTo: 67450, rate: 0.12 },
+        { upTo: 105700, rate: 0.22 },
+        { upTo: 201750, rate: 0.24 },
+        { upTo: 256200, rate: 0.32 },
+        { upTo: 640600, rate: 0.35 },
+        { upTo: Infinity, rate: 0.37 },
+      ],
     },
     standardDeduction2026: {
       single: 16100,
@@ -684,7 +709,7 @@ export const US_COUNTRY_RULES = {
       const fs = this.federalBrackets2026[filingStatus] ? filingStatus : "single";
       const deduction = this.standardDeduction2026[fs] || this.standardDeduction2026.single;
       const taxableIncome = Math.max(0, grossIncome - deduction);
-      const brackets = this.federalBrackets2026[fs === "marriedSeparate" || fs === "headOfHousehold" ? "single" : fs] || this.federalBrackets2026.single;
+      const brackets = this.federalBrackets2026[fs] || this.federalBrackets2026.single;
       let tax = 0;
       let lower = 0;
       for (const b of brackets) {

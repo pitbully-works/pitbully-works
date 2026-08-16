@@ -14,6 +14,13 @@
 // 根拠が確認できない数値は推測で入れず、未実装項目は notImplemented に明示する。
 // 【重要】このオブジェクトは JP / US / GB のルールを一切参照せず、逆に参照もされない。
 export const CA_COUNTRY_RULES = {
+  meta: {
+    verifiedAsOf: "2026-08-17",
+    effectivePeriod: "2026 calendar year / OAS Jul-Sep 2026",
+    updateCycle: "毎年1月＋OASは1/4/7/10月",
+    noteJa: "2026年制度を2026年8月17日に確認。OASは2026年7〜9月四半期の公表値を基準にしています。",
+    noteEn: "2026 rules verified on 17 Aug 2026. OAS uses the July-September 2026 quarterly figures.",
+  },
   investment: {
     implemented: true,
     effectiveTaxYear: "2026",
@@ -32,8 +39,9 @@ export const CA_COUNTRY_RULES = {
     limits: {
       // TFSA：2026年の年間拠出上限（2024・2025年と同額）
       tfsaAnnualLimit: 7000,
-      // 2009年から一度も拠出していない場合の累積上限（2026年1月1日時点）
-      tfsaCumulativeRoom2026: 109000,
+      // 2009年から毎年資格があり、一度も拠出していない人に限る「理論上の累計額」。
+      // 個人の利用可能枠としては使わない（実際のroomは未使用枠＋前年引出し等で人ごとに異なる）。
+      tfsaMaximumPossibleIfEligibleSince2009: 109000,
       // RRSP：前年の稼得所得の18% と 年間上限額 の低い方
       rrspAnnualDollarLimit: 33810,
       rrspIncomePercent: 0.18,
@@ -60,14 +68,21 @@ export const CA_COUNTRY_RULES = {
     getTfsaRemaining(accounts) {
       return this.limits.tfsaAnnualLimit - this._num((accounts.tfsa || {}).annualContribution);
     },
-    // RRSPの拠出枠：前年の稼得所得の18% と 年間上限額（$33,810）の低い方。
-    // （職域年金がある場合の pension adjustment は未実装）
-    getRrspRoom(priorEarnedIncome) {
+    // RRSP deduction limit。最新Notice of Assessment / Reassessmentの値があればそれを最優先。
+    // 未入力時だけCRA式（未使用枠 + min(前年稼得所得18%, 年間上限) - PA + PAR - net PSPA）で概算する。
+    getRrspRoom(priorEarnedIncome, adjustments = {}) {
+      const official = this._num(adjustments.rrspDeductionLimitFromNoa);
+      if (official > 0) return official;
       const l = this.limits;
-      return Math.min(this._num(priorEarnedIncome) * l.rrspIncomePercent, l.rrspAnnualDollarLimit);
+      const newRoom = Math.min(this._num(priorEarnedIncome) * l.rrspIncomePercent, l.rrspAnnualDollarLimit);
+      const unused = this._num(adjustments.unusedRrspDeductionRoom);
+      const pa = this._num(adjustments.pensionAdjustment);
+      const par = this._num(adjustments.pensionAdjustmentReversal);
+      const pspa = this._num(adjustments.netPastServicePensionAdjustment);
+      return Math.max(0, unused + newRoom - pa + par - pspa);
     },
     getRrspRemaining(accounts, priorEarnedIncome) {
-      return this.getRrspRoom(priorEarnedIncome) - this._num((accounts.rrsp || {}).annualContribution);
+      return this.getRrspRoom(priorEarnedIncome, accounts) - this._num((accounts.rrsp || {}).annualContribution);
     },
     // RRIFの年齢別最低取崩し率。95歳以上は一律20%。
     getRrifMinimumFactor(age) {
@@ -168,7 +183,6 @@ export const CA_COUNTRY_RULES = {
       };
     },
     notImplemented: [
-      "職域年金加入者のPension Adjustment（PA）によるRRSP枠の減額",
       "RRSP・TFSAの未使用枠の繰越（キャリーフォワード）",
       "FHSA（First Home Savings Account）／RESP／RDSP",
       "RRSPからの引出し時の源泉徴収税（withholding tax）。引出時課税は口座ごとの withdrawalTaxPct（単一税率）で近似しており、実際の限界税率や源泉徴収率とは一致しない",

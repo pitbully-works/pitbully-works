@@ -15,6 +15,13 @@
 // 各セクションは effectiveTaxYear / lastUpdated / sourceName / sourceUrl を持つ。
 // 【重要】このオブジェクトは JP / US / GB / CA のルールを一切参照せず、逆に参照もされない。
 export const AU_COUNTRY_RULES = {
+  meta: {
+    verifiedAsOf: "2026-08-17",
+    effectivePeriod: "2026-27 financial year",
+    updateCycle: "毎年7月＋Age Pensionは3/20・9/20",
+    noteJa: "2026-27年度制度を2026年8月17日に確認。Age Pensionは2026年3月20日改定値で、次回は9月20日改定を確認します。",
+    noteEn: "2026-27 rules verified on 17 Aug 2026. Age Pension uses the 20 Mar 2026 rates; the next scheduled indexation is 20 Sep 2026.",
+  },
   investment: {
     implemented: true,
     effectiveTaxYear: "2026-27",

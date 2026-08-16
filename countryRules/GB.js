@@ -12,6 +12,13 @@
 // 【重要】このオブジェクトは JP_COUNTRY_RULES / US_COUNTRY_RULES を一切参照せず、
 // 逆に JP/US 側からも参照されない。英国版の変更はこのオブジェクト内で完結する。
 export const GB_COUNTRY_RULES = {
+  meta: {
+    verifiedAsOf: "2026-08-17",
+    effectivePeriod: "2026/27 tax year",
+    updateCycle: "毎年3〜4月（新税年度前後）＋Budget/Finance Act時",
+    noteJa: "2026/27税年度の制度を2026年8月17日に確認。所得税計算はEngland / Wales / Northern Ireland対象で、Scotlandは未実装です。",
+    noteEn: "2026/27 rules verified on 17 Aug 2026. Income-tax calculations cover England, Wales and Northern Ireland; Scottish Income Tax is not implemented.",
+  },
   investment: {
     implemented: true,
     effectiveTaxYear: "2026/27",

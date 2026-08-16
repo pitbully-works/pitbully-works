@@ -7,6 +7,13 @@
 // ---------- countryRules/JP.js 相当 ----------
 // 現行の新NISA制度（2024年〜）・iDeCo・医療費モデル。既存の計算結果と完全に同一。
 export const JP_COUNTRY_RULES = {
+  meta: {
+    verifiedAsOf: "2026-08-17",
+    effectivePeriod: "2026年8月時点",
+    updateCycle: "制度改正時＋毎年1月/4月/12月の定期確認",
+    noteJa: "2026年8月17日に現行制度を確認。2026年12月1日施行予定のiDeCo改正は予定制度として別管理します。",
+    noteEn: "Rules verified on 17 Aug 2026. The iDeCo changes scheduled for 1 Dec 2026 are tracked separately as future rules.",
+  },
   investment: {
     implemented: true,
     // つみたて投資枠 年間上限 / 成長投資枠 年間上限 / 成長投資枠 生涯（簿価）上限 / 総枠 生涯（簿価）上限
@@ -18,11 +25,40 @@ export const JP_COUNTRY_RULES = {
   },
   retirement: {
     implemented: true,
-    // iDeCo（個人型確定拠出年金）。拠出上限は加入区分により異なるため、現行仕様では
-    // 画面から自由入力（ユーザーが自身の上限を把握している前提）としており、
-    // アプリ側で固定の上限値は持たない。
     accountTypes: ["ideco"],
-    hasFixedContributionLimit: false,
+    hasFixedContributionLimit: true,
+    effectiveAsOf: "2026-08-17",
+    // 2026年8月時点の現行上限（月額）。企業年金加入者は、2万円かつ
+    // 企業型DC事業主掛金＋DB等の他制度掛金相当額との合計が5.5万円以内。
+    currentMonthlyLimits: {
+      firstInsured: 68000,
+      voluntaryInsured: 68000,
+      employeeNoCorporatePension: 23000,
+      employeeWithCorporatePensionMax: 20000,
+      thirdInsured: 23000,
+      corporatePensionCombinedCeiling: 55000,
+    },
+    contributionCategories: [
+      "firstInsured", "employeeNoCorporatePension", "employeeWithCorporatePension", "thirdInsured", "voluntaryInsured",
+    ],
+    getMonthlyContributionLimit(category, otherPlanMonthlyContribution = 0) {
+      const l = this.currentMonthlyLimits;
+      const other = Math.max(0, Number(otherPlanMonthlyContribution) || 0);
+      if (category === "firstInsured") return l.firstInsured;
+      if (category === "voluntaryInsured") return l.voluntaryInsured;
+      if (category === "employeeWithCorporatePension") {
+        return Math.max(0, Math.min(l.employeeWithCorporatePensionMax, l.corporatePensionCombinedCeiling - other));
+      }
+      if (category === "thirdInsured") return l.thirdInsured;
+      return l.employeeNoCorporatePension;
+    },
+    // 2026年12月1日施行予定。現時点の計算にはまだ適用しない。
+    scheduledFrom20261201: {
+      effectiveDate: "2026-12-01",
+      firstInsuredCombinedWithNationalPensionFund: 75000,
+      secondInsuredCommonCeiling: 62000,
+      note: "MHLW 2025 pension reform; future rule, not active before 2026-12-01",
+    },
   },
   healthcare: {
     implemented: true,
