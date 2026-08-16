@@ -1860,7 +1860,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     : 0;
   const caMarginalRate = (caIsCA && rules.tax.implemented) ? rules.tax.getMarginalRate(caGrossIncome) : 0;
   const caRrspRoom = (caIsCA && rules.investment.implemented)
-    ? rules.investment.getRrspRoom(caPriorEarnedIncome)
+    ? rules.investment.getRrspRoom(caPriorEarnedIncome, caInvestment)
     : 0;
   const caRrspTaxSaving = (caIsCA && rules.tax.implemented)
     ? rules.tax.calculateRrspTaxSaving(caInvestment.rrsp.annualContribution, caGrossIncome, caRrspRoom)

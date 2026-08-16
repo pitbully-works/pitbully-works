@@ -539,10 +539,24 @@ describe("CA境界：未実装項目が明示されている", () => {
     expect(inv.notImplemented.join(" / ")).toMatch(/withdrawalTaxPct/);
   });
 
-  it("州税・QPP・PAは未実装として列挙されている", () => {
+  it("州税・QPPは未実装として列挙され、PAはRRSP枠計算に実装済み", () => {
     const all = [...inv.notImplemented, ...ret.notImplemented, ...tax.notImplemented].join(" / ");
     expect(all).toMatch(/州・準州の所得税/);
     expect(all).toMatch(/QPP/);
-    expect(all).toMatch(/Pension Adjustment|PA）/);
+    expect(all).not.toMatch(/Pension Adjustment|PA）/);
+
+    // CRA式の調整項目が実際にRRSP deduction roomへ反映されることを検証。
+    expect(inv.getRrspRoom(100000, {
+      unusedRrspDeductionRoom: 5000,
+      pensionAdjustment: 3000,
+      pensionAdjustmentReversal: 1000,
+      netPastServicePensionAdjustment: 500,
+    })).toBe(20500); // 5,000 + 18,000 - 3,000 + 1,000 - 500
+
+    // Notice of Assessment / Reassessment の正式値が入力された場合は最優先。
+    expect(inv.getRrspRoom(100000, {
+      rrspDeductionLimitFromNoa: 12345,
+      pensionAdjustment: 999999,
+    })).toBe(12345);
   });
 });
