@@ -5,6 +5,18 @@
 // ============================================================================
 
 export const EN_TRANSLATIONS = {
+    "rulesVerifiedLabel": "Rules verified as of:",
+    "idecoCategoryLabel": "iDeCo participant category",
+    "idecoCategoryFirst": "Category 1 insured (self-employed etc.)",
+    "idecoCategoryEmployeeNoPension": "Category 2 — no employer pension",
+    "idecoCategoryEmployeeWithPension": "Category 2 — employer pension / public employee",
+    "idecoCategoryThird": "Category 3 insured",
+    "idecoCategoryVoluntary": "Voluntarily insured",
+    "idecoOtherPlanMonthlyLabel": "Employer DC + DB-equivalent monthly contribution",
+    "idecoOtherPlanMonthlyGuide": "Used to calculate the current iDeCo ceiling for workers covered by an employer pension.",
+    "idecoCurrentLimitNote": "Current iDeCo monthly ceiling for this category as of Aug 2026: {amount}. The increase scheduled for 1 Dec 2026 is not yet applied to current calculations.",
+    "idecoOverLimitWarning": "The entered contribution exceeds the current legal ceiling. The simulation is capped at {amount} per month.",
+
     // ---------- United Kingdom (GB) keys ----------
     // The GB build runs on the "en-GB" dictionary, which inherits every key below.
     // Wording here is British English and uses UK product names only (no US terms).

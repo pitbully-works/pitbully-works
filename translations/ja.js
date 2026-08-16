@@ -5,6 +5,18 @@
 // ============================================================================
 
 export const JA_TRANSLATIONS = {
+    "rulesVerifiedLabel": "制度基準日：",
+    "idecoCategoryLabel": "iDeCo加入区分",
+    "idecoCategoryFirst": "第1号被保険者（自営業等）",
+    "idecoCategoryEmployeeNoPension": "第2号・企業年金なし",
+    "idecoCategoryEmployeeWithPension": "第2号・企業年金あり／公務員",
+    "idecoCategoryThird": "第3号被保険者",
+    "idecoCategoryVoluntary": "任意加入被保険者",
+    "idecoOtherPlanMonthlyLabel": "企業型DC事業主掛金＋DB等の他制度掛金相当額（月額）",
+    "idecoOtherPlanMonthlyGuide": "企業年金加入者のiDeCo上限計算に使います。勤務先の企業型DC事業主掛金とDB等の他制度掛金相当額の月額合計を入力してください。",
+    "idecoCurrentLimitNote": "2026年8月時点のこの加入区分のiDeCo月額上限：{amount}。2026年12月1日施行予定の引上げは現行計算にはまだ適用していません。",
+    "idecoOverLimitWarning": "入力額が現行上限を超えています。シミュレーションでは月額{amount}を上限として計算します。",
+
     // ---------- 英国版（GB）専用キー ----------
     // 英国選択時の表示言語は en-GB のため、実際に画面へ出るのは en 側の英国英語表記。
     // ここでは辞書の欠落を防ぐためのフォールバック（日本語）として同じキーを保持する。
