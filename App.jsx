@@ -5233,6 +5233,16 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 onChange={(e) => update({ birthDate: e.target.value })}
                 style={{ width: "100%" }}
               />
+              {inputs.birthDate && (
+                <button
+                  type="button"
+                  className="secondary-btn"
+                  onClick={() => update({ birthDate: "" })}
+                  style={{ marginLeft: 8, whiteSpace: "nowrap" }}
+                >
+                  {language === "ja" ? "生年月日を消す" : "Clear date"}
+                </button>
+              )}
             </div>
           </label>
           {preciseAge && (
