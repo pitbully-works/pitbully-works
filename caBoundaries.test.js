@@ -56,7 +56,7 @@ describe("CA境界：2026年の制度上限が公表値どおり", () => {
   });
 
   it("2009年から未拠出の場合のTFSA累積枠は C$109,000（2026年1月1日時点）", () => {
-    expect(inv.limits.tfsaCumulativeRoom2026).toBe(109000);
+    expect(inv.limits.tfsaMaximumPossibleIfEligibleSince2009).toBe(109000);
   });
 
   it("RRSPの年間上限額は C$33,810、稼得所得に対する率は18%", () => {

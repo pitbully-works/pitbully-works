@@ -691,6 +691,11 @@ function CAInvestmentAccountsPanel({ caInvestment, onUpdate, onUpdateAccount, ag
 
       <Field guide={t("caAnnualIncomeGuide")} label={t("caAnnualIncomeLabel")} unit="C$" step={1000} value={caInvestment.annualIncome} onChange={(v) => onUpdate("annualIncome", v)} />
       <Field guide={t("caPriorEarnedIncomeGuide")} label={t("caPriorEarnedIncomeLabel")} unit="C$" step={1000} value={caInvestment.priorEarnedIncome} onChange={(v) => onUpdate("priorEarnedIncome", v)} />
+      <Field label="RRSP deduction limit (latest Notice of Assessment)" unit="C$" step={500} value={caInvestment.rrspDeductionLimitFromNoa} onChange={(v) => onUpdate("rrspDeductionLimitFromNoa", v)} />
+      <Field label="Unused RRSP deduction room carried forward" unit="C$" step={500} value={caInvestment.unusedRrspDeductionRoom} onChange={(v) => onUpdate("unusedRrspDeductionRoom", v)} />
+      <Field label="Pension Adjustment (PA)" unit="C$" step={500} value={caInvestment.pensionAdjustment} onChange={(v) => onUpdate("pensionAdjustment", v)} />
+      <Field label="Pension Adjustment Reversal (PAR)" unit="C$" step={500} value={caInvestment.pensionAdjustmentReversal} onChange={(v) => onUpdate("pensionAdjustmentReversal", v)} />
+      <Field label="Net Past Service Pension Adjustment (PSPA)" unit="C$" step={500} value={caInvestment.netPastServicePensionAdjustment} onChange={(v) => onUpdate("netPastServicePensionAdjustment", v)} />
 
       <CAAccountFields
         accountKey="tfsa" title={t("caTfsaLabel")} account={caInvestment.tfsa}
@@ -1371,6 +1376,8 @@ const DEFAULT_INPUTS = {
       lumpPortionPct: 50, // 併用時の一時金割合（%）
       payoutReturnPct: 0, // 受取中の想定運用利回り
       annualIncome: 0,
+      contributionCategory: "employeeNoCorporatePension",
+      otherPlanMonthlyContribution: 0,
       asOfYears: "",
       asOfMonths: "",
     },
@@ -1455,7 +1462,12 @@ const DEFAULT_INPUTS = {
     // 4口座それぞれが「現在額・年間積立額・想定利回り・積立終了年齢」を個別に持つ。
     caInvestment: {
       annualIncome: 0,        // 年間総所得（連邦所得税・RRSP税軽減・OASクローバックの判定に使用）
-      priorEarnedIncome: 0,   // 前年の稼得所得（RRSP拠出枠 = この18% と $33,810 の低い方）
+      priorEarnedIncome: 0,   // 前年の稼得所得
+      rrspDeductionLimitFromNoa: 0, // 最新Notice of Assessment / ReassessmentのRRSP deduction limit（最優先）
+      unusedRrspDeductionRoom: 0,
+      pensionAdjustment: 0,
+      pensionAdjustmentReversal: 0,
+      netPastServicePensionAdjustment: 0,
       estimatedCapitalGainAnnual: 0,
       // withdrawalTaxPct：TFSAは非課税(0%)。RRSP/RRIFからの引出は全額が課税所得（初期値25%）。
       // 非登録口座はキャピタルゲインの50%課税（初期値12%）。
@@ -2676,6 +2688,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   // iDeCo：NISAとは別の専用計算関数（受取前は生活費に使わず増やすだけ）。
   // ここで先に受取額を算出し、年金・併用の場合のみ「追加収入」としてNISA側の取り崩し計算へ渡す。
   const effectiveIdecoReturn = inputs.ideco.returnPctAuto ? guessDefaultReturn(inputs.ideco.productName) : inputs.ideco.returnPct;
+  const idecoMonthlyLimit = rules?.retirement?.getMonthlyContributionLimit
+    ? rules.retirement.getMonthlyContributionLimit(inputs.ideco.contributionCategory, inputs.ideco.otherPlanMonthlyContribution)
+    : Infinity;
+  const effectiveIdecoMonthlyContribution = country === "JP"
+    ? Math.min(Math.max(0, Number(inputs.ideco.monthlyContribution) || 0), idecoMonthlyLimit)
+    : Math.max(0, Number(inputs.ideco.monthlyContribution) || 0);
   // 「現在評価額」の基準年齢（年・月の入力から小数年齢に変換。未入力なら null＝現在の年齢として扱う＝追加計算なし）
   const idecoAsOfAge = (inputs.ideco.asOfYears !== "" && inputs.ideco.asOfYears !== undefined && inputs.ideco.asOfYears !== null)
     ? Number(inputs.ideco.asOfYears || 0) + Number(inputs.ideco.asOfMonths || 0) / 12
@@ -2683,9 +2701,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const idecoSim = useMemo(
     () => runIdecoSimulation({
       currentAge: effectiveCurrentAge, deathAge: inputs.deathAge,
-      ideco: { ...inputs.ideco, returnPct: effectiveIdecoReturn, asOfAge: idecoAsOfAge },
+      ideco: { ...inputs.ideco, monthlyContribution: effectiveIdecoMonthlyContribution, returnPct: effectiveIdecoReturn, asOfAge: idecoAsOfAge },
     }),
-    [effectiveCurrentAge, inputs.deathAge, inputs.ideco, effectiveIdecoReturn, idecoAsOfAge]
+    [effectiveCurrentAge, inputs.deathAge, inputs.ideco, effectiveIdecoReturn, idecoAsOfAge, effectiveIdecoMonthlyContribution]
   );
   const idecoPayoutMethod = inputs.ideco.payoutMethod;
   const getIdecoMonthlyIncome = useMemo(() => {
@@ -2845,7 +2863,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   // AU_COUNTRY_RULES.investment.simulateGrowth のみを使用し、他国とは完全に独立している。
 
   // iDeCo 自動計算項目
-  const idecoAnnualContribution = (inputs.ideco.monthlyContribution || 0) * 12;
+  const idecoAnnualContribution = effectiveIdecoMonthlyContribution * 12;
   const idecoRemainingContribYears = Math.max(0, inputs.ideco.endAge - Math.max(inputs.ideco.startAge, effectiveCurrentAge));
   const idecoContributionTotal = (inputs.ideco.principalTotal || 0) + idecoAnnualContribution * idecoRemainingContribYears;
   const idecoInvestmentGain = (inputs.ideco.currentValue || 0) - (inputs.ideco.principalTotal || 0);
@@ -3066,7 +3084,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     // このリストは画面下端を基準に上へ積み上がる（.quicknav-wrap が bottom 固定）ため、
     // 途中に足しても一番下の「個別株」の位置は変わらず、上側が1コマぶん上へ伸びる。
     ...(country === "JP" ? [{ anchor: "section-allocation", short: t("navShortAllocation") }] : []),
-    { anchor: "section-03", short: t("navShortRetirementAcct") },      // iDeCo
+    ...(country === "JP" ? [{ anchor: "section-03", short: t("navShortRetirementAcct") }] : []), // iDeCo is JP-only
     { anchor: "section-04", short: t("navShortPension") },             // 年金
     { anchor: "section-05", short: t("navShortHealth") },              // 健康
     { anchor: "section-06", short: t("navShortInheritance") },         // 相続
@@ -4896,6 +4914,17 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <br />
             {t("todayLabel")}：{new Date().toLocaleDateString(dateLocale, { year: "numeric", month: "long", day: "numeric" })}
           </div>
+          {rules?.meta?.verifiedAsOf && (
+            <div className="note" style={{ marginTop: 8, marginBottom: 0, fontSize: 11 }}>
+              <Info size={13} />
+              <span>
+                <strong>{t("rulesVerifiedLabel")}</strong> {rules.meta.verifiedAsOf}
+                {rules.meta.effectivePeriod ? ` · ${rules.meta.effectivePeriod}` : ""}
+                <br />
+                {language === "ja" ? rules.meta.noteJa : rules.meta.noteEn}
+              </span>
+            </div>
+          )}
         </div>
         <div className="meta" style={{ alignItems: "center" }}>
           <div className="no-print">
@@ -5696,6 +5725,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           )}
 
           </div>
+          {country === "JP" && (
           <div className="section-block" style={{ borderColor: "#B08FD6" }}>
           <SectionTitle index="03" title={label("retirementAccount")} icon={Landmark} />
 
@@ -5736,7 +5766,30 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             </div>
           </label>
           <MoneyField guide={t("idecoPrincipalGuide")} label={t("idecoPrincipalLabel")} value={inputs.ideco.principalTotal} onChange={(v) => updateIdeco("principalTotal", v)} />
+          <label className="field">
+            <span className="field-label">{t("idecoCategoryLabel")}</span>
+            <select value={inputs.ideco.contributionCategory || "employeeNoCorporatePension"} onChange={(e) => updateIdeco("contributionCategory", e.target.value)}>
+              <option value="firstInsured">{t("idecoCategoryFirst")}</option>
+              <option value="employeeNoCorporatePension">{t("idecoCategoryEmployeeNoPension")}</option>
+              <option value="employeeWithCorporatePension">{t("idecoCategoryEmployeeWithPension")}</option>
+              <option value="thirdInsured">{t("idecoCategoryThird")}</option>
+              <option value="voluntaryInsured">{t("idecoCategoryVoluntary")}</option>
+            </select>
+          </label>
+          {inputs.ideco.contributionCategory === "employeeWithCorporatePension" && (
+            <MoneyField guide={t("idecoOtherPlanMonthlyGuide")} label={t("idecoOtherPlanMonthlyLabel")} value={inputs.ideco.otherPlanMonthlyContribution} onChange={(v) => updateIdeco("otherPlanMonthlyContribution", v)} />
+          )}
+          <div className="note" style={{ marginBottom: 10 }}>
+            <Info size={13} />
+            <span>{t("idecoCurrentLimitNote", { amount: money(idecoMonthlyLimit) })}</span>
+          </div>
           <MoneyField guide={t("idecoMonthlyContributionGuide")} label={t("idecoMonthlyContributionLabel")} value={inputs.ideco.monthlyContribution} onChange={(v) => updateIdeco("monthlyContribution", v)} />
+          {Number(inputs.ideco.monthlyContribution) > idecoMonthlyLimit && (
+            <div className="note" style={{ borderLeftColor: "#C2694F", marginTop: -8 }}>
+              <Info size={13} style={{ color: "#C2694F" }} />
+              <span>{t("idecoOverLimitWarning", { amount: money(idecoMonthlyLimit) })}</span>
+            </div>
+          )}
           <AgeField label={t("idecoContributionStartAgeLabel")} value={inputs.ideco.startAge} onChange={(v) => updateIdeco("startAge", v)} />
           <AgeField label={t("idecoContributionEndAgeLabel")} value={inputs.ideco.endAge} onChange={(v) => updateIdeco("endAge", v)} />
 
@@ -5851,6 +5904,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           </div>
 
           </div>
+          )}
           <div className="section-block" style={{ borderColor: "#C2694F" }}>
           <SectionTitle index="04" title={label("pensionRetirement")} icon={Landmark} />
           {country === "JP" ? (
