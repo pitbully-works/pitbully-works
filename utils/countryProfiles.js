@@ -1,6 +1,7 @@
 export const PROFILE_COUNTRIES = Object.freeze(["JP", "US", "GB", "CA", "AU"]);
-export const PROFILE_STORAGE_VERSION = 2;
-export const PROFILE_SHARED_KEYS = Object.freeze(["userName", "birthDate", "currentAge"]);
+export const PROFILE_STORAGE_VERSION = 3;
+// 名前・生年月日・現在年齢も国別プロファイルに完全分離する。
+export const PROFILE_SHARED_KEYS = Object.freeze([]);
 const META = Object.freeze({
   JP: { baseCurrency: "JPY", language: "ja" },
   US: { baseCurrency: "USD", language: "en" },
@@ -84,6 +85,23 @@ export function migrateCountryProfiles(defaultInputs, parsed) {
   const p = parsed && typeof parsed === "object" ? parsed : {};
   if (p.profileStorageVersion >= PROFILE_STORAGE_VERSION && p.profiles && typeof p.profiles === "object") {
     return { profiles: p.profiles, activeCountry: normalizeProfileCountry(p.activeCountry || p.inputs?.country || "JP"), migratedLegacy: false };
+  }
+  // v2 は名前・生年月日・現在年齢を国間で共有していた。v3 では完全分離する。
+  // 移行時は現在開いていた国だけ本人情報を保持し、他国にコピーされていた本人情報を消す。
+  if (p.profileStorageVersion === 2 && p.profiles && typeof p.profiles === "object") {
+    const activeCountry = normalizeProfileCountry(p.activeCountry || p.inputs?.country || "JP");
+    const profiles = {};
+    PROFILE_COUNTRIES.forEach((code) => {
+      if (!p.profiles[code]) return;
+      const src = clone(p.profiles[code]);
+      if (code !== activeCountry) {
+        src.userName = "";
+        src.birthDate = "";
+        src.currentAge = clone(defaultInputs.currentAge);
+      }
+      profiles[code] = forceCountryMeta(src, code);
+    });
+    return { profiles, activeCountry, migratedLegacy: true };
   }
   if (p.inputs && typeof p.inputs === "object") {
     // v1 had one shared bucket. Existing users are Japanese-first, so preserve every value in JP.
