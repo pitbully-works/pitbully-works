@@ -25,3 +25,5 @@ jobs:
 
       - name: 回帰テストを実行
         run: npx vitest run --reporter=verbose
+      - name: Mutation smoke testを実行
+        run: node scripts/run-mutation-smoke.mjs
