@@ -10,7 +10,7 @@
 // Field で既に解決済みの方法をそのまま適用した。計算・保存データ構造は変更していない。
 // ============================================================================
 
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect, useContext, useId } from "react";
 import { Plus } from "lucide-react";
 import { LocaleContext, yen } from "./locale.js";
 import { GuideButton } from "./guides.jsx";
@@ -40,7 +40,7 @@ function useMoneyScale() {
 // 超える値が打たれたときは弾いて黙って止めるのではなく、上限値そのものに
 // 丸めて表示を書き換える（スマホでは入力が無反応になると壊れて見えるため）。
 // max を渡さなければ従来どおり上限なしで、既存の呼び出しは一切影響を受けない。
-function MoneyInput({ value, onChange, placeholder, className, style, disabled, max }) {
+function MoneyInput({ value, onChange, placeholder, className, style, disabled, max, id, ariaLabel, ariaDescribedBy }) {
   const scale = useMoneyScale();
   const toDisplay = (yen) => (yen === "" || yen === null || yen === undefined ? "" : String(Number(yen) / scale));
   const [text, setText] = useState(toDisplay(value));
@@ -58,6 +58,9 @@ function MoneyInput({ value, onChange, placeholder, className, style, disabled, 
 
   return (
     <input
+      id={id}
+      aria-label={ariaLabel}
+      aria-describedby={ariaDescribedBy}
       type="number"
       inputMode="decimal"
       className={className}
@@ -161,6 +164,8 @@ function RateInput({ value, onChange, onEmpty, step = 0.5, className, style }) {
 
 function MoneyField({ label, value, onChange, unitPer, guide, disabled, mono = true }) {
   const { t, baseCurrency, currencySymbol } = useContext(LocaleContext);
+  const inputId = useId();
+  const guideId = useId();
   const [showGuide, setShowGuide] = useState(false);
   const isYen = (baseCurrency || "JPY") === "JPY";
   const scale = isYen ? MAN : 1;
@@ -176,14 +181,16 @@ function MoneyField({ label, value, onChange, unitPer, guide, disabled, mono = t
   useEffect(() => { if (!editing) setText(toDisplay(value)); }, [value, scale]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <label className="field">
+    <div className="field">
       <span className="field-label-row">
-        <span className="field-label">{label}</span>
+        <label className="field-label" htmlFor={inputId}>{label}</label>
         {guide && <GuideButton open={showGuide} onToggle={() => setShowGuide((v) => !v)} />}
       </span>
-      {guide && showGuide && <span className="guide-text">{guide}</span>}
+      {guide && showGuide && <span id={guideId} className="guide-text">{guide}</span>}
       <div className="field-input-wrap">
         <input
+          id={inputId}
+          aria-describedby={guide && showGuide ? guideId : undefined}
           type="number"
           inputMode="decimal"
           value={text}
@@ -218,12 +225,14 @@ function MoneyField({ label, value, onChange, unitPer, guide, disabled, mono = t
           = {new Intl.NumberFormat().format(Math.round(Number(value)))} {isYen ? t("currencyUnit") : currencySymbol}
         </span>
       )}
-    </label>
+    </div>
   );
 }
 
 function Field({ label, unit, value, onChange, step = 1, min = 0, max, mono = true, disabled = false, guide }) {
   const [showGuide, setShowGuide] = useState(false);
+  const inputId = useId();
+  const guideId = useId();
 
   // 【なぜ表示用のテキストを別に持つか】
   // 従来は <input type="number" value={value}> に数値をそのまま流していたため、
@@ -243,14 +252,16 @@ function Field({ label, unit, value, onChange, step = 1, min = 0, max, mono = tr
   }, [value]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <label className="field">
+    <div className="field">
       <span className="field-label-row">
-        <span className="field-label">{label}</span>
+        <label className="field-label" htmlFor={inputId}>{label}</label>
         {guide && <GuideButton open={showGuide} onToggle={() => setShowGuide((v) => !v)} />}
       </span>
-      {guide && showGuide && <span className="guide-text">{guide}</span>}
+      {guide && showGuide && <span id={guideId} className="guide-text">{guide}</span>}
       <div className="field-input-wrap">
         <input
+          id={inputId}
+          aria-describedby={guide && showGuide ? guideId : undefined}
           type="number"
           value={text}
           step={step}
@@ -278,7 +289,7 @@ function Field({ label, unit, value, onChange, step = 1, min = 0, max, mono = tr
         />
         {unit && <span className="field-unit">{unit}</span>}
       </div>
-    </label>
+    </div>
   );
 }
 
@@ -298,6 +309,7 @@ function Field({ label, unit, value, onChange, step = 1, min = 0, max, mono = tr
 function AgeField({ label, value, onChange, disabled, guide }) {
   const { t } = useContext(LocaleContext);
   const [showGuide, setShowGuide] = useState(false);
+  const guideId = useId();
   const years = Math.floor(value + 1e-9);
   const months = Math.round((value - years) * 12);
 
@@ -320,17 +332,19 @@ function AgeField({ label, value, onChange, disabled, guide }) {
   }, [years, months]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <label className="field">
-      <span className="field-label-row">
+    <fieldset className="field" style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+      <legend className="field-label-row">
         <span className="field-label">{label}</span>
         {guide && <GuideButton open={showGuide} onToggle={() => setShowGuide((v) => !v)} />}
-      </span>
-      {guide && showGuide && <span className="guide-text">{guide}</span>}
+      </legend>
+      {guide && showGuide && <span id={guideId} className="guide-text">{guide}</span>}
       <div style={{ display: "flex", gap: 6 }}>
         <div className="field-input-wrap" style={{ flex: 1 }}>
           <input
             type="number"
             className="mono"
+            aria-label={`${label} ${t("unitYears")}`}
+            aria-describedby={guide && showGuide ? guideId : undefined}
             value={yearsText}
             disabled={disabled}
             onChange={(e) => {
@@ -357,6 +371,8 @@ function AgeField({ label, value, onChange, disabled, guide }) {
           <input
             type="number"
             className="mono"
+            aria-label={`${label} ${t("unitMonths")}`}
+            aria-describedby={guide && showGuide ? guideId : undefined}
             min={0}
             max={11}
             value={monthsText}
@@ -380,7 +396,7 @@ function AgeField({ label, value, onChange, disabled, guide }) {
           <span className="field-unit">{t("unitMonths")}</span>
         </div>
       </div>
-    </label>
+    </fieldset>
   );
 }
 
@@ -401,12 +417,14 @@ function AgeYMInput({ years, months, onYears, onMonths, placeholder }) {
     <div style={{ display: "flex", gap: 4, flex: 1 }}>
       <input
         type="number" placeholder={`${placeholder}${t("unitYearsShort")}`} value={years}
+        aria-label={`${placeholder || ""}${t("unitYears")}`}
         onChange={(e) => onYears(e.target.value)}
         onFocus={(e) => e.target.select()}
         style={inputStyle}
       />
       <input
         type="number" placeholder={t("unitMonths")} min={0} max={11} value={months}
+        aria-label={`${placeholder || ""}${t("unitMonths")}`}
         onChange={(e) => onMonths(e.target.value)}
         onFocus={(e) => e.target.select()}
         style={inputStyle}
@@ -419,16 +437,17 @@ function AgeYMInput({ years, months, onYears, onMonths, placeholder }) {
 // ラベルを別要素として常時表示する）
 function LabeledMiniInput({ label, value, onChange, type = "number", money = false, onChangeValue }) {
   const { t, baseCurrency } = useContext(LocaleContext);
+  const inputId = useId();
   const isYen = (baseCurrency || "JPY") === "JPY";
   return (
     <div style={{ flex: 1 }}>
-      <div style={{ fontSize: 10, color: "#7C8A90", marginBottom: 2 }}>
+      <label htmlFor={inputId} style={{ display: "block", fontSize: 10, color: "#7C8A90", marginBottom: 2 }}>
         {label}{money && isYen ? `（${t("unitMan")}）` : ""}
-      </div>
+      </label>
       {money ? (
-        <MoneyInput value={value} onChange={(v) => onChangeValue(v)} style={{ width: "100%" }} />
+        <MoneyInput id={inputId} ariaLabel={label} value={value} onChange={(v) => onChangeValue(v)} style={{ width: "100%" }} />
       ) : (
-        <input type={type} value={value} onChange={onChange} style={{ width: "100%" }} />
+        <input id={inputId} aria-label={label} type={type} value={value} onChange={onChange} style={{ width: "100%" }} />
       )}
     </div>
   );
