@@ -5213,38 +5213,46 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           <SectionNav items={sectionNavItems} country={country} />
           <div className="section-block" style={{ borderColor: "#4FA8D8" }}>
           <SectionTitle index="00" title={label("personalInfo")} icon={Users} />
-          <label className="field">
-            <span className="field-label">{t("nameLabel")}</span>
+          <div className="field">
+            <label className="field-label" htmlFor="personal-name">{t("nameLabel")}</label>
             <div className="field-input-wrap">
               <input
+                id="personal-name"
                 type="text"
                 value={inputs.userName}
+                enterKeyHint="done"
                 onChange={(e) => update({ userName: e.target.value })}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    e.currentTarget.blur();
+                  }
+                }}
                 style={{ width: "100%" }}
               />
             </div>
-          </label>
-          <label className="field">
-            <span className="field-label">{t("birthDateLabel")}</span>
+          </div>
+          <div className="field">
+            <label className="field-label" htmlFor="personal-birth-date">{t("birthDateLabel")} <span aria-hidden="true" style={{ color: "#ff6b6b" }}>*</span></label>
             <div className="field-input-wrap">
               <input
+                id="personal-birth-date"
                 type="date" className="mono"
-                value={inputs.birthDate}
-                onChange={(e) => update({ birthDate: e.target.value })}
+                value={inputs.birthDate || ""}
+                required
+                aria-required="true"
+                onInput={(e) => {
+                  const next = e.currentTarget.value;
+                  if (next) update({ birthDate: next });
+                }}
+                onChange={(e) => {
+                  const next = e.currentTarget.value;
+                  if (next) update({ birthDate: next });
+                }}
                 style={{ width: "100%" }}
               />
-              {inputs.birthDate && (
-                <button
-                  type="button"
-                  className="secondary-btn"
-                  onClick={() => update({ birthDate: "" })}
-                  style={{ marginLeft: 8, whiteSpace: "nowrap" }}
-                >
-                  {language === "ja" ? "生年月日を消す" : "Clear date"}
-                </button>
-              )}
             </div>
-          </label>
+          </div>
           {preciseAge && (
             <div className="note">
               <Info size={13} />
