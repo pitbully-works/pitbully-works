@@ -151,6 +151,14 @@ describe("GB境界：年金Annual Allowanceのテーパリング", () => {
     expect(inv.getPensionContributed(a)).toBe(35000);
     expect(inv.getPensionRemaining(a, 100000)).toBe(25000);
   });
+
+  it("残枠計算でもthreshold incomeを独立して判定する", () => {
+    const a = accounts({ sippC: 10000, workplacePensionC: 0 });
+    // adjusted incomeだけ高くてもthreshold incomeが£200,000以下なら満額£60,000
+    expect(inv.getPensionRemaining(a, 300000, 200000)).toBe(50000);
+    // 両方が基準超ならテーパー後£40,000 − 拠出£10,000 = £30,000
+    expect(inv.getPensionRemaining(a, 300000, 240000)).toBe(30000);
+  });
 });
 
 // ---------------------------------------------------------------------------

@@ -467,6 +467,7 @@ function GBInvestmentAccountsPanel({ gbInvestment, onUpdate, onUpdateAccount, ag
 
       <Field guide={t("gbAnnualIncomeGuide")} label={t("gbAnnualIncomeLabel")} unit="£" step={1000} value={gbInvestment.annualIncome} onChange={(v) => onUpdate("annualIncome", v)} />
       <Field guide={t("gbAdjustedIncomeGuide")} label={t("gbAdjustedIncomeLabel")} unit="£" step={1000} value={gbInvestment.adjustedIncome} onChange={(v) => onUpdate("adjustedIncome", v)} />
+      <Field guide={t("gbThresholdIncomeGuide")} label={t("gbThresholdIncomeLabel")} unit="£" step={1000} value={gbInvestment.thresholdIncome} onChange={(v) => onUpdate("thresholdIncome", v)} />
 
       <GBAccountFields
         accountKey="stocksSharesIsa" title={t("gbStocksSharesIsaLabel")} account={gbInvestment.stocksSharesIsa}
@@ -1422,6 +1423,7 @@ const DEFAULT_INPUTS = {
     gbInvestment: {
       annualIncome: 0,   // 年間総所得（Income Tax・配当税・CGT・年金税軽減の判定に使用）
       adjustedIncome: 0, // 年金拠出上限のテーパリング判定用（0なら annualIncome を使用）
+      thresholdIncome: 0, // テーパー適用の第1条件。0なら annualIncome を使用
       dividendIncomeAnnual: 0,
       estimatedCapitalGainAnnual: 0,
       // withdrawalTaxPct：ISAは非課税(0%)。SIPP・職域年金は25%が非課税で残り75%が所得課税
@@ -1726,7 +1728,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   // ※ AU など各国の派生計算（useMemo の依存配列を含む）から参照されるため、
   //    必ず国別派生計算より前に宣言する（後ろに置くと TDZ で白画面になる）
   const preciseAge = useMemo(() => computeAgeFromBirthDate(inputs.birthDate), [inputs.birthDate]);
-  const effectiveCurrentAge = preciseAge ? preciseAge.decimal : inputs.currentAge;
+  // 生年月日は5カ国すべてで必須。未入力時は年齢依存シミュレーションを実行しない。
+  const simulationReady = !!preciseAge;
+  const effectiveCurrentAge = preciseAge ? preciseAge.decimal : 0;
 
   // ---------- アメリカ選択時の派生計算（すべて US_COUNTRY_RULES の関数のみを使用） ----------
   // country !== "US" のときは呼び出さない（JP_COUNTRY_RULES 等には同名メソッドが存在しないため）。
@@ -1791,6 +1795,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const gbIsGB = country === "GB";
   const gbGrossIncome = Number(gbInvestment.annualIncome) || 0;
   const gbAdjustedIncome = Number(gbInvestment.adjustedIncome) || gbGrossIncome;
+  const gbThresholdIncome = Number(gbInvestment.thresholdIncome) || gbGrossIncome;
 
   const gbIncomeTaxResult = (gbIsGB && rules.tax.implemented)
     ? rules.tax.calculateIncomeTax(gbGrossIncome)
@@ -1805,7 +1810,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     ? rules.tax.getMarginalRate(gbGrossIncome)
     : 0;
   const gbPensionAnnualAllowance = (gbIsGB && rules.investment.implemented)
-    ? rules.investment.getPensionAnnualAllowance(gbAdjustedIncome)
+    ? rules.investment.getPensionAnnualAllowance(gbAdjustedIncome, gbThresholdIncome)
     : 0;
   const gbPensionContribution = (gbIsGB && rules.investment.implemented)
     ? rules.investment.getPensionContributed(gbInvestment)
@@ -2699,11 +2704,11 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     ? Number(inputs.ideco.asOfYears || 0) + Number(inputs.ideco.asOfMonths || 0) / 12
     : null;
   const idecoSim = useMemo(
-    () => runIdecoSimulation({
+    () => simulationReady ? runIdecoSimulation({
       currentAge: effectiveCurrentAge, deathAge: inputs.deathAge,
       ideco: { ...inputs.ideco, monthlyContribution: effectiveIdecoMonthlyContribution, returnPct: effectiveIdecoReturn, asOfAge: idecoAsOfAge },
-    }),
-    [effectiveCurrentAge, inputs.deathAge, inputs.ideco, effectiveIdecoReturn, idecoAsOfAge, effectiveIdecoMonthlyContribution]
+    }) : { yearly: [], currentValueAdjusted: 0, finalValue: 0, valueAtPayout: 0, lumpAmount: 0, annualPayout: 0, payoutStartAge: inputs.ideco.payoutStartAge || 60, payoutEndAge: inputs.ideco.payoutStartAge || 60 },
+    [simulationReady, effectiveCurrentAge, inputs.deathAge, inputs.ideco, effectiveIdecoReturn, idecoAsOfAge, effectiveIdecoMonthlyContribution]
   );
   const idecoPayoutMethod = inputs.ideco.payoutMethod;
   const getIdecoMonthlyIncome = useMemo(() => {
@@ -2733,8 +2738,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   );
 
   const sim = useMemo(
-    () => runSimulation(effectiveInputs, t("uncategorizedLabel"), t("phaseAccumulation"), t("phaseDrawdown")),
-    [effectiveInputs, t]
+    () => simulationReady ? runSimulation(effectiveInputs, t("uncategorizedLabel"), t("phaseAccumulation"), t("phaseDrawdown")) : { yearly: [], assetsAtRetire: 0, growthCum: 0, growthMaxedAge: null, lumpTruncations: [], totalMaxedAge: null, tsumitateCum: 0 },
+    [simulationReady, effectiveInputs, t]
   );
   const autoGoldReturn = guessDefaultReturn("金");
   const effectiveGoldReturnPct = inputs.gold.priceGrowthPctAuto ? autoGoldReturn : inputs.gold.priceGrowthPct;
@@ -2743,14 +2748,14 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     ? Number(inputs.gold.asOfYears || 0) + Number(inputs.gold.asOfMonths || 0) / 12
     : null;
   const goldSim = useMemo(
-    () => runGoldSimulation({ currentAge: effectiveCurrentAge, deathAge: inputs.deathAge, gold: { ...inputs.gold, priceGrowthPct: effectiveGoldReturnPct, asOfAge: goldAsOfAge } }),
-    [effectiveCurrentAge, inputs.deathAge, inputs.gold, effectiveGoldReturnPct, goldAsOfAge]
+    () => simulationReady ? runGoldSimulation({ currentAge: effectiveCurrentAge, deathAge: inputs.deathAge, gold: { ...inputs.gold, priceGrowthPct: effectiveGoldReturnPct, asOfAge: goldAsOfAge } }) : { yearly: [], finalGrams: 0, finalValue: 0, valueAtTarget: 0, currentValue: 0, currentGrams: 0 },
+    [simulationReady, effectiveCurrentAge, inputs.deathAge, inputs.gold, effectiveGoldReturnPct, goldAsOfAge]
   );
   const bankSim = useMemo(
-    () => runBankSimulation({
+    () => simulationReady ? runBankSimulation({
       currentAge: effectiveCurrentAge, retireAge: inputs.retireAge, deathAge: inputs.deathAge, banks: inputs.banks,
-    }),
-    [effectiveCurrentAge, inputs.retireAge, inputs.deathAge, inputs.banks]
+    }) : { yearly: [], totalNow: 0, totalAtRetire: 0, totalFinal: 0 },
+    [simulationReady, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, inputs.banks]
   );
   const stockTotalNow = useMemo(() => watchlist.reduce((s, w) => s + (w.value || 0), 0), [watchlist]);
   const stockAllocationItems = useMemo(
@@ -2765,20 +2770,20 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   }, [watchlist, inputs.stockReturnPct]);
   const effectiveStockReturnPct = inputs.stockReturnPctAuto ? autoStockReturn : inputs.stockReturnPct;
   const stockSim = useMemo(
-    () => runStockSim({ currentAge: effectiveCurrentAge, deathAge: inputs.deathAge, totalValue: stockTotalNow, returnPct: effectiveStockReturnPct }),
-    [effectiveCurrentAge, inputs.deathAge, stockTotalNow, effectiveStockReturnPct]
+    () => simulationReady ? runStockSim({ currentAge: effectiveCurrentAge, deathAge: inputs.deathAge, totalValue: stockTotalNow, returnPct: effectiveStockReturnPct }) : { yearly: [], finalValue: 0 },
+    [simulationReady, effectiveCurrentAge, inputs.deathAge, stockTotalNow, effectiveStockReturnPct]
   );
   const loanSim = useMemo(
-    () => runLoanSimulation({ currentAge: effectiveCurrentAge, deathAge: inputs.deathAge, loans: inputs.loans }),
-    [effectiveCurrentAge, inputs.deathAge, inputs.loans]
+    () => simulationReady ? runLoanSimulation({ currentAge: effectiveCurrentAge, deathAge: inputs.deathAge, loans: inputs.loans }) : { yearly: [], totalNow: 0, totalFinal: 0, payoffAges: [] },
+    [simulationReady, effectiveCurrentAge, inputs.deathAge, inputs.loans]
   );
   const insuranceSim = useMemo(
-    () => runInsuranceSimulation({ currentAge: effectiveCurrentAge, deathAge: inputs.deathAge, policies: inputs.insurancePolicies }),
-    [effectiveCurrentAge, inputs.deathAge, inputs.insurancePolicies]
+    () => simulationReady ? runInsuranceSimulation({ currentAge: effectiveCurrentAge, deathAge: inputs.deathAge, policies: inputs.insurancePolicies }) : { yearly: [], totalFinal: 0, cumulativeAtCurrentAge: 0 },
+    [simulationReady, effectiveCurrentAge, inputs.deathAge, inputs.insurancePolicies]
   );
   const pensionSim = useMemo(
-    () => runPrivatePensionSimulation({ currentAge: effectiveCurrentAge, deathAge: inputs.deathAge, plans: inputs.privatePensionPlans }),
-    [effectiveCurrentAge, inputs.deathAge, inputs.privatePensionPlans]
+    () => simulationReady ? runPrivatePensionSimulation({ currentAge: effectiveCurrentAge, deathAge: inputs.deathAge, plans: inputs.privatePensionPlans }) : { yearly: [], totalFinal: 0, totalNow: 0 },
+    [simulationReady, effectiveCurrentAge, inputs.deathAge, inputs.privatePensionPlans]
   );
 
   // アメリカ選択時：401(k)/Traditional IRA/Roth IRA/Brokerageの残高推移シミュレーション。
@@ -2795,7 +2800,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   }, [inputs.birthDate, effectiveCurrentAge]);
 
   const usInvestmentSim = useMemo(() => {
-    if (country !== "US" || !rules.investment.implemented) {
+    if (!simulationReady || country !== "US" || !rules.investment.implemented) {
       return { yearly: [], finalValue: 0 };
     }
     return rules.investment.simulateGrowth({
@@ -2825,13 +2830,13 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       socialSecurityStartAge: usClaimAge,
       filingStatus: usFilingStatus,
     });
-  }, [country, rules, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, inputs.usInvestment, usWithdrawalNeeded, usBirthYear, usRmdTaxRatePct, usSSAnnualBenefit, usExpensesAnnual, usTotalHealthcareAnnual, usClaimAge, usFilingStatus]);
+  }, [simulationReady, country, rules, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, inputs.usInvestment, usWithdrawalNeeded, usBirthYear, usRmdTaxRatePct, usSSAnnualBenefit, usExpensesAnnual, usTotalHealthcareAnnual, usClaimAge, usFilingStatus]);
 
   // イギリス選択時：ISA / SIPP / 職域年金 / GIA / Cash Savings の残高推移シミュレーション。
   // GB_COUNTRY_RULES.investment.simulateGrowth のみを使用し、JP（runSimulation）・US（US側のsimulateGrowth）
   // とは完全に独立している。country !== "GB" のときは計算自体を行わない（空データを返すだけ）。
   const gbInvestmentSim = useMemo(() => {
-    if (country !== "GB" || !rules.investment.implemented) {
+    if (!simulationReady || country !== "GB" || !rules.investment.implemented) {
       return { yearly: [], finalValue: 0 };
     }
     return rules.investment.simulateGrowth({
@@ -2841,13 +2846,13 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       accounts: inputs.gbInvestment,
       annualWithdrawalNeeded: gbWithdrawalNeeded,
     });
-  }, [country, rules, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, inputs.gbInvestment, gbWithdrawalNeeded]);
+  }, [simulationReady, country, rules, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, inputs.gbInvestment, gbWithdrawalNeeded]);
 
   // カナダ選択時：TFSA / RRSP / 非登録口座 / 現金 の残高推移シミュレーション。
   // CA_COUNTRY_RULES.investment.simulateGrowth のみを使用し、他国とは完全に独立している。
   // country !== "CA" のときは計算自体を行わない（空データを返すだけ）。
   const caInvestmentSim = useMemo(() => {
-    if (country !== "CA" || !rules.investment.implemented) {
+    if (!simulationReady || country !== "CA" || !rules.investment.implemented) {
       return { yearly: [], finalValue: 0 };
     }
     return rules.investment.simulateGrowth({
@@ -2857,7 +2862,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       accounts: inputs.caInvestment,
       annualWithdrawalNeeded: caWithdrawalNeeded,
     });
-  }, [country, rules, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, inputs.caInvestment, caWithdrawalNeeded]);
+  }, [simulationReady, country, rules, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, inputs.caInvestment, caWithdrawalNeeded]);
 
   // オーストラリア選択時：Superannuation / 投資口座 / 現金 の残高推移シミュレーション。
   // AU_COUNTRY_RULES.investment.simulateGrowth のみを使用し、他国とは完全に独立している。
@@ -2941,7 +2946,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     auAgePensionAnnualSeed, auAgePensionQualifyingAge, auOtherAnnualIncome, auHealthcareAnnual, t,
   ]);
 
-  const integrated = useMemo(() => runIntegratedPlan(buildPlanInput(planCtx)), [planCtx]);
+  const integrated = useMemo(() => simulationReady ? runIntegratedPlan(buildPlanInput(planCtx)) : { yearly: [], finalNetWorth: 0, loanPayoffAges: [], depletionAge: null }, [simulationReady, planCtx]);
 
   // ---------- Age Pension：画面カードの値は本番投影（integrated）から読み取る ----------
   // 【なぜ再計算しないのか】
@@ -2992,7 +2997,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const auIncomeSurplus = Math.max(0, auRetirementIncomeAnnual - (auExpensesAnnual + auHealthcareAnnual));
 
   const auInvestmentSim = useMemo(() => {
-    if (country !== "AU" || !rules.investment.implemented) {
+    if (!simulationReady || country !== "AU" || !rules.investment.implemented) {
       return { yearly: [], finalValue: 0 };
     }
     return rules.investment.simulateGrowth({
@@ -3008,7 +3013,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       div293TaxAnnual: auDiv293Tax,
       div293PaidFrom: auDiv293PaidFrom,
     });
-  }, [country, rules, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, inputs.auInvestment, auWithdrawalNeeded, auDiv293Tax, auDiv293PaidFrom]);
+  }, [simulationReady, country, rules, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, inputs.auInvestment, auWithdrawalNeeded, auDiv293Tax, auDiv293PaidFrom]);
 
 
   // チャート用データ。行の age は「その時点で実際に到達している年齢」（整数）で、
@@ -4966,7 +4971,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <span>
               {preciseAge
                 ? t("ageYMD", { years: preciseAge.years, months: preciseAge.months, days: preciseAge.days })
-                : t("ageYears", { age: effectiveCurrentAge })}
+                : t("birthDateRequiredPrompt")}
             </span>
           </div>
           <div>{t("retireAgeLabel")} <span>{t("ageYears", { age: inputs.retireAge })}</span></div>
@@ -5253,6 +5258,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               />
             </div>
           </div>
+          {!simulationReady && (
+            <div className="note" style={{ borderLeftColor: "#C2694F" }}>
+              <Info size={13} style={{ color: "#C2694F" }} />
+              <span><strong>{t("birthDateRequiredPrompt")}</strong><br />{t("birthDateRequiredSimulationNote")}</span>
+            </div>
+          )}
           {preciseAge && (
             <div className="note">
               <Info size={13} />
@@ -5266,7 +5277,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           </div>
           <div className="section-block" style={{ borderColor: "#D9A54F" }}>
           <SectionTitle index="01" title={label("basicInfo")} icon={Ruler} />
-          <AgeField guide={t("currentAgeGuide")} label={t("currentAgeFieldLabel")} value={effectiveCurrentAge} disabled={!!preciseAge} onChange={(v) => update({ currentAge: v })} />
+          <AgeField guide={t("currentAgeGuide")} label={t("currentAgeFieldLabel")} value={preciseAge ? effectiveCurrentAge : ""} disabled={true} onChange={() => {}} />
           {preciseAge && (
             <div className="note" style={{ marginTop: -8 }}>
               <Info size={13} />

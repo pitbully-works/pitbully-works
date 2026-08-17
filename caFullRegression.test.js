@@ -295,7 +295,7 @@ describe("CA回帰：エンジン上のOAS（A-1：75歳の10%上乗せ）", () 
   });
 
   it("クローバックが効く所得でも、上乗せ後の金額から回収される", () => {
-    const netIncome = ret.oas.recoveryTaxThreshold2026 + 10000; // 回収額 C$1,500
+    const netIncome = ret.oas.recoveryTaxThreshold2025 + 10000; // 2026-07〜2027-06支給期：回収額 C$1,500
     const r = plan(65, 40, netIncome);
     const after = bankAt(r, 76) - bankAt(r, 75);
     expect(near(after, ret.oas.maxMonthly75plus * 12 - 1500)).toBe(true);

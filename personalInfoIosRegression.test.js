@@ -17,4 +17,15 @@ describe("personal info iOS regression", () => {
     expect(app).not.toContain('生年月日を消す');
     expect(app).not.toContain('Clear date');
   });
+
+  it("required birth date gates age-dependent simulations", () => {
+    expect(app).toContain("const simulationReady = !!preciseAge");
+    expect(app).toContain("simulationReady ? runIntegratedPlan");
+    expect(app).toContain("birthDateRequiredSimulationNote");
+  });
+
+  it("GB UI keeps threshold income separate from adjusted income", () => {
+    expect(app).toContain('onUpdate("thresholdIncome", v)');
+    expect(app).toContain("getPensionAnnualAllowance(gbAdjustedIncome, gbThresholdIncome)");
+  });
 });

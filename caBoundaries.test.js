@@ -275,40 +275,35 @@ describe("CA境界：OASの満額（75歳の上乗せ）", () => {
 // ---------------------------------------------------------------------------
 describe("CA境界：OAS回収税（recovery tax）", () => {
   const full = 751.97 * 12; // 65〜74歳の満額年額
-  const threshold = 95323;
+  const currentThreshold = 93454; // 2025所得 → 2026-07〜2027-06支給
+  const nextThreshold = 95323;    // 2026所得 → 2027-07〜2028-06支給
 
-  it("2026課税年度の閾値は C$95,323、回収率は15%", () => {
+  it("支給期間ごとの閾値と回収率を保持する", () => {
+    expect(ret.oas.recoveryTaxThreshold2025).toBe(93454);
     expect(ret.oas.recoveryTaxThreshold2026).toBe(95323);
     expect(ret.oas.recoveryTaxRate).toBe(0.15);
+    expect(ret.getOasRecoveryThreshold("2026-08-17")).toBe(currentThreshold);
+    expect(ret.getOasRecoveryThreshold("2027-06-30")).toBe(currentThreshold);
+    expect(ret.getOasRecoveryThreshold("2027-07-01")).toBe(nextThreshold);
   });
 
-  it("閾値ちょうどでは回収されない", () => {
-    expect(ret.getOasClawback(threshold, full)).toBe(0);
-    expect(near(ret.getOasAnnualAfterClawback(threshold, full), full)).toBe(true);
+  it("現在の支給期間では C$93,454 ちょうどまで回収されない", () => {
+    expect(ret.getOasClawback(currentThreshold, full)).toBe(0);
+    expect(near(ret.getOasAnnualAfterClawback(currentThreshold, full), full)).toBe(true);
   });
 
-  it("閾値未満でも回収されない", () => {
-    expect(ret.getOasClawback(0, full)).toBe(0);
-    expect(ret.getOasClawback(threshold - 1, full)).toBe(0);
+  it("現在の閾値を C$10,000 超えたら15%の C$1,500が回収される", () => {
+    expect(near(ret.getOasClawback(currentThreshold + 10000, full), 1500)).toBe(true);
   });
 
-  it("閾値を C$10,000 超えたら 15% の C$1,500 が回収される", () => {
-    expect(near(ret.getOasClawback(threshold + 10000, full), 1500)).toBe(true);
+  it("2027-07以降は2026年所得の C$95,323を使う", () => {
+    expect(ret.getOasClawback(nextThreshold, full, "2027-07-01")).toBe(0);
+    expect(near(ret.getOasClawback(nextThreshold + 10000, full, "2027-07-01"), 1500)).toBe(true);
   });
 
   it("回収額はOAS年額を上限とする（マイナス受給にならない）", () => {
     expect(near(ret.getOasClawback(1000000, full), full)).toBe(true);
     expect(ret.getOasAnnualAfterClawback(1000000, full)).toBe(0);
-  });
-
-  // 全額回収点：ESDC公表値は2026課税年度・65〜74歳で C$154,708 だが、これは四半期ごとに
-  // 改定されるOAS月額を年間で合算した額に基づく。本アプリは7〜9月期の月額を12倍した
-  // 単一レートで年額を出すモデルのため、C$155,481 とややずれる（モデル上の想定内）。
-  it("全額回収となる所得は 閾値 + 年額/0.15（65〜74歳で約 C$155,000）", () => {
-    const wipeout = threshold + full / 0.15;
-    expect(near(ret.getOasClawback(wipeout, full), full)).toBe(true);
-    expect(ret.getOasClawback(wipeout - 1000, full)).toBeLessThan(full);
-    expect(Math.round(wipeout)).toBe(155481);
   });
 
   it("OAS年額が0なら回収額も0", () => {
