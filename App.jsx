@@ -2021,8 +2021,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
        ・ほかの国のプロファイルには指一本触れない
        makeCountryProfile がこの2つをまとめて用意してくれるので、
        ここで項目を並べ直さない（並べ直すと、増えた項目を書き忘れる）。
-       第2引数に何も渡さないので、名前・生年月日といった共有の身元も
-       初期値（未入力）に戻る。 */
+       第2引数に何も渡さないので、この国の名前・生年月日も
+       初期値（未入力）に戻る。ほかの国の本人情報には影響しない。 */
     const code = normalizeProfileCountry(inputs.country);
     const fresh = makeCountryProfile(DEFAULT_INPUTS, code, {});
     const freshWatchlist = defaultWatchlistFor(code);
@@ -2790,7 +2790,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   // JPのrunSimulation（NISA専用）とは完全に独立しており、US_COUNTRY_RULES.investment.simulateGrowth
   // のみを使用する。country !== "US" のときは計算自体を行わない（空データを返すだけ）。
   // RMD（必須最低引出）の開始年齢は生年で決まる（SECURE 2.0：1960年以降生まれは75歳、それ以前は73歳）。
-  // 生年月日が入力されていればその年を、未入力なら「今年 − 現在の年齢」で推定する。
+  // 生年月日は必須なので通常はその年を使う。防御的に未入力時だけ推定値へフォールバックするが、
+  // simulationReady=false のため年齢依存シミュレーション自体は実行されない。
   const usBirthYear = useMemo(() => {
     const fromInput = String(inputs.birthDate || "").slice(0, 4);
     const parsed = Number(fromInput);
