@@ -5233,7 +5233,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             </div>
           </div>
           <div className="field">
-            <label className="field-label" htmlFor="personal-birth-date">{t("birthDateLabel")} <span aria-hidden="true" style={{ color: "#ff6b6b" }}>*</span></label>
+            <label className="field-label" htmlFor="personal-birth-date">{t("birthDateLabel")} <span style={{ color: "#ff6b6b", fontWeight: 700 }}>({t("requiredLabel")})</span></label>
             <div className="field-input-wrap">
               <input
                 id="personal-birth-date"
