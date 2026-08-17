@@ -28,9 +28,14 @@ export const TRANSLATIONS = {
 TRANSLATIONS["en-GB"] = { ...TRANSLATIONS.en, ...EN_GB_OVERRIDES };
 
 export function translateWith(language, key, vars) {
-  const dict = TRANSLATIONS[language] || TRANSLATIONS.ja;
+  // Supported English locales must never fall back to Japanese.  This keeps
+  // US/GB/CA/AU screens from silently mixing Japanese when a key is missed.
+  // Unknown/non-Japanese locales also use English as the safe public fallback.
+  const lang = String(language || "");
+  const fallbackLanguage = lang === "ja" || lang.startsWith("ja-") ? "ja" : "en";
+  const dict = TRANSLATIONS[lang] || TRANSLATIONS[fallbackLanguage];
   let str = dict[key];
-  if (str === undefined) str = TRANSLATIONS.ja[key];
+  if (str === undefined) str = TRANSLATIONS[fallbackLanguage][key];
   if (str === undefined) return key; // 未登録キーは開発時に気付けるようキー名をそのまま返す
   if (vars) {
     Object.keys(vars).forEach((k) => {
