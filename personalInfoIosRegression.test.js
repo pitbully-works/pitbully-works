@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import fs from "node:fs";
+import path from "node:path";
 
-const app = fs.readFileSync(new URL("./App.jsx", import.meta.url), "utf8");
+const app = fs.readFileSync(path.resolve(process.cwd(), "App.jsx"), "utf8");
 
 describe("personal info iOS regression", () => {
   it("name uses Done and does not advance to the date picker", () => {
