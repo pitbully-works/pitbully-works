@@ -394,7 +394,7 @@ describe("useMemo の依存配列", () => {
 
   it("integrated は planCtx に依存し、planCtx は inputs に依存している", () => {
     const app = fs.readFileSync(path.join(ROOT, "App.jsx"), "utf8");
-    expect(app).toMatch(/const integrated = useMemo\(\(\) => runIntegratedPlan\(buildPlanInput\(planCtx\)\), \[planCtx\]\)/);
+    expect(app).toMatch(/const integrated = useMemo\(\(\) => simulationReady \? runIntegratedPlan\(buildPlanInput\(planCtx\)\) : .*?, \[simulationReady, planCtx\]\)/);
     const i = app.indexOf("const planCtx = useMemo(");
     const deps = app.slice(i, app.indexOf("]);", i));
     expect(deps.includes("inputs"), "planCtx が inputs に依存していない").toBe(true);

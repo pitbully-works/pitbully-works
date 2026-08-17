@@ -534,11 +534,15 @@ describe("Canada (CA) core calculations", () => {
     expect(ret.getOasResidenceFraction(5)).toBe(0);
   });
 
-  it("OAS clawback recovers 15% of net income above 95,323, capped at the OAS amount", () => {
+  it("OAS clawback uses the threshold for the payment period and caps recovery at the OAS amount", () => {
+    expect(ret.oas.recoveryTaxThreshold2025).toBe(93_454);
     expect(ret.oas.recoveryTaxThreshold2026).toBe(95_323);
     const oas = ret.getOasAnnualBeforeClawback(70, 65, 40);
+    // Default payment date is 2026-08-17, so the 2025-income threshold applies.
     expect(ret.getOasClawback(90_000, oas)).toBe(0);
-    expect(ret.getOasClawback(120_000, oas)).toBeCloseTo((120_000 - 95_323) * 0.15, 2);
+    expect(ret.getOasClawback(120_000, oas)).toBeCloseTo((120_000 - 93_454) * 0.15, 2);
+    // From 2027-07, the 2026-income threshold applies.
+    expect(ret.getOasClawback(120_000, oas, "2027-07-01")).toBeCloseTo((120_000 - 95_323) * 0.15, 2);
     expect(ret.getOasClawback(500_000, oas)).toBeCloseTo(oas, 2);
     expect(ret.getOasAnnualAfterClawback(500_000, oas)).toBeCloseTo(0, 2);
   });
