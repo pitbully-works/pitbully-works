@@ -508,6 +508,7 @@ export const JA_TRANSLATIONS = {
     "benefitSeparator": "・",
     "benefitSurgery": "手術{amount}",
     "birthDateLabel": "生年月日",
+    "requiredLabel": "必須",
     "birthDateNotePrefix": "生年月日から計算した現在の年齢：",
     "birthDateNoteSuffix": "（本日時点）。この数値がシミュレーション全体の「現在の年齢」として自動的に使われます。",
     "capDiffExceeded": "月上限を{amount}超過",

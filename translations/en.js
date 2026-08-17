@@ -508,6 +508,7 @@ export const EN_TRANSLATIONS = {
     "benefitSeparator": ", ",
     "benefitSurgery": "Surgery {amount}",
     "birthDateLabel": "Date of Birth",
+    "requiredLabel": "Required",
     "birthDateNotePrefix": "Current age calculated from date of birth: ",
     "birthDateNoteSuffix": " (as of today). This figure is used automatically as the Current Age throughout the simulation.",
     "capDiffExceeded": "{amount} over the monthly cap",
