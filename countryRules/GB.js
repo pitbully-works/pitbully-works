@@ -89,8 +89,8 @@ export const GB_COUNTRY_RULES = {
       return this._num((accounts.sipp || {}).annualContribution)
         + this._num((accounts.workplacePension || {}).annualContribution);
     },
-    getPensionRemaining(accounts, adjustedIncome) {
-      return this.getPensionAnnualAllowance(adjustedIncome) - this.getPensionContributed(accounts);
+    getPensionRemaining(accounts, adjustedIncome, thresholdIncome) {
+      return this.getPensionAnnualAllowance(adjustedIncome, thresholdIncome) - this.getPensionContributed(accounts);
     },
 
     // 6口座の残高を、現在の年齢から死亡想定年齢まで年単位で積み上げる。

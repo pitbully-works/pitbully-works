@@ -227,7 +227,10 @@ export const CA_COUNTRY_RULES = {
       earlyClaimAllowed: false, // OASは65歳より前には受給できない
       // 繰下げ：1か月あたり0.6%増額（70歳で +36%）
       lateIncreasePerMonth: 0.006,
-      // 回収（クローバック）：2026課税年度、純所得がこの額を超えると超過分の15%が回収される
+      // OAS回収税は「所得年」と「翌年7月〜翌々年6月の支給期間」がずれる。
+      // 2025年所得 C$93,454 → 2026-07〜2027-06 の支給に反映。
+      // 2026年所得 C$95,323 → 2027-07〜2028-06 の支給に反映。
+      recoveryTaxThreshold2025: 93454,
       recoveryTaxThreshold2026: 95323,
       recoveryTaxRate: 0.15,
       // 満額受給には18歳以降40年のカナダ居住が必要（10年で最低受給資格）
@@ -279,15 +282,27 @@ export const CA_COUNTRY_RULES = {
         * this.getOasFactor(startAge)
         * this.getOasResidenceFraction(residenceYears);
     },
-    // OAS回収税（クローバック）：純所得が閾値を超えた分の15%を、OAS年額を上限として回収する
-    getOasClawback(netIncome, oasAnnualBeforeClawback) {
+    // 支給月に対応する前年所得のクローバック閾値を返す。
+    // 未指定時は制度基準日（2026-08-17）が属する 2026-07〜2027-06 を使う。
+    getOasRecoveryThreshold(paymentDate = "2026-08-17") {
       const o = this.oas;
-      const excess = Math.max(0, (Number(netIncome) || 0) - o.recoveryTaxThreshold2026);
+      const d = new Date(`${paymentDate}T00:00:00`);
+      if (!Number.isFinite(d.getTime())) return o.recoveryTaxThreshold2025;
+      const y = d.getFullYear();
+      const m = d.getMonth() + 1;
+      if (y > 2027 || (y === 2027 && m >= 7)) return o.recoveryTaxThreshold2026;
+      return o.recoveryTaxThreshold2025;
+    },
+    // OAS回収税（クローバック）：純所得が該当支給期間の閾値を超えた分の15%を、OAS年額を上限として回収する。
+    getOasClawback(netIncome, oasAnnualBeforeClawback, paymentDate = "2026-08-17") {
+      const o = this.oas;
+      const threshold = this.getOasRecoveryThreshold(paymentDate);
+      const excess = Math.max(0, (Number(netIncome) || 0) - threshold);
       return Math.min(Math.max(0, Number(oasAnnualBeforeClawback) || 0), excess * o.recoveryTaxRate);
     },
-    getOasAnnualAfterClawback(netIncome, oasAnnualBeforeClawback) {
+    getOasAnnualAfterClawback(netIncome, oasAnnualBeforeClawback, paymentDate = "2026-08-17") {
       const before = Math.max(0, Number(oasAnnualBeforeClawback) || 0);
-      return before - this.getOasClawback(netIncome, before);
+      return before - this.getOasClawback(netIncome, before, paymentDate);
     },
     notImplemented: [
       "GIS（Guaranteed Income Supplement）およびAllowance",
