@@ -9,7 +9,7 @@ import "./storageShim.js";
 // 総資産推移・純資産の唯一の計算源（全資産・負債・収支を1本の月次ループで扱う統合エンジン）。
 // 各パネル個別のシミュレーション（runSimulation / runGoldSimulation など）は表示用にそのまま残す。
 import { runIntegratedPlan, buildAgeSteps, NOT_DRAWABLE } from "./lifePlanEngine.js";
-import { estimatePublicPensionTax, estimatePrivatePensionTax, resolveTaxAmount } from "./utils/retirementTax.js";
+import { estimatePublicPensionTax, estimatePrivatePensionTax, resolveTaxAmount, estimateJapanSeniorMedicalAnnual, RETIREMENT_TAX_BASIS } from "./utils/retirementTax.js";
 // 国別ルール（NISA/iDeCo・401(k)/IRA・ISA/SIPP・RRSP/TFSA・Super など）は
 // src/countryRules/ 配下の各国ファイルに分離。取得は従来どおり getCountryRules(country)。
 import {
@@ -1389,7 +1389,9 @@ const DEFAULT_INPUTS = {
     retirementTax: {
       publicPension: { mode: "auto", manualAnnual: 0 },
       privatePension: { mode: "auto", manualAnnual: 0 },
-      otherAnnualTaxes: 0,
+      otherAnnualTaxes: 0, // backward-compatible legacy one-line entry
+      fixedCosts: [],
+      jpSeniorMedical75: { mode: "auto", manualAnnual: 0 },
     },
     // アメリカ選択時の投資口座（401(k) / Traditional IRA / Roth IRA / Brokerage）。
     // JP側のNISA関連フィールド（tsumitateSchedule等）とは完全に独立した専用データ。
@@ -2088,6 +2090,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     hospitalizationPerDay: "", hospitalizationDaysLimit: "", hospitalizationSurgery: "", daySurgery: "",
     radiationPerSession: "", advancedMedical: "", death: "",
   });
+  const [newFixedCost, setNewFixedCost] = useState({ name: "", annualAmount: "", fromAge: "", toAge: "" });
   const [newPension, setNewPension] = useState({
     name: "",
     contribFromYears: "", contribFromMonths: "",
@@ -2945,6 +2948,11 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   // 最後に12で割って月平均を出す。4.9万円/年を毎月差し引く誤りを防ぐ。
   const publicPensionTakeHomeAnnual = Math.max(0, publicPensionAnnualForTax - publicPensionTaxAnnual);
   const publicPensionTakeHomeMonthly = publicPensionTakeHomeAnnual / 12;
+  const fixedCostItems = Array.isArray(inputs.retirementTax?.fixedCosts) ? inputs.retirementTax.fixedCosts : [];
+  const legacyOtherAnnualTaxes = Math.max(0, Number(inputs.retirementTax?.otherAnnualTaxes) || 0);
+  const fixedCostsAnnualTotal = legacyOtherAnnualTaxes + fixedCostItems.reduce((sum, x) => sum + Math.max(0, Number(x.annualAmount) || 0), 0);
+  const jpSeniorMedicalAnnual = country === "JP" ? estimateJapanSeniorMedicalAnnual(inputs.retirementTax?.jpSeniorMedical75) : 0;
+  const retirementTaxBasis = RETIREMENT_TAX_BASIS[country] || "2026";
 
   const planCtx = useMemo(() => ({
     country, rules, inputs,
@@ -3055,6 +3063,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       // 旧キーの互換（他の表示が参照している場合に備える）
       loanValue: r.loanBalance,
       insuranceValue: r.cumulativePremiums,
+      cumulativePublicPensionTax: Number(r.charge_publicPensionTax || 0),
+      cumulativePrivatePensionTax: Object.keys(r).filter((k) => k.startsWith("charge_privatePensionTax")).reduce((sum, k) => sum + Number(r[k] || 0), 0),
+      cumulativeOtherFixedCosts: Number(r.charge_otherAnnualTaxes || 0) + Object.keys(r).filter((k) => k.startsWith("charge_fixedCost_")).reduce((sum, k) => sum + Number(r[k] || 0), 0),
+      cumulativeSeniorMedical75: Number(r.charge_jpSeniorMedical75 || 0),
       total: r.investmentValue,
     }));
   }, [integrated, inputs.retireAge, t]);
@@ -3596,6 +3608,29 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   };
   const removePension = (idx) =>
     setInputs((prev) => ({ ...prev, privatePensionPlans: prev.privatePensionPlans.filter((_, i) => i !== idx) }));
+  const addFixedCost = () => {
+    const name = String(newFixedCost.name || "").trim();
+    const annualAmount = Math.max(0, Number(newFixedCost.annualAmount) || 0);
+    if (!name || annualAmount <= 0) return;
+    const fromAge = newFixedCost.fromAge === "" ? Number(inputs.retireAge) : Number(newFixedCost.fromAge);
+    const toAge = newFixedCost.toAge === "" ? Number(inputs.deathAge) : Number(newFixedCost.toAge);
+    if (!Number.isFinite(fromAge) || !Number.isFinite(toAge) || toAge <= fromAge) return;
+    setInputs((prev) => ({
+      ...prev,
+      retirementTax: {
+        ...(prev.retirementTax || {}),
+        fixedCosts: [...(prev.retirementTax?.fixedCosts || []), { name, annualAmount, fromAge, toAge }],
+      },
+    }));
+    setNewFixedCost({ name: "", annualAmount: "", fromAge: "", toAge: "" });
+  };
+  const removeFixedCost = (idx) => setInputs((prev) => ({
+    ...prev,
+    retirementTax: {
+      ...(prev.retirementTax || {}),
+      fixedCosts: (prev.retirementTax?.fixedCosts || []).filter((_, i) => i !== idx),
+    },
+  }));
   const removeInsurance = (idx) =>
     setInputs((prev) => ({ ...prev, insurancePolicies: prev.insurancePolicies.filter((_, i) => i !== idx) }));
 
@@ -5210,6 +5245,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 })()}
               />
               <StatCard label={t("dashSurplusLabel")} value={money(surplusAtCurrent)} hint={t("dashSurplusHint")} />
+              <StatCard label={t("dashPublicPensionTaxAnnualLabel")} value={money(publicPensionTaxAnnual)} sub={t("annualEstimateSub")} />
+              <StatCard label={t("dashPrivatePensionTaxAnnualLabel")} value={money(privatePensionTaxAnnual)} sub={t("annualEstimateSub")} />
+              <StatCard label={t("dashFixedCostsAnnualLabel")} value={money(fixedCostsAnnualTotal)} sub={t("annualEstimateSub")} />
+              {country === "JP" && <StatCard label={t("dashSeniorMedical75AnnualLabel")} value={money(jpSeniorMedicalAnnual)} sub={t("dashSeniorMedical75Sub")} />}
               {[65, 75, 95].map((age) => (
                 <StatCard
                   key={age}
@@ -6118,6 +6157,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
           <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid #2A363C" }}>
             <div className="stat-sub" style={{ marginBottom: 8 }}>{t("retirementTaxTitle")}</div>
+            <div className="stat-sub" style={{ marginBottom: 8, opacity: 0.78 }}>{t("taxBasisYearLabel", { year: retirementTaxBasis })}</div>
             <label className="field">
               <span className="field-label">{t("publicPensionTaxModeLabel")}</span>
               <select value={inputs.retirementTax?.publicPension?.mode || "auto"} onChange={(e) => update({ retirementTax: { ...inputs.retirementTax, publicPension: { ...inputs.retirementTax?.publicPension, mode: e.target.value } } })}>
@@ -6605,6 +6645,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           </div>
           <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid #2A363C" }}>
             <div className="stat-sub" style={{ marginBottom: 8 }}>{t("privatePensionTaxTitle")}</div>
+            <div className="stat-sub" style={{ marginBottom: 8, opacity: 0.78 }}>{t("taxBasisYearLabel", { year: retirementTaxBasis })}</div>
             <label className="field"><span className="field-label">{t("privatePensionTaxModeLabel")}</span><select value={inputs.retirementTax?.privatePension?.mode || "auto"} onChange={(e) => update({ retirementTax: { ...inputs.retirementTax, privatePension: { ...inputs.retirementTax?.privatePension, mode: e.target.value } } })}><option value="auto">{t("taxModeAuto")}</option><option value="manual">{t("taxModeManual")}</option></select></label>
             {inputs.retirementTax?.privatePension?.mode === "manual" ? <MoneyField unitPer="year" label={t("manualTaxAnnualLabel")} value={inputs.retirementTax?.privatePension?.manualAnnual || 0} onChange={(v) => update({ retirementTax: { ...inputs.retirementTax, privatePension: { ...inputs.retirementTax?.privatePension, manualAnnual: v } } })} /> : <StatCard label={t("estimatedPrivatePensionTaxLabel")} value={money(privatePensionTaxAnnual)} sub={t("annualEstimateSub")} />}
             <div className="note" style={{ marginTop: 8 }}><Info size={13}/><span>{t("privatePensionTaxDisclaimer")}</span></div>
@@ -6613,7 +6654,36 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
           <div className="section-block" style={{ borderColor: "#B89B72" }}>
             <SectionTitle index="12" title={t("otherTaxesFixedCostsTitle")} icon={Landmark} />
-            <MoneyField unitPer="year" label={t("otherAnnualTaxesLabel")} value={inputs.retirementTax?.otherAnnualTaxes || 0} onChange={(v) => update({ retirementTax: { ...inputs.retirementTax, otherAnnualTaxes: v } })} />
+            {(inputs.retirementTax?.fixedCosts || []).length > 0 && (
+              <table className="watchlist" style={{ marginBottom: 10 }}>
+                <thead><tr><th>{t("fixedCostNameLabel")}</th><th>{t("fixedCostAnnualLabel")}</th><th>{t("fixedCostPeriodLabel")}</th><th style={{ width: 24 }}></th></tr></thead>
+                <tbody>{(inputs.retirementTax?.fixedCosts || []).map((fc, i) => (
+                  <tr key={`${fc.name}-${i}`}>
+                    <td>{fc.name}</td><td className="mono">{money(fc.annualAmount)}</td><td className="mono">{formatAge(fc.fromAge)}〜{formatAge(fc.toAge)}</td>
+                    <td><button className="del-btn" onClick={() => removeFixedCost(i)}><Trash2 size={13}/></button></td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            )}
+            <div className="add-row" style={{ marginBottom: 8 }}>
+              <input placeholder={t("fixedCostNamePlaceholder")} value={newFixedCost.name} onChange={(e) => setNewFixedCost((p) => ({ ...p, name: e.target.value }))} />
+              <LabeledMiniInput label={t("fixedCostAnnualLabel")} money value={newFixedCost.annualAmount} onChangeValue={(v) => setNewFixedCost((p) => ({ ...p, annualAmount: v }))} />
+            </div>
+            <div className="add-row" style={{ marginBottom: 8 }}>
+              <LabeledMiniInput label={t("fixedCostFromAgeLabel")} value={newFixedCost.fromAge} onChange={(e) => setNewFixedCost((p) => ({ ...p, fromAge: e.target.value }))} />
+              <LabeledMiniInput label={t("fixedCostToAgeLabel")} value={newFixedCost.toAge} onChange={(e) => setNewFixedCost((p) => ({ ...p, toAge: e.target.value }))} />
+              <button className="add-btn" onClick={addFixedCost}><Plus size={15}/></button>
+            </div>
+            {legacyOtherAnnualTaxes > 0 && <MoneyField unitPer="year" label={t("legacyOtherAnnualTaxesLabel")} value={legacyOtherAnnualTaxes} onChange={(v) => update({ retirementTax: { ...inputs.retirementTax, otherAnnualTaxes: v } })} />}
+            <StatCard label={t("fixedCostsTotalAnnualLabel")} value={money(fixedCostsAnnualTotal)} sub={t("annualEstimateSub")} />
+            {country === "JP" && (
+              <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid #2A363C" }}>
+                <div className="stat-sub" style={{ marginBottom: 8 }}>{t("jpSeniorMedical75Title")}</div>
+                <label className="field"><span className="field-label">{t("jpSeniorMedical75ModeLabel")}</span><select value={inputs.retirementTax?.jpSeniorMedical75?.mode || "auto"} onChange={(e) => update({ retirementTax: { ...inputs.retirementTax, jpSeniorMedical75: { ...inputs.retirementTax?.jpSeniorMedical75, mode: e.target.value } } })}><option value="auto">{t("taxModeAuto")}</option><option value="manual">{t("taxModeManual")}</option><option value="off">{t("taxModeOff")}</option></select></label>
+                {inputs.retirementTax?.jpSeniorMedical75?.mode === "manual" ? <MoneyField unitPer="year" label={t("manualAnnualPremiumLabel")} value={inputs.retirementTax?.jpSeniorMedical75?.manualAnnual || 0} onChange={(v) => update({ retirementTax: { ...inputs.retirementTax, jpSeniorMedical75: { ...inputs.retirementTax?.jpSeniorMedical75, manualAnnual: v } } })} /> : inputs.retirementTax?.jpSeniorMedical75?.mode !== "off" ? <StatCard label={t("jpSeniorMedical75EstimateLabel")} value={money(jpSeniorMedicalAnnual)} sub={t("jpSeniorMedical75EstimateSub")} /> : null}
+                <div className="note" style={{ marginTop: 8 }}><Info size={13}/><span>{t("jpSeniorMedical75Disclaimer")}</span></div>
+              </div>
+            )}
             <div className="note"><Info size={13}/><span>{t("otherAnnualTaxesGuide")}</span></div>
           </div>
 
@@ -7154,6 +7224,23 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           <div className="note" style={{ marginBottom: 22 }}>
             <Info size={13} />
             <span>{t("netWorthChartNote")}</span>
+          </div>
+          <div className="chart-frame" style={{ marginBottom: 22 }}>
+            <div className="chart-label">{t("taxFixedCostChartTitle")}</div>
+            <ResponsiveContainer width="100%" height={250}>
+              <ComposedChart data={netWorthChartData} margin={{ top: 8, right: 18, left: 8, bottom: 4 }}>
+                <CartesianGrid stroke="#2A363C" strokeDasharray="3 3" />
+                <XAxis dataKey="age" stroke="#7C8A90" fontSize={11} />
+                <YAxis stroke="#7C8A90" fontSize={11} tickFormatter={(v) => money(v)} width={64} />
+                <Tooltip formatter={(v, n) => [money(v), n]} labelFormatter={(a) => t("ageYears", { age: a })} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Area type="monotone" dataKey="cumulativePublicPensionTax" name={t("legendCumulativePublicPensionTax")} stackId="charges" stroke="#D9A54F" fill="rgba(217,165,79,0.30)" />
+                <Area type="monotone" dataKey="cumulativePrivatePensionTax" name={t("legendCumulativePrivatePensionTax")} stackId="charges" stroke="#D68FB0" fill="rgba(214,143,176,0.30)" />
+                <Area type="monotone" dataKey="cumulativeOtherFixedCosts" name={t("legendCumulativeFixedCosts")} stackId="charges" stroke="#B89B72" fill="rgba(184,155,114,0.30)" />
+                {country === "JP" && <Area type="monotone" dataKey="cumulativeSeniorMedical75" name={t("legendCumulativeSeniorMedical75")} stackId="charges" stroke="#6FA88A" fill="rgba(111,168,138,0.30)" />}
+              </ComposedChart>
+            </ResponsiveContainer>
+            <div className="note" style={{ marginTop: 8 }}><Info size={13}/><span>{t("taxFixedCostChartNote")}</span></div>
           </div>
 
           {/* 取り崩し順序（実装と必ず一致）と、海外口座の引出時課税 */}

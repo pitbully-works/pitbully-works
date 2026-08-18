@@ -257,6 +257,8 @@ export function runIntegratedPlan(p) {
   let idecoLumpPaid = false;
   let cumulativeWithdrawalTax = 0;   // 引出時課税として失われた額の累計
   let cumulativeRecurringCharges = 0; // recurringCharges で資産から出ていった額の累計
+  const cumulativeRecurringChargesById = Object.create(null);
+  recurringCharges.forEach((c) => { if (c.id) cumulativeRecurringChargesById[c.id] = 0; });
   // 直近ステップで使われた公的年金の月額と、資力調査に使った資産（表示用の読み取り専用）。
   // 行に載る値はすべて有限の数値でなければならないため、資力調査を行わない場合は 0。
   let lastPublicPensionMonthly = 0;
@@ -327,7 +329,9 @@ export function runIntegratedPlan(p) {
       cumulativePremiums,
       // 記録専用。資産バンド（totalAssets）にも純資産（netWorth）にも算入されない。
       surplusBalance,
+      cumulativeRecurringCharges,
     };
+    Object.entries(cumulativeRecurringChargesById).forEach(([id, value]) => { row[`charge_${id}`] = clampZero(value); });
     loans.forEach((l, i) => { row[`loan_${i}`] = clampZero(l.balance); });
     const groups = { investment: 0, gold: 0, bank: 0, stock: 0, privatePension: 0, ideco: 0 };
     pools.forEach((x) => {
@@ -610,7 +614,9 @@ export function runIntegratedPlan(p) {
         const r = pay(need);
         need = r.shortfall;
       }
-      cumulativeRecurringCharges += amount - Math.max(0, need);
+      const paidCharge = amount - Math.max(0, need);
+      cumulativeRecurringCharges += paidCharge;
+      if (c.id) cumulativeRecurringChargesById[c.id] = (cumulativeRecurringChargesById[c.id] || 0) + paidCharge;
       if (need > EPS) {
         cumulativeUnmet += need;
         if (depletionAge === null) depletionAge = age;
