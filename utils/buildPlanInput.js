@@ -48,6 +48,7 @@
 // ============================================================================
 
 import { NOT_DRAWABLE } from "../lifePlanEngine.js";
+import { estimatePublicPensionTax, estimatePrivatePensionTax, resolveTaxAmount } from "./retirementTax.js";
 import {
   ACCOUNT_DRAW_CATEGORY,
   drawOrderOf,
@@ -687,16 +688,37 @@ export function buildPlanInput(ctx, overrides = {}) {
     // Division 293 を口座外から払う設定のときだけ、現金・銀行から毎年引く。
     // Super から払う設定のときは拠出額の側で控除済みなので、ここは空にする。
     // 拠出が続いている間（Superの contribEndAge まで）だけ課税される。
-    recurringCharges: (auDiv293 && auDiv293.paidFrom === "outside" && auDiv293.taxAnnual > 0)
-      ? [{
-          id: "auDiv293",
-          annualAmount: auDiv293.taxAnnual,
-          fromAge: effectiveCurrentAge,
-          toAge: Number(
-            (inputs.auInvestment.superannuation || {}).contributionEndAge
-          ) || retireAge,
-        }]
-      : [],
+    recurringCharges: (() => {
+      const charges = [];
+      if (auDiv293 && auDiv293.paidFrom === "outside" && auDiv293.taxAnnual > 0) {
+        charges.push({ id: "auDiv293", annualAmount: auDiv293.taxAnnual, fromAge: effectiveCurrentAge, toAge: Number((inputs.auInvestment.superannuation || {}).contributionEndAge) || retireAge });
+      }
+      const taxSetting = inputs.retirementTax || {};
+      let publicAnnual = 0, publicStart = retireAge;
+      if (country === "JP") { publicAnnual = effectivePensionMonthly * 12; publicStart = effectivePublicPensionStartAge; }
+      else if (country === "US") { publicAnnual = D.usSSMonthlyBenefit * 12; publicStart = D.usClaimAge; }
+      else if (country === "GB") { publicAnnual = D.gbStatePensionAnnual + D.gbAdditionalPensionAnnual; publicStart = Math.min(D.gbEffectiveClaimAge || retireAge, D.gbAdditionalPensionAnnual > 0 ? retireAge : Infinity); }
+      else if (country === "CA") { publicAnnual = D.caCppAnnual + D.caOasAnnual + D.caAdditionalPensionAnnual; publicStart = Math.min(D.caCppStartAge || 65, D.caOasStartAge || 65, D.caAdditionalPensionAnnual > 0 ? retireAge : Infinity); }
+      else if (country === "AU") { publicAnnual = D.auAgePensionAnnual + D.auOtherAnnualIncome; publicStart = Math.min(D.auAgePensionQualifyingAge || 67, D.auOtherAnnualIncome > 0 ? retireAge : Infinity); }
+      const autoPublicTax = estimatePublicPensionTax(country, publicAnnual, Math.max(65, publicStart));
+      const publicTax = resolveTaxAmount(taxSetting.publicPension, autoPublicTax);
+      if (publicTax > 0 && Number.isFinite(publicStart)) charges.push({ id: "publicPensionTax", annualAmount: publicTax, fromAge: publicStart, toAge: inputs.deathAge + 0.001 });
+
+      if (taxSetting.privatePension?.mode === "manual") {
+        const starts = (inputs.privatePensionPlans || []).map(x => Number(x.payoutFromAge)).filter(Number.isFinite);
+        const ends = (inputs.privatePensionPlans || []).map(x => Number(x.payoutToAge)).filter(Number.isFinite);
+        const amt = resolveTaxAmount(taxSetting.privatePension, 0);
+        if (amt > 0 && starts.length && ends.length) charges.push({ id: "privatePensionTaxManual", annualAmount: amt, fromAge: Math.min(...starts), toAge: Math.max(...ends) });
+      } else {
+        (inputs.privatePensionPlans || []).forEach((pl, i) => {
+          const amt = estimatePrivatePensionTax(country, [pl]);
+          if (amt > 0) charges.push({ id: `privatePensionTax_${i}`, annualAmount: amt, fromAge: Number(pl.payoutFromAge) || retireAge, toAge: Number(pl.payoutToAge) || inputs.deathAge });
+        });
+      }
+      const other = Math.max(0, Number(taxSetting.otherAnnualTaxes) || 0);
+      if (other > 0) charges.push({ id: "otherAnnualTaxes", annualAmount: other, fromAge: retireAge, toAge: inputs.deathAge + 0.001 });
+      return charges;
+    })(),
     surplusTargetId: "bank_0",
     // 【Ver.1.0】初期余剰金の入力は持たない。余剰金は「アプリ利用開始後に、年金等の収入から
     // 生活費・医療費・保険料・ローン返済を引いて実際に余った分」だけを自動で積み上げる
