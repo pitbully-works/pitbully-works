@@ -9,6 +9,7 @@ import "./storageShim.js";
 // 総資産推移・純資産の唯一の計算源（全資産・負債・収支を1本の月次ループで扱う統合エンジン）。
 // 各パネル個別のシミュレーション（runSimulation / runGoldSimulation など）は表示用にそのまま残す。
 import { runIntegratedPlan, buildAgeSteps, NOT_DRAWABLE } from "./lifePlanEngine.js";
+import { estimatePublicPensionTax, estimatePrivatePensionTax, resolveTaxAmount } from "./utils/retirementTax.js";
 // 国別ルール（NISA/iDeCo・401(k)/IRA・ISA/SIPP・RRSP/TFSA・Super など）は
 // src/countryRules/ 配下の各国ファイルに分離。取得は従来どおり getCountryRules(country)。
 import {
@@ -338,23 +339,6 @@ function defaultWatchlistFor(country) {
   if (country === "CA") return DEFAULT_WATCHLIST_CA;
   if (country === "AU") return DEFAULT_WATCHLIST_AU;
   return DEFAULT_WATCHLIST_JP;
-}
-
-// 個別株の旧保存形式（value=保有金額）を新形式（averageCost=平均取得額）へ移行する。
-// 旧データの株数と保有金額から平均取得額を逆算することで、既存ユーザーの取得総額を維持する。
-function normalizeWatchlist(list) {
-  if (!Array.isArray(list)) return [];
-  return list.map((s) => {
-    const shares = Number(s?.shares) || 0;
-    const hasAverageCost = s?.averageCost !== undefined && s?.averageCost !== null && s?.averageCost !== "";
-    if (hasAverageCost) return { ...s, shares, averageCost: Number(s.averageCost) || 0 };
-    const legacyValue = Number(s?.value) || 0;
-    return {
-      ...s,
-      shares,
-      averageCost: shares > 0 ? legacyValue / shares : 0,
-    };
-  });
 }
 
 
@@ -1402,6 +1386,11 @@ const DEFAULT_INPUTS = {
     loans: [],
     insurancePolicies: [],
     privatePensionPlans: [],
+    retirementTax: {
+      publicPension: { mode: "auto", manualAnnual: 0 },
+      privatePension: { mode: "auto", manualAnnual: 0 },
+      otherAnnualTaxes: 0,
+    },
     // アメリカ選択時の投資口座（401(k) / Traditional IRA / Roth IRA / Brokerage）。
     // JP側のNISA関連フィールド（tsumitateSchedule等）とは完全に独立した専用データ。
     usInvestment: {
@@ -2153,7 +2142,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           if (!parsed.watchlists && Array.isArray(parsed.watchlist)) savedWatchlists.JP = parsed.watchlist;
           countryWatchlistsRef.current = savedWatchlists;
           setInputs(activeInputs);
-          setWatchlist(normalizeWatchlist(Array.isArray(savedWatchlists[activeCountry]) ? savedWatchlists[activeCountry] : defaultWatchlistFor(activeCountry)));
+          setWatchlist(Array.isArray(savedWatchlists[activeCountry]) ? savedWatchlists[activeCountry] : defaultWatchlistFor(activeCountry));
         } else {
           // 保存データがまったく無い「本当の初回」だけ自動判定する。
           // 2回目以降は保存された activeCountry を上の分岐で復元するため、旅行やVPN等で勝手に国は変わらない。
@@ -2284,9 +2273,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           : blank;
         const merged = mergeKakeiboInputs(targetBase, parsed);
         const targetInputs = forceCountryMeta(applySharedIdentity(merged.inputs, inputs), target);
-        const targetWatchlist = normalizeWatchlist(Array.isArray(countryWatchlistsRef.current[target])
+        const targetWatchlist = Array.isArray(countryWatchlistsRef.current[target])
           ? countryWatchlistsRef.current[target]
-          : defaultWatchlistFor(target));
+          : defaultWatchlistFor(target);
         countryProfilesRef.current = { ...countryProfilesRef.current, [target]: targetInputs };
         countryWatchlistsRef.current = { ...countryWatchlistsRef.current, [target]: targetWatchlist };
         setInputs(targetInputs);
@@ -2313,12 +2302,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         const restoredWatchlists = parsed.watchlists && typeof parsed.watchlists === "object" ? { ...parsed.watchlists } : {};
         countryWatchlistsRef.current = restoredWatchlists;
         setInputs(activeInputs);
-        setWatchlist(normalizeWatchlist(Array.isArray(restoredWatchlists[active]) ? restoredWatchlists[active] : defaultWatchlistFor(active)));
+        setWatchlist(Array.isArray(restoredWatchlists[active]) ? restoredWatchlists[active] : defaultWatchlistFor(active));
       } else {
         // Old backup: preserve all old values as JP, never reinterpret yen as foreign currency.
         const jpBlank = makeCountryProfile(DEFAULT_INPUTS, "JP", parsed.inputs || inputs);
         const jpInputs = forceCountryMeta(mergeSavedInputs(jpBlank, parsed.inputs), "JP");
-        const jpWatchlist = normalizeWatchlist(Array.isArray(parsed.watchlist) ? parsed.watchlist : defaultWatchlistFor("JP"));
+        const jpWatchlist = Array.isArray(parsed.watchlist) ? parsed.watchlist : defaultWatchlistFor("JP");
         countryProfilesRef.current = { JP: jpInputs };
         countryWatchlistsRef.current = { JP: jpWatchlist };
         setInputs(jpInputs);
@@ -2430,7 +2419,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
   const restoreSnapshot = (entry) => {
     if (entry.inputs) setInputs((prev) => mergeSavedInputs(prev, entry.inputs));
-    if (entry.watchlist) setWatchlist(normalizeWatchlist(entry.watchlist));
+    if (entry.watchlist) setWatchlist(entry.watchlist);
   };
   const scrollToSimulator = () => {
     document.getElementById("simulator")?.scrollIntoView({ behavior: "smooth" });
@@ -2774,24 +2763,16 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     }) : { yearly: [], totalNow: 0, totalAtRetire: 0, totalFinal: 0 },
     [simulationReady, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, inputs.banks]
   );
-  // 個別株の元本は「株数 × 平均取得額」。ここで算出した取得総額を、既存の総資産グラフの元本として使う。
-  const stockTotalNow = useMemo(
-    () => watchlist.reduce((s, w) => s + (Number(w.shares) || 0) * (Number(w.averageCost) || 0), 0),
-    [watchlist]
-  );
+  const stockTotalNow = useMemo(() => watchlist.reduce((s, w) => s + (w.value || 0), 0), [watchlist]);
   const stockAllocationItems = useMemo(
-    () => watchlist
-      .map((w) => ({ name: w.name, amount: (Number(w.shares) || 0) * (Number(w.averageCost) || 0) }))
-      .filter((w) => w.amount > 0),
+    () => watchlist.filter((w) => (w.value || 0) > 0).map((w) => ({ name: w.name, amount: w.value })),
     [watchlist]
   );
   const autoStockReturn = useMemo(() => {
-    const held = watchlist
-      .map((w) => ({ ...w, acquisitionTotal: (Number(w.shares) || 0) * (Number(w.averageCost) || 0) }))
-      .filter((w) => w.acquisitionTotal > 0);
-    const total = held.reduce((s, w) => s + w.acquisitionTotal, 0);
+    const held = watchlist.filter((w) => (w.value || 0) > 0);
+    const total = held.reduce((s, w) => s + w.value, 0);
     if (total <= 0) return inputs.stockReturnPct;
-    return Math.round((held.reduce((s, w) => s + (w.acquisitionTotal / total) * guessDefaultReturn(w.name), 0)) * 10) / 10;
+    return Math.round((held.reduce((s, w) => s + (w.value / total) * guessDefaultReturn(w.name), 0)) * 10) / 10;
   }, [watchlist, inputs.stockReturnPct]);
   const effectiveStockReturnPct = inputs.stockReturnPctAuto ? autoStockReturn : inputs.stockReturnPct;
   const stockSim = useMemo(
@@ -2944,6 +2925,16 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   // planCtx は「シナリオ比較の3項目（積立額・退職年齢・生活費）に影響されない派生値」
   // だけを集めたもの。比較プランはこの同じ planCtx に overrides を渡して計算する。
   // ==========================================================================
+  const publicPensionAnnualForTax = country === "JP" ? effectivePensionMonthly * 12
+    : country === "US" ? usSSAnnualBenefit
+    : country === "GB" ? gbRetirementIncomeAnnual
+    : country === "CA" ? caRetirementIncomeAnnual
+    : country === "AU" ? (auAgePensionAnnualSeed + auOtherAnnualIncome) : 0;
+  const publicPensionTaxAuto = estimatePublicPensionTax(country, publicPensionAnnualForTax, Math.max(65, effectiveCurrentAge));
+  const privatePensionTaxAuto = estimatePrivatePensionTax(country, inputs.privatePensionPlans);
+  const publicPensionTaxAnnual = resolveTaxAmount(inputs.retirementTax?.publicPension, publicPensionTaxAuto);
+  const privatePensionTaxAnnual = resolveTaxAmount(inputs.retirementTax?.privatePension, privatePensionTaxAuto);
+
   const planCtx = useMemo(() => ({
     country, rules, inputs,
     effectiveCurrentAge, effectiveCurrentAssets, effectivePostRetireReturn,
@@ -3614,7 +3605,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
   const addStock = () => {
     if (!newStock.name.trim()) return;
-    setWatchlist((prev) => [...prev, { name: newStock.name.trim(), sector: newStock.sector.trim() || t("uncategorizedLabel"), shares: 0, averageCost: 0, currency: baseCurrency }]);
+    setWatchlist((prev) => [...prev, { name: newStock.name.trim(), sector: newStock.sector.trim() || t("uncategorizedLabel"), shares: 0, value: 0, currency: baseCurrency }]);
     setNewStock({ name: "", sector: "" });
   };
   const removeStock = (idx) => setWatchlist((prev) => prev.filter((_, i) => i !== idx));
@@ -4974,9 +4965,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 const nextInputs = rawTarget
                   ? forceCountryMeta(applySharedIdentity(mergeSavedInputs(blank, rawTarget), inputs), nextCountry)
                   : blank;
-                const nextWatchlist = normalizeWatchlist(Array.isArray(countryWatchlistsRef.current[nextCountry])
+                const nextWatchlist = Array.isArray(countryWatchlistsRef.current[nextCountry])
                   ? countryWatchlistsRef.current[nextCountry]
-                  : defaultWatchlistFor(nextCountry));
+                  : defaultWatchlistFor(nextCountry);
                 countryProfilesRef.current = { ...countryProfilesRef.current, [nextCountry]: nextInputs };
                 countryWatchlistsRef.current = { ...countryWatchlistsRef.current, [nextCountry]: nextWatchlist };
                 switchImportTextCountry(currentCountry, nextCountry);
@@ -6111,6 +6102,20 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             </div>
           )}
 
+          <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid #2A363C" }}>
+            <div className="stat-sub" style={{ marginBottom: 8 }}>{t("retirementTaxTitle")}</div>
+            <label className="field">
+              <span className="field-label">{t("publicPensionTaxModeLabel")}</span>
+              <select value={inputs.retirementTax?.publicPension?.mode || "auto"} onChange={(e) => update({ retirementTax: { ...inputs.retirementTax, publicPension: { ...inputs.retirementTax?.publicPension, mode: e.target.value } } })}>
+                <option value="auto">{t("taxModeAuto")}</option><option value="manual">{t("taxModeManual")}</option>
+              </select>
+            </label>
+            {inputs.retirementTax?.publicPension?.mode === "manual" ? (
+              <MoneyField unitPer="year" label={t("manualTaxAnnualLabel")} value={inputs.retirementTax?.publicPension?.manualAnnual || 0} onChange={(v) => update({ retirementTax: { ...inputs.retirementTax, publicPension: { ...inputs.retirementTax?.publicPension, manualAnnual: v } } })} />
+            ) : <StatCard label={t("estimatedPublicPensionTaxLabel")} value={money(publicPensionTaxAnnual)} sub={t("annualEstimateSub")} />}
+            <div className="note" style={{ marginTop: 8 }}><Info size={13}/><span>{t("retirementTaxDisclaimer")}</span></div>
+          </div>
+
           </div>
           <div className="section-block" style={{ borderColor: "#7BC9E0" }}>
           <SectionTitle index="05" title={label("healthCost")} icon={HeartPulse} />
@@ -6576,6 +6581,18 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <Info size={13} />
             <span>{t("privatePensionNote")}</span>
           </div>
+          <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid #2A363C" }}>
+            <div className="stat-sub" style={{ marginBottom: 8 }}>{t("privatePensionTaxTitle")}</div>
+            <label className="field"><span className="field-label">{t("privatePensionTaxModeLabel")}</span><select value={inputs.retirementTax?.privatePension?.mode || "auto"} onChange={(e) => update({ retirementTax: { ...inputs.retirementTax, privatePension: { ...inputs.retirementTax?.privatePension, mode: e.target.value } } })}><option value="auto">{t("taxModeAuto")}</option><option value="manual">{t("taxModeManual")}</option></select></label>
+            {inputs.retirementTax?.privatePension?.mode === "manual" ? <MoneyField unitPer="year" label={t("manualTaxAnnualLabel")} value={inputs.retirementTax?.privatePension?.manualAnnual || 0} onChange={(v) => update({ retirementTax: { ...inputs.retirementTax, privatePension: { ...inputs.retirementTax?.privatePension, manualAnnual: v } } })} /> : <StatCard label={t("estimatedPrivatePensionTaxLabel")} value={money(privatePensionTaxAnnual)} sub={t("annualEstimateSub")} />}
+            <div className="note" style={{ marginTop: 8 }}><Info size={13}/><span>{t("privatePensionTaxDisclaimer")}</span></div>
+          </div>
+          </div>
+
+          <div className="section-block" style={{ borderColor: "#B89B72" }}>
+            <SectionTitle index="12" title={t("otherTaxesFixedCostsTitle")} icon={Landmark} />
+            <MoneyField unitPer="year" label={t("otherAnnualTaxesLabel")} value={inputs.retirementTax?.otherAnnualTaxes || 0} onChange={(v) => update({ retirementTax: { ...inputs.retirementTax, otherAnnualTaxes: v } })} />
+            <div className="note"><Info size={13}/><span>{t("otherAnnualTaxesGuide")}</span></div>
           </div>
 
           {/* 入力フォームの最後にも「トップへ戻る」を置く。
@@ -6976,7 +6993,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <StatCard
               label={t("statStockValueNowLabel")}
               value={money(stockTotalNow)}
-              sub={t("statStockHoldingsCountSub", { count: watchlist.filter((w) => (Number(w.shares) || 0) * (Number(w.averageCost) || 0) > 0).length })}
+              sub={t("statStockHoldingsCountSub", { count: watchlist.filter((w) => w.value > 0).length })}
             />
             <StatCard
               label={t("statLoanBalanceNowLabel")}
@@ -7190,7 +7207,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               <div className="chart-label" style={{ padding: 0, marginBottom: 10 }}>{t("stockWatchlistTitle")}</div>
               <table className="watchlist">
                 <thead>
-                  <tr><th>{t("colName")}</th><th>{t("sectorCol")}</th><th>{t("sharesCol")}</th><th>{t("averageAcquisitionCostCol")}</th><th></th></tr>
+                  <tr><th>{t("colName")}</th><th>{t("sectorCol")}</th><th>{t("sharesCol")}</th><th>{t("holdingValueCol")}</th><th></th></tr>
                 </thead>
                 <tbody>
                   {watchlist.map((s, i) => (
@@ -7205,8 +7222,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                       </td>
                       <td style={{ width: 96 }}>
                         <MoneyInput
-                          value={s.averageCost ?? 0} className="mono inline-num"
-                          onChange={(v) => updateStockField(i, "averageCost", v === "" ? 0 : v)}
+                          value={s.value} className="mono inline-num"
+                          onChange={(v) => updateStockField(i, "value", v === "" ? 0 : v)}
                         />
                       </td>
                       <td style={{ width: 24 }}>
@@ -7221,7 +7238,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 <input placeholder={t("sectorCol")} value={newStock.sector} onChange={(e) => setNewStock((p) => ({ ...p, sector: e.target.value }))} />
                 <button className="add-btn" onClick={addStock}><Plus size={15} /></button>
               </div>
-              <div className="stat-sub" style={{ marginTop: 10 }}>{t("stockAcquisitionTotalLabel")}：<span className="mono">{money(stockTotalNow)}</span></div>
+              <div className="stat-sub" style={{ marginTop: 10 }}>{t("stockCurrentTotalLabel")}：<span className="mono">{money(stockTotalNow)}</span></div>
               <Field
                 label={`${t("stockReturnLabel", { age: t("ageYears", { age: inputs.deathAge }) })}${inputs.stockReturnPctAuto ? t("autoGuessedFromHoldingsSuffix") : ""}`} unit="%" step={0.5}
                 value={effectiveStockReturnPct} onChange={(v) => update({ stockReturnPct: v, stockReturnPctAuto: false })}
