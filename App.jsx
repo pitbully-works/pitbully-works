@@ -11,6 +11,7 @@ import "./storageShim.js";
 import { runIntegratedPlan, buildAgeSteps, NOT_DRAWABLE } from "./lifePlanEngine.js";
 import { estimatePublicPensionTax, estimatePrivatePensionTax, resolveTaxAmount, estimateJapanSeniorMedicalAnnual, RETIREMENT_TAX_BASIS } from "./utils/retirementTax.js";
 import { FIXED_COST_TEMPLATE_KEYS, deriveTaxFixedCostForecastRows } from "./utils/fixedCostForecast.js";
+import { resolveInflationPct } from "./utils/inflation.js";
 // 国別ルール（NISA/iDeCo・401(k)/IRA・ISA/SIPP・RRSP/TFSA・Super など）は
 // src/countryRules/ 配下の各国ファイルに分離。取得は従来どおり getCountryRules(country)。
 import {
@@ -1388,6 +1389,7 @@ const DEFAULT_INPUTS = {
     loans: [],
     insurancePolicies: [],
     privatePensionPlans: [],
+    inflation: { mode: "auto", manualPct: 2 },
     retirementTax: {
       publicPension: { mode: "auto", manualAnnual: 0 },
       privatePension: { mode: "auto", manualAnnual: 0 },
@@ -2966,6 +2968,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const fixedCostsAnnualTotal = legacyOtherAnnualTaxes + fixedCostItems.reduce((sum, x) => sum + Math.max(0, Number(x.annualAmount) || 0), 0);
   const jpSeniorMedicalAnnual = country === "JP" ? estimateJapanSeniorMedicalAnnual(inputs.retirementTax?.jpSeniorMedical75) : 0;
   const retirementTaxBasis = RETIREMENT_TAX_BASIS[country] || "2026";
+  const inflationPct = resolveInflationPct(country, inputs.inflation);
+  const inflationBasis = t(`inflationBasis${country}`);
   // 固定費テンプレートは「既存の専用ページ（保険・ローン・医療費）」と重複しない項目だけ。
   // 金額は地域・物件・車両等で大きく異なるため、テンプレートは項目名だけを補助し、金額は利用者が入力する。
   const fixedCostTemplateKeys = FIXED_COST_TEMPLATE_KEYS[country] || [];
@@ -5370,6 +5374,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           )}
           <AgeField guide={t("retireAgeGuide")} label={t("retireAgeFieldLabel")} value={inputs.retireAge} onChange={(v) => update({ retireAge: v })} />
           <AgeField guide={t("deathAgeGuide")} label={t("lifeExpectancyLabel")} value={inputs.deathAge} onChange={(v) => update({ deathAge: v })} />
+          <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid #2A363C" }}>
+            <div className="stat-sub" style={{ marginBottom: 8 }}>{t("inflationTitle")}</div>
+            <label className="field"><span className="field-label">{t("inflationModeLabel")}</span><select value={inputs.inflation?.mode || "auto"} onChange={(e) => update({ inflation: { ...inputs.inflation, mode: e.target.value } })}><option value="auto">{t("inflationModeAuto")}</option><option value="manual">{t("inflationModeManual")}</option><option value="off">{t("inflationModeOff")}</option></select></label>
+            {inputs.inflation?.mode === "manual" ? <Field label={t("inflationRateLabel")} unit="%" step={0.1} value={inputs.inflation?.manualPct ?? 2} onChange={(v) => update({ inflation: { ...inputs.inflation, manualPct: v } })} /> : inputs.inflation?.mode !== "off" ? <StatCard label={t("inflationReferenceLabel")} value={`${inflationPct.toFixed(1)}%`} sub={inflationBasis} /> : null}
+            <div className="note" style={{ marginTop: 8 }}><Info size={13}/><span>{t("inflationGuide")}</span></div>
+          </div>
           {/* 【入力チェック】矛盾した年齢でもエンジンは例外を出さずに走るが、結果（例：想定寿命が
               現在年齢以下だと将来の行が1つも作られない）は利用者には理解できない。
               計算は止めず、直し方が分かる警告を入力欄の直下に出す。 */}

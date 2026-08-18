@@ -131,13 +131,14 @@ export function buildAgeSteps(currentAge, deathAge, boundaries) {
  *        AU: Age Pension の qualifying age）ため、ストリームごとに開始年齢を持つ。
  *        退職年齢からは自動的に始まらない。
  * @param {number}   p.livingCostMonthly  退職後の月間生活費
+ * @param {number}   p.inflationRatePct   生活費・医療費・inflationIndexed固定費の年率インフレ（%）
  * @param {function} p.healthCostAnnual   (age) => 年間医療費
  * @param {number}   p.idecoLumpAmount / p.idecoLumpAge  iDeCo一時金（到達時に一度だけ）
  * @param {function} p.idecoAnnuityMonthly (age) => iDeCo年金の月額
  * @param {string}   p.idecoPoolId
  * @param {string}   p.surplusTargetId    余剰金・一時金の受け皿プールid
  * @param {Array}  p.recurringCharges
- *        [{ id, annualAmount, fromAge, toAge, fromPoolIds }]
+ *        [{ id, annualAmount, fromAge, toAge, fromPoolIds, inflationIndexed }]
  *        生活費・保険料とは別に、資産から直接引かれる定期的な支出。
  *        退職の前後を問わず必ず徴収される（積立期でも資産が減る）。
  *        豪 Division 293 税を「口座外から支払う」設定にした場合に使う。
@@ -225,12 +226,18 @@ export function runIntegratedPlan(p) {
     fromAge: c.fromAge === undefined || c.fromAge === null ? 0 : num(c.fromAge),
     toAge: c.toAge === undefined || c.toAge === null ? Number.POSITIVE_INFINITY : num(c.toAge),
     fromPoolIds: Array.isArray(c.fromPoolIds) ? c.fromPoolIds : null,
+    inflationIndexed: !!c.inflationIndexed,
   }));
   const insurancePolicies = p.insurancePolicies || [];
   const privatePensionPlans = p.privatePensionPlans || [];
   const publicPensions = p.publicPensions || [];
 
   const livingCostMonthly = num(p.livingCostMonthly);
+  const inflationRatePct = Math.max(0, Math.min(20, num(p.inflationRatePct)));
+  const inflationBase = 1 + inflationRatePct / 100;
+  const inflationFactorAt = (targetAge) => inflationRatePct > 0
+    ? Math.pow(inflationBase, Math.max(0, num(targetAge) - currentAge))
+    : 1;
   const healthCostAnnual = typeof p.healthCostAnnual === "function" ? p.healthCostAnnual : () => 0;
   const idecoAnnuityMonthly = typeof p.idecoAnnuityMonthly === "function" ? p.idecoAnnuityMonthly : () => 0;
   const idecoLumpAmount = clampZero(num(p.idecoLumpAmount));
@@ -577,8 +584,9 @@ export function runIntegratedPlan(p) {
 
     let essentials = 0;
     if (retired) {
-      essentials += livingCostMonthly * months;
-      essentials += clampZero(num(healthCostAnnual(ageStart))) * dt;
+      const inflationFactor = inflationFactorAt(ageStart);
+      essentials += livingCostMonthly * inflationFactor * months;
+      essentials += clampZero(num(healthCostAnnual(ageStart))) * inflationFactor * dt;
     }
     if (chargeFixed) essentials += premium;
 
@@ -596,7 +604,7 @@ export function runIntegratedPlan(p) {
     recurringCharges.forEach((c) => {
       if (c.annualAmount <= 0) return;
       if (ageStart < c.fromAge - EPS || ageStart >= c.toAge - EPS) return;
-      const amount = c.annualAmount * dt;
+      const amount = c.annualAmount * (c.inflationIndexed ? inflationFactorAt(ageStart) : 1) * dt;
       if (amount <= EPS) return;
       let need = amount;
       if (c.fromPoolIds) {
