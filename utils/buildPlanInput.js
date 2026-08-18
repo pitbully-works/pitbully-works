@@ -49,6 +49,7 @@
 
 import { NOT_DRAWABLE } from "../lifePlanEngine.js";
 import { estimatePublicPensionTax, estimatePrivatePensionTax, resolveTaxAmount, estimateJapanSeniorMedicalAnnual } from "./retirementTax.js";
+import { resolveInflationPct } from "./inflation.js";
 import {
   ACCOUNT_DRAW_CATEGORY,
   drawOrderOf,
@@ -679,6 +680,7 @@ export function buildPlanInput(ctx, overrides = {}) {
     insurancePolicies: inputs.insurancePolicies,
     privatePensionPlans,
     livingCostMonthly,
+    inflationRatePct: resolveInflationPct(country, inputs.inflation),
     publicPensions,
     healthCostAnnual,
     idecoPoolId,
@@ -716,16 +718,16 @@ export function buildPlanInput(ctx, overrides = {}) {
         });
       }
       const other = Math.max(0, Number(taxSetting.otherAnnualTaxes) || 0);
-      if (other > 0) charges.push({ id: "otherAnnualTaxes", annualAmount: other, fromAge: retireAge, toAge: inputs.deathAge + 0.001 });
+      if (other > 0) charges.push({ id: "otherAnnualTaxes", annualAmount: other, fromAge: retireAge, toAge: inputs.deathAge + 0.001, inflationIndexed: true });
       (Array.isArray(taxSetting.fixedCosts) ? taxSetting.fixedCosts : []).forEach((fc, i) => {
         const amount = Math.max(0, Number(fc?.annualAmount) || 0);
         const fromAge = Number.isFinite(Number(fc?.fromAge)) ? Number(fc.fromAge) : retireAge;
         const toAge = Number.isFinite(Number(fc?.toAge)) ? Number(fc.toAge) : inputs.deathAge + 0.001;
-        if (amount > 0 && toAge > fromAge) charges.push({ id: `fixedCost_${i}`, annualAmount: amount, fromAge, toAge });
+        if (amount > 0 && toAge > fromAge) charges.push({ id: `fixedCost_${i}`, annualAmount: amount, fromAge, toAge, inflationIndexed: true });
       });
       if (country === "JP") {
         const seniorMedical = estimateJapanSeniorMedicalAnnual(taxSetting.jpSeniorMedical75);
-        if (seniorMedical > 0) charges.push({ id: "jpSeniorMedical75", annualAmount: seniorMedical, fromAge: 75, toAge: inputs.deathAge + 0.001 });
+        if (seniorMedical > 0) charges.push({ id: "jpSeniorMedical75", annualAmount: seniorMedical, fromAge: 75, toAge: inputs.deathAge + 0.001, inflationIndexed: true });
       }
       return charges;
     })(),
