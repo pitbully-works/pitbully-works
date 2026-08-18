@@ -10,6 +10,7 @@ import "./storageShim.js";
 // 各パネル個別のシミュレーション（runSimulation / runGoldSimulation など）は表示用にそのまま残す。
 import { runIntegratedPlan, buildAgeSteps, NOT_DRAWABLE } from "./lifePlanEngine.js";
 import { estimatePublicPensionTax, estimatePrivatePensionTax, resolveTaxAmount, estimateJapanSeniorMedicalAnnual, RETIREMENT_TAX_BASIS } from "./utils/retirementTax.js";
+import { FIXED_COST_TEMPLATE_KEYS, deriveTaxFixedCostForecastRows } from "./utils/fixedCostForecast.js";
 // 国別ルール（NISA/iDeCo・401(k)/IRA・ISA/SIPP・RRSP/TFSA・Super など）は
 // src/countryRules/ 配下の各国ファイルに分離。取得は従来どおり getCountryRules(country)。
 import {
@@ -2965,6 +2966,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const fixedCostsAnnualTotal = legacyOtherAnnualTaxes + fixedCostItems.reduce((sum, x) => sum + Math.max(0, Number(x.annualAmount) || 0), 0);
   const jpSeniorMedicalAnnual = country === "JP" ? estimateJapanSeniorMedicalAnnual(inputs.retirementTax?.jpSeniorMedical75) : 0;
   const retirementTaxBasis = RETIREMENT_TAX_BASIS[country] || "2026";
+  // 固定費テンプレートは「既存の専用ページ（保険・ローン・医療費）」と重複しない項目だけ。
+  // 金額は地域・物件・車両等で大きく異なるため、テンプレートは項目名だけを補助し、金額は利用者が入力する。
+  const fixedCostTemplateKeys = FIXED_COST_TEMPLATE_KEYS[country] || [];
 
   const planCtx = useMemo(() => ({
     country, rules, inputs,
@@ -3067,7 +3071,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   // チャート用データ。行の age は「その時点で実際に到達している年齢」（整数）で、
   // 計算に使った小数年齢は exactAge に保持されている。
   const netWorthYearly = useMemo(() => {
-    return integrated.yearly.map((r) => ({
+    const chargeRows = deriveTaxFixedCostForecastRows(integrated.yearly, fixedCostItems);
+    return chargeRows.map((r) => ({
       ...r,
       phase: r.exactAge < inputs.retireAge ? t("phaseAccumulation") : t("phaseDrawdown"),
       // 生活費に使える資産（iDeCo受取前残高・民間年金積立を除く）から借入を引いたもの
@@ -3075,13 +3080,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       // 旧キーの互換（他の表示が参照している場合に備える）
       loanValue: r.loanBalance,
       insuranceValue: r.cumulativePremiums,
-      cumulativePublicPensionTax: Number(r.charge_publicPensionTax || 0),
-      cumulativePrivatePensionTax: Object.keys(r).filter((k) => k.startsWith("charge_privatePensionTax")).reduce((sum, k) => sum + Number(r[k] || 0), 0),
-      cumulativeOtherFixedCosts: Number(r.charge_otherAnnualTaxes || 0) + Object.keys(r).filter((k) => k.startsWith("charge_fixedCost_")).reduce((sum, k) => sum + Number(r[k] || 0), 0),
-      cumulativeSeniorMedical75: Number(r.charge_jpSeniorMedical75 || 0),
       total: r.investmentValue,
     }));
-  }, [integrated, inputs.retireAge, t]);
+  }, [integrated, inputs.retireAge, fixedCostItems, t]);
+
   // 投資口座の帯の凡例名は国ごとに変える（各国の口座名称はそのまま維持する）
   const investmentLegendKey =
     country === "US" ? "legendUsInvestment"
@@ -6677,6 +6679,15 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 ))}</tbody>
               </table>
             )}
+            <div className="field-label" style={{ marginBottom: 6 }}>{t("fixedCostTemplateLabel")}</div>
+            <div className="chip-row" style={{ marginBottom: 8 }}>
+              {fixedCostTemplateKeys.map((key) => (
+                <button key={key} type="button" className="chip" onClick={() => setNewFixedCost((p) => ({ ...p, name: t(key) }))}>
+                  {t(key)}
+                </button>
+              ))}
+            </div>
+            <div className="note" style={{ marginBottom: 10 }}><Info size={13}/><span>{t("fixedCostTemplateNote")}</span></div>
             <div className="add-row" style={{ marginBottom: 8 }}>
               <input placeholder={t("fixedCostNamePlaceholder")} value={newFixedCost.name} onChange={(e) => setNewFixedCost((p) => ({ ...p, name: e.target.value }))} />
               <LabeledMiniInput label={t("fixedCostAnnualLabel")} money value={newFixedCost.annualAmount} onChangeValue={(v) => setNewFixedCost((p) => ({ ...p, annualAmount: v }))} />
@@ -7260,6 +7271,31 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               </ComposedChart>
             </ResponsiveContainer>
             <div className="note" style={{ marginTop: 8 }}><Info size={13}/><span>{t("taxFixedCostChartNote")}</span></div>
+          </div>
+
+          <div className="chart-frame" style={{ marginBottom: 22 }}>
+            <div className="chart-label">{t("taxFixedCostAnnualForecastTitle")}</div>
+            <ResponsiveContainer width="100%" height={270}>
+              <ComposedChart data={netWorthChartData} margin={{ top: 8, right: 18, left: 8, bottom: 4 }}>
+                <CartesianGrid stroke="#2A363C" strokeDasharray="3 3" />
+                <XAxis dataKey="age" stroke="#7C8A90" fontSize={11} />
+                <YAxis stroke="#7C8A90" fontSize={11} tickFormatter={(v) => money(v)} width={64} />
+                <Tooltip
+                  contentStyle={{ background: "rgba(16,24,28,0.88)", border: "1px solid #2A363C", borderRadius: 8, fontSize: 12 }}
+                  formatter={(v, n) => [money(v), n]}
+                  labelFormatter={(a) => t("ageYears", { age: a })}
+                />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Bar dataKey="annualPublicPensionTax" name={t("legendAnnualPublicPensionTax")} stackId="annualCharges" fill="#D9A54F" />
+                <Bar dataKey="annualPrivatePensionTax" name={t("legendAnnualPrivatePensionTax")} stackId="annualCharges" fill="#D68FB0" />
+                <Bar dataKey="annualOtherTaxes" name={t("legendAnnualOtherTaxes")} stackId="annualCharges" fill="#B89B72" />
+                {fixedCostItems.map((fc, idx) => (
+                  <Bar key={`annualFixedCost_${idx}`} dataKey={`annualFixedCost_${idx}`} name={fc.name || t("fixedCostNameLabel")} stackId="annualCharges" fill={PIE_COLORS[(idx + 2) % PIE_COLORS.length]} />
+                ))}
+                {country === "JP" && <Bar dataKey="annualSeniorMedical75" name={t("legendAnnualSeniorMedical75")} stackId="annualCharges" fill="#6FA88A" />}
+              </ComposedChart>
+            </ResponsiveContainer>
+            <div className="note" style={{ marginTop: 8 }}><Info size={13}/><span>{t("taxFixedCostAnnualForecastNote")}</span></div>
           </div>
 
           {/* 取り崩し順序（実装と必ず一致）と、海外口座の引出時課税 */}
