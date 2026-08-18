@@ -12,6 +12,7 @@ import { runIntegratedPlan, buildAgeSteps, NOT_DRAWABLE } from "./lifePlanEngine
 import { estimatePublicPensionTax, estimatePrivatePensionTax, resolveTaxAmount, estimateJapanSeniorMedicalAnnual, RETIREMENT_TAX_BASIS } from "./utils/retirementTax.js";
 import { FIXED_COST_TEMPLATE_KEYS, deriveTaxFixedCostForecastRows } from "./utils/fixedCostForecast.js";
 import { resolveInflationPct } from "./utils/inflation.js";
+import { derivePensionTakeHomeRows } from "./utils/pensionTakeHome.js";
 // 国別ルール（NISA/iDeCo・401(k)/IRA・ISA/SIPP・RRSP/TFSA・Super など）は
 // src/countryRules/ 配下の各国ファイルに分離。取得は従来どおり getCountryRules(country)。
 import {
@@ -3087,6 +3088,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       total: r.investmentValue,
     }));
   }, [integrated, inputs.retireAge, fixedCostItems, t]);
+
+  const pensionTakeHomeRows = useMemo(() =>
+    derivePensionTakeHomeRows(integrated.yearly).filter((row) => row.pensionGrossAnnual > 0),
+  [integrated]);
 
   // 投資口座の帯の凡例名は国ごとに変える（各国の口座名称はそのまま維持する）
   const investmentLegendKey =
@@ -6200,6 +6205,56 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             </div>
             <div className="note" style={{ marginTop: 8 }}><Info size={13}/><span>{t("pensionTakeHomeDisclaimer")}</span></div>
             <div className="note" style={{ marginTop: 8 }}><Info size={13}/><span>{t("retirementTaxDisclaimer")}</span></div>
+          </div>
+
+          <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid #2A363C" }}>
+            <div className="stat-sub" style={{ marginBottom: 8 }}>{t("pensionTakeHomeRateTitle")}</div>
+            <div className="note" style={{ marginBottom: 12 }}>
+              <Info size={13}/><span>{t("pensionTakeHomeRateExplanation")}</span>
+            </div>
+            <div className="note" style={{ marginBottom: 12 }}>
+              <Info size={13}/><span>{t("pensionTakeHomeRateIncluded")}</span>
+            </div>
+            {pensionTakeHomeRows.length > 0 ? (
+              <>
+                <ResponsiveContainer width="100%" height={260}>
+                  <ComposedChart data={pensionTakeHomeRows} margin={{ top: 8, right: 18, left: 0, bottom: 4 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#26343A" />
+                    <XAxis dataKey="pensionAge" tick={{ fill: "#87959C", fontSize: 11 }} />
+                    <YAxis domain={[0, 100]} tickFormatter={(v) => `${v}%`} tick={{ fill: "#87959C", fontSize: 11 }} width={45} />
+                    <Tooltip
+                      contentStyle={{ background: "rgba(13,22,26,0.92)", border: "1px solid #314148", borderRadius: 8 }}
+                      labelFormatter={(age) => t("pensionAgeLabel", { age })}
+                      formatter={(value, name) => [value == null ? "-" : `${Number(value).toFixed(1)}%`, name]}
+                    />
+                    <Legend />
+                    <Line type="monotone" dataKey="publicPensionTakeHomeRate" name={t("publicPensionTakeHomeRateLegend")} stroke="#D9A54F" strokeWidth={2} dot={false} connectNulls />
+                    <Line type="monotone" dataKey="privatePensionTakeHomeRate" name={t("privatePensionTakeHomeRateLegend")} stroke="#D987AA" strokeWidth={2} dot={false} connectNulls />
+                    <Line type="monotone" dataKey="pensionTakeHomeRate" name={t("totalPensionTakeHomeRateLegend")} stroke="#7BC9E0" strokeWidth={3} dot={false} connectNulls />
+                  </ComposedChart>
+                </ResponsiveContainer>
+                <div className="table-wrap" style={{ marginTop: 12, overflowX: "auto" }}>
+                  <table className="mini-table">
+                    <thead><tr>
+                      <th>{t("ageHeader")}</th><th>{t("pensionGrossHeader")}</th><th>{t("pensionTaxHeader")}</th><th>{t("pensionMedicalHeader")}</th><th>{t("pensionTakeHomeHeader")}</th><th>{t("pensionTakeHomeRateHeader")}</th>
+                    </tr></thead>
+                    <tbody>{pensionTakeHomeRows.map((row, i) => (
+                      <tr key={`pension-rate-${row.exactAge}-${i}`}>
+                        <td>{t("pensionAgeLabel", { age: row.pensionAge })}</td>
+                        <td>{money(row.pensionGrossAnnual)}</td>
+                        <td>{money(row.publicPensionTaxAnnual + row.privatePensionTaxAnnual)}</td>
+                        <td>{money(row.pensionMedicalAnnual)}</td>
+                        <td>{money(row.pensionTakeHomeAnnual)}</td>
+                        <td>{row.pensionTakeHomeRate == null ? "-" : `${row.pensionTakeHomeRate.toFixed(1)}%`}</td>
+                      </tr>
+                    ))}</tbody>
+                  </table>
+                </div>
+                <div className="note" style={{ marginTop: 10 }}><Info size={13}/><span>{t("pensionTakeHomeRateDisclaimer")}</span></div>
+              </>
+            ) : (
+              <div className="note"><Info size={13}/><span>{t("pensionTakeHomeRateNoData")}</span></div>
+            )}
           </div>
 
           </div>

@@ -269,6 +269,7 @@ export function runIntegratedPlan(p) {
   // 直近ステップで使われた公的年金の月額と、資力調査に使った資産（表示用の読み取り専用）。
   // 行に載る値はすべて有限の数値でなければならないため、資力調査を行わない場合は 0。
   let lastPublicPensionMonthly = 0;
+  let lastPrivatePensionAnnual = 0;
   let lastAssessedAssets = 0;
   let lastDeemedAssets = 0;
   // 資力調査つきストリーム（豪Age Pension）だけを別枠で記録する。
@@ -356,6 +357,7 @@ export function runIntegratedPlan(p) {
     // 画面カードが「グラフの内側で使われている値」と同じ数字を出せるようにする。
     // 読み取り専用の派生値で、totalAssets / netWorth を1円も変えない。
     row.publicPensionAnnual = clampZero(lastPublicPensionMonthly) * 12;
+    row.privatePensionAnnual = clampZero(lastPrivatePensionAnnual);
     row.meansTestedAssessedAssets = clampZero(lastAssessedAssets);
     row.meansTestedDeemedAssets = clampZero(lastDeemedAssets);
     row.meansTestedPensionAnnual = clampZero(lastMeansTestedMonthly) * 12;
@@ -481,6 +483,7 @@ export function runIntegratedPlan(p) {
     // 画面カード（豪Age Pensionなど）が「投影で使われた値そのもの」を読めるようにするため。
     // 表示専用の派生値で、どのプール残高にも影響しない。
     lastPublicPensionMonthly = 0;
+    lastPrivatePensionAnnual = 0;
     lastAssessedAssets = 0;
     lastDeemedAssets = 0;
     lastMeansTestedStreams = 0;
@@ -519,6 +522,7 @@ export function runIntegratedPlan(p) {
       const paid = Math.min(pool.balance, num(pl.monthlyPayout) * months);
       pool.balance -= paid;
       cash += paid;
+      if (months > EPS) lastPrivatePensionAnnual += (paid / months) * 12;
     });
 
     // iDeCo：年金・一時金とも残高が原資（残高以上は出ない）
