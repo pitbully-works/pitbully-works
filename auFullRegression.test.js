@@ -1037,8 +1037,19 @@ describe("AU回帰：Division 293 の実装が他4か国を一切変えない", 
         countryDerived: {},
       };
       const plan = buildPlanInput(ctx);
-      // AU以外では recurringCharges は常に空＝エンジンの経路が従来と同一
-      expect(plan.recurringCharges).toEqual([]);
+      // Division 293 はAU専用。JPは75歳以降の医療保険料という別機能を持つため、
+      // AU由来の recurring charge が混入していないことを確認する。
+      if (country === "JP") {
+        expect(plan.recurringCharges).toEqual([
+          expect.objectContaining({
+            id: "jpSeniorMedical75",
+            annualAmount: 95875,
+            fromAge: 75,
+          }),
+        ]);
+      } else {
+        expect(plan.recurringCharges).toEqual([]);
+      }
       const r = runIntegratedPlan(plan);
       expect(Number.isFinite(r.yearly[r.yearly.length - 1].totalAssets)).toBe(true);
     });
