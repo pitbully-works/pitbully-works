@@ -44,6 +44,24 @@ export function estimatePrivatePensionTax(country, plans = []) {
   }, 0);
 }
 
+export const RETIREMENT_TAX_BASIS = Object.freeze({
+  JP: '2026',
+  US: '2026',
+  GB: '2026/27',
+  CA: '2026',
+  AU: '2026/27',
+});
+
+// Japan Late-Stage Elderly Healthcare (75+) 2026/27 national-average medical portion.
+// This is deliberately a planning estimate, not a prefecture-specific premium calculation.
+export const JP_SENIOR_MEDICAL_75_AVG_ANNUAL_2026 = 95875;
+
+export function estimateJapanSeniorMedicalAnnual(setting) {
+  if (setting && setting.mode === 'off') return 0;
+  if (setting && setting.mode === 'manual') return max0(setting.manualAnnual);
+  return JP_SENIOR_MEDICAL_75_AVG_ANNUAL_2026;
+}
+
 export function resolveTaxAmount(setting, autoAmount) {
   if (setting && setting.mode === 'manual') return max0(setting.manualAnnual);
   return max0(autoAmount);
