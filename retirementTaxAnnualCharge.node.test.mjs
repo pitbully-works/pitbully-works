@@ -1,5 +1,4 @@
-import test from 'node:test';
-import assert from 'node:assert/strict';
+import { test, expect } from 'vitest';
 import { runIntegratedPlan } from './lifePlanEngine.js';
 import { estimatePublicPensionTax, resolveTaxAmount } from './utils/retirementTax.js';
 
@@ -28,11 +27,11 @@ function plan(recurringCharges = []) {
 }
 
 test('JP pension estimate: 16.7106万円/月 gives about 4.9万円/year tax', () => {
-  assert.ok(Math.abs(autoTax - 48_790.8) < 0.01);
+  expect(Math.abs(autoTax - 48_790.8)).toBeLessThan(0.01);
 });
 
 test('manual tax override is annual and replaces auto amount', () => {
-  assert.equal(resolveTaxAmount({ mode: 'manual', manualAnnual: 49_000 }, autoTax), 49_000);
+  expect(resolveTaxAmount({ mode: 'manual', manualAnnual: 49_000 }, autoTax)).toBe(49_000);
 });
 
 test('annual pension tax is deducted once per year, not once per month', () => {
@@ -40,8 +39,8 @@ test('annual pension tax is deducted once per year, not once per month', () => {
   const withTax = runIntegratedPlan(plan([
     { id: 'publicPensionTax', annualAmount: 49_000, fromAge: 65, toAge: 66.001 },
   ])).finalNetWorth;
-  assert.ok(Math.abs((withoutTax - withTax) - 49_000) < 0.01);
-  assert.ok(Math.abs(withTax - (1_000_000 + annualPension - 49_000)) < 0.01);
+  expect(Math.abs((withoutTax - withTax) - 49_000)).toBeLessThan(0.01);
+  expect(Math.abs(withTax - (1_000_000 + annualPension - 49_000))).toBeLessThan(0.01);
 });
 
 test('public tax + private tax + fixed costs are each deducted exactly once', () => {
@@ -52,5 +51,5 @@ test('public tax + private tax + fixed costs are each deducted exactly once', ()
     { id: 'otherAnnualTaxes', annualAmount: 30_000, fromAge: 65, toAge: 66.001 },
   ];
   const withCharges = runIntegratedPlan(plan(charges)).finalNetWorth;
-  assert.ok(Math.abs((without - withCharges) - 91_000) < 0.01);
+  expect(Math.abs((without - withCharges) - 91_000)).toBeLessThan(0.01);
 });
