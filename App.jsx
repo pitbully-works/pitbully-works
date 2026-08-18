@@ -264,6 +264,7 @@ import {
   runGoldSimulation,
   runBankSimulation,
   runStockSim,
+  stockCostBasisValue,
   runLoanSimulation,
   runInsuranceSimulation,
   runPrivatePensionSimulation,
@@ -2766,17 +2767,28 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     }) : { yearly: [], totalNow: 0, totalAtRetire: 0, totalFinal: 0 },
     [simulationReady, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, inputs.banks]
   );
-  const stockTotalNow = useMemo(() => watchlist.reduce((s, w) => s + (w.value || 0), 0), [watchlist]);
+  // 個別株は「個数 × 平均取得額（取得額）」を現在の元本として扱う。
+  // 保存互換性のため、従来の `value` フィールド名は維持するが、意味は1株あたりの平均取得額。
+  // ここを単純合計すると、昨日以前の旧実装へ戻ってしまうため、すべての株式計算はこの関数を通す。
+  const stockCostBasis = useCallback((w) => stockCostBasisValue(w), []);
+  const stockTotalNow = useMemo(
+    () => watchlist.reduce((sum, w) => sum + stockCostBasis(w), 0),
+    [watchlist, stockCostBasis]
+  );
   const stockAllocationItems = useMemo(
-    () => watchlist.filter((w) => (w.value || 0) > 0).map((w) => ({ name: w.name, amount: w.value })),
-    [watchlist]
+    () => watchlist
+      .map((w) => ({ name: w.name, amount: stockCostBasis(w) }))
+      .filter((w) => w.amount > 0),
+    [watchlist, stockCostBasis]
   );
   const autoStockReturn = useMemo(() => {
-    const held = watchlist.filter((w) => (w.value || 0) > 0);
-    const total = held.reduce((s, w) => s + w.value, 0);
+    const held = watchlist
+      .map((w) => ({ ...w, costBasis: stockCostBasis(w) }))
+      .filter((w) => w.costBasis > 0);
+    const total = held.reduce((sum, w) => sum + w.costBasis, 0);
     if (total <= 0) return inputs.stockReturnPct;
-    return Math.round((held.reduce((s, w) => s + (w.value / total) * guessDefaultReturn(w.name), 0)) * 10) / 10;
-  }, [watchlist, inputs.stockReturnPct]);
+    return Math.round((held.reduce((sum, w) => sum + (w.costBasis / total) * guessDefaultReturn(w.name), 0)) * 10) / 10;
+  }, [watchlist, inputs.stockReturnPct, stockCostBasis]);
   const effectiveStockReturnPct = inputs.stockReturnPctAuto ? autoStockReturn : inputs.stockReturnPct;
   const stockSim = useMemo(
     () => simulationReady ? runStockSim({ currentAge: effectiveCurrentAge, deathAge: inputs.deathAge, totalValue: stockTotalNow, returnPct: effectiveStockReturnPct }) : { yearly: [], finalValue: 0 },
@@ -7085,7 +7097,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <StatCard
               label={t("statStockValueNowLabel")}
               value={money(stockTotalNow)}
-              sub={t("statStockHoldingsCountSub", { count: watchlist.filter((w) => w.value > 0).length })}
+              sub={t("statStockHoldingsCountSub", { count: watchlist.filter((w) => stockCostBasis(w) > 0).length })}
             />
             <StatCard
               label={t("statLoanBalanceNowLabel")}
@@ -7232,7 +7244,14 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 <CartesianGrid stroke="#2A363C" strokeDasharray="3 3" />
                 <XAxis dataKey="age" stroke="#7C8A90" fontSize={11} />
                 <YAxis stroke="#7C8A90" fontSize={11} tickFormatter={(v) => money(v)} width={64} />
-                <Tooltip formatter={(v, n) => [money(v), n]} labelFormatter={(a) => t("ageYears", { age: a })} />
+                <Tooltip
+                  contentStyle={{ background: "transparent", border: "none", boxShadow: "none", fontSize: 12 }}
+                  wrapperStyle={{ zIndex: 20 }}
+                  itemStyle={{ textShadow: "0 0 3px #000, 0 0 3px #000, 0 0 2px #000" }}
+                  labelStyle={{ textShadow: "0 0 3px #000, 0 0 3px #000, 0 0 2px #000" }}
+                  formatter={(v, n) => [money(v), n]}
+                  labelFormatter={(a) => t("ageYears", { age: a })}
+                />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
                 <Area type="monotone" dataKey="cumulativePublicPensionTax" name={t("legendCumulativePublicPensionTax")} stackId="charges" stroke="#D9A54F" fill="rgba(217,165,79,0.30)" />
                 <Area type="monotone" dataKey="cumulativePrivatePensionTax" name={t("legendCumulativePrivatePensionTax")} stackId="charges" stroke="#D68FB0" fill="rgba(214,143,176,0.30)" />
