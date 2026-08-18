@@ -550,6 +550,14 @@ export function runBankSimulation({ currentAge, retireAge, deathAge, banks }) {
 }
 
 // ---------- individual stock portfolio (保有中の個別株) ----------
+// 個別株の現在元本は「株数 × 1株あたり平均取得額」。
+// watchlist の保存互換性を保つため平均取得額は従来の `value` フィールドを使用する。
+export function stockCostBasisValue(holding) {
+  const shares = Math.max(0, Number(holding?.shares) || 0);
+  const averageAcquisitionPrice = Math.max(0, Number(holding?.value) || 0);
+  return shares * averageAcquisitionPrice;
+}
+
 export function runStockSim({ currentAge, deathAge, totalValue, returnPct }) {
   const totalMonths = Math.max(1, Math.round((deathAge - currentAge) * 12));
   const r = monthlyRate(returnPct);
