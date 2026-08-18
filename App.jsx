@@ -14,6 +14,7 @@ import { FIXED_COST_TEMPLATE_KEYS, deriveTaxFixedCostForecastRows } from "./util
 import { resolveInflationPct } from "./utils/inflation.js";
 import { derivePensionTakeHomeRows } from "./utils/pensionTakeHome.js";
 import { ASSET_DRAWDOWN_CATEGORIES, deriveAnnualAssetDrawdownRows } from "./utils/assetDrawdown.js";
+import { deriveAnnualCashflowRows } from "./utils/annualCashflow.js";
 // 国別ルール（NISA/iDeCo・401(k)/IRA・ISA/SIPP・RRSP/TFSA・Super など）は
 // src/countryRules/ 配下の各国ファイルに分離。取得は従来どおり getCountryRules(country)。
 import {
@@ -2700,9 +2701,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const currentAssetHoldingsTotal = tsumitateHoldingsTotal + growthHoldingsTotal + autoHoldingsTotal;
   const effectiveCurrentAssets = currentAssetHoldingsTotal;
 
-  // 退職後の想定利回りを、現役時代（銘柄別スライダー）の加重平均利回りの半分から自動で仮設定する
+  // 退職後の想定利回りは、現役時代（銘柄別スライダー）の加重平均利回りをそのまま継続する。
+  // 退職しただけで運用利回りを機械的に半分へ落とす根拠はないため、ユーザーが手動変更しない限り同率とする。
   const weightedAvgReturn = dynamicFunds.reduce((s, f) => s + (f.pct / 100) * f.returnPct, 0);
-  const autoPostRetireReturn = dynamicFunds.length > 0 ? Math.round((weightedAvgReturn / 2) * 10) / 10 : inputs.postRetireReturn;
+  const autoPostRetireReturn = dynamicFunds.length > 0 ? Math.round(weightedAvgReturn * 100) / 100 : inputs.postRetireReturn;
   const effectivePostRetireReturn = (inputs.postRetireReturnAuto && dynamicFunds.length > 0) ? autoPostRetireReturn : inputs.postRetireReturn;
 
   // iDeCo：NISAとは別の専用計算関数（受取前は生活費に使わず増やすだけ）。
@@ -3183,6 +3185,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   // いま画面に出ているセクション。右のクイックジャンプに印をつけるためだけに使う。
   const currentAnchor = useCurrentSection(quickNavItems);
   useKeepCurrentVisible(currentAnchor);
+
+  const annualCashflowRows = useMemo(
+    () => deriveAnnualCashflowRows(integrated.yearly).filter((row) => row.age >= Math.floor(inputs.retireAge)),
+    [integrated.yearly, inputs.retireAge]
+  );
+  const annualCashflowByEndAge = useMemo(() => new Map(annualCashflowRows.map((row) => [row.endAge, row])), [annualCashflowRows]);
 
   const netWorthFinal = integrated.finalNetWorth;
   const inheritanceTotal = inputs.inheritancePlans.reduce((s, p) => s + (p.amount || 0), 0);
@@ -6089,8 +6097,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             onChange={(v) => update({ publicPensionStartAge: v })}
           />
           <MoneyField unitPer="month" guide={t("livingCostGuide")} label={t("livingCostLabel")} value={inputs.livingCostMonthly} onChange={(v) => update({ livingCostMonthly: v })} />
+          <div className="note" style={{ marginTop: -8 }}><Info size={13} /><span>{t("livingCostCurrentValueNote")}</span></div>
           <Field
-            label={`${t("postRetireReturnLabel")}${inputs.postRetireReturnAuto && dynamicFunds.length > 0 ? t("autoHalfWeightedSuffix") : ""}`}
+            label={`${t("postRetireReturnLabel")}${inputs.postRetireReturnAuto && dynamicFunds.length > 0 ? t("autoWeightedSuffix") : ""}`}
             unit="%" step={0.5}
             value={effectivePostRetireReturn}
             onChange={(v) => update({ postRetireReturn: v, postRetireReturnAuto: false })}
@@ -7273,14 +7282,32 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 <XAxis dataKey="age" stroke="#7C8A90" fontSize={11} tickFormatter={(a) => `${a}`} />
                 <YAxis stroke="#7C8A90" fontSize={11} tickFormatter={(v) => money(v)} width={64} />
                 <Tooltip
-                  // 背景を完全に透明にし、色つきの文字だけをグラフの上に浮かせる。
-                  // 文字が背景の帯に埋もれないよう、黒い縁取り（textShadow）で可読性を確保する。
-                  contentStyle={{ background: "transparent", border: "none", boxShadow: "none", fontSize: 12 }}
-                  wrapperStyle={{ zIndex: 20 }}
-                  itemStyle={{ textShadow: "0 0 3px #000, 0 0 3px #000, 0 0 2px #000" }}
-                  labelStyle={{ textShadow: "0 0 3px #000, 0 0 3px #000, 0 0 2px #000" }}
-                  labelFormatter={(a) => t("ageYears", { age: a })}
-                  formatter={(v, n) => [money(v), n]}
+                  content={({ active, payload, label: ageLabel }) => {
+                    if (!active || !payload?.length) return null;
+                    const cf = annualCashflowByEndAge.get(Number(ageLabel));
+                    return (
+                      <div style={{ background: "rgba(8,14,18,0.78)", border: "1px solid rgba(255,255,255,0.16)", borderRadius: 8, padding: "8px 10px", fontSize: 11, maxWidth: 260 }}>
+                        <div style={{ fontWeight: 700, marginBottom: 5 }}>{t("ageYears", { age: ageLabel })}</div>
+                        {payload.filter((x) => Number.isFinite(Number(x.value))).map((x) => (
+                          <div key={x.dataKey} style={{ display: "flex", justifyContent: "space-between", gap: 12 }}><span>{x.name}</span><span className="mono">{money(x.value)}</span></div>
+                        ))}
+                        {cf && (
+                          <div style={{ borderTop: "1px solid rgba(255,255,255,0.16)", marginTop: 6, paddingTop: 6 }}>
+                            <div style={{ fontWeight: 700, marginBottom: 3 }}>{t("cashflowTooltipTitle")}</div>
+                            <div>{t("cashflowIncomeLabel")}: <span className="mono">{money(cf.publicPension + cf.privatePension)}</span></div>
+                            <div>{t("cashflowInvestmentReturnLabel")}: <span className="mono">{money(cf.investmentReturn)}</span></div>
+                            <div>{t("cashflowLivingCostLabel")}: <span className="mono">-{money(cf.livingCost)}</span></div>
+                            <div>{t("cashflowHealthCostLabel")}: <span className="mono">-{money(cf.healthCost)}</span></div>
+                            <div>{t("cashflowTaxFixedCostLabel")}: <span className="mono">-{money(cf.taxFixedCost)}</span></div>
+                            <div>{t("cashflowInsuranceLabel")}: <span className="mono">-{money(cf.insurancePremium)}</span></div>
+                            <div>{t("cashflowLoanLabel")}: <span className="mono">-{money(cf.loanPayment)}</span></div>
+                            <div style={{ marginTop: 3, fontWeight: 700 }}>{t("cashflowAnnualNetLabel")}: <span className="mono">{money(cf.annualCashflow)}</span></div>
+                            <div>{t("cashflowAssetChangeLabel")}: <span className="mono">{money(cf.assetChange)}</span></div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }}
                 />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
                 <ReferenceLine x={inputs.retireAge} stroke="#D9A54F" strokeDasharray="4 4" label={{ value: t("retirementMarkerLabel"), position: "top", fill: "#D9A54F", fontSize: 11 }} />
@@ -7318,9 +7345,33 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               </ComposedChart>
             </ResponsiveContainer>
           </div>
-          <div className="note" style={{ marginBottom: 22 }}>
+          <div className="note" style={{ marginBottom: 12 }}>
             <Info size={13} />
             <span>{t("netWorthChartNote")}</span>
+          </div>
+          <div className="chart-frame" style={{ marginBottom: 22 }}>
+            <div className="chart-label">{t("annualCashflowTitle")}</div>
+            <div className="note" style={{ marginBottom: 8 }}><Info size={13}/><span>{t("annualCashflowGuide")}</span></div>
+            <div style={{ overflowX: "auto" }}>
+              <table className="watchlist" style={{ minWidth: 980 }}>
+                <thead><tr>
+                  <th>{t("colAge")}</th><th>{t("cashflowOpeningAssetsLabel")}</th><th>{t("cashflowInvestmentReturnLabel")}</th>
+                  <th>{t("cashflowPublicPensionLabel")}</th><th>{t("cashflowPrivatePensionLabel")}</th><th>{t("cashflowLivingCostLabel")}</th>
+                  <th>{t("cashflowHealthCostLabel")}</th><th>{t("cashflowTaxFixedCostLabel")}</th><th>{t("cashflowInsuranceLabel")}</th><th>{t("cashflowLoanLabel")}</th>
+                  <th>{t("cashflowAnnualNetLabel")}</th><th>{t("cashflowAssetChangeLabel")}</th><th>{t("cashflowClosingAssetsLabel")}</th>
+                </tr></thead>
+                <tbody>
+                  {annualCashflowRows.map((row) => (
+                    <tr key={`${row.age}-${row.endAge}`}>
+                      <td>{t("ageYears", { age: row.age })}</td><td>{money(row.openingAssets)}</td><td>{money(row.investmentReturn)}</td>
+                      <td>{money(row.publicPension)}</td><td>{money(row.privatePension)}</td><td>{money(row.livingCost)}</td>
+                      <td>{money(row.healthCost)}</td><td>{money(row.taxFixedCost)}</td><td>{money(row.insurancePremium)}</td><td>{money(row.loanPayment)}</td>
+                      <td>{money(row.annualCashflow)}</td><td>{money(row.assetChange)}</td><td>{money(row.closingAssets)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
           <div className="chart-frame" style={{ marginBottom: 22 }}>
             <div className="chart-label">{t("taxFixedCostChartTitle")}</div>

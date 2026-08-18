@@ -96,8 +96,8 @@ test("C: ローン返済で純資産は増えない（利息分だけ減る）",
   assertInvariants(withLoan, "C");
 });
 
-// D. 民間年金残高が0円になった後は年金収入が発生しない
-test("D: 民間年金は残高が尽きたら収入が止まる", () => {
+// D. 民間年金は払込元本を超えても、登録した契約期間・受取額どおり支給する
+test("D: 民間年金は表示用原資が尽きても契約終了年齢まで支給を継続する", () => {
   const pools = [
     { id: "bank", group: "bank", balance: 0, annualReturnPct: 0, drawOrder: 1 },
     { id: "pp", group: "privatePension", balance: 1200000, annualReturnPct: 0, accessAge: NOT_DRAWABLE },
@@ -111,13 +111,11 @@ test("D: 民間年金は残高が尽きたら収入が止まる", () => {
       { poolId: "pp", monthlyPayout: 100000, payoutFromAge: 65, payoutToAge: 75 },
     ],
   });
-  // 残高120万 ÷ 月10万 = 12ヶ月で枯渇 → 66歳で年金は尽きる
   const at67 = res.yearly.find((r) => r.age === 67);
-  assert.equal(at67.pensionValue, 0, "年金原資は尽きているはず");
-  // 収入が止まるので、生活費が払えず不足が発生している
-  assert.ok(res.cumulativeUnmet > 0, "年金が尽きた後は不足が発生するはず");
-  assert.ok(res.depletionAge !== null && res.depletionAge >= 66,
-    `枯渇は66歳以降のはず (${res.depletionAge})`);
+  assert.equal(at67.pensionValue, 0, "表示用の払込原資は尽きているはず");
+  assert.equal(at67.privatePensionAnnual, 1200000, "契約年金は年120万円のまま継続する");
+  assert.ok(res.cumulativeUnmet < 1, "契約年金が生活費と同額なので不足は発生しない");
+  assert.equal(res.depletionAge, null, "契約年金だけで生活費を賄えるため枯渇扱いにしない");
   assertInvariants(res, "D");
 });
 

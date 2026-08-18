@@ -264,6 +264,14 @@ export function runIntegratedPlan(p) {
   let idecoLumpPaid = false;
   let cumulativeWithdrawalTax = 0;   // 引出時課税として失われた額の累計
   let cumulativeRecurringCharges = 0; // recurringCharges で資産から出ていった額の累計
+  // 年間収支表・ツールチップ用の累計記録。計算結果には影響しない読み取り専用の会計ログ。
+  let cumulativeInvestmentReturn = 0;
+  let cumulativeContributions = 0;
+  let cumulativePublicPensionIncome = 0;
+  let cumulativePrivatePensionIncome = 0;
+  let cumulativeLivingCost = 0;
+  let cumulativeHealthCost = 0;
+  let cumulativeLoanPayments = 0;
   // 支出を賄うために実際に各カテゴリの資産から取り崩した gross 額の累計。
   // 表示専用の記録で、残高・取り崩し順序・税額計算には一切影響しない。
   const cumulativeAssetDrawdownByCategory = { cash: 0, taxable: 0, taxFree: 0, restricted: 0, physical: 0, other: 0 };
@@ -345,6 +353,13 @@ export function runIntegratedPlan(p) {
       cumulativeUnmet,
       cumulativeUnpaidLoan,
       cumulativePremiums,
+      cumulativeInvestmentReturn,
+      cumulativeContributions,
+      cumulativePublicPensionIncome,
+      cumulativePrivatePensionIncome,
+      cumulativeLivingCost,
+      cumulativeHealthCost,
+      cumulativeLoanPayments,
       // 記録専用。資産バンド（totalAssets）にも純資産（netWorth）にも算入されない。
       surplusBalance,
       cumulativeRecurringCharges,
@@ -429,7 +444,9 @@ export function runIntegratedPlan(p) {
       const effPct = (!retired && x.earningsTaxPct > 0)
         ? basePct * (1 - x.earningsTaxPct / 100)
         : basePct;
+      const beforeGrowth = x.balance;
       x.balance = x.balance * growthFactor(effPct, dt);
+      cumulativeInvestmentReturn += x.balance - beforeGrowth;
     });
 
     // -------- 2. 拠出（積立） --------
@@ -443,7 +460,9 @@ export function runIntegratedPlan(p) {
         gross = x.monthlyContribution * months;
       }
       if (gross <= 0) return;
-      x.balance += gross * (1 - x.contributionTaxPct / 100);
+      const netContribution = gross * (1 - x.contributionTaxPct / 100);
+      x.balance += netContribution;
+      cumulativeContributions += netContribution;
     });
 
     // -------- 3. 強制取崩し（加RRIF / 豪Super最低取崩し）--------
@@ -523,20 +542,28 @@ export function runIntegratedPlan(p) {
         monthly = num(ps.monthlyAmount);
       }
       lastPublicPensionMonthly += clampZero(monthly);
-      cash += clampZero(monthly) * months;
+      const publicPaid = clampZero(monthly) * months;
+      cash += publicPaid;
+      cumulativePublicPensionIncome += publicPaid;
     });
 
-    // 民間年金：その期間に残高から実際に取り崩せた額だけが収入になる
+    // 民間年金：登録された契約の受給額・受給期間を優先して支給する。
+    // これまでの払込元本を表示用プールとして保持し、支給時にはそこから先に減らすが、
+    // 元本が尽きても契約上の年金額は payoutToAge まで継続する。保険会社の予定利率・
+    // 運用益等による「払込総額を超える給付」を途中で打ち切らないための扱い。
     privatePensionPlans.forEach((pl) => {
-      // 受給期間は [payoutFromAge, payoutToAge) の開区間。終了年齢ちょうどに到達したら
-      // その時点で終了し、1ヶ月ぶん余計に払わない。
+      // 受給期間は [payoutFromAge, payoutToAge) の開区間。終了年齢ちょうどに到達したら終了。
       if (ageStart < num(pl.payoutFromAge) - EPS || ageStart >= num(pl.payoutToAge) - EPS) return;
+      const targetPaid = clampZero(num(pl.monthlyPayout)) * months;
+      if (targetPaid <= EPS) return;
       const pool = poolById.get(pl.poolId);
-      if (!pool || pool.balance <= 0) return;
-      const paid = Math.min(pool.balance, num(pl.monthlyPayout) * months);
-      pool.balance -= paid;
-      cash += paid;
-      if (months > EPS) lastPrivatePensionAnnual += (paid / months) * 12;
+      if (pool && pool.balance > EPS) {
+        const fromReserve = Math.min(pool.balance, targetPaid);
+        pool.balance = clampZero(pool.balance - fromReserve);
+      }
+      cash += targetPaid;
+      cumulativePrivatePensionIncome += targetPaid;
+      if (months > EPS) lastPrivatePensionAnnual += (targetPaid / months) * 12;
     });
 
     // iDeCo：年金・一時金とも残高が原資（残高以上は出ない）
@@ -604,8 +631,11 @@ export function runIntegratedPlan(p) {
     let essentials = 0;
     if (retired) {
       const inflationFactor = inflationFactorAt(ageStart);
-      essentials += livingCostMonthly * inflationFactor * months;
-      essentials += clampZero(num(healthCostAnnual(ageStart))) * inflationFactor * dt;
+      const livingCost = livingCostMonthly * inflationFactor * months;
+      const healthCost = clampZero(num(healthCostAnnual(ageStart))) * inflationFactor * dt;
+      essentials += livingCost + healthCost;
+      cumulativeLivingCost += livingCost;
+      cumulativeHealthCost += healthCost;
     }
     if (chargeFixed) essentials += premium;
 
@@ -671,6 +701,7 @@ export function runIntegratedPlan(p) {
       } else {
         const r = pay(due);
         l.balance = clampZero(l.balance - r.paid);
+        cumulativeLoanPayments += r.paid;
         cumulativeLoanPrincipal += Math.max(0, r.paid - interest);
         if (r.shortfall > EPS) {
           cumulativeUnpaidLoan += r.shortfall;
