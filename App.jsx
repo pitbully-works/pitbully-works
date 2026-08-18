@@ -2930,10 +2930,21 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     : country === "GB" ? gbRetirementIncomeAnnual
     : country === "CA" ? caRetirementIncomeAnnual
     : country === "AU" ? (auAgePensionAnnualSeed + auOtherAnnualIncome) : 0;
-  const publicPensionTaxAuto = estimatePublicPensionTax(country, publicPensionAnnualForTax, Math.max(65, effectiveCurrentAge));
+  // 画面表示と統合エンジンで同じ受給開始年齢を使う。ここがずれると
+  // 「表示された税額」と「グラフから実際に引かれる税額」が食い違うため、国別に1か所で決める。
+  const publicPensionStartForTax = country === "JP" ? effectivePublicPensionStartAge
+    : country === "US" ? usClaimAge
+    : country === "GB" ? gbEffectiveClaimAge
+    : country === "CA" ? Math.min(caCppStartAge || 65, caOasStartAge || 65)
+    : country === "AU" ? auAgePensionQualifyingAge : 65;
+  const publicPensionTaxAuto = estimatePublicPensionTax(country, publicPensionAnnualForTax, Math.max(0, Number(publicPensionStartForTax) || 65));
   const privatePensionTaxAuto = estimatePrivatePensionTax(country, inputs.privatePensionPlans);
   const publicPensionTaxAnnual = resolveTaxAmount(inputs.retirementTax?.publicPension, publicPensionTaxAuto);
   const privatePensionTaxAnnual = resolveTaxAmount(inputs.retirementTax?.privatePension, privatePensionTaxAuto);
+  // 公的年金の「手取り」は税額が年額であることを明示して年単位で差し引き、
+  // 最後に12で割って月平均を出す。4.9万円/年を毎月差し引く誤りを防ぐ。
+  const publicPensionTakeHomeAnnual = Math.max(0, publicPensionAnnualForTax - publicPensionTaxAnnual);
+  const publicPensionTakeHomeMonthly = publicPensionTakeHomeAnnual / 12;
 
   const planCtx = useMemo(() => ({
     country, rules, inputs,
@@ -3080,6 +3091,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     { index: "09", title: label("loan"), icon: Landmark },
     { index: "10", title: label("insurance"), icon: HeartPulse },
     { index: "11", title: label("privatePension"), icon: PiggyBank },
+    { index: "12", title: t("otherTaxesFixedCostsTitle"), icon: Landmark },
     { anchor: "section-summary", title: t("summarySectionTitle") },     // 資産サマリー（右側ダッシュボードの先頭）
     { anchor: "section-advice", title: t("adviceCardTitle") },          // 診断コメント
     { anchor: "section-comparison", title: t("scenarioCompareTitle") }, // シナリオ比較
@@ -3116,6 +3128,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     { anchor: "section-09", short: t("navShortLoan") },                // 借入
     { anchor: "section-10", short: t("navShortInsurance") },           // 保険
     { anchor: "section-11", short: t("navShortPrivatePension") },      // 民年金
+    { anchor: "section-12", short: t("navShortFixedCosts") },          // 固定費（その他の税金・固定費）
     { anchor: "section-summary", short: t("navShortSummary") },        // サマリ（資産サマリーの先頭）
     { anchor: "section-advice", short: t("navShortDiagnosis") },       // 診断
     { anchor: "section-comparison", short: t("navShortComparison") },  // 比較
@@ -4048,8 +4061,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         .quicknav-wrap {
           position: fixed;
           right: 10px;
-          /* ボタンが22個に増えたので、全部が画面に収まるよう下端を少し上げ、
-             表示高さの上限を広げ、隙間とボタンの高さを詰める。 */
+          /* 項目追加時も下端の位置は変えない。
+             「固定費」1個分は各ボタンの高さと隙間を約1pxずつだけ詰めて吸収し、
+             既存ボタン全体の見た目・横幅・文字サイズを保つ。 */
           bottom: calc(50px + env(safe-area-inset-bottom, 0px));
           z-index: 50;
           display: flex;
@@ -4070,12 +4084,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           display: flex;
           flex-direction: column;
           align-items: flex-end;
-          gap: 5px;
+          gap: 4px;
         }
-        /* 各項目ボタン：背景透明・アクセント色・小さめだが指で押せるサイズ。 */
+        /* 各項目ボタン：背景透明・アクセント色。追加1個分だけ縦方向を1px詰める。 */
         .quicknav-btn {
           width: 60px;            /* 全ボタン共通の固定幅。文字数に関係なく横幅を統一 */
-          min-height: 26px;
+          min-height: 25px;
           padding: 3px 0;         /* 幅を固定したので左右パディングは0にして中央寄せ */
           text-align: center;
           border-radius: 999px;
@@ -6113,6 +6127,14 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             {inputs.retirementTax?.publicPension?.mode === "manual" ? (
               <MoneyField unitPer="year" label={t("manualTaxAnnualLabel")} value={inputs.retirementTax?.publicPension?.manualAnnual || 0} onChange={(v) => update({ retirementTax: { ...inputs.retirementTax, publicPension: { ...inputs.retirementTax?.publicPension, manualAnnual: v } } })} />
             ) : <StatCard label={t("estimatedPublicPensionTaxLabel")} value={money(publicPensionTaxAnnual)} sub={t("annualEstimateSub")} />}
+            <div style={{ marginTop: 10 }}>
+              <StatCard
+                label={t("estimatedPensionTakeHomeLabel")}
+                value={money(publicPensionTakeHomeMonthly)}
+                sub={t("estimatedPensionTakeHomeSub", { annual: money(publicPensionTakeHomeAnnual) })}
+              />
+            </div>
+            <div className="note" style={{ marginTop: 8 }}><Info size={13}/><span>{t("pensionTakeHomeDisclaimer")}</span></div>
             <div className="note" style={{ marginTop: 8 }}><Info size={13}/><span>{t("retirementTaxDisclaimer")}</span></div>
           </div>
 
