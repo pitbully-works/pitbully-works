@@ -13,6 +13,7 @@ import { estimatePublicPensionTax, estimatePrivatePensionTax, resolveTaxAmount, 
 import { FIXED_COST_TEMPLATE_KEYS, deriveTaxFixedCostForecastRows } from "./utils/fixedCostForecast.js";
 import { resolveInflationPct } from "./utils/inflation.js";
 import { derivePensionTakeHomeRows } from "./utils/pensionTakeHome.js";
+import { ASSET_DRAWDOWN_CATEGORIES, deriveAnnualAssetDrawdownRows } from "./utils/assetDrawdown.js";
 // 国別ルール（NISA/iDeCo・401(k)/IRA・ISA/SIPP・RRSP/TFSA・Super など）は
 // src/countryRules/ 配下の各国ファイルに分離。取得は従来どおり getCountryRules(country)。
 import {
@@ -3092,6 +3093,14 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const pensionTakeHomeRows = useMemo(() =>
     derivePensionTakeHomeRows(integrated.yearly).filter((row) => row.pensionGrossAnnual > 0),
   [integrated]);
+
+  const assetDrawdownRows = useMemo(() => deriveAnnualAssetDrawdownRows(integrated.yearly), [integrated]);
+  const activeAssetDrawdownCategories = useMemo(() => ASSET_DRAWDOWN_CATEGORIES.filter((category) =>
+    assetDrawdownRows.some((row) => Number(row[`annualDrawdown_${category}`]) > 0.5)
+  ), [assetDrawdownRows]);
+  const assetDrawdownRowsWithActivity = useMemo(() =>
+    assetDrawdownRows.filter((row) => row.annualDrawdownTotal > 0.5),
+  [assetDrawdownRows]);
 
   // 投資口座の帯の凡例名は国ごとに変える（各国の口座名称はそのまま維持する）
   const investmentLegendKey =
@@ -7361,6 +7370,60 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               </ComposedChart>
             </ResponsiveContainer>
             <div className="note" style={{ marginTop: 8 }}><Info size={13}/><span>{t("taxFixedCostAnnualForecastNote")}</span></div>
+          </div>
+
+          <div className="chart-frame" style={{ marginBottom: 22 }}>
+            <div className="chart-label">{t("assetDrawdownAnnualTitle")}</div>
+            <div className="note" style={{ marginBottom: 8 }}><Info size={13}/><span>{t("assetDrawdownAnnualExplanation")}</span></div>
+            {assetDrawdownRowsWithActivity.length > 0 ? (
+              <>
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart data={assetDrawdownRows} margin={{ top: 8, right: 18, left: 8, bottom: 4 }}>
+                    <CartesianGrid stroke="#2A363C" strokeDasharray="3 3" />
+                    <XAxis dataKey="age" stroke="#7C8A90" fontSize={11} />
+                    <YAxis stroke="#7C8A90" fontSize={11} tickFormatter={(v) => money(v)} width={64} />
+                    <Tooltip
+                      contentStyle={{ background: "rgba(16,24,28,0.88)", border: "1px solid #2A363C", borderRadius: 8, fontSize: 12 }}
+                      formatter={(v, n) => [money(v), n]}
+                      labelFormatter={(a) => t("ageYears", { age: a })}
+                    />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                    {activeAssetDrawdownCategories.map((category, idx) => (
+                      <Bar
+                        key={category}
+                        dataKey={`annualDrawdown_${category}`}
+                        name={t(`assetDrawdownCategory_${category}`)}
+                        stackId="assetDrawdown"
+                        fill={PIE_COLORS[idx % PIE_COLORS.length]}
+                      />
+                    ))}
+                  </BarChart>
+                </ResponsiveContainer>
+                <div style={{ overflowX: "auto", marginTop: 10 }}>
+                  <table className="mini-table">
+                    <thead>
+                      <tr>
+                        <th>{t("ageHeader")}</th>
+                        {activeAssetDrawdownCategories.map((category) => <th key={category}>{t(`assetDrawdownCategory_${category}`)}</th>)}
+                        <th>{t("assetDrawdownTotalHeader")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {assetDrawdownRowsWithActivity.map((row) => (
+                        <tr key={`drawdown-${row.exactAge}`}>
+                          <td>{t("ageYears", { age: row.age })}</td>
+                          {activeAssetDrawdownCategories.map((category) => <td key={category}>{money(row[`annualDrawdown_${category}`])}</td>)}
+                          <td>{money(row.annualDrawdownTotal)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="note" style={{ marginTop: 8 }}><Info size={13}/><span>{t("assetDrawdownAnnualNote")}</span></div>
+              </>
+            ) : (
+              <div className="note"><Info size={13}/><span>{t("assetDrawdownNoData")}</span></div>
+            )}
           </div>
 
           {/* 取り崩し順序（実装と必ず一致）と、海外口座の引出時課税 */}

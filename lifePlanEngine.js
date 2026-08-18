@@ -264,6 +264,9 @@ export function runIntegratedPlan(p) {
   let idecoLumpPaid = false;
   let cumulativeWithdrawalTax = 0;   // 引出時課税として失われた額の累計
   let cumulativeRecurringCharges = 0; // recurringCharges で資産から出ていった額の累計
+  // 支出を賄うために実際に各カテゴリの資産から取り崩した gross 額の累計。
+  // 表示専用の記録で、残高・取り崩し順序・税額計算には一切影響しない。
+  const cumulativeAssetDrawdownByCategory = { cash: 0, taxable: 0, taxFree: 0, restricted: 0, physical: 0, other: 0 };
   const cumulativeRecurringChargesById = Object.create(null);
   recurringCharges.forEach((c) => { if (c.id) cumulativeRecurringChargesById[c.id] = 0; });
   // 直近ステップで使われた公的年金の月額と、資力調査に使った資産（表示用の読み取り専用）。
@@ -311,6 +314,13 @@ export function runIntegratedPlan(p) {
     surplusBalance = clampZero(surplusBalance - bankGrossDrawn);
   };
 
+  const recordAssetDrawdown = (pool, grossDrawn) => {
+    if (!(grossDrawn > EPS) || !pool) return;
+    const category = Object.prototype.hasOwnProperty.call(cumulativeAssetDrawdownByCategory, pool.drawCategory)
+      ? pool.drawCategory : "other";
+    cumulativeAssetDrawdownByCategory[category] += grossDrawn;
+  };
+
   // ---- 【Ver.1.0】余剰金の範囲内でだけ引く支出機能は廃止 ----
   // 余剰金は「銀行預金がなぜ増えたのか」を説明する表示上の内訳であって別財布ではないため、
   // 支出可否や使用上限を余剰金残高で決める仕組み（p.oneTimeExpenses）は削除した。
@@ -338,7 +348,11 @@ export function runIntegratedPlan(p) {
       // 記録専用。資産バンド（totalAssets）にも純資産（netWorth）にも算入されない。
       surplusBalance,
       cumulativeRecurringCharges,
+      cumulativeAssetDrawdown: Object.values(cumulativeAssetDrawdownByCategory).reduce((sum, v) => sum + v, 0),
     };
+    Object.entries(cumulativeAssetDrawdownByCategory).forEach(([category, value]) => {
+      row[`cumulativeDrawdown_${category}`] = clampZero(value);
+    });
     Object.entries(cumulativeRecurringChargesById).forEach(([id, value]) => { row[`charge_${id}`] = clampZero(value); });
     loans.forEach((l, i) => { row[`loan_${i}`] = clampZero(l.balance); });
     const groups = { investment: 0, gold: 0, bank: 0, stock: 0, privatePension: 0, ideco: 0 };
@@ -564,6 +578,7 @@ export function runIntegratedPlan(p) {
           const net = gross * keep;
           pool.balance = clampZero(pool.balance - gross);
           cumulativeWithdrawalTax += gross - net;
+          recordAssetDrawdown(pool, gross);
           // 銀行プールを取り崩したら、余剰金台帳を同額（実際に引かれた gross）だけ減らす。
           // 通常支出（生活費・医療費・保険料・ローン返済）の取り崩しもここで一元管理される。
           if (pool.group === "bank") reduceSurplusByBankDraw(gross);
@@ -618,6 +633,7 @@ export function runIntegratedPlan(p) {
           if (!pool || pool.balance <= EPS) continue;
           const taken = Math.min(pool.balance, need);
           pool.balance = clampZero(pool.balance - taken);
+          recordAssetDrawdown(pool, taken);
           if (pool.group === "bank") reduceSurplusByBankDraw(taken);
           need -= taken;
         }
