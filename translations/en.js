@@ -417,7 +417,7 @@ export const EN_TRANSLATIONS = {
     "navShortPrivatePension": "Annuity",
     "navShortStock": "Stocks",
     "navShortChart": "Chart",
-    "navShortOverview": "Intro",
+    "navShortOverview": "Guide",
     "navShortColumn": "Column",
     "navShortWallet": "Wallet",
     "navShortItems": "Items",
@@ -991,6 +991,7 @@ export const EN_TRANSLATIONS = {
     "usWithdrawalSub": "Annual shortfall not covered by Social Security",
     // ---------- Getting started guide (About this app) ----------
     "navShortGuide": "Guide",
+    "guideStepLabel": "STEP",
     "guideStep1Title": "Personal & basic details",
     "guideStep1Desc": "Start with date of birth, retirement age, life expectancy and inflation settings that form the basis of the projection.",
     "guideStep2Title": "Enter your assets",

@@ -417,7 +417,7 @@ export const JA_TRANSLATIONS = {
     "navShortPrivatePension": "民年金",
     "navShortStock": "個別株",
     "navShortChart": "グラフ",
-    "navShortOverview": "概要",
+    "navShortOverview": "ガイド",
     "navShortColumn": "コラム",
     "navShortWallet": "総財布",
     "navShortItems": "項目",
@@ -991,6 +991,7 @@ export const JA_TRANSLATIONS = {
     "usWithdrawalSub": "年金収入だけでは不足する年間額",
     // ---------- 初心者向け使い方ガイド（このアプリについて） ----------
     "navShortGuide": "ガイド",
+    "guideStepLabel": "ステップ",
     "guideStep1Title": "本人・基本情報",
     "guideStep1Desc": "生年月日、退職年齢、想定寿命、物価上昇率など、計算の土台になる情報を最初に確認します。",
     "guideStep2Title": "資産を入力",

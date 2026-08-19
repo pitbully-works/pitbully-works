@@ -105,6 +105,7 @@ export const EN_GB_OVERRIDES = {
     "netWorthLateDeclineGuide": 'Why can assets fall faster later in retirement? Living and healthcare costs may rise over time with inflation. At the same time, drawing down assets leaves less money invested, so investment gains can become smaller. For example, 50 million at a 5% return produces 2.5 million a year, while 30 million produces 1.5 million. When rising spending and falling investment gains happen together, assets may decline faster at older ages.',
     "netWorthFinalSummary": 'With the current settings, projected net assets remaining at {age} are {amount}.',
     "navShortGuide": "Guide",
+    "guideStepLabel": "STEP",
     "guideStep2Title": "Enter your assets",
     "guideStep2Desc": "Enter current investments, pensions, gold, cash savings and individual shares, plus future contributions.",
     "guideStep3Title": "Enter pension & retirement living costs",
