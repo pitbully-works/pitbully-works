@@ -21,7 +21,7 @@ describe("7-step getting-started flow guide", () => {
     expect(app).toContain('t("guideEasyRequiredTitle")');
     expect(app).toContain('t("guideEasyRecommendedTitle")');
     expect(app).toContain('t("guideEasyOptionalTitle")');
-    expect(app).toContain('document.getElementById("section-00")');
+    expect(app).not.toContain('className="guide-jump-btn guide-easy-start"');
 
     expect(ja).toContain('"navShortOverview": "ガイド"');
     expect(ja).toContain('"guideEasyRequiredTitle": "まずはここだけ入力（約3分）"');

@@ -4183,7 +4183,6 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         .guide-easy-card.optional .guide-easy-title span { color: var(--muted); }
         .guide-easy-items { margin: 0; padding-left: 1.2em; font-size: 11.5px; line-height: 1.65; color: var(--text); }
         .guide-easy-note { margin: 6px 0 0; font-size: 11px; line-height: 1.55; color: var(--muted); }
-        .guide-easy-start { width: 100%; margin-top: 1px; }
         .guide-flow-title { margin: 10px 0 8px; font-weight: 700; }
         .guide-flow { display: flex; flex-direction: column; gap: 0; }
         .guide-step-card {
@@ -5272,13 +5271,6 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 </ul>
                 <p className="guide-easy-note">✅ {t("guideEasyOptionalNote")}</p>
               </div>
-              <button
-                type="button"
-                className="guide-jump-btn guide-easy-start"
-                onClick={() => document.getElementById("section-00")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-              >
-                {t("guideOpenStep")}
-              </button>
             </div>
             <p className="guide-flow-title">{t("gettingStartedFlowTitle")}</p>
             <div className="guide-flow" aria-label={t("gettingStartedFlowTitle")}>
