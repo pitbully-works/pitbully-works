@@ -19,6 +19,22 @@ describe("public pension indexation", () => {
     expect(resolvePublicPensionIndexationPct("JP", 2, { mode: "off" })).toBe(0);
   });
 
+  it("uses country-specific automatic assumptions for all five countries", () => {
+    expect(resolvePublicPensionIndexationPct("JP", 2, { mode: "auto" })).toBeCloseTo(1.5, 10);
+    expect(resolvePublicPensionIndexationPct("US", 2, { mode: "auto" })).toBeCloseTo(2, 10);
+    expect(resolvePublicPensionIndexationPct("GB", 2, { mode: "auto" })).toBeCloseTo(2.5, 10);
+    expect(resolvePublicPensionIndexationPct("GB", 3.2, { mode: "auto" })).toBeCloseTo(3.2, 10);
+    expect(resolvePublicPensionIndexationPct("CA", 2, { mode: "auto" })).toBeCloseTo(2, 10);
+    expect(resolvePublicPensionIndexationPct("AU", 2.5, { mode: "auto" })).toBeCloseTo(2.5, 10);
+  });
+
+  it("manual and off override the country-specific auto rule in every country", () => {
+    for (const country of ["JP", "US", "GB", "CA", "AU"]) {
+      expect(resolvePublicPensionIndexationPct(country, 4, { mode: "manual", manualPct: 1.1 })).toBeCloseTo(1.1, 10);
+      expect(resolvePublicPensionIndexationPct(country, 4, { mode: "off" })).toBe(0);
+    }
+  });
+
   it("keeps the start-age pension as the base and indexes once per full year", () => {
     const base = 167106;
     expect(indexedPensionMonthly(base, 65, 65, 1.5)).toBeCloseTo(base, 6);
@@ -81,6 +97,7 @@ describe("public pension indexation", () => {
   it("UI exposes auto/manual/off pension indexation and nominal/real asset view", () => {
     const app = fs.readFileSync(path.resolve(process.cwd(), "App.jsx"), "utf8");
     expect(app).toContain('publicPensionIndexation');
+    expect(app).toContain('["JP", "US", "GB", "CA", "AU"].includes(country)');
     expect(app).toContain('assetValueMode === "real"');
     expect(app).toContain('displayNetWorthChartData');
   });

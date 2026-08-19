@@ -6226,7 +6226,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             </div>
           )}
 
-          {country === "JP" && (
+          {["JP", "US", "GB", "CA", "AU"].includes(country) && (
             <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid #2A363C" }}>
               <div className="stat-sub" style={{ marginBottom: 8 }}>{t("publicPensionIndexationTitle")}</div>
               <label className="field">
@@ -6247,9 +6247,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                   onChange={(v) => update({ retirementTax: { ...inputs.retirementTax, publicPensionIndexation: { ...inputs.retirementTax?.publicPensionIndexation, manualPct: v } } })}
                 />
               ) : inputs.retirementTax?.publicPensionIndexation?.mode !== "off" ? (
-                <StatCard label={t("publicPensionIndexationEstimateLabel")} value={`${publicPensionIndexationPct.toFixed(1)}%`} sub={t("publicPensionIndexationEstimateSub")} />
+                <StatCard label={t("publicPensionIndexationEstimateLabel")} value={`${publicPensionIndexationPct.toFixed(1)}%`} sub={t(`publicPensionIndexationEstimateSub_${country}`)} />
               ) : null}
-              <div className="note" style={{ marginTop: 8 }}><Info size={13}/><span>{t("publicPensionIndexationGuide")}</span></div>
+              <div className="note" style={{ marginTop: 8 }}><Info size={13}/><span>{t(`publicPensionIndexationGuide_${country}`)}</span></div>
             </div>
           )}
 

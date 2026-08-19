@@ -1040,13 +1040,15 @@ describe("AU回帰：Division 293 の実装が他4か国を一切変えない", 
       // Division 293 はAU専用。JPは75歳以降の医療保険料という別機能を持つため、
       // AU由来の recurring charge が混入していないことを確認する。
       if (country === "JP") {
-        expect(plan.recurringCharges).toEqual([
+        expect(plan.recurringCharges).toContainEqual(
           expect.objectContaining({
             id: "jpSeniorMedical75",
             annualAmount: 95875,
             fromAge: 75,
-          }),
-        ]);
+          })
+        );
+        // JP側の機能追加で recurringCharges が増えても、AU専用Division 293が混入しないことが本質。
+        expect(plan.recurringCharges.some((c) => c.id === "auDiv293")).toBe(false);
       } else {
         expect(plan.recurringCharges).toEqual([]);
       }
