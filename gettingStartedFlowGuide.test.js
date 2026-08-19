@@ -22,7 +22,7 @@ describe("7-step getting-started flow guide", () => {
     expect(ja).toContain('"guideStepLabel": "ステップ"');
     expect(ja).toContain('"guideStep1Title": "本人・基本情報"');
     expect(ja).toContain('"guideStep7Title": "比較・グラフで最終確認"');
-    expect(ja).toContain('"guideFinalWallet": "総財布"');
+    expect(ja).toContain('"guideFinalWallet": "資産まとめ"');
     expect(ja).toContain('"guideFinalDiagnosis": "診断"');
     expect(ja).toContain('"guideFinalCompare": "比較"');
     expect(ja).toContain('"guideFinalChart": "グラフ"');
@@ -30,8 +30,7 @@ describe("7-step getting-started flow guide", () => {
     expect(app).toContain('t("guideRecommendedCheckTitle")');
     expect(app).toContain('t("guideRecommendedCheck65")');
     expect(app).toContain('t("guideRecommendedCheckPeak")');
-    expect(app).toContain('t("guideRecommendedCheck75")');
-    expect(app).toContain('t("guideRecommendedCheck95")');
+    expect(app).toContain('t("guideRecommendedCheckLife")');
     expect(app).toContain('t("guideRecommendedCheckZero")');
     expect(app).toContain('t("guideFinalCaution")');
 
