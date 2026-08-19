@@ -459,6 +459,10 @@ describe("AU統合：buildPlanInput が組み立てた計画が本番経路ど�
     tsumitateUsed: 0, growthUsed: 0,
     banks: [{ name: "main", balance: 0, monthlyDeposit: 0, interestPct: 0 }],
     loans: [], insurancePolicies: [], privatePensionPlans: [],
+    // この回帰群はAge Pension本体（資産・所得テスト）の法定2026-27値を固定する。
+    // 将来の年金指数改定は pensionIndexation.test.js で別検証するため、ここではOFF。
+    retirementTax: { publicPensionIndexation: { mode: "off", manualPct: 0 } },
+    inflation: { mode: "off", manualPct: 0 },
     gold: {
       currentGrams: 0, pricePerGram: 0, priceGrowthPct: 0, priceGrowthPctAuto: false,
       monthlyYen: 0, accumulateUntilAge: 65, asOfYears: "", asOfMonths: "",
@@ -1377,6 +1381,10 @@ describe("AU回帰：Age Pension のカード値は本番投影と一致する",
         tsumitateUsed: 0, growthUsed: 0,
         banks,
         loans: [], insurancePolicies: [], privatePensionPlans,
+        // カード一致テストもAge Pension本体の現在制度値を固定して検証する。
+        // 将来指数改定は専用テストへ分離するためOFF。
+        retirementTax: { publicPensionIndexation: { mode: "off", manualPct: 0 } },
+        inflation: { mode: "off", manualPct: 0 },
         gold: { currentGrams: 0, pricePerGram: 0, priceGrowthPct: 0, priceGrowthPctAuto: false, monthlyYen: 0, accumulateUntilAge: 65, asOfYears: "", asOfMonths: "" },
         ideco: { currentValue: 0, principalTotal: 0, monthlyContribution: 0, startAge: 35, endAge: 60, productName: "", returnPct: 0, returnPctAuto: false, expectedReturnPct: 0, payoutStartAge: 60, payoutMethod: "lump", payoutYears: 10, lumpPortionPct: 0, payoutReturnPct: 0, annualIncome: 0, asOfYears: "", asOfMonths: "" },
         usInvestment: {}, gbInvestment: {}, caInvestment: {},

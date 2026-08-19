@@ -462,6 +462,10 @@ describe("CA統合：buildPlanInput が組み立てた計画が本番経路ど�
     tsumitateUsed: 0, growthUsed: 0,
     banks: [{ name: "main", balance: 0, monthlyDeposit: 0, interestPct: 0 }],
     loans: [], insurancePolicies: [], privatePensionPlans: [],
+    // この回帰群はCPP/OAS本体（75歳10%上乗せ等）の2026制度値を固定する。
+    // 将来のCPI連動は pensionIndexation.test.js で別検証するため、ここではOFF。
+    retirementTax: { publicPensionIndexation: { mode: "off", manualPct: 0 } },
+    inflation: { mode: "off", manualPct: 0 },
     gold: {
       currentGrams: 0, pricePerGram: 0, priceGrowthPct: 0, priceGrowthPctAuto: false,
       monthlyYen: 0, accumulateUntilAge: 65, asOfYears: "", asOfMonths: "",
