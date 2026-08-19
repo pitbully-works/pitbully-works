@@ -110,7 +110,7 @@ describe("公開前2：保存できない環境の文言が一般ユーザー向
 // ============================================================================
 // 【3】名目値（インフレ非考慮）の注記
 // ============================================================================
-describe("公開前3：名目値の注記", () => {
+describe("公開前3：物価上昇を反映した資産の注記", () => {
   it("nominalValueNote が ja・en に存在する", () => {
     expect(typeof JA_TRANSLATIONS.nominalValueNote).toBe("string");
     expect(JA_TRANSLATIONS.nominalValueNote.length).toBeGreaterThan(0);
@@ -118,12 +118,14 @@ describe("公開前3：名目値の注記", () => {
     expect(EN_TRANSLATIONS.nominalValueNote.length).toBeGreaterThan(0);
   });
 
-  it("『名目値』と『インフレを考慮していない』ことの両方に触れている", () => {
-    expect(JA_TRANSLATIONS.nominalValueNote.includes("名目")).toBe(true);
-    expect(JA_TRANSLATIONS.nominalValueNote.includes("インフレ")).toBe(true);
+  it("専門用語ではなく、物価上昇と将来の資産額を一般向けに説明している", () => {
+    expect(JA_TRANSLATIONS.nominalValueNote.includes("物価上昇")).toBe(true);
+    expect(JA_TRANSLATIONS.nominalValueNote.includes("資産")).toBe(true);
+    expect(JA_TRANSLATIONS.nominalValueNote.includes("名目資産")).toBe(false);
     const en = EN_TRANSLATIONS.nominalValueNote.toLowerCase();
-    expect(en.includes("nominal")).toBe(true);
-    expect(en.includes("inflation")).toBe(true);
+    expect(en.includes("price rises")).toBe(true);
+    expect(en.includes("assets")).toBe(true);
+    expect(en.includes("nominal assets")).toBe(false);
   });
 
   it("5か国すべてで注記が引ける（言語辞書の欠落が無い）", () => {
