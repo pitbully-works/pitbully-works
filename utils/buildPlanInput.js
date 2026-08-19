@@ -50,6 +50,7 @@
 import { NOT_DRAWABLE } from "../lifePlanEngine.js";
 import { estimatePublicPensionTax, estimatePrivatePensionTax, resolveTaxAmount, estimateJapanSeniorMedicalAnnual } from "./retirementTax.js";
 import { resolveInflationPct } from "./inflation.js";
+import { resolvePublicPensionIndexationPct, indexedPensionMonthly } from "./pensionIndexation.js";
 import {
   ACCOUNT_DRAW_CATEGORY,
   drawOrderOf,
@@ -586,7 +587,13 @@ export function buildPlanInput(ctx, overrides = {}) {
   const publicPensions = [];
   if (country === "JP") {
     healthCostAnnual = (age) => healthAnnualCost(age, inputs.healthBrackets);
-    publicPensions.push({ monthlyAmount: effectivePensionMonthly, startAge: effectivePublicPensionStartAge });
+    const inflationPct = resolveInflationPct(country, inputs.inflation);
+    const pensionIndexPct = resolvePublicPensionIndexationPct(country, inflationPct, inputs.retirementTax?.publicPensionIndexation);
+    publicPensions.push({
+      monthlyAmount: effectivePensionMonthly,
+      monthlyAmountAt: (age) => indexedPensionMonthly(effectivePensionMonthly, effectivePublicPensionStartAge, age, pensionIndexPct),
+      startAge: effectivePublicPensionStartAge,
+    });
   } else if (country === "US") {
     healthCostAnnual = () => D.usTotalHealthcareAnnual;
     publicPensions.push({ monthlyAmount: D.usSSMonthlyBenefit, startAge: D.usClaimAge });
@@ -704,7 +711,24 @@ export function buildPlanInput(ctx, overrides = {}) {
       else if (country === "AU") { publicAnnual = D.auAgePensionAnnual + D.auOtherAnnualIncome; publicStart = Math.min(D.auAgePensionQualifyingAge || 67, D.auOtherAnnualIncome > 0 ? retireAge : Infinity); }
       const autoPublicTax = estimatePublicPensionTax(country, publicAnnual, Math.max(65, publicStart));
       const publicTax = resolveTaxAmount(taxSetting.publicPension, autoPublicTax);
-      if (publicTax > 0 && Number.isFinite(publicStart)) charges.push({ id: "publicPensionTax", annualAmount: publicTax, fromAge: publicStart, toAge: inputs.deathAge + 0.001 });
+      if (Number.isFinite(publicStart) && (publicTax > 0 || (country === "JP" && (taxSetting.publicPension?.mode || "auto") === "auto" && publicAnnual > 0))) {
+        if (country === "JP" && (taxSetting.publicPension?.mode || "auto") === "auto") {
+          const inflationPct = resolveInflationPct(country, inputs.inflation);
+          const pensionIndexPct = resolvePublicPensionIndexationPct(country, inflationPct, taxSetting.publicPensionIndexation);
+          charges.push({
+            id: "publicPensionTax",
+            annualAmount: publicTax,
+            annualAmountAt: (age) => {
+              const monthly = indexedPensionMonthly(effectivePensionMonthly, publicStart, age, pensionIndexPct);
+              return estimatePublicPensionTax(country, monthly * 12, Math.max(65, Number(age) || publicStart));
+            },
+            fromAge: publicStart,
+            toAge: inputs.deathAge + 0.001,
+          });
+        } else {
+          charges.push({ id: "publicPensionTax", annualAmount: publicTax, fromAge: publicStart, toAge: inputs.deathAge + 0.001 });
+        }
+      }
 
       if (taxSetting.privatePension?.mode === "manual") {
         const starts = (inputs.privatePensionPlans || []).map(x => Number(x.payoutFromAge)).filter(Number.isFinite);

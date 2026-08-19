@@ -25,6 +25,10 @@ export function deriveAnnualCashflowRows(yearly = []) {
     const contributions = delta(cur.cumulativeContributions, prev.cumulativeContributions);
     const openingAssets = num(prev.totalAssets);
     const closingAssets = num(cur.totalAssets);
+    const healthCost = healthBase + seniorMedical;
+    const taxFixedCost = Math.max(0, recurring - seniorMedical) + withdrawalTax;
+    const totalCashIncome = publicPension + privatePension;
+    const totalCashOutflow = livingCost + healthCost + taxFixedCost + insurancePremium + loanPayment;
     rows.push({
       age: startAge,
       endAge,
@@ -35,12 +39,14 @@ export function deriveAnnualCashflowRows(yearly = []) {
       contributions,
       publicPension,
       privatePension,
+      totalCashIncome,
       livingCost,
-      healthCost: healthBase + seniorMedical,
-      taxFixedCost: Math.max(0, recurring - seniorMedical) + withdrawalTax,
+      healthCost,
+      taxFixedCost,
       insurancePremium,
       loanPayment,
-      annualCashflow: publicPension + privatePension - livingCost - (healthBase + seniorMedical) - (Math.max(0, recurring - seniorMedical) + withdrawalTax) - insurancePremium - loanPayment,
+      totalCashOutflow,
+      annualCashflow: totalCashIncome - totalCashOutflow,
     });
   }
   return rows;
