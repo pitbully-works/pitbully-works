@@ -227,6 +227,7 @@ export function runIntegratedPlan(p) {
     toAge: c.toAge === undefined || c.toAge === null ? Number.POSITIVE_INFINITY : num(c.toAge),
     fromPoolIds: Array.isArray(c.fromPoolIds) ? c.fromPoolIds : null,
     inflationIndexed: !!c.inflationIndexed,
+    annualAmountAt: typeof c.annualAmountAt === "function" ? c.annualAmountAt : null,
   }));
   const insurancePolicies = p.insurancePolicies || [];
   const privatePensionPlans = p.privatePensionPlans || [];
@@ -651,9 +652,10 @@ export function runIntegratedPlan(p) {
     // 生活費とは違い、退職前でも必ず資産から引かれる。
     // fromPoolIds が指定されていればそのプールから順に、無ければ通常の取り崩し順に従う。
     recurringCharges.forEach((c) => {
-      if (c.annualAmount <= 0) return;
+      if (c.annualAmount <= 0 && !c.annualAmountAt) return;
       if (ageStart < c.fromAge - EPS || ageStart >= c.toAge - EPS) return;
-      const amount = c.annualAmount * (c.inflationIndexed ? inflationFactorAt(ageStart) : 1) * dt;
+      const annualAmount = c.annualAmountAt ? clampZero(num(c.annualAmountAt(ageStart))) : c.annualAmount;
+      const amount = annualAmount * (c.inflationIndexed ? inflationFactorAt(ageStart) : 1) * dt;
       if (amount <= EPS) return;
       let need = amount;
       if (c.fromPoolIds) {

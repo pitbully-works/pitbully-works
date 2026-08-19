@@ -12,6 +12,7 @@ import { runIntegratedPlan, buildAgeSteps, NOT_DRAWABLE } from "./lifePlanEngine
 import { estimatePublicPensionTax, estimatePrivatePensionTax, resolveTaxAmount, estimateJapanSeniorMedicalAnnual, RETIREMENT_TAX_BASIS } from "./utils/retirementTax.js";
 import { FIXED_COST_TEMPLATE_KEYS, deriveTaxFixedCostForecastRows } from "./utils/fixedCostForecast.js";
 import { resolveInflationPct } from "./utils/inflation.js";
+import { resolvePublicPensionIndexationPct, realValueAt } from "./utils/pensionIndexation.js";
 import { derivePensionTakeHomeRows } from "./utils/pensionTakeHome.js";
 import { ASSET_DRAWDOWN_CATEGORIES, deriveAnnualAssetDrawdownRows } from "./utils/assetDrawdown.js";
 import { deriveAnnualCashflowRows } from "./utils/annualCashflow.js";
@@ -1395,6 +1396,7 @@ const DEFAULT_INPUTS = {
     inflation: { mode: "auto", manualPct: 2 },
     retirementTax: {
       publicPension: { mode: "auto", manualAnnual: 0 },
+      publicPensionIndexation: { mode: "auto", manualPct: 1.5 },
       privatePension: { mode: "auto", manualAnnual: 0 },
       otherAnnualTaxes: 0, // backward-compatible legacy one-line entry
       fixedCosts: [],
@@ -2184,6 +2186,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   // シナリオ比較。inputs とは別の一時的な state に置くため、
   // 保存処理・自動保存・入力履歴には一切影響しない（保存もされない）。
   const [comparisonDraft, setComparisonDraft] = useState(null); // null＝比較していない
+  const [assetValueMode, setAssetValueMode] = useState("nominal"); // nominal | real
   // 余剰金残高の表示対象年齢（第3段階・表示専用）。inputs とは別の一時 state なので
   // 保存処理・自動保存・入力履歴には一切影響しない。null＝既定（想定寿命）を表示する。
   const [surplusFocusAge, setSurplusFocusAge] = useState(null);
@@ -2973,6 +2976,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const jpSeniorMedicalAnnual = country === "JP" ? estimateJapanSeniorMedicalAnnual(inputs.retirementTax?.jpSeniorMedical75) : 0;
   const retirementTaxBasis = RETIREMENT_TAX_BASIS[country] || "2026";
   const inflationPct = resolveInflationPct(country, inputs.inflation);
+  const publicPensionIndexationPct = resolvePublicPensionIndexationPct(country, inflationPct, inputs.retirementTax?.publicPensionIndexation);
   const inflationBasis = t(`inflationBasis${country}`);
   // 固定費テンプレートは「既存の専用ページ（保険・ローン・医療費）」と重複しない項目だけ。
   // 金額は地域・物件・車両等で大きく異なるため、テンプレートは項目名だけを補助し、金額は利用者が入力する。
@@ -3193,6 +3197,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const annualCashflowByEndAge = useMemo(() => new Map(annualCashflowRows.map((row) => [row.endAge, row])), [annualCashflowRows]);
 
   const netWorthFinal = integrated.finalNetWorth;
+  const finalRealNetWorth = realValueAt(netWorthFinal, effectiveCurrentAge, inputs.deathAge, inflationPct);
   const inheritanceTotal = inputs.inheritancePlans.reduce((s, p) => s + (p.amount || 0), 0);
   const effectiveInheritanceTarget = inputs.inheritancePlans.length > 0 ? inheritanceTotal : inputs.inheritanceTarget;
 
@@ -3230,6 +3235,25 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     () => (comparison ? attachComparisonLine(netWorthYearly, comparison.compareYearly) : netWorthYearly),
     [comparison, netWorthYearly]
   );
+
+  // 総資産グラフだけを「名目／現在価値（実質）」で切り替える。
+  // 税金・固定費グラフの元データは変更せず、表示用の派生データだけを作る。
+  const displayNetWorthChartData = useMemo(() => {
+    if (assetValueMode !== "real" || inflationPct <= 0) return netWorthChartData;
+    const assetKeys = [
+      "investmentValue", "goldValue", "bankValue", "stockValue", "pensionValue",
+      "idecoLockedValue", "netWorth", "comparisonNetWorth", "spendableNetWorth",
+      "totalAssets", "loanBalance", "loanValue"
+    ];
+    return netWorthChartData.map((row) => {
+      const age = Number(row.exactAge ?? row.age);
+      const next = { ...row };
+      assetKeys.forEach((key) => {
+        if (Number.isFinite(Number(row[key]))) next[key] = realValueAt(row[key], effectiveCurrentAge, age, inflationPct);
+      });
+      return next;
+    });
+  }, [assetValueMode, inflationPct, netWorthChartData, effectiveCurrentAge]);
 
   const netInheritanceGap = netWorthFinal - effectiveInheritanceTarget;
 
@@ -6202,6 +6226,33 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             </div>
           )}
 
+          {country === "JP" && (
+            <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid #2A363C" }}>
+              <div className="stat-sub" style={{ marginBottom: 8 }}>{t("publicPensionIndexationTitle")}</div>
+              <label className="field">
+                <span className="field-label">{t("publicPensionIndexationModeLabel")}</span>
+                <select
+                  value={inputs.retirementTax?.publicPensionIndexation?.mode || "auto"}
+                  onChange={(e) => update({ retirementTax: { ...inputs.retirementTax, publicPensionIndexation: { ...inputs.retirementTax?.publicPensionIndexation, mode: e.target.value } } })}
+                >
+                  <option value="auto">{t("pensionIndexModeAuto")}</option>
+                  <option value="manual">{t("pensionIndexModeManual")}</option>
+                  <option value="off">{t("pensionIndexModeOff")}</option>
+                </select>
+              </label>
+              {inputs.retirementTax?.publicPensionIndexation?.mode === "manual" ? (
+                <Field
+                  label={t("publicPensionIndexationManualLabel")} unit="%" step={0.1}
+                  value={inputs.retirementTax?.publicPensionIndexation?.manualPct ?? 1.5}
+                  onChange={(v) => update({ retirementTax: { ...inputs.retirementTax, publicPensionIndexation: { ...inputs.retirementTax?.publicPensionIndexation, manualPct: v } } })}
+                />
+              ) : inputs.retirementTax?.publicPensionIndexation?.mode !== "off" ? (
+                <StatCard label={t("publicPensionIndexationEstimateLabel")} value={`${publicPensionIndexationPct.toFixed(1)}%`} sub={t("publicPensionIndexationEstimateSub")} />
+              ) : null}
+              <div className="note" style={{ marginTop: 8 }}><Info size={13}/><span>{t("publicPensionIndexationGuide")}</span></div>
+            </div>
+          )}
+
           <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid #2A363C" }}>
             <div className="stat-sub" style={{ marginBottom: 8 }}>{t("retirementTaxTitle")}</div>
             <div className="stat-sub" style={{ marginBottom: 8, opacity: 0.78 }}>{t("taxBasisYearLabel", { year: retirementTaxBasis })}</div>
@@ -7137,6 +7188,11 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               tone={netInheritanceGap >= 0 ? "good" : "danger"}
             />
             <StatCard
+              label={t("statRealNetWorthFinalLabel", { age: t("ageYears", { age: inputs.deathAge }) })}
+              value={money(finalRealNetWorth)}
+              sub={inflationPct > 0 ? t("statRealNetWorthFinalSub", { pct: inflationPct.toFixed(1) }) : t("statRealNetWorthNoInflationSub")}
+            />
+            <StatCard
               label={t("statMonthlyGapLabel")}
               value={`${netMonthlyGap >= 0 ? "" : "+"}${money(-netMonthlyGap)}`}
               sub={netMonthlyGap >= 0 ? t("statMonthlyGapShortfallSub") : t("statMonthlyGapCoveredSub")}
@@ -7246,11 +7302,11 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               </div>
             ))}
             {adviceReady && <div className="guide-text" style={{ marginTop: 4 }}>{t("adviceNote")}</div>}
-            {/* 【名目値の注記】すべての金額は現在の物価のままで計算している（インフレ非考慮）。
-                計算は一切変えず、誤解を避けるための表示のみ。 */}
+            {/* 入力額は現在の物価感覚を基準にし、インフレ設定は将来支出へ反映する。
+                ここでは名目／実質の見え方を明確にするための注記だけを表示する。 */}
             <div className="note" style={{ marginTop: 8 }}>
               <Info size={13} />
-              <span>{t("nominalValueNote")}</span>
+              <span>{assetValueMode === "real" ? t("assetValueModeRealGuide", { pct: inflationPct.toFixed(1) }) : t("nominalValueNote")}</span>
             </div>
           </div>
 
@@ -7268,16 +7324,16 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           </div>
 
           <SectionGuide guide={t("netWorthChartGuide")} />
-          {/* 【名目値の注記】グラフの数字を「将来のその金額の価値」と誤解されないようにする。 */}
-          <div className="note" style={{ marginBottom: 8 }}>
-            <Info size={13} />
-            <span>{t("nominalValueNote")}</span>
-          </div>
           <div className="chart-frame" id="section-networth-chart">
             {/* 【修正】年齢に端数があると「57.66478859472867歳」と表示されていたため、整数に丸める。 */}
             <div className="chart-label">{t("netWorthChartTitle", { currentAge: t("ageYears", { age: Math.round(effectiveCurrentAge) }), deathAge: t("ageYears", { age: Math.round(inputs.deathAge) }) })}</div>
+            <div style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+              <button className={`mini-btn ${assetValueMode === "nominal" ? "active" : ""}`} onClick={() => setAssetValueMode("nominal")}>{t("assetValueModeNominal")}</button>
+              <button className={`mini-btn ${assetValueMode === "real" ? "active" : ""}`} onClick={() => setAssetValueMode("real")}>{t("assetValueModeReal")}</button>
+            </div>
+            <div className="note" style={{ marginBottom: 8 }}><Info size={13}/><span>{assetValueMode === "real" ? t("assetValueModeRealGuide", { pct: inflationPct.toFixed(1) }) : t("assetValueModeNominalGuide")}</span></div>
             <ResponsiveContainer width="100%" height={340}>
-              <ComposedChart data={netWorthChartData} margin={{ top: 10, right: 24, left: 8, bottom: 4 }}>
+              <ComposedChart data={displayNetWorthChartData} margin={{ top: 10, right: 24, left: 8, bottom: 4 }}>
                 <CartesianGrid stroke="#2A363C" strokeDasharray="3 3" />
                 <XAxis dataKey="age" stroke="#7C8A90" fontSize={11} tickFormatter={(a) => `${a}`} />
                 <YAxis stroke="#7C8A90" fontSize={11} tickFormatter={(v) => money(v)} width={64} />
@@ -7353,20 +7409,20 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <div className="chart-label">{t("annualCashflowTitle")}</div>
             <div className="note" style={{ marginBottom: 8 }}><Info size={13}/><span>{t("annualCashflowGuide")}</span></div>
             <div style={{ overflowX: "auto" }}>
-              <table className="watchlist" style={{ minWidth: 980 }}>
+              <table className="watchlist" style={{ minWidth: 1280 }}>
                 <thead><tr>
                   <th>{t("colAge")}</th><th>{t("cashflowOpeningAssetsLabel")}</th><th>{t("cashflowInvestmentReturnLabel")}</th>
-                  <th>{t("cashflowPublicPensionLabel")}</th><th>{t("cashflowPrivatePensionLabel")}</th><th>{t("cashflowLivingCostLabel")}</th>
-                  <th>{t("cashflowHealthCostLabel")}</th><th>{t("cashflowTaxFixedCostLabel")}</th><th>{t("cashflowInsuranceLabel")}</th><th>{t("cashflowLoanLabel")}</th>
-                  <th>{t("cashflowAnnualNetLabel")}</th><th>{t("cashflowAssetChangeLabel")}</th><th>{t("cashflowClosingAssetsLabel")}</th>
+                  <th>{t("cashflowPublicPensionLabel")}</th><th>{t("cashflowPrivatePensionLabel")}</th><th>{t("cashflowTotalIncomeLabel")}</th><th>{t("cashflowLivingCostLabel")}</th>
+                  <th>{t("cashflowHealthCostLabel")}</th><th>{t("cashflowTaxFixedCostLabel")}</th><th>{t("cashflowInsuranceLabel")}</th><th>{t("cashflowLoanLabel")}</th><th>{t("cashflowTotalOutflowLabel")}</th>
+                  <th>{t("cashflowAnnualNetLabel")}</th><th>{t("cashflowAssetChangeLabel")}</th><th>{t("cashflowClosingAssetsLabel")}</th><th>{t("cashflowRealClosingAssetsLabel")}</th>
                 </tr></thead>
                 <tbody>
                   {annualCashflowRows.map((row) => (
                     <tr key={`${row.age}-${row.endAge}`}>
                       <td>{t("ageYears", { age: row.age })}</td><td>{money(row.openingAssets)}</td><td>{money(row.investmentReturn)}</td>
-                      <td>{money(row.publicPension)}</td><td>{money(row.privatePension)}</td><td>{money(row.livingCost)}</td>
-                      <td>{money(row.healthCost)}</td><td>{money(row.taxFixedCost)}</td><td>{money(row.insurancePremium)}</td><td>{money(row.loanPayment)}</td>
-                      <td>{money(row.annualCashflow)}</td><td>{money(row.assetChange)}</td><td>{money(row.closingAssets)}</td>
+                      <td>{money(row.publicPension)}</td><td>{money(row.privatePension)}</td><td>{money(row.totalCashIncome)}</td><td>{money(row.livingCost)}</td>
+                      <td>{money(row.healthCost)}</td><td>{money(row.taxFixedCost)}</td><td>{money(row.insurancePremium)}</td><td>{money(row.loanPayment)}</td><td>{money(row.totalCashOutflow)}</td>
+                      <td>{money(row.annualCashflow)}</td><td>{money(row.assetChange)}</td><td>{money(row.closingAssets)}</td><td>{money(realValueAt(row.closingAssets, effectiveCurrentAge, row.endAge, inflationPct))}</td>
                     </tr>
                   ))}
                 </tbody>
