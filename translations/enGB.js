@@ -109,5 +109,5 @@ export const EN_GB_OVERRIDES = {
     "guideStep2Title": "Enter your assets",
     "guideStep2Desc": "Enter current investments, pensions, gold, cash savings and individual shares, plus future contributions.",
     "guideStep3Title": "Enter pension & retirement living costs",
-    "guideStep3Desc": "Enter State/private pension income and the monthly retirement living cost in today’s money.",
+    "guideStep3Desc": "Enter State and private pension income. Enter retirement living costs in today’s money, not a guessed future amount; inflation is applied automatically when enabled.",
 };
