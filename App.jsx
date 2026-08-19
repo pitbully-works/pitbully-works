@@ -4203,6 +4203,11 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         .guide-result-map > strong { display: block; margin-bottom: 7px; font-size: 13px; }
         .guide-result-row { display: grid; grid-template-columns: 76px 1fr; gap: 8px; padding: 4px 0; font-size: 11.5px; line-height: 1.5; }
         .guide-result-row b { color: #A9D99A; }
+        .guide-recommended-checks { margin: 8px 0 10px; padding: 9px 10px; border: 1px solid rgba(169, 217, 154, .45); border-radius: 10px; background: rgba(169, 217, 154, .06); }
+        .guide-recommended-title { display: block; color: #A9D99A; margin-bottom: 5px; }
+        .guide-recommended-item { padding: 2px 0; font-size: 11.5px; line-height: 1.5; }
+        .guide-recommended-note { margin-top: 5px; font-size: 10.5px; line-height: 1.45; color: var(--muted); }
+        .guide-final-caution { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 11.5px; line-height: 1.55; }
         .guide-tip { margin: 10px 0 7px; line-height: 1.6; }
         @media (max-width: 520px) {
           .guide-step-card { grid-template-columns: 52px minmax(0, 1fr); gap: 7px; }
@@ -5232,10 +5237,20 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             </div>
             <div className="guide-result-map">
               <strong>{t("guideFinalCheckTitle")}</strong>
+              <div className="guide-recommended-checks" aria-label={t("guideRecommendedCheckTitle")}>
+                <b className="guide-recommended-title">{t("guideRecommendedCheckTitle")}</b>
+                <div className="guide-recommended-item">☑ {t("guideRecommendedCheck65")}</div>
+                <div className="guide-recommended-item">☑ {t("guideRecommendedCheckPeak")}</div>
+                <div className="guide-recommended-item">☑ {t("guideRecommendedCheck75")}</div>
+                <div className="guide-recommended-item">☑ {t("guideRecommendedCheck95")}</div>
+                <div className="guide-recommended-item">☑ {t("guideRecommendedCheckZero")}</div>
+                <div className="guide-recommended-note">{t("guideRecommendedCheckNote")}</div>
+              </div>
               <div className="guide-result-row"><b>{t("guideFinalWallet")}</b><span>{t("guideFinalWalletDesc")}</span></div>
               <div className="guide-result-row"><b>{t("guideFinalDiagnosis")}</b><span>{t("guideFinalDiagnosisDesc")}</span></div>
               <div className="guide-result-row"><b>{t("guideFinalCompare")}</b><span>{t("guideFinalCompareDesc")}</span></div>
               <div className="guide-result-row"><b>{t("guideFinalChart")}</b><span>{t("guideFinalChartDesc")}</span></div>
+              <div className="guide-final-caution">{t("guideFinalCaution")}</div>
             </div>
             <p className="guide-tip">💡 {t("gettingStartedTip")}</p>
             <button type="button" className="history-toggle" onClick={closeGettingStarted}>

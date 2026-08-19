@@ -6,6 +6,9 @@ describe("7-step getting-started flow guide", () => {
   it("adds a jumpable 7-step flow without increasing the fixed quick-nav button count", () => {
     const app = readFileSync(resolve(process.cwd(), "App.jsx"), "utf8");
     const ja = readFileSync(resolve(process.cwd(), "translations/ja.js"), "utf8");
+    const en = readFileSync(resolve(process.cwd(), "translations/en.js"), "utf8");
+    const enGB = readFileSync(resolve(process.cwd(), "translations/enGB.js"), "utf8");
+    const index = readFileSync(resolve(process.cwd(), "translations/index.js"), "utf8");
 
     expect(app).toContain('id="section-guide"');
     expect(app).toContain('{ anchor: "section-overview", short: t("navShortOverview") }');
@@ -23,5 +26,18 @@ describe("7-step getting-started flow guide", () => {
     expect(ja).toContain('"guideFinalDiagnosis": "診断"');
     expect(ja).toContain('"guideFinalCompare": "比較"');
     expect(ja).toContain('"guideFinalChart": "グラフ"');
+
+    expect(app).toContain('t("guideRecommendedCheckTitle")');
+    expect(app).toContain('t("guideRecommendedCheck65")');
+    expect(app).toContain('t("guideRecommendedCheckPeak")');
+    expect(app).toContain('t("guideRecommendedCheck75")');
+    expect(app).toContain('t("guideRecommendedCheck95")');
+    expect(app).toContain('t("guideRecommendedCheckZero")');
+    expect(app).toContain('t("guideFinalCaution")');
+
+    expect(ja).toContain('"guideRecommendedCheckTitle": "推奨チェック項目"');
+    expect(en).toContain('"guideRecommendedCheckTitle": "Recommended checks"');
+    expect(enGB).toContain('"guideStep3Desc": "Enter State and private pension income.');
+    expect(index).toContain('JP→ja / US・CA・AU→en / GB→en-GB');
   });
 });
