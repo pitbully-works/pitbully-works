@@ -34,6 +34,7 @@ describe("7-step getting-started flow guide", () => {
     expect(app).toContain('t("guideRecommendedCheckZero")');
     expect(app).toContain('t("guideFinalCaution")');
 
+    expect(ja).toContain('"guideEasyTitle": "まずはここだけ入力（約3分）"');
     expect(ja).toContain('"guideRecommendedCheckTitle": "推奨チェック項目"');
     expect(en).toContain('"guideRecommendedCheckTitle": "Recommended checks"');
     expect(enGB).toContain('"guideStep3Desc": "Enter State and private pension income.');
