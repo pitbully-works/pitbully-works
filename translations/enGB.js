@@ -101,5 +101,6 @@ export const EN_GB_OVERRIDES = {
     "privatePensionTaxDisclaimer": 'Private-pension tax depends on contributions, tax-free elements, gains and the way benefits are taken. This is only a simplified planning estimate and may not match the actual tax due.',
     "otherTaxesFixedCostsTitle": 'Other taxes & fixed costs',
     "otherAnnualTaxesLabel": 'Council Tax / property-related costs (annual)',
-    "otherAnnualTaxesGuide": 'Enter recurring annual taxes and fixed costs that continue in retirement, such as Council Tax, vehicle tax, service charges, HOA or property taxes. These vary by location, so the field is manual and is deducted annually after retirement.',
+    "otherAnnualTaxesGuide": 'Enter recurring annual taxes and fixed costs that continue in retirement, such as Council Tax, vehicle tax, service charges, HOA or property taxes. These vary by location, so the field is manual and is deducted annually after retirement. This field is annual: changing it by 10,000 changes annual spending by 10,000 at today’s value, unlike a 10,000-per-month living-cost change, which equals 120,000 per year. When inflation is enabled, these costs are also indexed from today.',
+    "netWorthLateDeclineGuide": 'Why can assets fall faster later in retirement? Living costs and healthcare costs can rise over time with inflation. As assets are drawn down, less money remains invested, so the amount earned from investment returns can also become smaller. As a result, the pace of asset decline may increase at older ages.',
 };
