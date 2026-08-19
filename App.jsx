@@ -5241,8 +5241,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 <b className="guide-recommended-title">{t("guideRecommendedCheckTitle")}</b>
                 <div className="guide-recommended-item">☑ {t("guideRecommendedCheck65")}</div>
                 <div className="guide-recommended-item">☑ {t("guideRecommendedCheckPeak")}</div>
-                <div className="guide-recommended-item">☑ {t("guideRecommendedCheck75")}</div>
-                <div className="guide-recommended-item">☑ {t("guideRecommendedCheck95")}</div>
+                <div className="guide-recommended-item">☑ {t("guideRecommendedCheckLife")}</div>
                 <div className="guide-recommended-item">☑ {t("guideRecommendedCheckZero")}</div>
                 <div className="guide-recommended-note">{t("guideRecommendedCheckNote")}</div>
               </div>
