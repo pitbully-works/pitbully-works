@@ -7,7 +7,12 @@ describe("net worth late decline guide", () => {
     const app = readFileSync(resolve(process.cwd(), "App.jsx"), "utf8");
     const ja = readFileSync(resolve(process.cwd(), "translations/ja.js"), "utf8");
     expect(app).toContain('t("netWorthLateDeclineGuide")');
+    expect(app).toContain('t("netWorthFinalSummary"');
+    expect(app).toContain('amount: money(netWorthFinal)');
     expect(ja).toContain("なぜ後半になると資産が減りやすくなるの？");
-    expect(ja).toContain("運用に回る元のお金も減る");
+    expect(ja).toContain("5,000万円を年5%で運用すると年間250万円");
+    expect(ja).toContain("支出の増加");
+    expect(ja).toContain("運用で増える金額の減少");
+    expect(ja).toContain("現在の設定では、{age}時点に残る純資産は {amount} の予測です。");
   });
 });
