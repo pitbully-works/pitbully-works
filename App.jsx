@@ -3154,7 +3154,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   // anchor はスクロール先の要素id。short は被りを避けるための短い表示名。
   const quickNavItems = useMemo(() => ([
     // 表示ページの順番（上→下）に合わせて並べている。
-    { anchor: "section-guide", short: t("navShortGuide"), guide: true }, // ガイド（概要と入れ替えて縦のボタン数を増やさない）
+    { anchor: "section-overview", short: t("navShortOverview") }, // 既存の概要枠をガイド入口として使い、縦のボタン数を増やさない
     // 家計簿（5カ国共通）。押すと入口カードまでスクロールする。
     { anchor: "section-kakeibo", short: t("navShortKakeibo"), kakeibo: true },
     { anchor: "section-column", short: t("navShortColumn") },          // コラム（資産形成コラム）
@@ -5213,7 +5213,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               ].map(([step, titleKey, descKey, anchor], idx) => (
                 <React.Fragment key={step}>
                   <div className="guide-step-card">
-                    <div className="guide-step-number">STEP {step}</div>
+                    <div className="guide-step-number">{t("guideStepLabel")} {step}</div>
                     <div className="guide-step-copy">
                       <strong>{t(titleKey)}</strong>
                       <span>{t(descKey)}</span>
@@ -7842,7 +7842,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             背景は透明、文字はアクセント色。指で押せる最小サイズを確保しつつ、
             画面になるべく被らないよう右端に縦並びで置く。 */}
         <nav className="quicknav" aria-label={t("quickNavLabel")}>
-          {quickNavItems.map(({ anchor, short, kakeibo, guide }) => (
+          {quickNavItems.map(({ anchor, short, kakeibo }) => (
             <button
               key={anchor}
               type="button"
@@ -7850,10 +7850,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               className={anchor === currentAnchor ? "quicknav-btn is-current" : "quicknav-btn"}
               aria-current={anchor === currentAnchor ? "true" : undefined}
               onClick={() => {
-                if (guide) {
+                if (anchor === "section-overview") {
                   setShowGettingStarted(true);
                   requestAnimationFrame(() => {
-                    document.getElementById(anchor)?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    document.getElementById("section-guide")?.scrollIntoView({ behavior: "smooth", block: "start" });
                   });
                   return;
                 }
