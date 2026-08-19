@@ -991,6 +991,15 @@ export const EN_TRANSLATIONS = {
     "usWithdrawalSub": "Annual shortfall not covered by Social Security",
     // ---------- Getting started guide (About this app) ----------
     "navShortGuide": "Guide",
+    
+    "guideEasyTitle": "Start here first (about 3 minutes)",
+    "guideRequiredTitle": "🔴 Required",
+    "guideRequiredDesc": "Date of birth, retirement age, life expectancy, public pension and retirement living costs → enough to start the diagnosis.",
+    "guideRecommendedTitle": "🟡 Recommended",
+    "guideRecommendedDesc": "NISA, iDeCo, cash savings, insurance and loans → improves accuracy.",
+    "guideOptionalTitle": "⚪ Optional",
+    "guideOptionalDesc": "Gold, stocks, surplus and inheritance → add only what you need.",
+
     "guideStepLabel": "STEP",
     "guideStep1Title": "Personal & basic details",
     "guideStep1Desc": "Start with date of birth, retirement age, life expectancy and inflation settings that form the basis of the projection.",

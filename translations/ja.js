@@ -991,6 +991,15 @@ export const JA_TRANSLATIONS = {
     "usWithdrawalSub": "年金収入だけでは不足する年間額",
     // ---------- 初心者向け使い方ガイド（このアプリについて） ----------
     "navShortGuide": "ガイド",
+    
+    "guideEasyTitle": "まずはここだけ入力（約3分）",
+    "guideRequiredTitle": "🔴 必須",
+    "guideRequiredDesc": "生年月日・退職年齢・想定寿命・公的年金・老後の生活費 → 老後資金の診断ができます。",
+    "guideRecommendedTitle": "🟡 推奨",
+    "guideRecommendedDesc": "NISA・iDeCo・銀行預金・保険・借入 → 診断の精度が向上します。",
+    "guideOptionalTitle": "⚪ 任意",
+    "guideOptionalDesc": "金・個別株・余剰金・相続 → 必要な項目だけ追加してください。",
+
     "guideStepLabel": "ステップ",
     "guideStep1Title": "本人・基本情報",
     "guideStep1Desc": "生年月日、退職年齢、想定寿命、物価上昇率など、計算の土台になる情報を最初に確認します。",
