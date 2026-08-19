@@ -7405,6 +7405,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <Info size={13} />
             <span>{t("netWorthChartNote")}</span>
           </div>
+          <div className="note" style={{ marginBottom: 12 }}>
+            <Info size={13} />
+            <span>{t("netWorthLateDeclineGuide")}</span>
+          </div>
           <div className="chart-frame" style={{ marginBottom: 22 }}>
             <div className="chart-label">{t("annualCashflowTitle")}</div>
             <div className="note" style={{ marginBottom: 6 }}><Info size={13}/><span>{t("annualCashflowGuide")}</span></div>
