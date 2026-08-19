@@ -362,6 +362,28 @@ function NisaTotalGuide() {
 }
 
 
+// 退職後キャッシュフロー表：紛らわしい用語だけを3行で確認できる補助ガイド。
+function CashflowTableHeading() {
+  const { t } = useContext(LocaleContext);
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+        <div className="chart-label" style={{ marginBottom: 0 }}>{t("annualCashflowTitle")}</div>
+        <GuideButton open={open} onToggle={() => setOpen((v) => !v)} />
+      </div>
+      {open && (
+        <div className="guide-text" style={{ marginBottom: 8 }}>
+          <div>{t("cashflowQuickHelpAnnualNet")}</div>
+          <div>{t("cashflowQuickHelpAssetChange")}</div>
+          <div>{t("cashflowQuickHelpPresentValue")}</div>
+        </div>
+      )}
+    </>
+  );
+}
+
+
 
 // ---------- アメリカ選択時：退職後パネル（Social Security → Expenses → Withdrawal） ----------
 function USRetirementPanel({ usInvestment, onUpdateSS, onUpdate, retirementRules, claimAge, ssMonthly, ssAnnual, expensesAnnual, healthcareAnnual, withdrawalNeeded, incomeSurplus }) {
@@ -7575,7 +7597,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <span>{t("netWorthFinalSummary", { age: t("ageYears", { age: inputs.deathAge }), amount: money(netWorthFinal) })}</span>
           </div>
           <div className="chart-frame" style={{ marginBottom: 22 }}>
-            <div className="chart-label">{t("annualCashflowTitle")}</div>
+            <CashflowTableHeading />
             <div className="note" style={{ marginBottom: 6 }}><Info size={13}/><span>{t("annualCashflowGuide")}</span></div>
             <div className="guide-text" style={{ marginBottom: 10 }}>{t("annualCashflowTermsGuide")}</div>
             <div style={{ overflowX: "auto" }}>
