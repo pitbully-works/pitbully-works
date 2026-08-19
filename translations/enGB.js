@@ -104,4 +104,9 @@ export const EN_GB_OVERRIDES = {
     "otherAnnualTaxesGuide": 'Enter recurring annual taxes and fixed costs that continue in retirement, such as Council Tax, vehicle tax, service charges, HOA or property taxes. These vary by location, so the field is manual and is deducted annually after retirement. This field is annual: changing it by 10,000 changes annual spending by 10,000 at today’s value, unlike a 10,000-per-month living-cost change, which equals 120,000 per year. When inflation is enabled, these costs are also indexed from today.',
     "netWorthLateDeclineGuide": 'Why can assets fall faster later in retirement? Living and healthcare costs may rise over time with inflation. At the same time, drawing down assets leaves less money invested, so investment gains can become smaller. For example, 50 million at a 5% return produces 2.5 million a year, while 30 million produces 1.5 million. When rising spending and falling investment gains happen together, assets may decline faster at older ages.',
     "netWorthFinalSummary": 'With the current settings, projected net assets remaining at {age} are {amount}.',
+    "navShortGuide": "Guide",
+    "guideStep2Title": "Enter your assets",
+    "guideStep2Desc": "Enter current investments, pensions, gold, cash savings and individual shares, plus future contributions.",
+    "guideStep3Title": "Enter pension & retirement living costs",
+    "guideStep3Desc": "Enter State/private pension income and the monthly retirement living cost in today’s money.",
 };
