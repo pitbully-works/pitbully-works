@@ -596,14 +596,33 @@ export function buildPlanInput(ctx, overrides = {}) {
     });
   } else if (country === "US") {
     healthCostAnnual = () => D.usTotalHealthcareAnnual;
-    publicPensions.push({ monthlyAmount: D.usSSMonthlyBenefit, startAge: D.usClaimAge });
+    const inflationPct = resolveInflationPct(country, inputs.inflation);
+    const pensionIndexPct = resolvePublicPensionIndexationPct(country, inflationPct, inputs.retirementTax?.publicPensionIndexation);
+    publicPensions.push({
+      monthlyAmount: D.usSSMonthlyBenefit,
+      monthlyAmountAt: (age) => indexedPensionMonthly(D.usSSMonthlyBenefit, D.usClaimAge, age, pensionIndexPct),
+      startAge: D.usClaimAge,
+    });
   } else if (country === "GB") {
     healthCostAnnual = () => D.gbHealthcareAnnual;
-    publicPensions.push({ monthlyAmount: D.gbStatePensionAnnual / 12, startAge: D.gbEffectiveClaimAge });
+    const inflationPct = resolveInflationPct(country, inputs.inflation);
+    const pensionIndexPct = resolvePublicPensionIndexationPct(country, inflationPct, inputs.retirementTax?.publicPensionIndexation);
+    publicPensions.push({
+      monthlyAmount: D.gbStatePensionAnnual / 12,
+      monthlyAmountAt: (age) => indexedPensionMonthly(D.gbStatePensionAnnual / 12, D.gbEffectiveClaimAge, age, pensionIndexPct),
+      startAge: D.gbEffectiveClaimAge,
+    });
+    // 任意の追加年金収入は制度上のState Pensionとは限らないため、自動改定の対象外。
     publicPensions.push({ monthlyAmount: D.gbAdditionalPensionAnnual / 12, startAge: retireAge });
   } else if (country === "CA") {
     healthCostAnnual = () => D.caHealthcareAnnual;
-    publicPensions.push({ monthlyAmount: D.caCppAnnual / 12, startAge: D.caCppStartAge });
+    const inflationPct = resolveInflationPct(country, inputs.inflation);
+    const pensionIndexPct = resolvePublicPensionIndexationPct(country, inflationPct, inputs.retirementTax?.publicPensionIndexation);
+    publicPensions.push({
+      monthlyAmount: D.caCppAnnual / 12,
+      monthlyAmountAt: (age) => indexedPensionMonthly(D.caCppAnnual / 12, D.caCppStartAge, age, pensionIndexPct),
+      startAge: D.caCppStartAge,
+    });
     if (rules.retirement.implemented) {
       // OASは受給中も金額が変わる（75歳到達で満額が10%上乗せ）。受給開始年齢で固定した
       // 単一の月額ではなく、その年齢時点の月額を返す関数をエンジンへ渡す。
@@ -613,20 +632,31 @@ export function buildPlanInput(ctx, overrides = {}) {
       const caOas = (inputs.caInvestment || {}).oas || {};
       const caOasResidenceYears = Number(caOas.residenceYears) || 0;
       const caOasNetIncome = Number((inputs.caInvestment || {}).annualIncome) || 0;
+      const caOasEffectiveStart = ret.getOasEffectiveStartAge(D.caOasStartAge);
       publicPensions.push({
         monthlyAmount: D.caOasAnnual / 12,
-        monthlyAmountAt: (age) => ret.getOasAnnualAfterClawback(
-          caOasNetIncome,
-          ret.getOasAnnualBeforeClawback(age, D.caOasStartAge, caOasResidenceYears),
-        ) / 12,
-        startAge: ret.getOasEffectiveStartAge(D.caOasStartAge),
+        monthlyAmountAt: (age) => {
+          const baseAtAge = ret.getOasAnnualAfterClawback(
+            caOasNetIncome,
+            ret.getOasAnnualBeforeClawback(age, D.caOasStartAge, caOasResidenceYears),
+          ) / 12;
+          // 75歳到達時の10%上乗せ等は baseAtAge 側で反映し、CPI連動の長期概算だけを別に掛ける。
+          return indexedPensionMonthly(baseAtAge, caOasEffectiveStart, age, pensionIndexPct);
+        },
+        startAge: caOasEffectiveStart,
       });
     } else {
-      publicPensions.push({ monthlyAmount: D.caOasAnnual / 12, startAge: D.caOasStartAge });
+      publicPensions.push({
+        monthlyAmount: D.caOasAnnual / 12,
+        monthlyAmountAt: (age) => indexedPensionMonthly(D.caOasAnnual / 12, D.caOasStartAge, age, pensionIndexPct),
+        startAge: D.caOasStartAge,
+      });
     }
     publicPensions.push({ monthlyAmount: D.caAdditionalPensionAnnual / 12, startAge: retireAge });
   } else if (country === "AU") {
     healthCostAnnual = () => D.auHealthcareAnnual;
+    const inflationPct = resolveInflationPct(country, inputs.inflation);
+    const pensionIndexPct = resolvePublicPensionIndexationPct(country, inflationPct, inputs.retirementTax?.publicPensionIndexation);
     if (rules.retirement.implemented) {
       // Age Pensionには資産テストがあり、資産が減るほど受給額が増える。
       // そのため受給開始時点の固定額ではなく、毎ステップその時点の資産で再判定する。
@@ -656,23 +686,32 @@ export function buildPlanInput(ctx, overrides = {}) {
       publicPensions.push({
         // 世帯合計で渡す。生活費を世帯合計で扱っているため、年金収入も世帯に揃える。
         monthlyAmount: D.auAgePensionAnnual / 12,
-        monthlyAmountAt: (age, ctx) => ret.getAgePensionHousehold({
-          age,
-          annualIncome: auOtherIncome,
-          assessableAssets: (ctx && ctx.assessedAssets !== null && ctx.assessedAssets !== undefined)
-            ? ctx.assessedAssets : 0,
-          financialAssets: (ctx && ctx.deemedAssets !== null && ctx.deemedAssets !== undefined)
-            ? ctx.deemedAssets : 0,
-          status: auStatus,
-          homeowner: auHomeowner,
-          bothQualified: auBothQualified,
-        }) / 12,
+        monthlyAmountAt: (age, ctx) => {
+          const baseMonthly = ret.getAgePensionHousehold({
+            age,
+            annualIncome: auOtherIncome,
+            assessableAssets: (ctx && ctx.assessedAssets !== null && ctx.assessedAssets !== undefined)
+              ? ctx.assessedAssets : 0,
+            financialAssets: (ctx && ctx.deemedAssets !== null && ctx.deemedAssets !== undefined)
+              ? ctx.deemedAssets : 0,
+            status: auStatus,
+            homeowner: auHomeowner,
+            bothQualified: auBothQualified,
+          }) / 12;
+          // Age Pensionは年2回指数改定される。将来の各回改定率は未知なので、
+          // ライフプランでは選択インフレ率を年次近似として最終給付額へ適用する。
+          return indexedPensionMonthly(baseMonthly, D.auAgePensionQualifyingAge, age, pensionIndexPct);
+        },
         assessedPoolIds: auAssessedPoolIds,
         deemedPoolIds: auDeemedPoolIds,
         startAge: D.auAgePensionQualifyingAge,
       });
     } else {
-      publicPensions.push({ monthlyAmount: D.auAgePensionAnnual / 12, startAge: D.auAgePensionQualifyingAge });
+      publicPensions.push({
+        monthlyAmount: D.auAgePensionAnnual / 12,
+        monthlyAmountAt: (age) => indexedPensionMonthly(D.auAgePensionAnnual / 12, D.auAgePensionQualifyingAge, age, pensionIndexPct),
+        startAge: D.auAgePensionQualifyingAge,
+      });
     }
     publicPensions.push({ monthlyAmount: D.auOtherAnnualIncome / 12, startAge: retireAge });
   }
