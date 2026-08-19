@@ -7357,8 +7357,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                             <div>{t("cashflowTaxFixedCostLabel")}: <span className="mono">-{money(cf.taxFixedCost)}</span></div>
                             <div>{t("cashflowInsuranceLabel")}: <span className="mono">-{money(cf.insurancePremium)}</span></div>
                             <div>{t("cashflowLoanLabel")}: <span className="mono">-{money(cf.loanPayment)}</span></div>
-                            <div style={{ marginTop: 3, fontWeight: 700 }}>{t("cashflowAnnualNetLabel")}: <span className="mono">{money(cf.annualCashflow)}</span></div>
-                            <div>{t("cashflowAssetChangeLabel")}: <span className="mono">{money(cf.assetChange)}</span></div>
+                            <div style={{ marginTop: 3, fontWeight: 700 }}>{t("cashflowAnnualNetLabel")}: <span className="mono">{cf.annualCashflow >= 0 ? t("cashflowSurplusLabel", { amount: money(Math.abs(cf.annualCashflow)) }) : t("cashflowDeficitLabel", { amount: money(Math.abs(cf.annualCashflow)) })}</span></div>
+                            <div>{t("cashflowAssetChangeLabel")}: <span className="mono">{cf.assetChange > 0 ? t("cashflowAssetIncreaseLabel", { amount: money(cf.assetChange) }) : cf.assetChange < 0 ? t("cashflowAssetDecreaseLabel", { amount: money(Math.abs(cf.assetChange)) }) : t("cashflowNoChangeLabel")}</span></div>
                           </div>
                         )}
                       </div>
@@ -7407,7 +7407,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           </div>
           <div className="chart-frame" style={{ marginBottom: 22 }}>
             <div className="chart-label">{t("annualCashflowTitle")}</div>
-            <div className="note" style={{ marginBottom: 8 }}><Info size={13}/><span>{t("annualCashflowGuide")}</span></div>
+            <div className="note" style={{ marginBottom: 6 }}><Info size={13}/><span>{t("annualCashflowGuide")}</span></div>
+            <div className="guide-text" style={{ marginBottom: 10 }}>{t("annualCashflowTermsGuide")}</div>
             <div style={{ overflowX: "auto" }}>
               <table className="watchlist" style={{ minWidth: 1280 }}>
                 <thead><tr>
@@ -7422,7 +7423,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                       <td>{t("ageYears", { age: row.age })}</td><td>{money(row.openingAssets)}</td><td>{money(row.investmentReturn)}</td>
                       <td>{money(row.publicPension)}</td><td>{money(row.privatePension)}</td><td>{money(row.totalCashIncome)}</td><td>{money(row.livingCost)}</td>
                       <td>{money(row.healthCost)}</td><td>{money(row.taxFixedCost)}</td><td>{money(row.insurancePremium)}</td><td>{money(row.loanPayment)}</td><td>{money(row.totalCashOutflow)}</td>
-                      <td>{money(row.annualCashflow)}</td><td>{money(row.assetChange)}</td><td>{money(row.closingAssets)}</td><td>{money(realValueAt(row.closingAssets, effectiveCurrentAge, row.endAge, inflationPct))}</td>
+                      <td>{row.annualCashflow >= 0 ? t("cashflowSurplusLabel", { amount: money(Math.abs(row.annualCashflow)) }) : t("cashflowDeficitLabel", { amount: money(Math.abs(row.annualCashflow)) })}</td><td>{row.assetChange > 0 ? t("cashflowAssetIncreaseLabel", { amount: money(row.assetChange) }) : row.assetChange < 0 ? t("cashflowAssetDecreaseLabel", { amount: money(Math.abs(row.assetChange)) }) : t("cashflowNoChangeLabel")}</td><td>{money(row.closingAssets)}</td><td>{money(realValueAt(row.closingAssets, effectiveCurrentAge, row.endAge, inflationPct))}</td>
                     </tr>
                   ))}
                 </tbody>
