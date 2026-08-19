@@ -1,0 +1,25 @@
+import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
+describe("7-step getting-started flow guide", () => {
+  it("adds a jumpable 7-step flow without increasing the fixed quick-nav button count", () => {
+    const app = readFileSync(resolve(process.cwd(), "App.jsx"), "utf8");
+    const ja = readFileSync(resolve(process.cwd(), "translations/ja.js"), "utf8");
+
+    expect(app).toContain('id="section-guide"');
+    expect(app).toContain('{ anchor: "section-guide", short: t("navShortGuide"), guide: true }');
+    expect(app).not.toContain('{ anchor: "section-overview", short: t("navShortOverview") }');
+    expect(app).toContain('[7, "guideStep7Title", "guideStep7Desc", "section-networth-chart"]');
+    expect(app).toContain('setShowGettingStarted(true)');
+    expect(app).toContain('t("guideFinalCheckTitle")');
+
+    expect(ja).toContain('"navShortGuide": "ガイド"');
+    expect(ja).toContain('"guideStep1Title": "本人・基本情報"');
+    expect(ja).toContain('"guideStep7Title": "比較・グラフで最終確認"');
+    expect(ja).toContain('"guideFinalWallet": "総財布"');
+    expect(ja).toContain('"guideFinalDiagnosis": "診断"');
+    expect(ja).toContain('"guideFinalCompare": "比較"');
+    expect(ja).toContain('"guideFinalChart": "グラフ"');
+  });
+});

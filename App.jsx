@@ -3154,7 +3154,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   // anchor はスクロール先の要素id。short は被りを避けるための短い表示名。
   const quickNavItems = useMemo(() => ([
     // 表示ページの順番（上→下）に合わせて並べている。
-    { anchor: "section-overview", short: t("navShortOverview") },      // 概要（一番上の紹介ページ）
+    { anchor: "section-guide", short: t("navShortGuide"), guide: true }, // ガイド（概要と入れ替えて縦のボタン数を増やさない）
     // 家計簿（5カ国共通）。押すと入口カードまでスクロールする。
     { anchor: "section-kakeibo", short: t("navShortKakeibo"), kakeibo: true },
     { anchor: "section-column", short: t("navShortColumn") },          // コラム（資産形成コラム）
@@ -4157,6 +4157,59 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         .lp-sci-empty { padding:10px; text-align:center; color:#82949C; font-size:11px; }
         @media print { .floating-calc-launch,.floating-sci { display:none !important; } }
 
+        /* 初心者ガイド：縦のフローチャート。スマホでも1枚ずつ追えるようカード＋矢印にする。 */
+        .guide-intro { margin: 6px 0 10px; line-height: 1.75; }
+        .guide-flow-title { margin: 10px 0 8px; font-weight: 700; }
+        .guide-flow { display: flex; flex-direction: column; gap: 0; }
+        .guide-step-card {
+          display: grid;
+          grid-template-columns: 62px minmax(0, 1fr) auto;
+          align-items: center;
+          gap: 10px;
+          padding: 10px;
+          border: 1px solid var(--line);
+          border-radius: 8px;
+          background: var(--panel-2);
+        }
+        .guide-step-number {
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 10px;
+          font-weight: 800;
+          color: var(--blue);
+          white-space: nowrap;
+        }
+        .guide-step-copy { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+        .guide-step-copy strong { font-size: 13px; color: var(--text); }
+        .guide-step-copy span { font-size: 11.5px; line-height: 1.55; color: var(--text); }
+        .guide-jump-btn {
+          min-height: 34px;
+          padding: 5px 9px;
+          border-radius: 999px;
+          border: 1px solid rgba(79,168,216,.65);
+          background: transparent;
+          color: #6FC0EC;
+          font-size: 11px;
+          font-weight: 800;
+          white-space: nowrap;
+        }
+        .guide-arrow { text-align: center; color: var(--blue); font-size: 18px; line-height: 20px; height: 20px; }
+        .guide-result-map {
+          margin-top: 12px;
+          padding: 10px;
+          border: 1px solid rgba(143,191,127,.45);
+          border-radius: 8px;
+          background: rgba(143,191,127,.06);
+        }
+        .guide-result-map > strong { display: block; margin-bottom: 7px; font-size: 13px; }
+        .guide-result-row { display: grid; grid-template-columns: 76px 1fr; gap: 8px; padding: 4px 0; font-size: 11.5px; line-height: 1.5; }
+        .guide-result-row b { color: #A9D99A; }
+        .guide-tip { margin: 10px 0 7px; line-height: 1.6; }
+        @media (max-width: 520px) {
+          .guide-step-card { grid-template-columns: 52px minmax(0, 1fr); gap: 7px; }
+          .guide-jump-btn { grid-column: 1 / -1; width: 100%; }
+          .guide-result-row { grid-template-columns: 1fr; gap: 1px; }
+        }
+
         .quicknav-wrap {
           position: fixed;
           right: 10px;
@@ -5136,7 +5189,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         </div>
       </div>
       {/* 使い方ガイド：初回だけ自動で開く。閉じると次回以降は「?」を押したときだけ開く。 */}
-      <div className="disclaimer-banner no-print" style={{ display: "block" }}>
+      <div className="disclaimer-banner no-print" id="section-guide" style={{ display: "block" }}>
         <div className="field-label-row">
           <span className="field-label">{t("gettingStartedTitle")}</span>
           <GuideButton
@@ -5146,18 +5199,45 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         </div>
         {showGettingStarted === true && (
           <div className="guide-text">
-            <p style={{ margin: "6px 0" }}>{t("gettingStartedIntro")}</p>
-            <p style={{ margin: "10px 0 4px", fontWeight: 600 }}>{t("gettingStartedFlowTitle")}</p>
-            <ol style={{ margin: "0 0 8px", paddingLeft: 20 }}>
-              <li>{t("gettingStartedStep1")}</li>
-              <li>{t("gettingStartedStep2")}</li>
-              <li>{t("gettingStartedStep3")}</li>
-              <li>{t("gettingStartedStep4")}</li>
-              <li>{t("gettingStartedStep5")}</li>
-              <li>{t("gettingStartedStep6")}</li>
-              <li>{t("gettingStartedStep7")}</li>
-            </ol>
-            <p style={{ margin: "8px 0 6px" }}>💡 {t("gettingStartedTip")}</p>
+            <p className="guide-intro">{t("gettingStartedIntro")}</p>
+            <p className="guide-flow-title">{t("gettingStartedFlowTitle")}</p>
+            <div className="guide-flow" aria-label={t("gettingStartedFlowTitle")}>
+              {[
+                [1, "guideStep1Title", "guideStep1Desc", "section-00"],
+                [2, "guideStep2Title", "guideStep2Desc", "section-02"],
+                [3, "guideStep3Title", "guideStep3Desc", "section-04"],
+                [4, "guideStep4Title", "guideStep4Desc", "section-09"],
+                [5, "guideStep5Title", "guideStep5Desc", "section-01"],
+                [6, "guideStep6Title", "guideStep6Desc", "section-advice"],
+                [7, "guideStep7Title", "guideStep7Desc", "section-networth-chart"],
+              ].map(([step, titleKey, descKey, anchor], idx) => (
+                <React.Fragment key={step}>
+                  <div className="guide-step-card">
+                    <div className="guide-step-number">STEP {step}</div>
+                    <div className="guide-step-copy">
+                      <strong>{t(titleKey)}</strong>
+                      <span>{t(descKey)}</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="guide-jump-btn"
+                      onClick={() => document.getElementById(anchor)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                    >
+                      {t("guideOpenStep")}
+                    </button>
+                  </div>
+                  {idx < 6 && <div className="guide-arrow" aria-hidden="true">↓</div>}
+                </React.Fragment>
+              ))}
+            </div>
+            <div className="guide-result-map">
+              <strong>{t("guideFinalCheckTitle")}</strong>
+              <div className="guide-result-row"><b>{t("guideFinalWallet")}</b><span>{t("guideFinalWalletDesc")}</span></div>
+              <div className="guide-result-row"><b>{t("guideFinalDiagnosis")}</b><span>{t("guideFinalDiagnosisDesc")}</span></div>
+              <div className="guide-result-row"><b>{t("guideFinalCompare")}</b><span>{t("guideFinalCompareDesc")}</span></div>
+              <div className="guide-result-row"><b>{t("guideFinalChart")}</b><span>{t("guideFinalChartDesc")}</span></div>
+            </div>
+            <p className="guide-tip">💡 {t("gettingStartedTip")}</p>
             <button type="button" className="history-toggle" onClick={closeGettingStarted}>
               {t("gettingStartedClose")}
             </button>
@@ -7762,7 +7842,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             背景は透明、文字はアクセント色。指で押せる最小サイズを確保しつつ、
             画面になるべく被らないよう右端に縦並びで置く。 */}
         <nav className="quicknav" aria-label={t("quickNavLabel")}>
-          {quickNavItems.map(({ anchor, short, kakeibo }) => (
+          {quickNavItems.map(({ anchor, short, kakeibo, guide }) => (
             <button
               key={anchor}
               type="button"
@@ -7770,6 +7850,13 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               className={anchor === currentAnchor ? "quicknav-btn is-current" : "quicknav-btn"}
               aria-current={anchor === currentAnchor ? "true" : undefined}
               onClick={() => {
+                if (guide) {
+                  setShowGettingStarted(true);
+                  requestAnimationFrame(() => {
+                    document.getElementById(anchor)?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  });
+                  return;
+                }
                 if (kakeibo) {
                   const url = buildKakeiboBridgeUrl(country);
                   // JPを含む5カ国すべて、現在の画面から家計簿へ直接移動する。
