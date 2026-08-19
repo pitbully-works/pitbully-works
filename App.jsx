@@ -4159,6 +4159,31 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
         /* 初心者ガイド：縦のフローチャート。スマホでも1枚ずつ追えるようカード＋矢印にする。 */
         .guide-intro { margin: 6px 0 10px; line-height: 1.75; }
+        /* かんたん入力モード：必須→推奨→任意を先に見せ、初めての利用者が入力量を判断できるようにする。 */
+        .guide-easy-mode {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          margin: 8px 0 14px;
+        }
+        .guide-easy-card {
+          padding: 10px 11px;
+          border: 1px solid var(--line);
+          border-radius: 9px;
+          background: var(--panel-2);
+        }
+        .guide-easy-card.required { border-color: rgba(143,191,127,.55); background: rgba(143,191,127,.07); }
+        .guide-easy-card.recommended { border-color: rgba(217,165,79,.55); background: rgba(217,165,79,.06); }
+        .guide-easy-card.optional { border-color: rgba(160,170,176,.42); background: rgba(160,170,176,.035); }
+        .guide-easy-title { display: flex; align-items: baseline; gap: 7px; flex-wrap: wrap; margin-bottom: 5px; }
+        .guide-easy-title strong { font-size: 13px; color: var(--text); }
+        .guide-easy-title span { font-size: 10.5px; font-weight: 800; }
+        .guide-easy-card.required .guide-easy-title span { color: #A9D99A; }
+        .guide-easy-card.recommended .guide-easy-title span { color: #D9A54F; }
+        .guide-easy-card.optional .guide-easy-title span { color: var(--muted); }
+        .guide-easy-items { margin: 0; padding-left: 1.2em; font-size: 11.5px; line-height: 1.65; color: var(--text); }
+        .guide-easy-note { margin: 6px 0 0; font-size: 11px; line-height: 1.55; color: var(--muted); }
+        .guide-easy-start { width: 100%; margin-top: 1px; }
         .guide-flow-title { margin: 10px 0 8px; font-weight: 700; }
         .guide-flow { display: flex; flex-direction: column; gap: 0; }
         .guide-step-card {
@@ -5205,6 +5230,56 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         {showGettingStarted === true && (
           <div className="guide-text">
             <p className="guide-intro">{t("gettingStartedIntro")}</p>
+            <div className="guide-easy-mode" aria-label={t("guideEasyModeLabel")}>
+              <div className="guide-easy-card required">
+                <div className="guide-easy-title">
+                  <strong>🟢 {t("guideEasyRequiredTitle")}</strong>
+                  <span>🔴 {t("guideEasyRequiredBadge")}</span>
+                </div>
+                <ul className="guide-easy-items">
+                  <li>{t("guideEasyRequiredBirthDate")}</li>
+                  <li>{t("guideEasyRequiredRetirementAge")}</li>
+                  <li>{t("guideEasyRequiredLifeExpectancy")}</li>
+                  <li>{t("guideEasyRequiredPublicPension")}</li>
+                  <li>{t("guideEasyRequiredLivingCosts")}</li>
+                </ul>
+                <p className="guide-easy-note">✅ {t("guideEasyRequiredNote")}</p>
+              </div>
+              <div className="guide-easy-card recommended">
+                <div className="guide-easy-title">
+                  <strong>🟡 {t("guideEasyRecommendedTitle")}</strong>
+                  <span>🟡 {t("guideEasyRecommendedBadge")}</span>
+                </div>
+                <ul className="guide-easy-items">
+                  <li>{t("guideEasyRecommendedNisa")}</li>
+                  <li>{t("guideEasyRecommendedIdeco")}</li>
+                  <li>{t("guideEasyRecommendedCash")}</li>
+                  <li>{t("guideEasyRecommendedInsurance")}</li>
+                  <li>{t("guideEasyRecommendedLoans")}</li>
+                </ul>
+                <p className="guide-easy-note">✅ {t("guideEasyRecommendedNote")}</p>
+              </div>
+              <div className="guide-easy-card optional">
+                <div className="guide-easy-title">
+                  <strong>⚪ {t("guideEasyOptionalTitle")}</strong>
+                  <span>⚪ {t("guideEasyOptionalBadge")}</span>
+                </div>
+                <ul className="guide-easy-items">
+                  <li>{t("guideEasyOptionalGold")}</li>
+                  <li>{t("guideEasyOptionalStocks")}</li>
+                  <li>{t("guideEasyOptionalSurplus")}</li>
+                  <li>{t("guideEasyOptionalEstate")}</li>
+                </ul>
+                <p className="guide-easy-note">✅ {t("guideEasyOptionalNote")}</p>
+              </div>
+              <button
+                type="button"
+                className="guide-jump-btn guide-easy-start"
+                onClick={() => document.getElementById("section-00")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+              >
+                {t("guideOpenStep")}
+              </button>
+            </div>
             <p className="guide-flow-title">{t("gettingStartedFlowTitle")}</p>
             <div className="guide-flow" aria-label={t("gettingStartedFlowTitle")}>
               {[

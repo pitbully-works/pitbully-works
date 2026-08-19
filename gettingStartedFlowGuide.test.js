@@ -17,8 +17,19 @@ describe("7-step getting-started flow guide", () => {
     expect(app).toContain('[7, "guideStep7Title", "guideStep7Desc", "section-networth-chart"]');
     expect(app).toContain('setShowGettingStarted(true)');
     expect(app).toContain('t("guideFinalCheckTitle")');
+    expect(app).toContain('className="guide-easy-mode"');
+    expect(app).toContain('t("guideEasyRequiredTitle")');
+    expect(app).toContain('t("guideEasyRecommendedTitle")');
+    expect(app).toContain('t("guideEasyOptionalTitle")');
+    expect(app).toContain('document.getElementById("section-00")');
 
     expect(ja).toContain('"navShortOverview": "ガイド"');
+    expect(ja).toContain('"guideEasyRequiredTitle": "まずはここだけ入力（約3分）"');
+    expect(ja).toContain('"guideEasyRecommendedTitle": "さらに入力すると精度が向上（約10分）"');
+    expect(ja).toContain('"guideEasyOptionalTitle": "必要な人だけ追加"');
+    expect(en).toContain('"guideEasyRequiredTitle": "Start with just these (about 3 min)"');
+    expect(en).toContain('"guideEasyOptionalTitle": "Add only if relevant to you"');
+    expect(enGB).toContain('"guideEasyRequiredPublicPension": "State Pension"');
     expect(ja).toContain('"guideStepLabel": "ステップ"');
     expect(ja).toContain('"guideStep1Title": "本人・基本情報"');
     expect(ja).toContain('"guideStep7Title": "比較・グラフで最終確認"');
@@ -34,7 +45,6 @@ describe("7-step getting-started flow guide", () => {
     expect(app).toContain('t("guideRecommendedCheckZero")');
     expect(app).toContain('t("guideFinalCaution")');
 
-    expect(ja).toContain('"guideEasyTitle": "まずはここだけ入力（約3分）"');
     expect(ja).toContain('"guideRecommendedCheckTitle": "推奨チェック項目"');
     expect(en).toContain('"guideRecommendedCheckTitle": "Recommended checks"');
     expect(enGB).toContain('"guideStep3Desc": "Enter State and private pension income.');
