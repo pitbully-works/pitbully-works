@@ -21,6 +21,12 @@ export const JP_COUNTRY_RULES = {
     annualGrowthLimit: 2400000,
     growthLifetimeLimit: 12000000,
     taxFreeInvestmentLimit: 18000000,
+    // 18歳未満向けつみたて投資枠は2027年施行予定。承認・施行前は未適用。
+    minorTsumitate: {
+      eligibleFromAge: 18,
+      annualLimit: 0,
+      lifetimeLimit: 0,
+    },
     accountTypes: ["tsumitate", "growth", "lumpSum"], // つみたて投資枠・成長投資枠・一括投資
   },
   retirement: {
@@ -58,6 +64,18 @@ export const JP_COUNTRY_RULES = {
       firstInsuredCombinedWithNationalPensionFund: 75000,
       secondInsuredCommonCeiling: 62000,
       note: "MHLW 2025 pension reform; future rule, not active before 2026-12-01",
+    },
+  },
+  publicPension: {
+    // 法定の年度改定値は参照情報として保持する。個人の入力年金額を自動上書きしない。
+    annualRevision: {
+      fiscalYear: 2025,
+      basicPensionPct: 0,
+      employeesEarningsRelatedPct: 0,
+      macroSlideBasicPct: 0,
+      macroSlideEmployeesPct: 0,
+      basicPensionFullMonthly: 69308,
+      standardEmployeesPensionMonthly: 232784,
     },
   },
   healthcare: {
