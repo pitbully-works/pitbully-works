@@ -1939,6 +1939,14 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     }
     return "#4EA3E3";
   }, []);
+  const getRuleCategoryLabel = useCallback((update) => {
+    if (update?.country === "JP") {
+      if (update.category === "nisa") return language === "ja" ? "📈 投資制度" : "📈 Investment scheme";
+      if (update.category === "publicPension") return language === "ja" ? "👴 公的年金" : "👴 Public pension";
+      if (update.category === "retirement") return language === "ja" ? "🏦 私的年金" : "🏦 Private pension";
+    }
+    return language === "ja" ? "制度" : "Rule";
+  }, [language]);
   const getOfficialSourceButtonLabel = useCallback((update) => {
     if (language !== "ja") return "Open official source";
     const label = String(update?.sourceLabel || "");
@@ -5759,7 +5767,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 const updateVisualStatus = getRuleUpdateVisualStatus(update);
                 const categoryAccent = getRuleCategoryAccent(update);
                 return (
-                  <div id={`rule-update-${update.id}`} key={update.id} style={{ border: "2px solid #344B57", borderLeft: `7px solid ${categoryAccent}`, borderRadius: 12, padding: 14, marginTop: 24, marginBottom: 6, background: "#11191E", boxShadow: "0 7px 22px rgba(0,0,0,0.26)" }}>
+                  <div id={`rule-update-${update.id}`} key={update.id} style={{ border: "2px solid #344B57", borderLeft: `8px solid ${categoryAccent}`, borderRadius: 12, padding: 14, marginTop: 24, marginBottom: 6, background: "#11191E", boxShadow: "0 7px 22px rgba(0,0,0,0.26)" }}>
+                    <div style={{ display: "inline-flex", alignItems: "center", padding: "3px 8px", marginBottom: 8, borderRadius: 999, border: `1px solid ${categoryAccent}`, color: categoryAccent, background: "rgba(255,255,255,0.025)", fontSize: 10, fontWeight: 900 }}>
+                      {getRuleCategoryLabel(update)}
+                    </div>
                     <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                       <div style={{ fontWeight: 900, fontSize: 16, color: "#F1F6F8", lineHeight: 1.4 }}>{language === "ja" ? update.titleJa : (update.titleEn || update.titleJa)}</div>
                       <span style={{ color: updateVisualStatus.color, fontSize: 10, fontWeight: 800 }}>
@@ -5781,8 +5792,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                         aria-expanded={!!expandedRuleDiffs[update.id]}
                       >
                         {expandedRuleDiffs[update.id]
-                          ? (language === "ja" ? "差分を閉じる" : "Hide changes")
-                          : (language === "ja" ? "差分" : "Changes")}
+                          ? (language === "ja" ? "変更点を閉じる" : "Hide changes")
+                          : (language === "ja" ? "変更点" : "Changes")}
                       </button>
                     </div>
                     {expandedRuleDiffs[update.id] && (
@@ -5803,7 +5814,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                       {!approved ? (
                         <>
                           <button type="button" className="history-action" onClick={() => recordRuleUpdateDecision(update, "approved")}>
-                            {effective ? (language === "ja" ? "承認して反映" : "Approve & apply") : (language === "ja" ? "承認する（施行日に自動反映）" : "Approve for effective date")}
+                            {effective ? (language === "ja" ? "承認（即時反映）" : "Approve & apply") : (language === "ja" ? "承認（自動反映）" : "Approve for effective date")}
                           </button>
                           <button type="button" className="history-action" onClick={() => recordRuleUpdateDecision(update, "deferred")}>
                             {language === "ja" ? "今回は保留" : "Not now"}
@@ -5873,7 +5884,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                                 setExpandedRuleDiffs((prev) => ({ ...prev, [update.id]: true }));
                                 window.requestAnimationFrame(() => document.getElementById(`rule-update-${update.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" }));
                               }}>
-                                {language === "ja" ? "差分を見る" : "View changes"}
+                                {language === "ja" ? "変更点を見る" : "View changes"}
                               </button>
                             )}
                             <button type="button" className="history-action" style={{ fontSize: 10, color: "#E6A092", borderColor: "#8F5147" }} onClick={() => deleteRuleUpdateHistoryEntry(entry.id)}>

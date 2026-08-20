@@ -15,7 +15,7 @@ describe("制度更新センター 最終UI仕上げ", () => {
 
   it("制度ごとに独立した強いカード境界を持つ", () => {
     expect(app).toContain('border: "2px solid #344B57"');
-    expect(app).toContain('borderLeft: `7px solid ${categoryAccent}`');
+    expect(app).toContain('borderLeft: `8px solid ${categoryAccent}`');
     expect(app).toContain('if (update.category === "nisa") return "#4EA3E3"');
     expect(app).toContain('if (update.category === "publicPension") return "#54B07A"');
     expect(app).toContain('if (update.category === "retirement") return "#A78BFA"');
@@ -23,8 +23,8 @@ describe("制度更新センター 最終UI仕上げ", () => {
   });
 
   it("差分は必要時だけ展開し、履歴から該当制度へ移動できる", () => {
-    expect(app).toContain('language === "ja" ? "差分" : "Changes"');
-    expect(app).toContain("差分を閉じる");
+    expect(app).toContain('language === "ja" ? "変更点" : "Changes"');
+    expect(app).toContain("変更点を閉じる");
     expect(app).toContain("expandedRuleDiffs[update.id]");
     expect(app).toContain("scrollIntoView");
   });
@@ -43,4 +43,14 @@ describe("制度更新センター 最終UI仕上げ", () => {
     expect(app).toContain("この履歴を削除");
     expect(app).toContain("履歴を全削除");
   });
+
+  it("最終仕上げでカテゴリラベルと短い承認文言を使う", () => {
+    expect(app).toContain("📈 投資制度");
+    expect(app).toContain("👴 公的年金");
+    expect(app).toContain("🏦 私的年金");
+    expect(app).toContain("承認（自動反映）");
+    expect(app).toContain("承認（即時反映）");
+    expect(app).toContain("変更点");
+  });
+
 });
