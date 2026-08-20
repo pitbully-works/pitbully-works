@@ -668,19 +668,77 @@ function GBInvestmentAccountsPanel({ gbInvestment, onUpdate, onUpdateAccount, ag
 
 
 // ---------- イギリス選択時：医療費パネル（NHS前提の簡易モデル） ----------
-function GBHealthcarePanel({ gbInvestment, onUpdate, totalAnnual }) {
+function GBHealthcarePanel({ gbInvestment, onUpdate, totalAnnual, healthcareRules }) {
   const { t, money } = useContext(LocaleContext);
-  const h = gbInvestment.healthcare;
+  const h = gbInvestment.healthcare || {};
+  const region = h.region || "england";
+  const prescriptionAuto = healthcareRules.getPrescriptionAnnual(region, h.prescriptionItemsAnnual, Boolean(h.prescriptionExempt));
+  const dentalAuto = region === "england"
+    ? healthcareRules.getEnglandDentalAnnual(h.dentalBand1Courses, h.dentalBand2Courses, h.dentalBand3Courses, Boolean(h.dentalExempt))
+    : null;
+  const careAssessment = region === "england"
+    ? healthcareRules.getEnglandSocialCareAssessment(h.socialCareCapital)
+    : null;
   return (
     <div>
       <div className="note" style={{ marginBottom: 12 }}>
         <Info size={13} />
         <span>{t("gbHealthcareSourceNote")}</span>
       </div>
+      <label className="field">
+        <span className="field-label">{t("gbHealthcareRegionLabel")}</span>
+        <select value={region} onChange={(e) => onUpdate("region", e.target.value)}>
+          <option value="england">{t("gbRegionEngland")}</option>
+          <option value="scotland">{t("gbRegionScotland")}</option>
+          <option value="wales">{t("gbRegionWales")}</option>
+          <option value="northernIreland">{t("gbRegionNorthernIreland")}</option>
+        </select>
+      </label>
       <Field guide={t("gbHealthcareGuide")} label={t("gbNhsBasicLabel")} unit="£" step={50} value={h.nhsBasicAnnual} onChange={(v) => onUpdate("nhsBasicAnnual", v)} />
       <Field label={t("gbPrivateHealthLabel")} unit="£" step={10} value={h.privateHealthInsuranceMonthly} onChange={(v) => onUpdate("privateHealthInsuranceMonthly", v)} />
-      <Field label={t("gbDentalLabel")} unit="£" step={50} value={h.dentalAnnual} onChange={(v) => onUpdate("dentalAnnual", v)} />
-      <Field label={t("gbPrescriptionLabel")} unit="£" step={10} value={h.prescriptionAnnual} onChange={(v) => onUpdate("prescriptionAnnual", v)} />
+
+      <label className="field">
+        <span className="field-label">{t("gbPrescriptionModeLabel")}</span>
+        <select value={h.prescriptionMode || "manual"} onChange={(e) => onUpdate("prescriptionMode", e.target.value)}>
+          <option value="manual">{t("gbHealthcareManual")}</option>
+          <option value="auto">{t("gbHealthcareAuto")}</option>
+        </select>
+      </label>
+      {(h.prescriptionMode || "manual") === "auto" ? (
+        <>
+          <Field label={t("gbPrescriptionItemsLabel")} unit={t("gbItemsUnit")} step={1} value={h.prescriptionItemsAnnual} onChange={(v) => onUpdate("prescriptionItemsAnnual", v)} />
+          <label className="field"><span className="field-label">{t("gbPrescriptionExemptLabel")}</span><select value={h.prescriptionExempt ? "yes" : "no"} onChange={(e) => onUpdate("prescriptionExempt", e.target.value === "yes")}><option value="no">{t("gbNo")}</option><option value="yes">{t("gbYes")}</option></select></label>
+          <div className="note"><Info size={13} /><span>{t("gbPrescriptionAutoNote", { amount: money(prescriptionAuto) })}</span></div>
+        </>
+      ) : (
+        <Field label={t("gbPrescriptionLabel")} unit="£" step={10} value={h.prescriptionAnnual} onChange={(v) => onUpdate("prescriptionAnnual", v)} />
+      )}
+
+      <label className="field">
+        <span className="field-label">{t("gbDentalModeLabel")}</span>
+        <select value={h.dentalMode || "manual"} onChange={(e) => onUpdate("dentalMode", e.target.value)}>
+          <option value="manual">{t("gbHealthcareManual")}</option>
+          <option value="auto" disabled={region !== "england"}>{t("gbHealthcareAutoEngland")}</option>
+        </select>
+      </label>
+      {(h.dentalMode || "manual") === "auto" && region === "england" ? (
+        <>
+          <Field label={t("gbDentalBand1Label")} unit={t("gbCoursesUnit")} step={1} value={h.dentalBand1Courses} onChange={(v) => onUpdate("dentalBand1Courses", v)} />
+          <Field label={t("gbDentalBand2Label")} unit={t("gbCoursesUnit")} step={1} value={h.dentalBand2Courses} onChange={(v) => onUpdate("dentalBand2Courses", v)} />
+          <Field label={t("gbDentalBand3Label")} unit={t("gbCoursesUnit")} step={1} value={h.dentalBand3Courses} onChange={(v) => onUpdate("dentalBand3Courses", v)} />
+          <label className="field"><span className="field-label">{t("gbDentalExemptLabel")}</span><select value={h.dentalExempt ? "yes" : "no"} onChange={(e) => onUpdate("dentalExempt", e.target.value === "yes")}><option value="no">{t("gbNo")}</option><option value="yes">{t("gbYes")}</option></select></label>
+          <div className="note"><Info size={13} /><span>{t("gbDentalAutoNote", { amount: money(dentalAuto || 0) })}</span></div>
+        </>
+      ) : (
+        <Field label={t("gbDentalLabel")} unit="£" step={50} value={h.dentalAnnual} onChange={(v) => onUpdate("dentalAnnual", v)} />
+      )}
+
+      {region === "england" && (
+        <>
+          <Field label={t("gbSocialCareCapitalLabel")} unit="£" step={1000} value={h.socialCareCapital} onChange={(v) => onUpdate("socialCareCapital", v)} />
+          <div className="note"><Info size={13} /><span>{t(`gbSocialCareStatus_${careAssessment?.status || "belowLowerLimit"}`, { tariff: money((careAssessment?.weeklyTariffIncome || 0) * 52) })}</span></div>
+        </>
+      )}
       <Field label={t("gbLongTermCareLabel")} unit="£" step={500} value={h.longTermCareAnnual} onChange={(v) => onUpdate("longTermCareAnnual", v)} />
       <Field label={t("gbOtherOutOfPocketLabel")} unit="£" step={50} value={h.otherOutOfPocketAnnual} onChange={(v) => onUpdate("otherOutOfPocketAnnual", v)} />
       <div className="stat-grid" style={{ marginTop: 10 }}>
@@ -1493,10 +1551,20 @@ const DEFAULT_INPUTS = {
       },
       // ④ Healthcare（NHS前提の簡易モデル）
       healthcare: {
+        region: "england",
         nhsBasicAnnual: 0,
         privateHealthInsuranceMonthly: 0,
+        dentalMode: "manual",
         dentalAnnual: 0,
+        dentalBand1Courses: 0,
+        dentalBand2Courses: 0,
+        dentalBand3Courses: 0,
+        dentalExempt: false,
+        prescriptionMode: "manual",
         prescriptionAnnual: 0,
+        prescriptionItemsAnnual: 0,
+        prescriptionExempt: false,
+        socialCareCapital: 0,
         longTermCareAnnual: 0,
         otherOutOfPocketAnnual: 0,
       },
@@ -7307,6 +7375,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               gbInvestment={inputs.gbInvestment}
               onUpdate={(field, val) => updateGbInvestmentNested("healthcare", field, val)}
               totalAnnual={gbHealthcareAnnual}
+              healthcareRules={rules.healthcare}
             />
           ) : country === "CA" && rules.healthcare.implemented ? (
             <CAHealthcarePanel
