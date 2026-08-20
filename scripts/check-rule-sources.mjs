@@ -35,7 +35,9 @@ for (const source of SOURCES) {
       ...source,
       hash,
       checkedAt: now,
-      changed: !!old?.hash && old.hash !== hash,
+      // 一度検知した変更は、基準ハッシュを明示的に更新するまで保持する。
+      // 次回の定期監視で changed=false に戻って見逃すことを防ぐ。
+      changed: !!old?.changed || (!!old?.hash && old.hash !== hash),
       previousHash: old?.hash || '',
       error: '',
     });
