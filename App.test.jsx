@@ -476,11 +476,16 @@ describe("Canada (CA) core calculations", () => {
   it("every rule carries its tax year, last updated date and source", () => {
     [inv, ret, tax, CA_COUNTRY_RULES.healthcare].forEach((rule) => {
       expect(rule.effectiveTaxYear).toBe("2026");
-      // 2026-07-18：OAS月額を7〜9月期へ更新し、RRIF最低取崩しの開始年齢を制度どおり72歳に修正した日
-      expect(rule.lastUpdated).toBe("2026-07-18");
+      expect(rule.lastUpdated).toMatch(/^2026-\d{2}-\d{2}$/);
       expect(rule.sourceName).toBeTruthy();
       expect(rule.sourceUrl).toBeTruthy();
     });
+
+    // セクションごとに公式確認日が異なるため、全ルールを同一日付には固定しない。
+    expect(inv.lastUpdated).toBe("2026-07-18");
+    expect(ret.lastUpdated).toBe("2026-08-20");
+    expect(CA_COUNTRY_RULES.healthcare.lastUpdated).toBe("2026-08-21");
+    expect(tax.lastUpdated).toBe("2026-07-18");
   });
 
   it("TFSA annual limit is 7,000 and remaining room is tracked", () => {
