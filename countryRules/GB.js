@@ -16,14 +16,14 @@ export const GB_COUNTRY_RULES = {
     verifiedAsOf: "2026-08-17",
     effectivePeriod: "2026/27 tax year",
     updateCycle: "毎年3〜4月（新税年度前後）＋Budget/Finance Act時",
-    noteJa: "2026/27税年度の制度を2026年8月17日に確認。所得税計算はEngland / Wales / Northern Ireland対象で、Scotlandは未実装です。",
-    noteEn: "2026/27 rules verified on 17 Aug 2026. Income-tax calculations cover England, Wales and Northern Ireland; Scottish Income Tax is not implemented.",
+    noteJa: "2026/27税年度の制度を2026年8月21日に再確認。England / Wales / Northern Irelandに加え、Scottish Income TaxとInheritance Taxの概算計算にも対応しています。",
+    noteEn: "2026/27 rules re-verified on 21 Aug 2026. Income tax now covers England, Wales, Northern Ireland and Scottish Income Tax, with an Inheritance Tax estimate model.",
     coverage: [
       { key: "investment", labelJa: "投資制度", labelEn: "Investment", status: "implemented", effective: "2026/27 tax year", lastUpdated: "2026-08-17", updateJa: "ISA・SIPP・職域年金・GIAを反映。予定されるCash ISA変更は将来制度として保持。", updateEn: "ISA, SIPP, workplace pension and GIA are modelled; the scheduled Cash ISA change is kept as a future rule." },
       { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "implemented", effective: "2026/27 tax year", lastUpdated: "2026-08-17", updateJa: "State Pensionと私的年金の受給・繰下げを反映。NI記録からの自動見込額算定は未実装。", updateEn: "State Pension and private-pension access/deferral are modelled; automatic entitlement from NI history is not implemented." },
       { key: "healthcare", labelJa: "医療", labelEn: "Healthcare", status: "partial", effective: "2026/27", lastUpdated: "2026-08-17", updateJa: "NHS前提の自己負担入力方式。地域別処方箋・歯科・介護の自動計算は未実装。", updateEn: "Uses NHS-based user-entered out-of-pocket costs; regional prescription, dental and social-care calculations are not automated." },
-      { key: "tax", labelJa: "税金", labelEn: "Tax", status: "partial", effective: "2026/27 tax year", lastUpdated: "2026-08-17", updateJa: "England/Wales/NIの所得税・配当・CGTを反映。Scottish Income TaxとIHTは未実装。", updateEn: "Income tax for England/Wales/NI, dividends and CGT are modelled; Scottish Income Tax and IHT are not implemented." },
-      { key: "estate", labelJa: "相続", labelEn: "Estate", status: "partial", effective: "2026/27", lastUpdated: "2026-08-17", updateJa: "相続目標は資産計画に反映。Inheritance Taxの自動計算は未実装。", updateEn: "Estate targets feed the plan; automatic Inheritance Tax calculation is not implemented." },
+      { key: "tax", labelJa: "税金", labelEn: "Tax", status: "implemented", effective: "2026/27 tax year", lastUpdated: "2026-08-21", updateJa: "England/Wales/NIの所得税・配当・CGTに加え、2026/27 Scottish Income Taxを反映。", updateEn: "Models England/Wales/NI income tax, dividends and CGT, plus 2026/27 Scottish Income Tax." },
+      { key: "estate", labelJa: "相続", labelEn: "Estate", status: "implemented", effective: "2026/27", lastUpdated: "2026-08-21", updateJa: "Inheritance TaxのNRB・RNRB・£2m超のテーパー・配偶者等の未使用枠移転を概算。", updateEn: "Estimates Inheritance Tax using the NRB, RNRB, the £2m taper and transferable unused spouse/civil-partner bands." },
     ],
   },
   investment: {
@@ -405,12 +405,20 @@ export const GB_COUNTRY_RULES = {
       pensionTaxRelief: "https://www.gov.uk/tax-on-your-private-pension/pension-tax-relief",
       scotland: "https://www.gov.uk/scottish-income-tax",
     },
-    // 【重要】本実装は England / Wales / Northern Ireland の税率のみ。
-    // スコットランドは非貯蓄・非配当所得について独自の税率・バンドを持つため未実装。
-    region: "England, Wales & Northern Ireland",
-    regionsImplemented: ["england", "wales", "northernIreland"],
-    // スコットランドの非貯蓄・非配当所得の税率・バンドは未実装（推測値を入れない）
-    scotland: { implemented: false, bands: null, rates: null },
+    region: "United Kingdom",
+    regionsImplemented: ["england", "wales", "northernIreland", "scotland"],
+    // 2026/27 Scottish Income Tax（非貯蓄・非配当所得）。貯蓄・配当はUK共通税率。
+    scotland: {
+      implemented: true,
+      bands: [
+        { upTo: 3967, rate: 0.19 },
+        { upTo: 16956, rate: 0.20 },
+        { upTo: 31092, rate: 0.21 },
+        { upTo: 62430, rate: 0.42 },
+        { upTo: 112570, rate: 0.45 },
+        { upTo: Infinity, rate: 0.48 },
+      ],
+    },
     incomeTax: {
       personalAllowance: 12570,
       personalAllowanceTaperStart: 100000,
@@ -471,6 +479,26 @@ export const GB_COUNTRY_RULES = {
       }
       return { personalAllowance, taxableIncome, tax };
     },
+    // Scottish Income Tax：賃金・年金などの非貯蓄・非配当所得に独自バンドを適用。
+    calculateScottishIncomeTax(grossIncome) {
+      const g = Number(grossIncome) || 0;
+      const personalAllowance = this.getPersonalAllowance(g);
+      const taxableIncome = Math.max(0, g - personalAllowance);
+      let tax = 0;
+      let lower = 0;
+      for (const b of this.scotland.bands) {
+        if (taxableIncome > lower) {
+          tax += (Math.min(taxableIncome, b.upTo) - lower) * b.rate;
+          lower = b.upTo;
+        } else break;
+      }
+      return { personalAllowance, taxableIncome, tax };
+    },
+    calculateIncomeTaxByRegion(grossIncome, region = "england") {
+      return String(region).toLowerCase() === "scotland"
+        ? this.calculateScottishIncomeTax(grossIncome)
+        : this.calculateIncomeTax(grossIncome);
+    },
     // 限界税率。£100,000〜£125,140 は Personal Allowance の逓減により実効60%となる。
     getMarginalRate(grossIncome) {
       const it = this.incomeTax;
@@ -528,12 +556,65 @@ export const GB_COUNTRY_RULES = {
       return Math.min(contribution, cap) * this.getMarginalRate(grossIncome);
     },
     notImplemented: [
-      "スコットランド税率（Scottish Income Tax）",
       "National Insurance拠出額（NICs）",
       "貯蓄利子への課税額計算（Personal Savings Allowanceは保持。2027年4月からの22/42/47%への引上げも未適用）",
       "2027年4月からの不動産所得税率（22/42/47%）",
-      "Inheritance Tax（相続税）",
       "Marriage Allowance / Married Couple's Allowance",
+    ],
+  },
+
+  estate: {
+    implemented: true,
+    model: "ukInheritanceTaxEstimate",
+    effectiveTaxYear: "2026/27",
+    lastUpdated: "2026-08-21",
+    sourceName: "GOV.UK / HMRC — Inheritance Tax thresholds and residence nil rate band",
+    sourceUrl: "https://www.gov.uk/inheritance-tax",
+    sourceUrls: {
+      thresholds: "https://www.gov.uk/government/publications/inheritance-tax-thresholds/inheritance-tax-thresholds",
+      residenceNilRateBand: "https://www.gov.uk/guidance/check-if-you-can-get-an-additional-inheritance-tax-threshold",
+    },
+    nilRateBand: 325000,
+    residenceNilRateBand: 175000,
+    residenceTaperThreshold: 2000000,
+    standardRate: 0.40,
+    charityReducedRate: 0.36,
+    // 概算モデル。事業・農業財産救済、贈与、信託、国外資産等は別途専門確認が必要。
+    calculateInheritanceTax({
+      estateValue = 0,
+      qualifyingResidenceValue = 0,
+      passesResidenceToDirectDescendants = false,
+      transferableNrbPercent = 0,
+      transferableRnrbPercent = 0,
+      spouseOrCivilPartnerExemptAmount = 0,
+      charityReducedRateEligible = false,
+    } = {}) {
+      const estate = Math.max(0, Number(estateValue) || 0);
+      const spouseExempt = Math.max(0, Number(spouseOrCivilPartnerExemptAmount) || 0);
+      const nrbTransfer = Math.min(100, Math.max(0, Number(transferableNrbPercent) || 0));
+      const rnrbTransfer = Math.min(100, Math.max(0, Number(transferableRnrbPercent) || 0));
+      const nrb = this.nilRateBand * (1 + nrbTransfer / 100);
+      const rnrbMaximum = this.residenceNilRateBand * (1 + rnrbTransfer / 100);
+      const residenceValue = Math.max(0, Number(qualifyingResidenceValue) || 0);
+      let rnrb = passesResidenceToDirectDescendants ? Math.min(residenceValue, rnrbMaximum) : 0;
+      const taper = Math.max(0, estate - this.residenceTaperThreshold) / 2;
+      rnrb = Math.max(0, rnrb - taper);
+      const chargeableEstate = Math.max(0, estate - spouseExempt - nrb - rnrb);
+      const rate = charityReducedRateEligible ? this.charityReducedRate : this.standardRate;
+      return {
+        estateValue: estate,
+        nilRateBand: nrb,
+        residenceNilRateBand: rnrb,
+        spouseOrCivilPartnerExemptAmount: spouseExempt,
+        chargeableEstate,
+        rate,
+        tax: chargeableEstate * rate,
+      };
+    },
+    notImplemented: [
+      "7年ルールを含む生前贈与の個別追跡",
+      "Agricultural Property Relief / Business Property Reliefの個別判定",
+      "信託・国外資産・long-term UK residenceの詳細判定",
     ],
   },
 
