@@ -44,6 +44,7 @@ import {
   RULE_UPDATE_STORAGE_KEY, BUILTIN_RULE_UPDATES, normalizeRuleUpdateState,
   applyApprovedRuleUpdates, mergeRuleUpdateManifests, isUpdateEffective,
 } from "./utils/ruleUpdates.js";
+import { getRuleSourcesForCountry } from "./utils/ruleSourceRegistry.js";
 // 国に依存しない共通UI部品（入力欄・ガイド・内訳グラフ）と表示基盤（LocaleContext等）は ui/ 配下へ分離。
 import {
   yen,
@@ -1765,7 +1766,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const [ruleUpdateState, setRuleUpdateState] = useState(() => normalizeRuleUpdateState({}));
   const [ruleUpdates, setRuleUpdates] = useState(BUILTIN_RULE_UPDATES);
   const [showRuleUpdates, setShowRuleUpdates] = useState(false);
-  const [ruleSourceAlerts, setRuleSourceAlerts] = useState([]);
+  const [ruleSourceStatuses, setRuleSourceStatuses] = useState([]);
 
   useEffect(() => {
     try {
@@ -1794,7 +1795,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       const sourceResponse = await fetch(`/rules-source-status.json?ts=${Date.now()}`, { cache: "no-store" });
       if (sourceResponse.ok) {
         const sourcePayload = await sourceResponse.json();
-        setRuleSourceAlerts((sourcePayload?.sources || []).filter((item) => item.country === country && item.changed));
+        setRuleSourceStatuses((sourcePayload?.sources || []).filter((item) => item.country === country));
       }
     } catch { /* 監視状態を取得できなくても既存計算には影響させない */ }
     const next = { ...ruleUpdateState, lastCheckedAt: new Date().toISOString() };
@@ -1820,6 +1821,11 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const deferredRuleUpdates = useMemo(
     () => countryRuleUpdates.filter((item) => !ruleUpdateState.approved?.[item.id] && !!ruleUpdateState.dismissed?.[item.id]),
     [countryRuleUpdates, ruleUpdateState]
+  );
+  const monitoredRuleSources = useMemo(() => getRuleSourcesForCountry(country), [country]);
+  const ruleSourceAlerts = useMemo(
+    () => ruleSourceStatuses.filter((item) => item.country === country && item.changed),
+    [ruleSourceStatuses, country]
   );
   const ruleAttentionCount = pendingRuleUpdates.length + ruleSourceAlerts.length;
   const openRuleUpdateCenter = useCallback(() => {
@@ -5281,7 +5287,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           </div>
           <div>{t("retireAgeLabel")} <span>{t("ageYears", { age: inputs.retireAge })}</span></div>
           <div>{t("lifeExpectancyLabel")} <span>{t("ageYears", { age: inputs.deathAge })}</span></div>
-          {(countryRuleUpdates.length > 0 || ruleSourceAlerts.length > 0) && (
+          {(countryRuleUpdates.length > 0 || monitoredRuleSources.length > 0) && (
             <button
               type="button"
               className="history-toggle no-print"
@@ -5462,7 +5468,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           <span>{t(`${country.toLowerCase()}CountryNote`)}</span>
         </div>
       )}
-      {countryRuleUpdates.length > 0 && (
+      {(countryRuleUpdates.length > 0 || monitoredRuleSources.length > 0) && (
         <div id="section-rule-updates" className="card no-print" style={{ borderColor: pendingRuleUpdates.length ? "#D9A54F" : "var(--line)", marginBottom: 12, scrollMarginTop: 16 }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
             <div>
@@ -5482,14 +5488,29 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           </div>
           {showRuleUpdates && (
             <div style={{ marginTop: 12 }}>
+              <div className="stat-sub" style={{ marginBottom: 10 }}>
+                {language === "ja" ? "監視対象" : "Monitoring"}: {monitoredRuleSources.map((source) => language === "ja" ? source.labelJa : source.labelEn).join(" / ")}
+              </div>
               {ruleSourceAlerts.length > 0 && (
                 <div className="save-warning" style={{ marginBottom: 10 }}>
                   <Info size={13} />
-                  <span>
-                    {language === "ja"
-                      ? `公式制度ページの変更を${ruleSourceAlerts.length}件検知しました。内容を確認し、制度データ更新が必要か判断してください。`
-                      : `${ruleSourceAlerts.length} official rule source change(s) detected. Review before changing calculation data.`}
-                  </span>
+                  <div>
+                    <div>
+                      {language === "ja"
+                        ? `公式制度ページの変更を${ruleSourceAlerts.length}件検知しました。内容を確認し、制度データ更新が必要か判断してください。`
+                        : `${ruleSourceAlerts.length} official rule source change(s) detected. Review before changing calculation data.`}
+                    </div>
+                    <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 4 }}>
+                      {ruleSourceAlerts.map((alert) => {
+                        const registered = monitoredRuleSources.find((source) => source.id === alert.id);
+                        return (
+                          <a key={alert.id} href={alert.url || registered?.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11 }}>
+                            {registered ? (language === "ja" ? registered.labelJa : registered.labelEn) : (alert.label || alert.id)} · {alert.label || registered?.sourceLabel || (language === "ja" ? "公式情報" : "Official source")}
+                          </a>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
               )}
               {countryRuleUpdates.map((update) => {
