@@ -23,7 +23,7 @@ export const CA_COUNTRY_RULES = {
     coverage: [
       { key: "investment", labelJa: "投資制度", labelEn: "Investment", status: "implemented", effective: "2026 calendar year", lastUpdated: "2026-08-17", updateJa: "TFSA・RRSP・非登録口座・RRIF最低取崩しを反映。FHSA等は未実装。", updateEn: "TFSA, RRSP, non-registered accounts and RRIF minimum withdrawals are modelled; FHSA and related plans are not implemented." },
       { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "partial", effective: "2026 / OAS & GIS Jul-Sep", lastUpdated: "2026-08-20", updateJa: "CPP・OAS・OAS回収税・GIS/Allowanceの公表上限・CPP Post-Retirement Benefitを反映。GISの正確な支給額、QPP、CPP履歴からの自動算定は未実装。", updateEn: "CPP, OAS, OAS recovery tax, published GIS/Allowance maxima and CPP Post-Retirement Benefit are modelled; exact GIS entitlement, QPP and automatic CPP entitlement from history are not implemented." },
-      { key: "healthcare", labelJa: "医療", labelEn: "Healthcare", status: "partial", effective: "2026", lastUpdated: "2026-08-21", updateJa: "州・準州の公的医療保険を前提に自己負担を計算し、Canadian Dental Care Plan（CDCP）の所得別自己負担率を自動計算。州別薬剤・視力・介護費は未実装。", updateEn: "Models out-of-pocket costs under provincial/territorial coverage and the income-based Canadian Dental Care Plan (CDCP) co-payment; provincial drug, vision and long-term-care charges remain manual." },
+      { key: "healthcare", labelJa: "医療", labelEn: "Healthcare", status: "partial", effective: "2026", lastUpdated: "2026-08-21", updateJa: "州・準州の公的医療保険を前提に自己負担を計算し、CDCPの所得別自己負担率とオンタリオ州の2026年長期介護ホーム最大自己負担額を自動計算。その他の州・準州の薬剤・視力・介護費は手入力。", updateEn: "Models out-of-pocket costs under provincial/territorial coverage, the income-based CDCP co-payment and Ontario 2026 long-term-care home maximum co-payments; drug, vision and long-term-care charges outside Ontario remain manual." },
       { key: "tax", labelJa: "税金", labelEn: "Tax", status: "partial", effective: "2026 tax year", lastUpdated: "2026-08-17", updateJa: "連邦所得税を反映。州税・QPP・配当税額控除等は未実装。", updateEn: "Federal income tax is modelled; provincial tax, QPP and dividend credits are not implemented." },
       { key: "estate", labelJa: "相続", labelEn: "Estate", status: "partial", effective: "2026", lastUpdated: "2026-08-17", updateJa: "相続目標は資産計画に反映。死亡時のみなし譲渡等の自動計算は未実装。", updateEn: "Estate targets feed the plan; deemed disposition and related death-tax calculations are not automated." },
     ],
@@ -368,6 +368,8 @@ export const CA_COUNTRY_RULES = {
       healthSystem: "https://www.canada.ca/en/health-canada/services/canada-health-care-system.html",
       publicCoverage: "https://www.canada.ca/en/health-canada/services/health-care-system/canada-health-care-system-medicare/canada-health-act/how-publicly-funded-coverage-works.html",
       cdcpEligibility: "https://www.canada.ca/en/services/benefits/dental/dental-care-plan/qualify.html",
+      longTermCareCanada: "https://www.canada.ca/en/health-canada/services/health-services-benefits/home-community-long-term-care.html",
+      ontarioLongTermCareRates: "https://www.ontario.ca/page/paying-long-term-care",
     },
     provinces: [
       "AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT",
@@ -387,6 +389,25 @@ export const CA_COUNTRY_RULES = {
       fullCoverageIncomeExclusive: 70000,
       fortyPercentCopayIncomeExclusive: 80000,
       copayRates: { under70000: 0, from70000To79999: 0.40, from80000To89999: 0.60 },
+    },
+    // 長期介護は州・準州の責任で制度・自己負担が大きく異なる。
+    // 2026年8月時点では、公式に2026-07-01の最大自己負担額を確認できるオンタリオ州のみ自動計算する。
+    // その他12地域は誤った全国一律額を置かず、従来どおり利用者の見込額を手入力する。
+    longTermCare: {
+      model: "provincialResidentialCare",
+      nationalResponsibility: "province-territory",
+      automaticRegions: ["ON"],
+      ontario: {
+        effectiveFrom: "2026-07-01",
+        currency: "CAD",
+        longStay: {
+          basic: { daily: 70.00, monthly: 2129.17 },
+          semiPrivate: { daily: 84.40, monthly: 2567.17 },
+          private: { daily: 100.01, monthly: 3041.97 },
+        },
+        shortStay: { daily: 45.31 },
+        basicRateReductionAvailable: true,
+      },
     },
     getCdcpEligibility(healthcare) {
       const h = healthcare || {};
@@ -412,6 +433,18 @@ export const CA_COUNTRY_RULES = {
       if ((h.dentalMode || "manual") === "cdcp") return this.getCdcpDentalOutOfPocket(h);
       return Math.max(0, Number(h.dentalAnnual) || 0);
     },
+    getLongTermCareOutOfPocket(healthcare) {
+      const h = healthcare || {};
+      const province = h.province || "ON";
+      const mode = h.longTermCareMode || "manual";
+      if (province === "ON" && mode === "ontario2026") {
+        const accommodation = ["basic", "semiPrivate", "private"].includes(h.longTermCareAccommodation)
+          ? h.longTermCareAccommodation : "basic";
+        const months = Math.min(12, Math.max(0, Number(h.longTermCareMonths) || 0));
+        return this.longTermCare.ontario.longStay[accommodation].monthly * months;
+      }
+      return Math.max(0, Number(h.longTermCareAnnual) || 0);
+    },
     getAnnualTotal(healthcare) {
       const h = healthcare || {};
       const n = (v) => Number(v) || 0;
@@ -420,13 +453,13 @@ export const CA_COUNTRY_RULES = {
         + n(h.prescriptionAnnual)
         + this.getAnnualDentalCost(h)
         + n(h.visionAnnual)
-        + n(h.longTermCareAnnual)
+        + this.getLongTermCareOutOfPocket(h)
         + n(h.otherOutOfPocketAnnual);
     },
     notImplemented: [
       "州・準州ごとの処方薬プランの自己負担額の自動計算",
       "州・準州ごとの視力補助の自動計算",
-      "長期介護（Long-term care）の州別自己負担額",
+      "オンタリオ州以外の長期介護（Long-term care）の州・準州別自己負担額の自動計算",
       "CDCP fee scheduleを超える歯科医院独自料金や、対象外サービスの追加負担",
     ],
   },
