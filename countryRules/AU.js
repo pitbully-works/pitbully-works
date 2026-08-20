@@ -361,7 +361,9 @@ export const AU_COUNTRY_RULES = {
       assetsTaperPerThousandFortnightlySingle: 3,
       assetsTaperPerThousandFortnightlyCouplePerPerson: 1.5,
       // Work Bonus：就労収入のうち、所得テストから除外される年額
-      workBonusAnnual: 11800,
+      workBonusFortnightly: 300,
+      workBonusMaxBalance: 11800,
+      workBonusNewRecipientBalance: 4000,
     },
     // Deeming（みなし収入）：金融資産は実際の運用益ではなく、みなし利率で所得を算定する。
     //   レートは2026年3月20日から、しきい値は2026年7月1日から。
@@ -423,7 +425,21 @@ export const AU_COUNTRY_RULES = {
         : p.incomeFreeAreaFortnightlySingle;
       return fortnightly * p.fortnightsPerYear;
     },
-    // 所得テストによる給付額（年額）。就労収入はWork Bonus分が除外される。
+    // Work Bonus：就労・対象自営業収入だけに適用。年額入力のライフプランでは、
+    // $300 × 26 fortnights の通常除外に、利用者が入力した現在のWork Bonus残高を加える。
+    // 実際のCentrelinkは隔週で残高を増減するため、これは年次投影用の近似。
+    getWorkBonusExcludedAnnual(employmentIncomeAnnual, workBonusBalance = 0) {
+      const p = this.agePension;
+      const employment = Math.max(0, Number(employmentIncomeAnnual) || 0);
+      const balance = Math.min(p.workBonusMaxBalance, Math.max(0, Number(workBonusBalance) || 0));
+      const standard = p.workBonusFortnightly * p.fortnightsPerYear;
+      return Math.min(employment, standard + balance);
+    },
+    getAssessableEmploymentIncomeAnnual(employmentIncomeAnnual, workBonusBalance = 0) {
+      const employment = Math.max(0, Number(employmentIncomeAnnual) || 0);
+      return Math.max(0, employment - this.getWorkBonusExcludedAnnual(employment, workBonusBalance));
+    },
+    // 所得テストによる給付額（年額）。
     getAgePensionByIncomeTest(annualIncome, status) {
       const max = this.getMaxAnnual(status);
       const excess = Math.max(0, (Number(annualIncome) || 0) - this.getIncomeFreeAreaAnnual(status));
@@ -452,14 +468,16 @@ export const AU_COUNTRY_RULES = {
     },
     // 所得テストに算入する所得＝利用者が入力したその他の年収 ＋ 金融資産のみなし収入。
     // financialAssets を渡さなければみなし収入は0として扱う（従来の呼び出しと互換）。
-    getAssessableIncomeAnnual(annualIncome, financialAssets, status) {
-      return (Number(annualIncome) || 0) + this.getDeemedIncomeAnnual(financialAssets, status);
+    getAssessableIncomeAnnual(annualIncome, financialAssets, status, employmentIncomeAnnual = 0, workBonusBalance = 0) {
+      return (Number(annualIncome) || 0)
+        + this.getAssessableEmploymentIncomeAnnual(employmentIncomeAnnual, workBonusBalance)
+        + this.getDeemedIncomeAnnual(financialAssets, status);
     },
     // 実際の給付額（1人あたり年額）＝ 所得テストと資産テストの「低い方」。
     // 受給資格年齢未満はゼロ。
-    getAgePension({ age, annualIncome, assessableAssets, financialAssets, status, homeowner }) {
+    getAgePension({ age, annualIncome, employmentIncomeAnnual, workBonusBalance, assessableAssets, financialAssets, status, homeowner }) {
       if ((Number(age) || 0) < this.agePension.qualifyingAge) return 0;
-      const income = this.getAssessableIncomeAnnual(annualIncome, financialAssets, status);
+      const income = this.getAssessableIncomeAnnual(annualIncome, financialAssets, status, employmentIncomeAnnual, workBonusBalance);
       const byIncome = this.getAgePensionByIncomeTest(income, status);
       const byAssets = this.getAgePensionByAssetsTest(assessableAssets, status, homeowner);
       return Math.min(byIncome, byAssets);
@@ -470,8 +488,8 @@ export const AU_COUNTRY_RULES = {
     //   status === "couple" かつ bothQualified === false → 1人分（片方だけが受給）
     // ※ 片方が受給資格年齢未満の場合、その人の積立フェーズのSuperは資産テストの対象外に
     //   なるが、本アプリは世帯の資産をまとめて扱うため、その除外は未実装。
-    getAgePensionHousehold({ age, annualIncome, assessableAssets, financialAssets, status, homeowner, bothQualified }) {
-      const perPerson = this.getAgePension({ age, annualIncome, assessableAssets, financialAssets, status, homeowner });
+    getAgePensionHousehold({ age, annualIncome, employmentIncomeAnnual, workBonusBalance, assessableAssets, financialAssets, status, homeowner, bothQualified }) {
+      const perPerson = this.getAgePension({ age, annualIncome, employmentIncomeAnnual, workBonusBalance, assessableAssets, financialAssets, status, homeowner });
       const recipients = (status === "couple" && bothQualified !== false) ? 2 : 1;
       return perPerson * recipients;
     },
@@ -552,7 +570,7 @@ export const AU_COUNTRY_RULES = {
       //   （publicPensions.monthlyAmountAt + assessedPoolIds）。
       //   projectAgePension は画面カードに出す「受給開始時点の見込額」を求めるためのもので、
       //   投影値そのものではない。
-      "Work Bonus（就労収入 年 A$11,800 の所得テスト除外）。就労収入と非就労収入を区別せず入力するため未適用",
+      "Work Bonus残高は年次近似で反映済み。Centrelinkの隔週単位での残高増減・雇用収入発生日ごとの厳密計算は未実装",
       "カップルで片方だけが受給資格年齢の場合、受給資格年齢未満の配偶者の積立フェーズSuperを資産テストから除外する扱い",
       "投資用不動産の実収入（Deemingの対象外だが所得テストには算入される）",
       "カップルで片方だけが受給資格年齢に達している場合の取り扱い（資産・所得は世帯合算のまま）",
