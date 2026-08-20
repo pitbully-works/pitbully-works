@@ -1931,6 +1931,22 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     if (deferred) return { key: "deferred", color: "#D9A54F", ja: "🟡 保留中", en: "🟡 Deferred" };
     return { key: "new", color: "#E06B5A", ja: "🔴 新規・要確認", en: "🔴 New · review" };
   }, [ruleUpdateState.approved, ruleUpdateState.dismissed]);
+  const getRuleCategoryAccent = useCallback((update) => {
+    if (update?.country === "JP") {
+      if (update.category === "nisa") return "#4EA3E3";
+      if (update.category === "publicPension") return "#54B07A";
+      if (update.category === "retirement") return "#A78BFA";
+    }
+    return "#4EA3E3";
+  }, []);
+  const getOfficialSourceButtonLabel = useCallback((update) => {
+    if (language !== "ja") return "Open official source";
+    const label = String(update?.sourceLabel || "");
+    if (label.includes("金融庁")) return "📄 金融庁";
+    if (label.includes("日本年金機構")) return "📄 日本年金機構";
+    if (label.includes("厚生労働省")) return "📄 厚生労働省";
+    return "📄 公式ソース";
+  }, [language]);
   const openRuleUpdateCenter = useCallback(() => {
     setShowRuleUpdates(true);
   }, []);
@@ -5722,7 +5738,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                         const registered = monitoredRuleSources.find((source) => source.id === alert.id);
                         return (
                           <a key={alert.id} href={alert.url || registered?.url} target="_blank" rel="noopener noreferrer" className="history-action" style={{ fontSize: 11, color: "#8ED8FF", borderColor: "#3E8FB8", background: "rgba(62,143,184,0.14)", textDecoration: "none", width: "fit-content" }}>
-                            ↗ {language === "ja" ? "公式ソースを開く" : "Open official source"} · {registered ? (language === "ja" ? registered.labelJa : registered.labelEn) : (alert.label || alert.id)}
+                            {language === "ja" ? `📄 ${registered ? registered.labelJa.split("「")[0] : "公式ソース"}` : "Open official source"}
                           </a>
                         );
                       })}
@@ -5741,8 +5757,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 const approved = !!ruleUpdateState.approved?.[update.id];
                 const effective = isUpdateEffective(update);
                 const updateVisualStatus = getRuleUpdateVisualStatus(update);
+                const categoryAccent = getRuleCategoryAccent(update);
                 return (
-                  <div id={`rule-update-${update.id}`} key={update.id} style={{ border: "2px solid #344B57", borderLeft: `6px solid ${updateVisualStatus.color}`, borderRadius: 10, padding: 12, marginTop: 14, background: "#11191E", boxShadow: "0 5px 18px rgba(0,0,0,0.22)" }}>
+                  <div id={`rule-update-${update.id}`} key={update.id} style={{ border: "2px solid #344B57", borderLeft: `7px solid ${categoryAccent}`, borderRadius: 12, padding: 14, marginTop: 24, marginBottom: 6, background: "#11191E", boxShadow: "0 7px 22px rgba(0,0,0,0.26)" }}>
                     <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                       <div style={{ fontWeight: 900, fontSize: 16, color: "#F1F6F8", lineHeight: 1.4 }}>{language === "ja" ? update.titleJa : (update.titleEn || update.titleJa)}</div>
                       <span style={{ color: updateVisualStatus.color, fontSize: 10, fontWeight: 800 }}>
@@ -5765,7 +5782,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                       >
                         {expandedRuleDiffs[update.id]
                           ? (language === "ja" ? "差分を閉じる" : "Hide changes")
-                          : (language === "ja" ? "前回との差分を見る" : "View changes")}
+                          : (language === "ja" ? "差分" : "Changes")}
                       </button>
                     </div>
                     {expandedRuleDiffs[update.id] && (
@@ -5792,15 +5809,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                             {language === "ja" ? "今回は保留" : "Not now"}
                           </button>
                         </>
-                      ) : (
-                        <span className="stat-sub" style={{ fontWeight: 700 }}>
-                          {effective ? (language === "ja" ? "✓ 承認済み・反映中" : "✓ Approved and active") : (language === "ja" ? `✓ 承認済み・${formatRuleDate(update.effectiveDate)}から自動反映` : `✓ Approved; activates ${formatRuleDate(update.effectiveDate)}`)}
-                        </span>
-                      )}
+                      ) : null}
                       {update.sourceUrl && (
-                        <a href={update.sourceUrl} target="_blank" rel="noopener noreferrer" className="history-action" style={{ fontSize: 11, color: "#8ED8FF", borderColor: "#3E8FB8", background: "rgba(62,143,184,0.14)", textDecoration: "none" }}>
-                          ↗ {language === "ja" ? "公式ソースを開く" : "Open official source"}
-                          {update.sourceLabel ? ` · ${update.sourceLabel}` : ""}
+                        <a href={update.sourceUrl} target="_blank" rel="noopener noreferrer" className="history-action" style={{ fontSize: 11, color: "#BEEAFF", borderColor: "#4EA3E3", background: "rgba(78,163,227,0.16)", textDecoration: "none", fontWeight: 800 }}>
+                          {getOfficialSourceButtonLabel(update)}
                         </a>
                       )}
                     </div>
