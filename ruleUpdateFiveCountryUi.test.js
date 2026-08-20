@@ -18,4 +18,18 @@ describe("5-country rules update center UI", () => {
   it("latches an official-source change until the baseline is reviewed", () => {
     expect(watcher).toContain("!!old?.changed || (!!old?.hash && old.hash !== hash)");
   });
+  it("shows country-specific verified labels and compact notification status", () => {
+    expect(app).toContain('US: "2026 rules verified"');
+    expect(app).toContain('GB: "2026/27 rules verified"');
+    expect(app).toContain('CA: "2026 rules verified"');
+    expect(app).toContain('AU: "2026/27 rules verified"');
+    expect(app).toContain("New rule updates:");
+    expect(app).toContain("Next review");
+  });
+
+  it("uses a cleaner missing birth-date display and clearer history label", () => {
+    expect(app).toContain('Enter your date of birth in the You section.');
+    expect(app).toContain('Change history (');
+  });
+
 });

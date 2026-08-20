@@ -1861,6 +1861,23 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     [ruleSourceStatuses, country]
   );
   const ruleAttentionCount = pendingRuleUpdates.length + ruleSourceAlerts.length;
+  const verifiedRuleStatusLabel = useMemo(() => {
+    const labels = {
+      JP: language === "ja" ? "2026年制度確認済み" : "2026 rules verified",
+      US: "2026 rules verified",
+      GB: "2026/27 rules verified",
+      CA: "2026 rules verified",
+      AU: "2026/27 rules verified",
+    };
+    return labels[country] || (language === "ja" ? "制度確認済み" : "Rules verified");
+  }, [country, language]);
+  const nextRuleReviewDate = useMemo(() => {
+    const base = ruleUpdateState.lastCheckedAt ? new Date(ruleUpdateState.lastCheckedAt) : new Date();
+    if (!Number.isFinite(base.getTime())) return null;
+    const next = new Date(base);
+    next.setDate(next.getDate() + 30);
+    return next;
+  }, [ruleUpdateState.lastCheckedAt]);
   const formatRuleChangeValue = useCallback((value, unit) => {
     const n = Number(value);
     const formatted = Number.isFinite(n) ? n.toLocaleString(undefined, { maximumFractionDigits: 2 }) : String(value ?? "—");
@@ -5332,8 +5349,13 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             <span>
               {preciseAge
                 ? t("ageYMD", { years: preciseAge.years, months: preciseAge.months, days: preciseAge.days })
-                : t("birthDateRequiredPrompt")}
+                : "—"}
             </span>
+            {!preciseAge && (
+              <div className="stat-sub" style={{ marginTop: 3 }}>
+                {language === "ja" ? "「本人」で生年月日を入力してください。" : "Enter your date of birth in the You section."}
+              </div>
+            )}
           </div>
           <div>{t("retireAgeLabel")} <span>{t("ageYears", { age: inputs.retireAge })}</span></div>
           <div>{t("lifeExpectancyLabel")} <span>{t("ageYears", { age: inputs.deathAge })}</span></div>
@@ -5360,10 +5382,30 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                   ? (language === "ja" ? `🔴 制度更新あり（${ruleAttentionCount}件）` : `🔴 Rule update (${ruleAttentionCount})`)
                   : hasDeferredRuleUpdate
                     ? (language === "ja" ? `🟡 制度更新を保留中（${deferredRuleUpdates.length}件）` : `🟡 Rule update deferred (${deferredRuleUpdates.length})`)
-                    : (language === "ja" ? "🟢 制度は最新です" : "🟢 Rules are up to date")}
+                    : `🟢 ${verifiedRuleStatusLabel}`}
               </button>
             );
           })()}
+          {(countryRuleUpdates.length > 0 || monitoredRuleSources.length > 0) && (
+            <div className="no-print" style={{ display: "flex", gap: 7, flexWrap: "wrap", alignItems: "center", fontSize: 10 }}>
+              {ruleAttentionCount > 0 ? (
+                <span style={{ color: "#E06B5A", fontWeight: 800 }}>
+                  {language === "ja" ? `🔴 新しい制度更新 ${ruleAttentionCount}件` : `🔴 New rule updates: ${ruleAttentionCount}`}
+                </span>
+              ) : deferredRuleUpdates.length > 0 ? (
+                <span style={{ color: "#D9A54F", fontWeight: 800 }}>
+                  {language === "ja" ? `🟡 保留中 ${deferredRuleUpdates.length}件` : `🟡 Deferred: ${deferredRuleUpdates.length}`}
+                </span>
+              ) : (
+                <span style={{ color: "#54B07A", fontWeight: 800 }}>
+                  {language === "ja" ? "🟢 承認待ちなし" : "🟢 No pending changes"}
+                </span>
+              )}
+              <span style={{ color: "var(--muted)", fontWeight: 700 }}>
+                {language === "ja" ? "🔵 次回確認目安" : "🔵 Next review"}: {nextRuleReviewDate ? nextRuleReviewDate.toLocaleDateString(dateLocale) : "—"}
+              </span>
+            </div>
+          )}
           <div
             className={`save-badge save-${saveStatus}`}
             title={saveMessage}
@@ -5573,8 +5615,23 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             </button>
           </div>
           <div style={{ marginTop: 12 }}>
-              <div className="stat-sub" style={{ marginBottom: 10 }}>
+              <div className="stat-sub" style={{ marginBottom: 8 }}>
                 {language === "ja" ? "監視対象" : "Monitoring"}: {monitoredRuleSources.map((source) => language === "ja" ? source.labelJa : source.labelEn).join(" / ")}
+              </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12, fontSize: 10 }}>
+                <span style={{ color: ruleAttentionCount > 0 ? "#E06B5A" : "#54B07A", fontWeight: 800 }}>
+                  {ruleAttentionCount > 0
+                    ? (language === "ja" ? `🔴 新しい制度更新 ${ruleAttentionCount}件` : `🔴 New rule updates: ${ruleAttentionCount}`)
+                    : (language === "ja" ? "🟢 承認待ちなし" : "🟢 No pending changes")}
+                </span>
+                {deferredRuleUpdates.length > 0 && (
+                  <span style={{ color: "#D9A54F", fontWeight: 800 }}>
+                    {language === "ja" ? `🟡 保留中 ${deferredRuleUpdates.length}件` : `🟡 Deferred: ${deferredRuleUpdates.length}`}
+                  </span>
+                )}
+                <span style={{ color: "var(--muted)", fontWeight: 700 }}>
+                  {language === "ja" ? "🔵 次回確認目安" : "🔵 Next review"}: {nextRuleReviewDate ? nextRuleReviewDate.toLocaleDateString(dateLocale) : "—"}
+                </span>
               </div>
               {ruleSourceAlerts.length > 0 && (
                 <div className="save-warning" style={{ marginBottom: 10 }}>
@@ -5657,7 +5714,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                   onClick={() => setShowRuleUpdateHistory((v) => !v)}
                   aria-expanded={showRuleUpdateHistory}
                 >
-                  {language === "ja" ? `制度変更履歴（${countryRuleUpdateHistory.length}件）` : `Rule history (${countryRuleUpdateHistory.length})`}
+                  {language === "ja" ? `制度変更履歴（${countryRuleUpdateHistory.length}件）` : `Change history (${countryRuleUpdateHistory.length})`}
                 </button>
                 {showRuleUpdateHistory && (
                   <div style={{ marginTop: 9, display: "flex", flexDirection: "column", gap: 7 }}>
