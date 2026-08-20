@@ -1828,6 +1828,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     [ruleSourceStatuses, country]
   );
   const ruleAttentionCount = pendingRuleUpdates.length + ruleSourceAlerts.length;
+  const formatRuleChangeValue = useCallback((value, unit) => {
+    const n = Number(value);
+    const formatted = Number.isFinite(n) ? n.toLocaleString(undefined, { maximumFractionDigits: 2 }) : String(value ?? "—");
+    if (!unit) return formatted;
+    return `${formatted}${unit}`;
+  }, []);
   const openRuleUpdateCenter = useCallback(() => {
     setShowRuleUpdates(true);
     window.setTimeout(() => {
@@ -5523,14 +5529,17 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                     <div className="stat-sub" style={{ marginTop: 5 }}>
                       {language === "ja" ? "検知" : "Detected"}: {update.detectedAt || "—"} · {language === "ja" ? "施行日" : "Effective"}: {update.effectiveDate || "—"}
                     </div>
+                    {update.impactJa && language === "ja" && (
+                      <div className="note" style={{ marginTop: 7 }}><Info size={13}/><span>{update.impactJa}</span></div>
+                    )}
                     <div style={{ overflowX: "auto", marginTop: 8 }}>
                       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
                         <thead><tr><th style={{ textAlign: "left" }}>{language === "ja" ? "項目" : "Item"}</th><th>{language === "ja" ? "現在" : "Current"}</th><th>{language === "ja" ? "新制度" : "New"}</th></tr></thead>
                         <tbody>{(update.changes || []).map((change, idx) => (
                           <tr key={`${update.id}-${idx}`} style={{ borderTop: "1px solid var(--line)" }}>
                             <td style={{ padding: "6px 2px" }}>{change.labelJa || change.path}</td>
-                            <td style={{ textAlign: "center" }}>{Number(change.before).toLocaleString()}</td>
-                            <td style={{ textAlign: "center", fontWeight: 700 }}>{Number(change.after).toLocaleString()}</td>
+                            <td style={{ textAlign: "center" }}>{formatRuleChangeValue(change.before, change.unit)}</td>
+                            <td style={{ textAlign: "center", fontWeight: 700 }}>{formatRuleChangeValue(change.after, change.unit)}</td>
                           </tr>
                         ))}</tbody>
                       </table>
