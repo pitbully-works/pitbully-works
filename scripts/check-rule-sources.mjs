@@ -2,14 +2,15 @@ import fs from 'node:fs/promises';
 import crypto from 'node:crypto';
 
 const file = new URL('../public/rules-source-status.json', import.meta.url);
-const SOURCES = [
-  {
-    id: 'JP-MHLW-PENSION-REFORM-2025',
-    country: 'JP',
-    label: '厚生労働省 2025年の制度改正',
-    url: 'https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/nenkin/nenkin/kyoshutsu/2025kaisei.html',
-  },
-];
+import { RULE_SOURCE_REGISTRY } from '../utils/ruleSourceRegistry.js';
+
+const SOURCES = RULE_SOURCE_REGISTRY.map((source) => ({
+  id: source.id,
+  country: source.country,
+  category: source.category,
+  label: source.sourceLabel,
+  url: source.url,
+}));
 
 let previous = { schemaVersion: 1, checkedAt: '', sources: [] };
 try { previous = JSON.parse(await fs.readFile(file, 'utf8')); } catch {}
