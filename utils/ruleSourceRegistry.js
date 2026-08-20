@@ -8,6 +8,7 @@ export const RULE_SOURCE_REGISTRY = [
   { id: "JP-JPS-PUBLIC-PENSION", country: "JP", category: "publicPension", labelJa: "公的年金", labelEn: "Public pension", sourceLabel: "日本年金機構「年金額等の改定」", url: "https://www.nenkin.go.jp/tokusetsu/nenkingakutou_kaitei.html" },
 
   // United States
+  { id: "US-IRS-401K-IRA", country: "US", category: "investment", labelJa: "401(k)・IRA", labelEn: "401(k) / IRA", sourceLabel: "IRS — Retirement plan contribution limits", url: "https://www.irs.gov/retirement-plans/plan-participant-employee/retirement-topics-contributions" },
   { id: "US-IRS-RETIREMENT-LIMITS", country: "US", category: "retirement", labelJa: "401(k)・IRA", labelEn: "401(k) / IRA", sourceLabel: "IRS — COLA increases for retirement plan limits", url: "https://www.irs.gov/retirement-plans/cola-increases-for-dollar-limitations-on-benefits-and-contributions" },
   { id: "US-SSA-COLA", country: "US", category: "publicPension", labelJa: "Social Security", labelEn: "Social Security", sourceLabel: "Social Security Administration — Latest COLA", url: "https://www.ssa.gov/OACT/COLA/latestCOLA.html" },
   { id: "US-CMS-MEDICARE", country: "US", category: "healthcare", labelJa: "Medicare", labelEn: "Medicare", sourceLabel: "CMS — Medicare premiums and costs", url: "https://www.medicare.gov/basics/costs/medicare-costs" },
@@ -26,6 +27,27 @@ export const RULE_SOURCE_REGISTRY = [
   { id: "AU-ATO-SUPER-CAPS", country: "AU", category: "retirement", labelJa: "Superannuation", labelEn: "Superannuation", sourceLabel: "Australian Taxation Office — Key superannuation rates and thresholds", url: "https://www.ato.gov.au/tax-rates-and-codes/key-superannuation-rates-and-thresholds" },
   { id: "AU-SA-AGE-PENSION", country: "AU", category: "publicPension", labelJa: "Age Pension", labelEn: "Age Pension", sourceLabel: "Services Australia — Age Pension", url: "https://www.servicesaustralia.gov.au/age-pension" },
   { id: "AU-ATO-TAX-RATES", country: "AU", category: "tax", labelJa: "所得税", labelEn: "Income tax", sourceLabel: "Australian Taxation Office — Tax rates for Australian residents", url: "https://www.ato.gov.au/tax-rates-and-codes/tax-rates-australian-residents" },
+
+  // Common-schema source coverage: every one of the five common sections has
+  // at least one official source, even when the calculator itself is partial.
+  { id: "JP-MHLW-HEALTH", country: "JP", category: "healthcare", labelJa: "医療", labelEn: "Healthcare", sourceLabel: "厚生労働省 — 医療保険制度", url: "https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/kenkou_iryou/iryouhoken/index.html" },
+  { id: "JP-NTA-INCOME-TAX", country: "JP", category: "tax", labelJa: "所得税", labelEn: "Income tax", sourceLabel: "国税庁 — 所得税の税率", url: "https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/2260.htm" },
+  { id: "JP-NTA-INHERITANCE", country: "JP", category: "estate", labelJa: "相続税", labelEn: "Inheritance tax", sourceLabel: "国税庁 — 相続税", url: "https://www.nta.go.jp/taxes/shiraberu/taxanswer/sozoku/4155.htm" },
+
+  { id: "US-IRS-INCOME-TAX", country: "US", category: "tax", labelJa: "連邦所得税", labelEn: "Federal income tax", sourceLabel: "IRS — Inflation adjustments for tax items", url: "https://www.irs.gov/newsroom/irs-releases-tax-inflation-adjustments" },
+  { id: "US-IRS-ESTATE", country: "US", category: "estate", labelJa: "Estate tax", labelEn: "Estate tax", sourceLabel: "IRS — Estate Tax", url: "https://www.irs.gov/businesses/small-businesses-self-employed/estate-tax" },
+
+  { id: "GB-NHS-HEALTH-COSTS", country: "GB", category: "healthcare", labelJa: "NHS医療費", labelEn: "NHS health costs", sourceLabel: "NHS — Help with health costs", url: "https://www.nhs.uk/nhs-services/help-with-health-costs/" },
+  { id: "GB-HMRC-INCOME-TAX", country: "GB", category: "tax", labelJa: "所得税", labelEn: "Income Tax", sourceLabel: "GOV.UK — Income Tax rates and Personal Allowances", url: "https://www.gov.uk/income-tax-rates" },
+  { id: "GB-HMRC-IHT", country: "GB", category: "estate", labelJa: "相続税", labelEn: "Inheritance Tax", sourceLabel: "GOV.UK — Inheritance Tax", url: "https://www.gov.uk/inheritance-tax" },
+
+  { id: "CA-HEALTH-COVERAGE", country: "CA", category: "healthcare", labelJa: "公的医療", labelEn: "Public healthcare", sourceLabel: "Health Canada — Canada's health care system", url: "https://www.canada.ca/en/health-canada/services/canada-health-care-system.html" },
+  { id: "CA-CRA-INCOME-TAX", country: "CA", category: "tax", labelJa: "連邦所得税", labelEn: "Federal income tax", sourceLabel: "Canada Revenue Agency — Tax rates and income brackets", url: "https://www.canada.ca/en/revenue-agency/services/tax/individuals/frequently-asked-questions-individuals/canadian-income-tax-rates-individuals-current-previous-years.html" },
+  { id: "CA-CRA-DEATH", country: "CA", category: "estate", labelJa: "死亡時課税", labelEn: "Tax at death", sourceLabel: "Canada Revenue Agency — Taxable capital gains for someone who died", url: "https://www.canada.ca/en/revenue-agency/services/tax/individuals/life-events/doing-taxes-someone-died/prepare-returns/report-income/capital-gains.html" },
+
+  { id: "AU-ATO-INVESTMENT", country: "AU", category: "investment", labelJa: "投資・Super", labelEn: "Investment / Super", sourceLabel: "Australian Taxation Office — Super contribution caps", url: "https://www.ato.gov.au/tax-rates-and-codes/key-superannuation-rates-and-thresholds" },
+  { id: "AU-HEALTH-MEDICARE", country: "AU", category: "healthcare", labelJa: "Medicare", labelEn: "Medicare", sourceLabel: "Australian Government Department of Health — Medicare Safety Nets", url: "https://www.health.gov.au/topics/medicare/about/safety-nets" },
+  { id: "AU-ATO-DECEASED-ESTATES", country: "AU", category: "estate", labelJa: "死亡・相続税務", labelEn: "Deceased estates", sourceLabel: "Australian Taxation Office — Deceased estates", url: "https://www.ato.gov.au/individuals-and-families/deceased-estates" },
 ];
 
 export function getRuleSourcesForCountry(country) {
