@@ -29,7 +29,7 @@ describe("5-country rule coverage metadata", () => {
   it("renders the unified coverage panel in App", () => {
     const app = fs.readFileSync(path.resolve(process.cwd(), "App.jsx"), "utf8");
     expect(app).toContain("5か国制度の対応状況");
-    expect(app).toContain("rules.meta.coverage.map");
+    expect(app).toContain("ruleCoverageCatalog.map");
     expect(app).toContain("最終確認");
     expect(app).toContain("一部対応");
   });

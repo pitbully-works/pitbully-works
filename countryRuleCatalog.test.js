@@ -28,7 +28,7 @@ describe("5-country common rule catalog", () => {
       expect(row.labelJa).toBeTruthy();
       expect(row.labelEn).toBeTruthy();
       expect(row.effective).toBeTruthy();
-      expect(row.lastUpdated).toMatch(/^20\\d{2}-\\d{2}-\\d{2}$/);
+      expect(row.lastUpdated).toMatch(/^20\d{2}-\d{2}-\d{2}$/);
       expect(row.updateJa).toBeTruthy();
       expect(row.updateEn).toBeTruthy();
       expect(["implemented", "partial", "notImplemented"]).toContain(row.status);
