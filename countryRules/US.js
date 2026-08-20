@@ -21,6 +21,13 @@ export const US_COUNTRY_RULES = {
     updateCycle: "毎年10〜11月（翌年IRS/CMS公表後）＋法改正時",
     noteJa: "2026課税年度のIRS・SSA・CMS公表値を2026年8月17日に再確認しています。",
     noteEn: "2026 tax-year IRS, SSA and CMS figures re-verified on 17 Aug 2026.",
+    coverage: [
+      { key: "investment", labelJa: "投資制度", labelEn: "Investment", status: "implemented", effective: "2026 tax year", lastUpdated: "2026-08-17", updateJa: "401(k)・Traditional/Roth IRA・課税口座の2026年上限と所得制限を反映。", updateEn: "2026 limits and income phase-outs for 401(k), Traditional/Roth IRA and brokerage accounts are active." },
+      { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "implemented", effective: "2026 tax year", lastUpdated: "2026-08-17", updateJa: "Social Security、退職口座の取崩し、RMD等を反映。", updateEn: "Social Security, retirement-account drawdown and RMD rules are modelled." },
+      { key: "healthcare", labelJa: "医療", labelEn: "Healthcare", status: "implemented", effective: "2026", lastUpdated: "2026-08-17", updateJa: "Medicare Part B・IRMAA等の2026年公表値を反映。", updateEn: "2026 Medicare Part B and IRMAA figures are reflected." },
+      { key: "tax", labelJa: "税金", labelEn: "Tax", status: "implemented", effective: "2026 tax year", lastUpdated: "2026-08-17", updateJa: "連邦所得税・標準控除・Social Security課税・長期譲渡益を概算。州税は入力方式。", updateEn: "Federal income tax, standard deduction, Social Security taxation and long-term gains are estimated; state tax remains user-entered." },
+      { key: "estate", labelJa: "相続", labelEn: "Estate", status: "partial", effective: "2026", lastUpdated: "2026-08-17", updateJa: "相続目標は資産計画に反映。連邦・州のestate/inheritance tax自動計算は未実装。", updateEn: "Estate targets feed the plan; federal/state estate or inheritance tax is not automatically calculated." },
+    ],
   },
   investment: {
     implemented: true,

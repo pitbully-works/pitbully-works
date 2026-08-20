@@ -18,6 +18,13 @@ export const GB_COUNTRY_RULES = {
     updateCycle: "毎年3〜4月（新税年度前後）＋Budget/Finance Act時",
     noteJa: "2026/27税年度の制度を2026年8月17日に確認。所得税計算はEngland / Wales / Northern Ireland対象で、Scotlandは未実装です。",
     noteEn: "2026/27 rules verified on 17 Aug 2026. Income-tax calculations cover England, Wales and Northern Ireland; Scottish Income Tax is not implemented.",
+    coverage: [
+      { key: "investment", labelJa: "投資制度", labelEn: "Investment", status: "implemented", effective: "2026/27 tax year", lastUpdated: "2026-08-17", updateJa: "ISA・SIPP・職域年金・GIAを反映。予定されるCash ISA変更は将来制度として保持。", updateEn: "ISA, SIPP, workplace pension and GIA are modelled; the scheduled Cash ISA change is kept as a future rule." },
+      { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "implemented", effective: "2026/27 tax year", lastUpdated: "2026-08-17", updateJa: "State Pensionと私的年金の受給・繰下げを反映。NI記録からの自動見込額算定は未実装。", updateEn: "State Pension and private-pension access/deferral are modelled; automatic entitlement from NI history is not implemented." },
+      { key: "healthcare", labelJa: "医療", labelEn: "Healthcare", status: "partial", effective: "2026/27", lastUpdated: "2026-08-17", updateJa: "NHS前提の自己負担入力方式。地域別処方箋・歯科・介護の自動計算は未実装。", updateEn: "Uses NHS-based user-entered out-of-pocket costs; regional prescription, dental and social-care calculations are not automated." },
+      { key: "tax", labelJa: "税金", labelEn: "Tax", status: "partial", effective: "2026/27 tax year", lastUpdated: "2026-08-17", updateJa: "England/Wales/NIの所得税・配当・CGTを反映。Scottish Income TaxとIHTは未実装。", updateEn: "Income tax for England/Wales/NI, dividends and CGT are modelled; Scottish Income Tax and IHT are not implemented." },
+      { key: "estate", labelJa: "相続", labelEn: "Estate", status: "partial", effective: "2026/27", lastUpdated: "2026-08-17", updateJa: "相続目標は資産計画に反映。Inheritance Taxの自動計算は未実装。", updateEn: "Estate targets feed the plan; automatic Inheritance Tax calculation is not implemented." },
+    ],
   },
   investment: {
     implemented: true,

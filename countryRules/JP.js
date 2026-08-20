@@ -13,6 +13,13 @@ export const JP_COUNTRY_RULES = {
     updateCycle: "制度改正時＋毎年1月/4月/12月の定期確認",
     noteJa: "2026年8月17日に現行制度を確認。2026年12月1日施行予定のiDeCo改正は予定制度として別管理します。",
     noteEn: "Rules verified on 17 Aug 2026. The iDeCo changes scheduled for 1 Dec 2026 are tracked separately as future rules.",
+    coverage: [
+      { key: "investment", labelJa: "投資制度", labelEn: "Investment", status: "implemented", effective: "2026年8月時点", lastUpdated: "2026-08-17", updateJa: "新NISAの年間・生涯上限を反映。0〜17歳向け制度は将来制度として別管理。", updateEn: "Current NISA annual and lifetime limits are active; the 0-17 scheme is tracked separately as a future rule." },
+      { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "implemented", effective: "2026年8月時点", lastUpdated: "2026-08-17", updateJa: "現行iDeCo上限と公的年金の年度改定値を反映。2026年12月施行予定改正は未適用。", updateEn: "Current iDeCo limits and annual public-pension reference figures are active; the Dec 2026 reform remains scheduled." },
+      { key: "healthcare", labelJa: "医療", labelEn: "Healthcare", status: "implemented", effective: "2026年8月時点", lastUpdated: "2026-08-17", updateJa: "年代別の自己負担額を入力して反映する方式。", updateEn: "Healthcare is modelled from user-entered out-of-pocket costs by age band." },
+      { key: "tax", labelJa: "税金", labelEn: "Tax", status: "partial", effective: "2026年8月時点", lastUpdated: "2026-08-17", updateJa: "老後シミュレーション向け概算税率を使用。確定申告計算ではありません。", updateEn: "Uses estimated effective/marginal rates for planning; it is not a tax-return calculator." },
+      { key: "estate", labelJa: "相続", labelEn: "Estate", status: "partial", effective: "2026年8月時点", lastUpdated: "2026-08-17", updateJa: "相続予定額・相続目標を資産計画へ反映。相続税の自動計算は行いません。", updateEn: "Inheritance targets and planned amounts feed the life plan; inheritance tax is not automatically calculated." },
+    ],
   },
   investment: {
     implemented: true,

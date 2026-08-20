@@ -21,6 +21,13 @@ export const AU_COUNTRY_RULES = {
     updateCycle: "毎年7月＋Age Pensionは3/20・9/20",
     noteJa: "2026-27年度制度を2026年8月17日に確認。Age Pensionは2026年3月20日改定値で、次回は9月20日改定を確認します。",
     noteEn: "2026-27 rules verified on 17 Aug 2026. Age Pension uses the 20 Mar 2026 rates; the next scheduled indexation is 20 Sep 2026.",
+    coverage: [
+      { key: "investment", labelJa: "投資制度", labelEn: "Investment", status: "partial", effective: "2026-27 financial year", lastUpdated: "2026-08-17", updateJa: "Super・投資口座・拠出上限を反映。carry-forward、bring-forward等の詳細判定は未実装。", updateEn: "Super, investment accounts and contribution caps are modelled; detailed carry-forward/bring-forward eligibility is not implemented." },
+      { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "partial", effective: "2026-27 / Age Pension Mar 2026 rates", lastUpdated: "2026-08-17", updateJa: "Age Pensionの資産・所得テストとSuper取崩しを反映。Work Bonus等は未実装。", updateEn: "Age Pension means tests and Super drawdown are modelled; Work Bonus and some edge cases are not implemented." },
+      { key: "healthcare", labelJa: "医療", labelEn: "Healthcare", status: "partial", effective: "2026-27", lastUpdated: "2026-08-17", updateJa: "Medicare前提の自己負担入力方式。Safety Net・aged care資力調査は未実装。", updateEn: "Uses user-entered costs under Medicare; Safety Nets and aged-care means testing are not automated." },
+      { key: "tax", labelJa: "税金", labelEn: "Tax", status: "partial", effective: "2026-27 financial year", lastUpdated: "2026-08-17", updateJa: "居住者所得税・Medicare levy・CGTを反映。LITO/SAPTO/MLS等は未実装。", updateEn: "Resident income tax, Medicare levy and CGT are modelled; LITO, SAPTO and MLS are not implemented." },
+      { key: "estate", labelJa: "相続", labelEn: "Estate", status: "partial", effective: "2026-27", lastUpdated: "2026-08-17", updateJa: "相続目標は資産計画に反映。Super death benefit等の税務自動計算は未実装。", updateEn: "Estate targets feed the plan; tax treatment of Super death benefits is not automated." },
+    ],
   },
   investment: {
     implemented: true,

@@ -20,6 +20,13 @@ export const CA_COUNTRY_RULES = {
     updateCycle: "毎年1月＋OASは1/4/7/10月",
     noteJa: "2026年制度を2026年8月17日に確認。OASは2026年7〜9月四半期の公表値を基準にしています。",
     noteEn: "2026 rules verified on 17 Aug 2026. OAS uses the July-September 2026 quarterly figures.",
+    coverage: [
+      { key: "investment", labelJa: "投資制度", labelEn: "Investment", status: "implemented", effective: "2026 calendar year", lastUpdated: "2026-08-17", updateJa: "TFSA・RRSP・非登録口座・RRIF最低取崩しを反映。FHSA等は未実装。", updateEn: "TFSA, RRSP, non-registered accounts and RRIF minimum withdrawals are modelled; FHSA and related plans are not implemented." },
+      { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "partial", effective: "2026 / OAS Jul-Sep", lastUpdated: "2026-08-17", updateJa: "CPP・OASとOAS回収税を反映。GIS・QPP・CPP履歴からの自動算定は未実装。", updateEn: "CPP, OAS and OAS recovery tax are modelled; GIS, QPP and automatic CPP entitlement from history are not implemented." },
+      { key: "healthcare", labelJa: "医療", labelEn: "Healthcare", status: "partial", effective: "2026", lastUpdated: "2026-08-17", updateJa: "州医療保険を前提に自己負担を入力。州別薬剤・歯科・介護費の自動計算は未実装。", updateEn: "Uses user-entered out-of-pocket costs under provincial coverage; provincial drug, dental and long-term-care rules are not automated." },
+      { key: "tax", labelJa: "税金", labelEn: "Tax", status: "partial", effective: "2026 tax year", lastUpdated: "2026-08-17", updateJa: "連邦所得税を反映。州税・QPP・配当税額控除等は未実装。", updateEn: "Federal income tax is modelled; provincial tax, QPP and dividend credits are not implemented." },
+      { key: "estate", labelJa: "相続", labelEn: "Estate", status: "partial", effective: "2026", lastUpdated: "2026-08-17", updateJa: "相続目標は資産計画に反映。死亡時のみなし譲渡等の自動計算は未実装。", updateEn: "Estate targets feed the plan; deemed disposition and related death-tax calculations are not automated." },
+    ],
   },
   investment: {
     implemented: true,
