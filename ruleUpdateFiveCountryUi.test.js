@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import fs from "node:fs";
+import path from "node:path";
 
-const app = fs.readFileSync(new URL("./App.jsx", import.meta.url), "utf8");
-const watcher = fs.readFileSync(new URL("./scripts/check-rule-sources.mjs", import.meta.url), "utf8");
+const app = fs.readFileSync(path.resolve(process.cwd(), "App.jsx"), "utf8");
+const watcher = fs.readFileSync(path.resolve(process.cwd(), "scripts/check-rule-sources.mjs"), "utf8");
 
 describe("5-country rules update center UI", () => {
   it("filters rule history by selected country", () => {
