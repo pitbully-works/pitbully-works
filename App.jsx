@@ -918,6 +918,8 @@ function CAHealthcarePanel({ caInvestment, onUpdate, totalAnnual, healthcareRule
   const province = h.province || "ON";
   const cdcp = healthcareRules.getCdcpEligibility(h);
   const cdcpDental = healthcareRules.getCdcpDentalOutOfPocket(h);
+  const ltcMode = province === "ON" ? (h.longTermCareMode || "manual") : "manual";
+  const ltcAnnual = healthcareRules.getLongTermCareOutOfPocket({ ...h, province, longTermCareMode: ltcMode });
   return (
     <div>
       <div className="note" style={{ marginBottom: 12 }}>
@@ -957,7 +959,29 @@ function CAHealthcarePanel({ caInvestment, onUpdate, totalAnnual, healthcareRule
         <Field label={t("caDentalLabel")} unit="C$" step={50} value={h.dentalAnnual} onChange={(v) => onUpdate("dentalAnnual", v)} />
       )}
       <Field label={t("caVisionLabel")} unit="C$" step={50} value={h.visionAnnual} onChange={(v) => onUpdate("visionAnnual", v)} />
-      <Field label={t("caLongTermCareLabel")} unit="C$" step={500} value={h.longTermCareAnnual} onChange={(v) => onUpdate("longTermCareAnnual", v)} />
+      <label className="field">
+        <span className="field-label">{t("caLongTermCareModeLabel")}</span>
+        <select value={ltcMode} onChange={(e) => onUpdate("longTermCareMode", e.target.value)}>
+          <option value="manual">{t("caLongTermCareManual")}</option>
+          {province === "ON" && <option value="ontario2026">{t("caLongTermCareOntario2026")}</option>}
+        </select>
+      </label>
+      {province === "ON" && ltcMode === "ontario2026" ? (
+        <>
+          <label className="field">
+            <span className="field-label">{t("caLongTermCareAccommodationLabel")}</span>
+            <select value={h.longTermCareAccommodation || "basic"} onChange={(e) => onUpdate("longTermCareAccommodation", e.target.value)}>
+              <option value="basic">{t("caLongTermCareBasic")}</option>
+              <option value="semiPrivate">{t("caLongTermCareSemiPrivate")}</option>
+              <option value="private">{t("caLongTermCarePrivate")}</option>
+            </select>
+          </label>
+          <Field label={t("caLongTermCareMonthsLabel")} unit={t("caMonthsUnit")} step={1} value={h.longTermCareMonths} onChange={(v) => onUpdate("longTermCareMonths", v)} />
+          <div className="note"><Info size={13} /><span>{t("caLongTermCareOntarioNote", { amount: money(ltcAnnual) })}</span></div>
+        </>
+      ) : (
+        <Field label={t("caLongTermCareLabel")} unit="C$" step={500} value={h.longTermCareAnnual} onChange={(v) => onUpdate("longTermCareAnnual", v)} />
+      )}
       <Field label={t("caOtherOutOfPocketLabel")} unit="C$" step={50} value={h.otherOutOfPocketAnnual} onChange={(v) => onUpdate("otherOutOfPocketAnnual", v)} />
       <div className="stat-grid" style={{ marginTop: 10 }}>
         <StatCard label={t("caHealthcareTotalLabel")} value={money(totalAnnual)} sub={t("caHealthcareTotalSub")} tone="danger" />
@@ -1647,6 +1671,9 @@ const DEFAULT_INPUTS = {
         taxReturnFiled: true,
         canadianResident: true,
         visionAnnual: 0,
+        longTermCareMode: "manual",
+        longTermCareAccommodation: "basic",
+        longTermCareMonths: 12,
         longTermCareAnnual: 0,
         otherOutOfPocketAnnual: 0,
       },
