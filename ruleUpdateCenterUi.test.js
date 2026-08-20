@@ -11,11 +11,14 @@ describe("制度更新センター UI", () => {
     expect(app).toContain('"#E06B5A"');
     expect(app).toContain('"#D9A54F"');
     expect(app).toContain('"#54B07A"');
+    expect(app).toContain('"#4EA3E3"');
     expect(app).toContain("🔴 制度更新あり");
     expect(app).toContain("🟡 制度更新を保留中");
     expect(app).toContain("2026年制度確認済み");
     expect(app).toContain("2026/27 rules verified");
     expect(app).toContain("🟢 ${verifiedRuleStatusLabel}");
+    expect(app).toContain("🔵 施行待ち");
+    expect(app).toContain("🟢 確認済み・反映中");
   });
 
   it("制度更新センターはモーダルで開き、背景タップと閉じる操作を持つ", () => {

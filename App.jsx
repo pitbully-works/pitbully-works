@@ -1861,6 +1861,14 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     [ruleSourceStatuses, country]
   );
   const ruleAttentionCount = pendingRuleUpdates.length + ruleSourceAlerts.length;
+  const scheduledRuleUpdates = useMemo(
+    () => countryRuleUpdates.filter((item) => !!ruleUpdateState.approved?.[item.id] && !isUpdateEffective(item)),
+    [countryRuleUpdates, ruleUpdateState.approved]
+  );
+  const activeRuleUpdates = useMemo(
+    () => countryRuleUpdates.filter((item) => !!ruleUpdateState.approved?.[item.id] && isUpdateEffective(item)),
+    [countryRuleUpdates, ruleUpdateState.approved]
+  );
   const verifiedRuleStatusLabel = useMemo(() => {
     const labels = {
       JP: language === "ja" ? "2026年制度確認済み" : "2026 rules verified",
@@ -1884,6 +1892,25 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     if (!unit) return formatted;
     return `${formatted}${unit}`;
   }, []);
+  const formatRuleDate = useCallback((isoDate) => {
+    if (!isoDate) return "—";
+    const date = new Date(`${isoDate}T00:00:00`);
+    if (!Number.isFinite(date.getTime())) return isoDate;
+    const locale = ({ JP: "ja-JP", US: "en-US", GB: "en-GB", CA: "en-CA", AU: "en-AU" }[country]
+      || (language === "ja" ? "ja-JP" : "en-US"));
+    return date.toLocaleDateString(locale);
+  }, [country, language]);
+  const getRuleUpdateVisualStatus = useCallback((update) => {
+    const approved = !!ruleUpdateState.approved?.[update.id];
+    const deferred = !approved && !!ruleUpdateState.dismissed?.[update.id];
+    if (approved) {
+      return isUpdateEffective(update)
+        ? { key: "active", color: "#54B07A", ja: "🟢 確認済み・反映中", en: "🟢 Approved & active" }
+        : { key: "scheduled", color: "#4EA3E3", ja: "🔵 承認済み・施行待ち", en: "🔵 Approved · scheduled" };
+    }
+    if (deferred) return { key: "deferred", color: "#D9A54F", ja: "🟡 保留中", en: "🟡 Deferred" };
+    return { key: "new", color: "#E06B5A", ja: "🔴 新規・要確認", en: "🔴 New · review" };
+  }, [ruleUpdateState.approved, ruleUpdateState.dismissed]);
   const openRuleUpdateCenter = useCallback(() => {
     setShowRuleUpdates(true);
   }, []);
@@ -2235,7 +2262,13 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const uPerYear = baseCurrency === "JPY" ? "円/年" : `${currencySymbol}/year`;
   const uPerGram = baseCurrency === "JPY" ? "円/g" : `${currencySymbol}/g`;
   const uYears = language === "ja" ? "年" : "years";
-  const dateLocale = language === "ja" ? "ja-JP" : (language === "en-GB" ? "en-GB" : "en-US");
+  const dateLocale = useMemo(() => ({
+    JP: "ja-JP",
+    US: "en-US",
+    GB: "en-GB",
+    CA: "en-CA",
+    AU: "en-AU",
+  }[country] || (language === "ja" ? "ja-JP" : "en-US")), [country, language]);
   const formatAge = useCallback((age) => {
     const y = Math.floor(age + 1e-9);
     const m = Math.round((age - y) * 12);
@@ -5362,8 +5395,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           {(countryRuleUpdates.length > 0 || monitoredRuleSources.length > 0) && (() => {
             const hasUnreviewedRuleUpdate = ruleAttentionCount > 0;
             const hasDeferredRuleUpdate = !hasUnreviewedRuleUpdate && deferredRuleUpdates.length > 0;
-            const ruleStatusColor = hasUnreviewedRuleUpdate ? "#E06B5A" : hasDeferredRuleUpdate ? "#D9A54F" : "#54B07A";
-            const ruleStatusBackground = hasUnreviewedRuleUpdate ? "rgba(224, 107, 90, 0.12)" : hasDeferredRuleUpdate ? "rgba(217, 165, 79, 0.12)" : "rgba(84, 176, 122, 0.12)";
+            const hasScheduledRuleUpdate = !hasUnreviewedRuleUpdate && !hasDeferredRuleUpdate && scheduledRuleUpdates.length > 0;
+            const ruleStatusColor = hasUnreviewedRuleUpdate ? "#E06B5A" : hasDeferredRuleUpdate ? "#D9A54F" : hasScheduledRuleUpdate ? "#4EA3E3" : "#54B07A";
+            const ruleStatusBackground = hasUnreviewedRuleUpdate ? "rgba(224, 107, 90, 0.12)" : hasDeferredRuleUpdate ? "rgba(217, 165, 79, 0.12)" : hasScheduledRuleUpdate ? "rgba(78, 163, 227, 0.12)" : "rgba(84, 176, 122, 0.12)";
             return (
               <button
                 type="button"
@@ -5382,7 +5416,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                   ? (language === "ja" ? `🔴 制度更新あり（${ruleAttentionCount}件）` : `🔴 Rule update (${ruleAttentionCount})`)
                   : hasDeferredRuleUpdate
                     ? (language === "ja" ? `🟡 制度更新を保留中（${deferredRuleUpdates.length}件）` : `🟡 Rule update deferred (${deferredRuleUpdates.length})`)
-                    : `🟢 ${verifiedRuleStatusLabel}`}
+                    : hasScheduledRuleUpdate
+                      ? (language === "ja" ? `🔵 施行待ち（${scheduledRuleUpdates.length}件）` : `🔵 Scheduled changes (${scheduledRuleUpdates.length})`)
+                      : `🟢 ${verifiedRuleStatusLabel}`}
               </button>
             );
           })()}
@@ -5396,9 +5432,18 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 <span style={{ color: "#D9A54F", fontWeight: 800 }}>
                   {language === "ja" ? `🟡 保留中 ${deferredRuleUpdates.length}件` : `🟡 Deferred: ${deferredRuleUpdates.length}`}
                 </span>
+              ) : scheduledRuleUpdates.length > 0 ? (
+                <span style={{ color: "#4EA3E3", fontWeight: 800 }}>
+                  {language === "ja" ? `🔵 施行待ち ${scheduledRuleUpdates.length}件` : `🔵 Scheduled: ${scheduledRuleUpdates.length}`}
+                </span>
               ) : (
                 <span style={{ color: "#54B07A", fontWeight: 800 }}>
                   {language === "ja" ? "🟢 承認待ちなし" : "🟢 No pending changes"}
+                </span>
+              )}
+              {activeRuleUpdates.length > 0 && (
+                <span style={{ color: "#54B07A", fontWeight: 800 }}>
+                  {language === "ja" ? `🟢 確認済み ${activeRuleUpdates.length}件` : `🟢 Active: ${activeRuleUpdates.length}`}
                 </span>
               )}
               <span style={{ color: "var(--muted)", fontWeight: 700 }}>
@@ -5622,11 +5667,21 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 <span style={{ color: ruleAttentionCount > 0 ? "#E06B5A" : "#54B07A", fontWeight: 800 }}>
                   {ruleAttentionCount > 0
                     ? (language === "ja" ? `🔴 新しい制度更新 ${ruleAttentionCount}件` : `🔴 New rule updates: ${ruleAttentionCount}`)
-                    : (language === "ja" ? "🟢 承認待ちなし" : "🟢 No pending changes")}
+                    : (language === "ja" ? "🟢 新規の承認待ちなし" : "🟢 No new pending changes")}
                 </span>
                 {deferredRuleUpdates.length > 0 && (
                   <span style={{ color: "#D9A54F", fontWeight: 800 }}>
                     {language === "ja" ? `🟡 保留中 ${deferredRuleUpdates.length}件` : `🟡 Deferred: ${deferredRuleUpdates.length}`}
+                  </span>
+                )}
+                {scheduledRuleUpdates.length > 0 && (
+                  <span style={{ color: "#4EA3E3", fontWeight: 800 }}>
+                    {language === "ja" ? `🔵 施行待ち ${scheduledRuleUpdates.length}件` : `🔵 Scheduled: ${scheduledRuleUpdates.length}`}
+                  </span>
+                )}
+                {activeRuleUpdates.length > 0 && (
+                  <span style={{ color: "#54B07A", fontWeight: 800 }}>
+                    {language === "ja" ? `🟢 確認済み・反映中 ${activeRuleUpdates.length}件` : `🟢 Approved & active: ${activeRuleUpdates.length}`}
                   </span>
                 )}
                 <span style={{ color: "var(--muted)", fontWeight: 700 }}>
@@ -5665,12 +5720,18 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               {countryRuleUpdates.map((update) => {
                 const approved = !!ruleUpdateState.approved?.[update.id];
                 const effective = isUpdateEffective(update);
+                const updateVisualStatus = getRuleUpdateVisualStatus(update);
                 return (
                   <div key={update.id} style={{ borderTop: "1px solid var(--line)", paddingTop: 12, marginTop: 10 }}>
-                    <div style={{ fontWeight: 700 }}>{language === "ja" ? update.titleJa : (update.titleEn || update.titleJa)}</div>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                      <div style={{ fontWeight: 700 }}>{language === "ja" ? update.titleJa : (update.titleEn || update.titleJa)}</div>
+                      <span style={{ color: updateVisualStatus.color, fontSize: 10, fontWeight: 800 }}>
+                        {language === "ja" ? updateVisualStatus.ja : updateVisualStatus.en}
+                      </span>
+                    </div>
                     <div className="stat-sub" style={{ marginTop: 4 }}>{language === "ja" ? update.summaryJa : (update.summaryEn || update.summaryJa)}</div>
                     <div className="stat-sub" style={{ marginTop: 5 }}>
-                      {language === "ja" ? "検知" : "Detected"}: {update.detectedAt || "—"} · {language === "ja" ? "施行日" : "Effective"}: {update.effectiveDate || "—"}
+                      {language === "ja" ? "検知" : "Detected"}: {formatRuleDate(update.detectedAt)} · {language === "ja" ? "施行日" : "Effective"}: {formatRuleDate(update.effectiveDate)}
                     </div>
                     {update.impactJa && language === "ja" && (
                       <div className="note" style={{ marginTop: 7 }}><Info size={13}/><span>{update.impactJa}</span></div>
@@ -5699,7 +5760,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                         </>
                       ) : (
                         <span className="stat-sub" style={{ fontWeight: 700 }}>
-                          {effective ? (language === "ja" ? "✓ 承認済み・反映中" : "✓ Approved and active") : (language === "ja" ? `✓ 承認済み・${update.effectiveDate}から自動反映` : `✓ Approved; activates ${update.effectiveDate}`)}
+                          {effective ? (language === "ja" ? "✓ 承認済み・反映中" : "✓ Approved and active") : (language === "ja" ? `✓ 承認済み・${formatRuleDate(update.effectiveDate)}から自動反映` : `✓ Approved; activates ${formatRuleDate(update.effectiveDate)}`)}
                         </span>
                       )}
                       {update.sourceUrl && <a href={update.sourceUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11 }}>{update.sourceLabel || (language === "ja" ? "公式情報" : "Official source")}</a>}
@@ -5714,14 +5775,19 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                   onClick={() => setShowRuleUpdateHistory((v) => !v)}
                   aria-expanded={showRuleUpdateHistory}
                 >
-                  {language === "ja" ? `制度変更履歴（${countryRuleUpdateHistory.length}件）` : `Change history (${countryRuleUpdateHistory.length})`}
+                  {language === "ja"
+                    ? `制度変更履歴（${countryRuleUpdateHistory.length}件・承認${countryRuleUpdateHistory.filter((entry) => entry.action === "approved").length}・保留${countryRuleUpdateHistory.filter((entry) => entry.action === "deferred").length}）`
+                    : `Change history (${countryRuleUpdateHistory.length} · approved ${countryRuleUpdateHistory.filter((entry) => entry.action === "approved").length} · deferred ${countryRuleUpdateHistory.filter((entry) => entry.action === "deferred").length})`}
                 </button>
                 {showRuleUpdateHistory && (
                   <div style={{ marginTop: 9, display: "flex", flexDirection: "column", gap: 7 }}>
                     {countryRuleUpdateHistory.length === 0 ? (
                       <div className="stat-sub">{language === "ja" ? "まだ承認・保留の履歴はありません。" : "No approval or deferral history yet."}</div>
                     ) : (
-                      [...countryRuleUpdateHistory].reverse().slice(0, 20).map((entry) => (
+                      [...countryRuleUpdateHistory].reverse().slice(0, 20).map((entry) => {
+                        const update = countryRuleUpdates.find((item) => item.id === entry.updateId);
+                        const currentStatus = update ? getRuleUpdateVisualStatus(update) : null;
+                        return (
                         <div key={entry.id} style={{ border: "1px solid var(--line)", borderRadius: 6, padding: "8px 10px", background: "#182027" }}>
                           <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "flex-start" }}>
                             <div style={{ fontSize: 11, fontWeight: 700 }}>
@@ -5733,10 +5799,16 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                           </div>
                           <div className="stat-sub" style={{ marginTop: 3 }}>
                             {entry.decidedAt ? new Date(entry.decidedAt).toLocaleString(dateLocale) : "—"}
-                            {entry.effectiveDate ? ` · ${language === "ja" ? "施行日" : "Effective"}: ${entry.effectiveDate}` : ""}
+                            {entry.effectiveDate ? ` · ${language === "ja" ? "施行日" : "Effective"}: ${formatRuleDate(entry.effectiveDate)}` : ""}
                           </div>
+                          {currentStatus && (
+                            <div style={{ marginTop: 4, color: currentStatus.color, fontSize: 10, fontWeight: 800 }}>
+                              {language === "ja" ? `現在：${currentStatus.ja}` : `Current: ${currentStatus.en}`}
+                            </div>
+                          )}
                         </div>
-                      ))
+                        );
+                      })
                     )}
                   </div>
                 )}

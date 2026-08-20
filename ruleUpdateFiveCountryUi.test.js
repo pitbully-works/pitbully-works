@@ -25,6 +25,9 @@ describe("5-country rules update center UI", () => {
     expect(app).toContain('AU: "2026/27 rules verified"');
     expect(app).toContain("New rule updates:");
     expect(app).toContain("Next review");
+    expect(app).toContain('CA: "en-CA"');
+    expect(app).toContain('AU: "en-AU"');
+    expect(app).toContain("Scheduled changes");
   });
 
   it("uses a cleaner missing birth-date display and clearer history label", () => {

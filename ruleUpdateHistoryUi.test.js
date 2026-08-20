@@ -30,5 +30,7 @@ describe("制度更新履歴とモーダル視認性", () => {
     expect(app).toContain('recordRuleUpdateDecision(update, "deferred")');
     expect(app).toContain("制度変更履歴");
     expect(app).toContain("まだ承認・保留の履歴はありません。");
+    expect(app).toContain("現在：${currentStatus.ja}");
+    expect(app).toContain("approved ${countryRuleUpdateHistory.filter");
   });
 });
