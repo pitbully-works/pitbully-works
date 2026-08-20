@@ -201,7 +201,7 @@ export const CA_COUNTRY_RULES = {
   retirement: {
     implemented: true,
     effectiveTaxYear: "2026",
-    lastUpdated: "2026-07-18",
+    lastUpdated: "2026-08-20",
     sourceName: "Service Canada / ESDC — Canada Pension Plan, Old Age Security",
     sourceUrl: "https://www.canada.ca/en/services/benefits/publicpensions.html",
     sourceUrls: {
