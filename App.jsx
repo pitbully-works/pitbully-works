@@ -45,6 +45,7 @@ import {
   applyApprovedRuleUpdates, mergeRuleUpdateManifests, isUpdateEffective,
 } from "./utils/ruleUpdates.js";
 import { getRuleSourcesForCountry } from "./utils/ruleSourceRegistry.js";
+import { buildCountryRuleCatalog } from "./utils/countryRuleCatalog.js";
 // 国に依存しない共通UI部品（入力欄・ガイド・内訳グラフ）と表示基盤（LocaleContext等）は ui/ 配下へ分離。
 import {
   yen,
@@ -2026,6 +2027,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const rules = useMemo(
     () => applyApprovedRuleUpdates(baseRules, country, ruleUpdates, ruleUpdateState),
     [baseRules, country, ruleUpdates, ruleUpdateState]
+  );
+  const ruleCoverageCatalog = useMemo(
+    () => buildCountryRuleCatalog(country, rules),
+    [country, rules]
   );
   const countryRuleUpdates = useMemo(
     () => ruleUpdates.filter((item) => item.country === country),
@@ -5878,7 +5883,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           </button>
         </div>
       </div>
-      {Array.isArray(rules?.meta?.coverage) && rules.meta.coverage.length > 0 && (
+      {ruleCoverageCatalog.length > 0 && (
         <div
           className="no-print"
           style={{
@@ -5899,7 +5904,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             </span>
           </div>
           <div style={{ display: "grid", gap: 7 }}>
-            {rules.meta.coverage.map((item) => {
+            {ruleCoverageCatalog.map((item) => {
               const partial = item.status === "partial";
               const statusText = language === "ja"
                 ? (partial ? "一部対応" : "対応済み")
