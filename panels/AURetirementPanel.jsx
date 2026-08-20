@@ -23,7 +23,10 @@ function AURetirementPanel({
   const statusLabel = status === "couple" ? t("auCoupleLabel") : t("auSingleLabel");
   // 所得テストに実際に使われる所得＝入力したその他の年収 ＋ 金融資産のみなし収入
   const otherIncome = Number(auInvestment.agePension.otherAnnualIncome) || 0;
-  const assessableIncome = otherIncome + (Number(deemedIncomeAnnual) || 0);
+  const employmentIncome = Number(auInvestment.agePension.employmentIncomeAnnual) || 0;
+  const workBonusBalance = Number(auInvestment.agePension.workBonusBalance) || 0;
+  const assessableEmploymentIncome = retirementRules.getAssessableEmploymentIncomeAnnual(employmentIncome, workBonusBalance);
+  const assessableIncome = otherIncome + assessableEmploymentIncome + (Number(deemedIncomeAnnual) || 0);
 
   return (
     <div>
@@ -78,6 +81,18 @@ function AURetirementPanel({
         label={t("auOtherIncomeLabel")} unit="A$" step={500}
         value={auInvestment.agePension.otherAnnualIncome}
         onChange={(v) => onUpdateAgePension("otherAnnualIncome", v)}
+      />
+      <Field
+        guide={t("auEmploymentIncomeGuide")}
+        label={t("auEmploymentIncomeLabel")} unit="A$" step={500}
+        value={auInvestment.agePension.employmentIncomeAnnual || 0}
+        onChange={(v) => onUpdateAgePension("employmentIncomeAnnual", v)}
+      />
+      <Field
+        guide={t("auWorkBonusBalanceGuide")}
+        label={t("auWorkBonusBalanceLabel")} unit="A$" step={100}
+        value={auInvestment.agePension.workBonusBalance || 0}
+        onChange={(v) => onUpdateAgePension("workBonusBalance", Math.min(11800, Math.max(0, Number(v) || 0)))}
       />
 
       <div className="stat-grid" style={{ marginTop: 10 }}>
