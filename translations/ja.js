@@ -51,7 +51,7 @@ export const JA_TRANSLATIONS = {
     "gbHealthcareTotalSub": "基本医療費＋民間保険料＋歯科＋処方箋＋介護＋その他の合計",
     "gbIncomeTaxLabel": "Income Tax（概算）",
     "gbIncomeTaxSub": "課税所得：{amount}（Personal Allowance控除後）",
-    "gbInvestmentSourceNote": "掲載している上限額・税率は{taxYear}年度のGOV.UK公表値です。イングランド・ウェールズ・北アイルランドが対象で、スコットランド税率は未実装です。実際の税務判断は専門家にご確認ください。",
+    "gbInvestmentSourceNote": "掲載している上限額・税率は{taxYear}年度のGOV.UK公表値です。イングランド・ウェールズ・北アイルランドに加え、スコットランド所得税も対応しています。実際の税務判断は専門家にご確認ください。",
     "gbIsaAllowanceLabel": "ISA年間拠出上限（{taxYear}）",
     "gbIsaOverLabel": "ISA年間上限を {amount} 超過しています",
     "gbIsaRemainingLabel": "ISA年間枠の残り",
