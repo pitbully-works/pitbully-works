@@ -4291,15 +4291,15 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
         .section-block {
           /* 各ページの境目を、制度更新センターと同じ「独立カード」として明確化。
-             既存のインライン borderColor は使わず、下のセクション別アクセントで統一する。 */
-          --section-accent: #52636C;
+             縦帯は全ページで現在の青に統一する。 */
+          --section-accent: #4FA8D8;
           border: 2px solid #33434B;
           border-left: 8px solid var(--section-accent) !important;
           border-color: #33434B #33434B #33434B var(--section-accent) !important;
           background: #151D21;
           border-radius: 14px;
           padding: 16px 16px 8px;
-          margin-bottom: 28px;
+          margin-bottom: 34px;
           box-shadow: 0 2px 0 rgba(255,255,255,0.018), 0 8px 22px rgba(0,0,0,0.16);
           overflow: hidden;
         }
@@ -4315,37 +4315,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         }
         .section-block .section-title svg { color: var(--section-accent); }
 
-        /* 入力ページ：内容の種類ごとにアクセントを固定。
-           スクロール中でも左帯だけで今いるページを判別できる。 */
-        .section-block:has(#section-00) { --section-accent: #55AEE0; } /* 本人 */
-        .section-block:has(#section-01) { --section-accent: #D7A94D; } /* 基本 */
-        .section-block:has(#section-02) { --section-accent: #4FA8D8; } /* 投資 */
-        .section-block:has(#section-03) { --section-accent: #9B7AF2; } /* iDeCo */
-        .section-block:has(#section-04) { --section-accent: #57BC87; } /* 公的年金 */
-        .section-block:has(#section-05) { --section-accent: #E57A8B; } /* 健康 */
-        .section-block:has(#section-06) { --section-accent: #C894D8; } /* 相続 */
-        .section-block:has(#section-07) { --section-accent: #D8AE4F; } /* 金 */
-        .section-block:has(#section-08) { --section-accent: #57B9C6; } /* 預金 */
-        .section-block:has(#section-09) { --section-accent: #DF835C; } /* 借入 */
-        .section-block:has(#section-10) { --section-accent: #5CB59E; } /* 保険 */
-        .section-block:has(#section-11) { --section-accent: #A57AE8; } /* 民間年金 */
-        .section-block:has(#section-12) { --section-accent: #8DA0AA; } /* 固定費 */
-
-        /* 入力以外の主要ページも同じカード文法で区切る。 */
-        #section-nav { --section-accent: #4FA8D8; }
-        #section-allocation { --section-accent: #62B98B; }
-        #section-surplus-balance { --section-accent: #5EB4C1; }
-        #section-summary { --section-accent: #63AEE0; }
-        #section-advice { --section-accent: #D2A55A; }
-        #section-comparison { --section-accent: #9A80E2; }
-        #section-networth-chart { --section-accent: #57B58A; }
-        #section-stock { --section-accent: #D59258; }
 
         @media (max-width: 880px) {
           .section-block {
             border-radius: 12px;
             padding: 15px 13px 7px 14px;
-            margin-bottom: 24px;
+            margin-bottom: 30px;
           }
         }
         /* 全ページ共通：ページ内のグラフ・表・一覧・補助パネルも独立カードとして明確化。
@@ -4657,7 +4632,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           padding: 3px 0;         /* 幅を固定したので左右パディングは0にして中央寄せ */
           text-align: center;
           border-radius: 999px;
-          border: 1px solid rgba(79, 168, 216, 0.55);
+          border: 1px solid rgba(79, 168, 216, 0.68);
           background: transparent;
           color: #6FC0EC;
           font-size: 12px;
@@ -4668,6 +4643,11 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           text-shadow: 0 0 4px #000, 0 0 3px #000;
           transition: color .12s, border-color .12s, background .12s;
         }
+        /* 右ナビは枠線だけを2色で交互にする。背景・文字色は従来のまま。 */
+        .quicknav .quicknav-btn:nth-child(even):not(.is-current) {
+          border-color: rgba(126, 199, 235, 0.82);
+        }
+
         /* 押したとき・いまいる項目のときは、文字色が濃くなる。
            そのまま text-shadow（黒い光）を残すと、濃い文字のまわりに黒がにじんで
            字がぼやけて見える。塗りつぶしの状態では影を必ず消す。 */
