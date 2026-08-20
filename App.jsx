@@ -912,19 +912,50 @@ function CAInvestmentAccountsPanel({ caInvestment, onUpdate, onUpdateAccount, ag
 
 
 // ---------- カナダ選択時：医療費パネル（州の公的医療保険を前提とした簡易モデル） ----------
-function CAHealthcarePanel({ caInvestment, onUpdate, totalAnnual }) {
+function CAHealthcarePanel({ caInvestment, onUpdate, totalAnnual, healthcareRules }) {
   const { t, money } = useContext(LocaleContext);
   const h = caInvestment.healthcare;
+  const province = h.province || "ON";
+  const cdcp = healthcareRules.getCdcpEligibility(h);
+  const cdcpDental = healthcareRules.getCdcpDentalOutOfPocket(h);
   return (
     <div>
       <div className="note" style={{ marginBottom: 12 }}>
         <Info size={13} />
         <span>{t("caHealthcareSourceNote")}</span>
       </div>
+      <label className="field">
+        <span className="field-label">{t("caProvinceLabel")}</span>
+        <select value={province} onChange={(e) => onUpdate("province", e.target.value)}>
+          {healthcareRules.provinces.map((code) => <option key={code} value={code}>{healthcareRules.provinceNames[code]}</option>)}
+        </select>
+      </label>
+      <div className="note" style={{ marginBottom: 12 }}>
+        <Info size={13} />
+        <span>{t("caCoreCoverageNote", { province: healthcareRules.provinceNames[province], date: healthcareRules.canadaHealthAct.physicianEquivalentPolicyEffective })}</span>
+      </div>
       <Field guide={t("caHealthcareGuide")} label={t("caBasicHealthLabel")} unit="C$" step={50} value={h.basicAnnual} onChange={(v) => onUpdate("basicAnnual", v)} />
       <Field label={t("caPrivateHealthLabel")} unit="C$" step={10} value={h.privateHealthInsuranceMonthly} onChange={(v) => onUpdate("privateHealthInsuranceMonthly", v)} />
       <Field label={t("caPrescriptionLabel")} unit="C$" step={50} value={h.prescriptionAnnual} onChange={(v) => onUpdate("prescriptionAnnual", v)} />
-      <Field label={t("caDentalLabel")} unit="C$" step={50} value={h.dentalAnnual} onChange={(v) => onUpdate("dentalAnnual", v)} />
+      <label className="field">
+        <span className="field-label">{t("caDentalModeLabel")}</span>
+        <select value={h.dentalMode || "manual"} onChange={(e) => onUpdate("dentalMode", e.target.value)}>
+          <option value="manual">{t("caDentalManual")}</option>
+          <option value="cdcp">{t("caDentalCdcp")}</option>
+        </select>
+      </label>
+      {(h.dentalMode || "manual") === "cdcp" ? (
+        <>
+          <Field label={t("caAdjustedFamilyNetIncomeLabel")} unit="C$" step={1000} value={h.adjustedFamilyNetIncome} onChange={(v) => onUpdate("adjustedFamilyNetIncome", v)} />
+          <Field label={t("caCdcpEligibleFeesLabel")} unit="C$" step={50} value={h.cdcpEligibleFeesAnnual} onChange={(v) => onUpdate("cdcpEligibleFeesAnnual", v)} />
+          <label className="field"><span className="field-label">{t("caPrivateDentalCoverageLabel")}</span><select value={h.hasPrivateDentalCoverage ? "yes" : "no"} onChange={(e) => onUpdate("hasPrivateDentalCoverage", e.target.value === "yes")}><option value="no">{t("gbNo")}</option><option value="yes">{t("gbYes")}</option></select></label>
+          <label className="field"><span className="field-label">{t("caTaxReturnFiledLabel")}</span><select value={h.taxReturnFiled === false ? "no" : "yes"} onChange={(e) => onUpdate("taxReturnFiled", e.target.value === "yes")}><option value="yes">{t("gbYes")}</option><option value="no">{t("gbNo")}</option></select></label>
+          <label className="field"><span className="field-label">{t("caCanadianResidentLabel")}</span><select value={h.canadianResident === false ? "no" : "yes"} onChange={(e) => onUpdate("canadianResident", e.target.value === "yes")}><option value="yes">{t("gbYes")}</option><option value="no">{t("gbNo")}</option></select></label>
+          <div className="note"><Info size={13} /><span>{cdcp.eligible ? t("caCdcpEligibleNote", { pct: Math.round((cdcp.copayRate || 0) * 100), amount: money(cdcpDental) }) : t("caCdcpNotEligibleNote")}</span></div>
+        </>
+      ) : (
+        <Field label={t("caDentalLabel")} unit="C$" step={50} value={h.dentalAnnual} onChange={(v) => onUpdate("dentalAnnual", v)} />
+      )}
       <Field label={t("caVisionLabel")} unit="C$" step={50} value={h.visionAnnual} onChange={(v) => onUpdate("visionAnnual", v)} />
       <Field label={t("caLongTermCareLabel")} unit="C$" step={500} value={h.longTermCareAnnual} onChange={(v) => onUpdate("longTermCareAnnual", v)} />
       <Field label={t("caOtherOutOfPocketLabel")} unit="C$" step={50} value={h.otherOutOfPocketAnnual} onChange={(v) => onUpdate("otherOutOfPocketAnnual", v)} />
@@ -1604,10 +1635,17 @@ const DEFAULT_INPUTS = {
       additionalPensionAnnual: 0, // 職域年金など、任意の追加年金収入（年額）
       // 医療費（州の公的医療保険でカバーされる前提の簡易モデル）
       healthcare: {
+        province: "ON",
         basicAnnual: 0,
         privateHealthInsuranceMonthly: 0,
         prescriptionAnnual: 0,
+        dentalMode: "manual",
         dentalAnnual: 0,
+        adjustedFamilyNetIncome: 0,
+        cdcpEligibleFeesAnnual: 0,
+        hasPrivateDentalCoverage: false,
+        taxReturnFiled: true,
+        canadianResident: true,
         visionAnnual: 0,
         longTermCareAnnual: 0,
         otherOutOfPocketAnnual: 0,
@@ -7382,6 +7420,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               caInvestment={inputs.caInvestment}
               onUpdate={(field, val) => updateCaInvestmentNested("healthcare", field, val)}
               totalAnnual={caHealthcareAnnual}
+              healthcareRules={rules.healthcare}
             />
           ) : country === "AU" && rules.healthcare.implemented ? (
             <AUHealthcarePanel
