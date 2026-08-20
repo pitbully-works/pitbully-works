@@ -1824,12 +1824,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       const sourceResponse = await fetch(`/rules-source-status.json?ts=${Date.now()}`, { cache: "no-store" });
       if (sourceResponse.ok) {
         const sourcePayload = await sourceResponse.json();
-        setRuleSourceStatuses((sourcePayload?.sources || []).filter((item) => item.country === country));
+        setRuleSourceStatuses(Array.isArray(sourcePayload?.sources) ? sourcePayload.sources : []);
       }
     } catch { /* 監視状態を取得できなくても既存計算には影響させない */ }
     const next = { ...ruleUpdateState, lastCheckedAt: new Date().toISOString() };
     persistRuleUpdateState(next);
-  }, [ruleUpdateState, persistRuleUpdateState, country]);
+  }, [ruleUpdateState, persistRuleUpdateState]);
 
   useEffect(() => { checkRuleUpdates(); /* 起動時に1回だけ確認 */ // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -1852,6 +1852,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     [countryRuleUpdates, ruleUpdateState]
   );
   const monitoredRuleSources = useMemo(() => getRuleSourcesForCountry(country), [country]);
+  const countryRuleUpdateHistory = useMemo(
+    () => (ruleUpdateState.history || []).filter((entry) => entry.country === country),
+    [ruleUpdateState.history, country]
+  );
   const ruleSourceAlerts = useMemo(
     () => ruleSourceStatuses.filter((item) => item.country === country && item.changed),
     [ruleSourceStatuses, country]
@@ -5594,6 +5598,13 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                   </div>
                 </div>
               )}
+              {countryRuleUpdates.length === 0 && ruleSourceAlerts.length === 0 && (
+                <div className="note" style={{ marginTop: 8 }}><Info size={13}/><span>
+                  {language === "ja"
+                    ? "現在、公表済みの承認待ち制度改正はありません。公式情報源の監視は継続しています。"
+                    : "There are no published rule changes awaiting approval. Official sources continue to be monitored."}
+                </span></div>
+              )}
               {countryRuleUpdates.map((update) => {
                 const approved = !!ruleUpdateState.approved?.[update.id];
                 const effective = isUpdateEffective(update);
@@ -5646,14 +5657,14 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                   onClick={() => setShowRuleUpdateHistory((v) => !v)}
                   aria-expanded={showRuleUpdateHistory}
                 >
-                  {language === "ja" ? `制度変更履歴（${(ruleUpdateState.history || []).length}件）` : `Rule history (${(ruleUpdateState.history || []).length})`}
+                  {language === "ja" ? `制度変更履歴（${countryRuleUpdateHistory.length}件）` : `Rule history (${countryRuleUpdateHistory.length})`}
                 </button>
                 {showRuleUpdateHistory && (
                   <div style={{ marginTop: 9, display: "flex", flexDirection: "column", gap: 7 }}>
-                    {(ruleUpdateState.history || []).length === 0 ? (
+                    {countryRuleUpdateHistory.length === 0 ? (
                       <div className="stat-sub">{language === "ja" ? "まだ承認・保留の履歴はありません。" : "No approval or deferral history yet."}</div>
                     ) : (
-                      [...ruleUpdateState.history].reverse().slice(0, 20).map((entry) => (
+                      [...countryRuleUpdateHistory].reverse().slice(0, 20).map((entry) => (
                         <div key={entry.id} style={{ border: "1px solid var(--line)", borderRadius: 6, padding: "8px 10px", background: "#182027" }}>
                           <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "flex-start" }}>
                             <div style={{ fontSize: 11, fontWeight: 700 }}>
