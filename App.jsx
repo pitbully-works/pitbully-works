@@ -4975,6 +4975,72 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           font-family: 'JetBrains Mono', monospace;
         }
 
+        /* 2026-08-21: 右側ダッシュボードを含む「全カード」に同じ細い青帯を適用する。
+           以前は .section-block 配下だけだったため、サマリー／グラフ／個別株／
+           取り崩し順序などに縦帯が付かない箇所が残っていた。 */
+        .content .stat-card,
+        .content .chart-frame,
+        .content > .card,
+        .content .two-col > .card {
+          border: 1px solid #33434B !important;
+          border-left: 5px solid #4FA8D8 !important;
+          border-radius: 9px !important;
+          background: #151D21 !important;
+          box-shadow: 0 5px 16px rgba(0,0,0,0.12);
+        }
+        .content .stat-card {
+          padding-left: 14px !important;
+        }
+        .content .stat-card::before {
+          display: none !important;
+        }
+        .content .chart-frame {
+          padding-left: 12px;
+          padding-right: 10px;
+          margin-bottom: 30px;
+        }
+        .content > .card,
+        .content .two-col > .card {
+          padding: 16px 14px 12px;
+          margin-bottom: 30px !important;
+        }
+        .content table.watchlist,
+        .content table.mini-table {
+          border-left: 4px solid #4FA8D8;
+        }
+
+        /* ガイド／紹介ページ側も同じ細い青帯で統一する。 */
+        .landing,
+        .landing-feature-card,
+        .landing-audience,
+        .landing-kakeibo,
+        .landing-blog-section {
+          border-left: 5px solid #4FA8D8 !important;
+        }
+        .landing-feature-card::before {
+          display: none;
+        }
+        .landing-audience h4 { color: var(--text); }
+
+        @media (max-width: 880px) {
+          .content .stat-card,
+          .content .chart-frame,
+          .content > .card,
+          .content .two-col > .card,
+          .landing,
+          .landing-feature-card,
+          .landing-audience,
+          .landing-kakeibo,
+          .landing-blog-section {
+            border-left-width: 4px !important;
+          }
+          .content .chart-frame,
+          .content > .card,
+          .content .two-col > .card {
+            margin-bottom: 28px !important;
+          }
+        }
+
         .two-col {
           display: grid;
           grid-template-columns: 1fr 1fr;

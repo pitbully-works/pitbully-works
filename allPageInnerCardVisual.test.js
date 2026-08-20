@@ -12,5 +12,11 @@ describe("all-page inner card clarity", () => {
     expect(app).toContain("table.watchlist");
     expect(app).toContain("table.mini-table");
     expect(app).toContain("border-left: 7px solid var(--module-accent)");
+    expect(app).toContain(".content .stat-card");
+    expect(app).toContain(".content .chart-frame");
+    expect(app).toContain(".content > .card");
+    expect(app).toContain("border-left: 5px solid #4FA8D8 !important");
+    expect(app).toContain(".landing-kakeibo");
+    expect(app).toContain(".landing-blog-section");
   });
 });
