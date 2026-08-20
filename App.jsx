@@ -1836,10 +1836,21 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   }, []);
   const openRuleUpdateCenter = useCallback(() => {
     setShowRuleUpdates(true);
-    window.setTimeout(() => {
-      document.getElementById("section-rule-updates")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 0);
   }, []);
+
+  useEffect(() => {
+    if (!showRuleUpdates) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") setShowRuleUpdates(false);
+    };
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [showRuleUpdates]);
   const countryDisplayName = useMemo(
     () => SUPPORTED_COUNTRIES.find((c) => c.code === country)?.name || country,
     [country]
@@ -5293,25 +5304,33 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           </div>
           <div>{t("retireAgeLabel")} <span>{t("ageYears", { age: inputs.retireAge })}</span></div>
           <div>{t("lifeExpectancyLabel")} <span>{t("ageYears", { age: inputs.deathAge })}</span></div>
-          {(countryRuleUpdates.length > 0 || monitoredRuleSources.length > 0) && (
-            <button
-              type="button"
-              className="history-toggle no-print"
-              onClick={openRuleUpdateCenter}
-              title={language === "ja" ? "制度更新センターを開く" : "Open rules update center"}
-              style={{
-                borderColor: ruleAttentionCount > 0 ? "#D9A54F" : deferredRuleUpdates.length > 0 ? "#D9A54F" : "#54B07A",
-                fontWeight: 700,
-                whiteSpace: "nowrap",
-              }}
-            >
-              {ruleAttentionCount > 0
-                ? (language === "ja" ? `⚠ 制度更新あり（${ruleAttentionCount}件）` : `⚠ Rule update (${ruleAttentionCount})`)
-                : deferredRuleUpdates.length > 0
-                  ? (language === "ja" ? `🟡 制度更新を保留中（${deferredRuleUpdates.length}件）` : `🟡 Rule update deferred (${deferredRuleUpdates.length})`)
-                  : (language === "ja" ? "✓ 制度は最新です" : "✓ Rules are up to date")}
-            </button>
-          )}
+          {(countryRuleUpdates.length > 0 || monitoredRuleSources.length > 0) && (() => {
+            const hasUnreviewedRuleUpdate = ruleAttentionCount > 0;
+            const hasDeferredRuleUpdate = !hasUnreviewedRuleUpdate && deferredRuleUpdates.length > 0;
+            const ruleStatusColor = hasUnreviewedRuleUpdate ? "#E06B5A" : hasDeferredRuleUpdate ? "#D9A54F" : "#54B07A";
+            const ruleStatusBackground = hasUnreviewedRuleUpdate ? "rgba(224, 107, 90, 0.12)" : hasDeferredRuleUpdate ? "rgba(217, 165, 79, 0.12)" : "rgba(84, 176, 122, 0.12)";
+            return (
+              <button
+                type="button"
+                className="history-toggle no-print"
+                onClick={openRuleUpdateCenter}
+                title={language === "ja" ? "制度更新センターを開く" : "Open rules update center"}
+                style={{
+                  borderColor: ruleStatusColor,
+                  background: ruleStatusBackground,
+                  color: ruleStatusColor,
+                  fontWeight: 800,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {hasUnreviewedRuleUpdate
+                  ? (language === "ja" ? `🔴 制度更新あり（${ruleAttentionCount}件）` : `🔴 Rule update (${ruleAttentionCount})`)
+                  : hasDeferredRuleUpdate
+                    ? (language === "ja" ? `🟡 制度更新を保留中（${deferredRuleUpdates.length}件）` : `🟡 Rule update deferred (${deferredRuleUpdates.length})`)
+                    : (language === "ja" ? "🟢 制度は最新です" : "🟢 Rules are up to date")}
+              </button>
+            );
+          })()}
           <div
             className={`save-badge save-${saveStatus}`}
             title={saveMessage}
@@ -5474,8 +5493,34 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           <span>{t(`${country.toLowerCase()}CountryNote`)}</span>
         </div>
       )}
-      {(countryRuleUpdates.length > 0 || monitoredRuleSources.length > 0) && (
-        <div id="section-rule-updates" className="card no-print" style={{ borderColor: pendingRuleUpdates.length ? "#D9A54F" : "var(--line)", marginBottom: 12, scrollMarginTop: 16 }}>
+      {(countryRuleUpdates.length > 0 || monitoredRuleSources.length > 0) && showRuleUpdates && (
+        <>
+          <div
+            className="no-print"
+            aria-hidden="true"
+            onClick={() => setShowRuleUpdates(false)}
+            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.58)", zIndex: 1998 }}
+          />
+          <div
+            id="section-rule-updates"
+            className="card no-print"
+            role="dialog"
+            aria-modal="true"
+            aria-label={language === "ja" ? "制度更新センター" : "Rules update center"}
+            style={{
+              position: "fixed",
+              zIndex: 1999,
+              top: "7vh",
+              left: "50%",
+              transform: "translateX(-50%)",
+              width: "min(720px, calc(100vw - 28px))",
+              maxHeight: "86vh",
+              overflowY: "auto",
+              borderColor: ruleAttentionCount > 0 ? "#E06B5A" : deferredRuleUpdates.length > 0 ? "#D9A54F" : "#54B07A",
+              boxShadow: "0 18px 60px rgba(0,0,0,0.45)",
+              margin: 0,
+            }}
+          >
           <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
             <div>
               <div className="field-label" style={{ marginBottom: 3 }}>
@@ -5492,8 +5537,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               {showRuleUpdates ? (language === "ja" ? "閉じる" : "Close") : (language === "ja" ? "確認する" : "Review")}
             </button>
           </div>
-          {showRuleUpdates && (
-            <div style={{ marginTop: 12 }}>
+          <div style={{ marginTop: 12 }}>
               <div className="stat-sub" style={{ marginBottom: 10 }}>
                 {language === "ja" ? "監視対象" : "Monitoring"}: {monitoredRuleSources.map((source) => language === "ja" ? source.labelJa : source.labelEn).join(" / ")}
               </div>
@@ -5569,8 +5613,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 <span className="stat-sub">{language === "ja" ? "最終確認" : "Last checked"}: {ruleUpdateState.lastCheckedAt ? new Date(ruleUpdateState.lastCheckedAt).toLocaleString(dateLocale) : "—"}</span>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        </>
       )}
       {(saveStatus === "unavailable" || saveStatus === "error") && (
         <div className="save-warning">
