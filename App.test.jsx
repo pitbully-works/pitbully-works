@@ -668,11 +668,11 @@ describe("Australia (AU) core calculations", () => {
       expect(rule.sourceUrl).toBeTruthy();
     });
 
-    // 制度確認日はセクションごとに異なる。医療だけを更新した場合に、
-    // 投資・年金・税まで同じ日付へ強制しない。
+    // 制度確認日はセクションごとに異なる。
+    // LITOの確認で税制を更新しても、投資・年金まで同じ日付へ強制しない。
     expect(inv.lastUpdated).toBe("2026-07-18");
     expect(ret.lastUpdated).toBe("2026-07-18");
-    expect(tax.lastUpdated).toBe("2026-07-18");
+    expect(tax.lastUpdated).toBe("2026-08-21");
     expect(AU_COUNTRY_RULES.healthcare.lastUpdated).toBe("2026-08-21");
   });
 
