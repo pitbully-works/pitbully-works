@@ -463,7 +463,7 @@ describe("GB境界：未実装項目が明示されている", () => {
   it("税セクションの未実装リストに主要項目が挙がっている", () => {
     const joined = tax.notImplemented.join(" ");
     expect(joined.includes("National Insurance")).toBe(true);
-    expect(joined.includes("Inheritance Tax")).toBe(true);
+    expect(joined.includes("Inheritance Tax")).toBe(false);
   });
 
   it("年金セクションの未実装リストが存在する", () => {
@@ -482,5 +482,71 @@ describe("GB境界：未実装項目が明示されている", () => {
     expect(GB_COUNTRY_RULES.labels.investmentNote).toBe(null);
     expect(GB_COUNTRY_RULES.labels.retirementNote).toBe(null);
     expect(GB_COUNTRY_RULES.labels.healthcareNote).toBe(null);
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Scottish Income Tax 2026/27
+// ---------------------------------------------------------------------------
+describe("GB境界：Scottish Income Tax 2026/27", () => {
+  it("Scottish Income Taxが実装済み", () => {
+    expect(tax.scotland.implemented).toBe(true);
+    expect(tax.regionsImplemented.includes("scotland")).toBe(true);
+  });
+
+  it("Personal Allowance内は0", () => {
+    expect(tax.calculateScottishIncomeTax(12570).tax).toBeCloseTo(0, 2);
+  });
+
+  it("Starter rate上限まで19%", () => {
+    expect(tax.calculateScottishIncomeTax(12570 + 3967).tax).toBeCloseTo(3967 * 0.19, 2);
+  });
+
+  it("地域指定でScotland計算へ切替できる", () => {
+    const scot = tax.calculateIncomeTaxByRegion(50000, "scotland").tax;
+    const ew = tax.calculateIncomeTaxByRegion(50000, "england").tax;
+    expect(scot).not.toBeCloseTo(ew, 2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Inheritance Tax 2026/27
+// ---------------------------------------------------------------------------
+describe("GB境界：Inheritance Tax 2026/27", () => {
+  const estate = GB_COUNTRY_RULES.estate;
+
+  it("NRB £325,000以下は0", () => {
+    expect(estate.calculateInheritanceTax({ estateValue: 325000 }).tax).toBeCloseTo(0, 2);
+  });
+
+  it("自宅を直系卑属へ渡す場合は最大£175,000のRNRBを加算", () => {
+    const r = estate.calculateInheritanceTax({
+      estateValue: 500000, qualifyingResidenceValue: 175000, passesResidenceToDirectDescendants: true,
+    });
+    expect(r.residenceNilRateBand).toBe(175000);
+    expect(r.tax).toBeCloseTo(0, 2);
+  });
+
+  it("£2m超ではRNRBを£2につき£1テーパー", () => {
+    const r = estate.calculateInheritanceTax({
+      estateValue: 2100000, qualifyingResidenceValue: 500000, passesResidenceToDirectDescendants: true,
+    });
+    expect(r.residenceNilRateBand).toBe(125000);
+  });
+
+  it("未使用枠100%移転ならNRB £650k / RNRB最大£350k", () => {
+    const r = estate.calculateInheritanceTax({
+      estateValue: 1000000, qualifyingResidenceValue: 350000, passesResidenceToDirectDescendants: true,
+      transferableNrbPercent: 100, transferableRnrbPercent: 100,
+    });
+    expect(r.nilRateBand).toBe(650000);
+    expect(r.residenceNilRateBand).toBe(350000);
+    expect(r.tax).toBeCloseTo(0, 2);
+  });
+
+  it("標準税率は40%", () => {
+    const r = estate.calculateInheritanceTax({ estateValue: 425000 });
+    expect(r.tax).toBeCloseTo(40000, 2);
   });
 });
