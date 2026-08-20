@@ -5710,6 +5710,57 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           </button>
         </div>
       </div>
+      {Array.isArray(rules?.meta?.coverage) && rules.meta.coverage.length > 0 && (
+        <div
+          className="no-print"
+          style={{
+            margin: "14px 14px 18px",
+            padding: "12px 14px",
+            border: "1px solid #2B3B43",
+            borderLeft: "4px solid #4FA8D8",
+            borderRadius: 10,
+            background: "rgba(18, 28, 34, 0.72)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, flexWrap: "wrap", marginBottom: 9 }}>
+            <strong style={{ fontSize: 13, color: "#E8EEF1" }}>
+              {language === "ja" ? "5か国制度の対応状況" : "Rule coverage"}
+            </strong>
+            <span style={{ fontSize: 10, color: "#9AA6AD" }}>
+              {language === "ja" ? "2026年8月時点・最終確認日と更新内容" : "As of Aug 2026 · last review and coverage notes"}
+            </span>
+          </div>
+          <div style={{ display: "grid", gap: 7 }}>
+            {rules.meta.coverage.map((item) => {
+              const partial = item.status === "partial";
+              const statusText = language === "ja"
+                ? (partial ? "一部対応" : "対応済み")
+                : (partial ? "Partial" : "Implemented");
+              const statusColor = partial ? "#D9A54F" : "#54B07A";
+              return (
+                <div key={item.key} style={{ borderTop: "1px solid #26363E", paddingTop: 7 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap", fontSize: 11 }}>
+                    <strong style={{ color: "#DDE6EA" }}>{language === "ja" ? item.labelJa : item.labelEn}</strong>
+                    <span style={{ color: statusColor, fontWeight: 800 }}>● {statusText}</span>
+                    <span style={{ color: "#AEBBC1" }}>{item.effective}</span>
+                    <span style={{ color: "#82939C" }}>
+                      {language === "ja" ? "最終確認" : "Reviewed"}: {item.lastUpdated}
+                    </span>
+                  </div>
+                  <div style={{ marginTop: 3, color: "#BFC9CE", fontSize: 10, lineHeight: 1.55 }}>
+                    {language === "ja" ? item.updateJa : item.updateEn}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ marginTop: 9, fontSize: 9.5, color: "#82939C", lineHeight: 1.5 }}>
+            {language === "ja"
+              ? "「一部対応」は、主要計算は利用できますが国・地域固有の例外や追加制度が未実装であることを示します。制度更新センターで公式情報の変更を確認してから反映します。"
+              : "Partial means the main planning calculation is available, while some country- or region-specific exceptions and supplementary schemes are not yet automated. Official-source changes are reviewed in the Rules update center before activation."}
+          </div>
+        </div>
+      )}
       {/* 使い方ガイド：初回だけ自動で開く。閉じると次回以降は「?」を押したときだけ開く。 */}
       <div className="disclaimer-banner no-print" id="section-guide" style={{ display: "block" }}>
         <div className="field-label-row">
