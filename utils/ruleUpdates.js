@@ -91,6 +91,9 @@ export function normalizeRuleUpdateState(raw) {
   return {
     approved: source.approved && typeof source.approved === "object" ? source.approved : {},
     dismissed: source.dismissed && typeof source.dismissed === "object" ? source.dismissed : {},
+    history: Array.isArray(source.history)
+      ? source.history.filter((item) => item && typeof item === "object").slice(-100)
+      : [],
     lastCheckedAt: typeof source.lastCheckedAt === "string" ? source.lastCheckedAt : "",
   };
 }
