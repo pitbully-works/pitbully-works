@@ -22,7 +22,7 @@ export const CA_COUNTRY_RULES = {
     noteEn: "2026 rules verified on 17 Aug 2026. OAS uses the July-September 2026 quarterly figures.",
     coverage: [
       { key: "investment", labelJa: "投資制度", labelEn: "Investment", status: "implemented", effective: "2026 calendar year", lastUpdated: "2026-08-17", updateJa: "TFSA・RRSP・非登録口座・RRIF最低取崩しを反映。FHSA等は未実装。", updateEn: "TFSA, RRSP, non-registered accounts and RRIF minimum withdrawals are modelled; FHSA and related plans are not implemented." },
-      { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "partial", effective: "2026 / OAS Jul-Sep", lastUpdated: "2026-08-17", updateJa: "CPP・OASとOAS回収税を反映。GIS・QPP・CPP履歴からの自動算定は未実装。", updateEn: "CPP, OAS and OAS recovery tax are modelled; GIS, QPP and automatic CPP entitlement from history are not implemented." },
+      { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "partial", effective: "2026 / OAS & GIS Jul-Sep", lastUpdated: "2026-08-20", updateJa: "CPP・OAS・OAS回収税・GIS/Allowanceの公表上限・CPP Post-Retirement Benefitを反映。GISの正確な支給額、QPP、CPP履歴からの自動算定は未実装。", updateEn: "CPP, OAS, OAS recovery tax, published GIS/Allowance maxima and CPP Post-Retirement Benefit are modelled; exact GIS entitlement, QPP and automatic CPP entitlement from history are not implemented." },
       { key: "healthcare", labelJa: "医療", labelEn: "Healthcare", status: "partial", effective: "2026", lastUpdated: "2026-08-17", updateJa: "州医療保険を前提に自己負担を入力。州別薬剤・歯科・介護費の自動計算は未実装。", updateEn: "Uses user-entered out-of-pocket costs under provincial coverage; provincial drug, dental and long-term-care rules are not automated." },
       { key: "tax", labelJa: "税金", labelEn: "Tax", status: "partial", effective: "2026 tax year", lastUpdated: "2026-08-17", updateJa: "連邦所得税を反映。州税・QPP・配当税額控除等は未実装。", updateEn: "Federal income tax is modelled; provincial tax, QPP and dividend credits are not implemented." },
       { key: "estate", labelJa: "相続", labelEn: "Estate", status: "partial", effective: "2026", lastUpdated: "2026-08-17", updateJa: "相続目標は資産計画に反映。死亡時のみなし譲渡等の自動計算は未実装。", updateEn: "Estate targets feed the plan; deemed disposition and related death-tax calculations are not automated." },
@@ -209,6 +209,8 @@ export const CA_COUNTRY_RULES = {
       cppAmounts: "https://www.canada.ca/en/services/benefits/publicpensions/cpp/cpp-benefit/amount.html",
       oas: "https://www.canada.ca/en/services/benefits/publicpensions/cpp/old-age-security.html",
       oasRecoveryTax: "https://www.canada.ca/en/services/benefits/publicpensions/cpp/old-age-security/recovery-tax.html",
+      gisAmounts: "https://www.canada.ca/en/employment-social-development/programs/pensions/pension/statistics/2026-quarterly-july-september.html",
+      cppPostRetirementBenefit: "https://www.canada.ca/en/services/benefits/publicpensions/cpp/cpp-post-retirement/benefit-amount.html",
     },
     accountTypes: ["cpp", "oas"],
     cpp: {
@@ -243,6 +245,37 @@ export const CA_COUNTRY_RULES = {
       // 満額受給には18歳以降40年のカナダ居住が必要（10年で最低受給資格）
       fullResidenceYears: 40,
       minimumResidenceYears: 10,
+    },
+
+
+    // GIS / Allowance（2026年7〜9月の公表上限額・所得基準）。
+    // 実際のGIS支給額は所得構成、配偶者状況、OAS受給状況などで変わるため、
+    // ここでは公表上限と受給可否の目安だけを保持し、正確な給付額の自動算定は行わない。
+    gis: {
+      effectivePeriod: "2026-07-01/2026-09-30",
+      single: { maxMonthly: 1123.17, incomeCutoff: 22800 },
+      spouseReceivesOas: { maxMonthly: 676.09, incomeCutoff: 30096 },
+      spouseReceivesAllowance: { maxMonthly: 676.09, incomeCutoff: 42144 },
+      spouseNoOasOrAllowance: { maxMonthly: 1123.17, incomeCutoff: 54624 },
+      allowance: { maxMonthly: 1428.06, incomeCutoff: 42144, minAge: 60, maxAge: 64 },
+      allowanceSurvivor: { maxMonthly: 1702.34, incomeCutoff: 30696, minAge: 60, maxAge: 64 },
+    },
+    getGisRule(status = "single") {
+      return this.gis[status] || this.gis.single;
+    },
+    isGisIncomeEligible(status, annualIncome) {
+      const rule = this.getGisRule(status);
+      return (Number(annualIncome) || 0) < rule.incomeCutoff;
+    },
+
+    // CPP Post-Retirement Benefit（PRB）。2026年の65歳時点の最大月額。
+    // 実額は受給開始後の拠出実績等によって決まるため、factor で見込み割合を入力する簡易モデル。
+    cppPostRetirementBenefit: {
+      maxMonthlyAt65: 54.69,
+    },
+    getCppPostRetirementBenefitAnnual(factor = 1) {
+      const f = Math.min(1, Math.max(0, Number(factor) || 0));
+      return this.cppPostRetirementBenefit.maxMonthlyAt65 * 12 * f;
     },
 
     // CPPの受給開始年齢による増減率。65歳が基準（=1.0）。
@@ -312,10 +345,9 @@ export const CA_COUNTRY_RULES = {
       return before - this.getOasClawback(netIncome, before, paymentDate);
     },
     notImplemented: [
-      "GIS（Guaranteed Income Supplement）およびAllowance",
+      "GIS/Allowanceの正確な支給額（現状は公表上限額・所得基準まで対応）",
       "ケベック州のQPP（受給額・拠出率がCPPと異なる）",
       "CPP拠出履歴からの受給見込額の自動算出（利用者が見込額を入力する方式）",
-      "CPP post-retirement benefit（受給開始後も就労を続けた場合の増額）",
       "配偶者との年金分割（pension income splitting / CPP sharing）",
       // 【B-3／将来対応】OAS回収税の判定所得は、本来はその年の純世界所得（OAS本体・CPP・
       //   RRIF強制取崩し・非登録口座の課税所得を含み、TFSA引出しは含まない）で毎年
