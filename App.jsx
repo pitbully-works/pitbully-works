@@ -4348,6 +4348,98 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             margin-bottom: 24px;
           }
         }
+        /* 全ページ共通：ページ内のグラフ・表・一覧・補助パネルも独立カードとして明確化。
+           外側の section-block だけでなく、長いページを途中から見ても現在のまとまりが分かるようにする。 */
+        .section-block .chart-frame,
+        .section-block > .card,
+        .section-block .two-col > .card {
+          --module-accent: var(--section-accent, #4FA8D8);
+          border: 2px solid #34464F !important;
+          border-left: 7px solid var(--module-accent) !important;
+          border-radius: 12px !important;
+          background: #141D21 !important;
+          margin-top: 18px;
+          margin-bottom: 28px !important;
+          padding: 18px 14px 14px !important;
+          box-shadow: 0 7px 18px rgba(0,0,0,0.14);
+          overflow: hidden;
+        }
+        .section-block .chart-frame .chart-label,
+        .section-block > .card > .chart-label,
+        .section-block .two-col > .card > .chart-label {
+          color: #E9F0F3;
+          font-size: 12.5px;
+          font-weight: 700;
+          padding: 0 8px 11px !important;
+          margin-bottom: 12px;
+          border-bottom: 1px solid rgba(160,190,205,0.22);
+          letter-spacing: 0.01em;
+        }
+
+        /* サマリーなどの数値カードも、単なる罫線ではなく小カードとして判別しやすくする。 */
+        .section-block .stat-card {
+          --module-accent: var(--section-accent, #4FA8D8);
+          border: 2px solid #34464F !important;
+          border-left: 6px solid var(--module-accent) !important;
+          border-radius: 10px !important;
+          background: #141D21 !important;
+          padding: 16px 14px !important;
+          box-shadow: 0 5px 14px rgba(0,0,0,0.10);
+        }
+        .section-block .stat-card::before { display: none; }
+        .section-block .stat-card.good { --module-accent: #79BE82; }
+        .section-block .stat-card.danger { --module-accent: #D66E5D; }
+
+        /* 長い表は開始位置と終了位置が分かるように、表自体にも外周を与える。 */
+        .section-block table.watchlist,
+        .section-block table.mini-table {
+          border: 2px solid #31424A;
+          border-left: 6px solid var(--section-accent, #4FA8D8);
+          border-collapse: separate !important;
+          border-spacing: 0;
+          border-radius: 10px;
+          background: #131B1F;
+          overflow: hidden;
+        }
+        .section-block table.watchlist th,
+        .section-block table.mini-table th {
+          background: rgba(80,112,126,0.10);
+          border-bottom: 2px solid #34464F;
+        }
+        .section-block table.watchlist tr:last-child td,
+        .section-block table.mini-table tr:last-child td { border-bottom: 0; }
+
+        /* 説明だけが裸で続かないよう、主要カード直下の注記も少し独立させる。 */
+        .section-block .chart-frame > .note,
+        .section-block > .card > .note {
+          margin-top: 14px;
+          margin-bottom: 4px;
+          border-radius: 8px;
+          border-left-width: 4px;
+        }
+
+        /* 個別株・比較・グラフのような長いページは、二段組の中も同じ間隔で揃える。 */
+        .section-block .two-col { gap: 22px; margin-bottom: 8px; }
+        .section-block .two-col > .chart-frame { margin-top: 0; }
+
+        @media (max-width: 880px) {
+          .section-block .chart-frame,
+          .section-block > .card,
+          .section-block .two-col > .card {
+            border-left-width: 7px !important;
+            border-radius: 11px !important;
+            margin-top: 16px;
+            margin-bottom: 24px !important;
+            padding: 16px 10px 12px !important;
+          }
+          .section-block .stat-card {
+            border-left-width: 5px !important;
+            padding: 14px 12px !important;
+          }
+          .section-block table.watchlist,
+          .section-block table.mini-table { border-left-width: 5px; }
+        }
+
         /* タイトル内のお名前（○○様）。見出しより小さく控えめに。 */
         .title-username {
           display: block;
