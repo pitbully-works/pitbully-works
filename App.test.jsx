@@ -661,14 +661,19 @@ describe("Australia (AU) core calculations", () => {
   const ret = AU_COUNTRY_RULES.retirement;
   const tax = AU_COUNTRY_RULES.tax;
 
-  it("every rule carries its tax year, last updated date and source", () => {
+  it("every rule carries its tax year, section-specific last updated date and source", () => {
     [inv, ret, tax, AU_COUNTRY_RULES.healthcare].forEach((rule) => {
       expect(rule.effectiveTaxYear).toBe("2026-27");
-      // 2026-07-18：Age Pension の資力調査をエンジン側で毎年再判定する実装に合わせて更新した日
-      expect(rule.lastUpdated).toBe("2026-07-18");
       expect(rule.sourceName).toBeTruthy();
       expect(rule.sourceUrl).toBeTruthy();
     });
+
+    // 制度確認日はセクションごとに異なる。医療だけを更新した場合に、
+    // 投資・年金・税まで同じ日付へ強制しない。
+    expect(inv.lastUpdated).toBe("2026-07-18");
+    expect(ret.lastUpdated).toBe("2026-07-18");
+    expect(tax.lastUpdated).toBe("2026-07-18");
+    expect(AU_COUNTRY_RULES.healthcare.lastUpdated).toBe("2026-08-21");
   });
 
   it("contribution caps from 1 July 2026", () => {

@@ -7489,6 +7489,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               auInvestment={inputs.auInvestment}
               onUpdate={(field, val) => updateAuInvestmentNested("healthcare", field, val)}
               totalAnnual={auHealthcareAnnual}
+              healthcareRules={rules.healthcare}
             />
           ) : (
             <div className="note" style={{ borderLeftColor: "#D9A54F" }}>
