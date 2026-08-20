@@ -23,9 +23,9 @@ export const AU_COUNTRY_RULES = {
     noteEn: "2026-27 rules verified on 17 Aug 2026. Age Pension uses the 20 Mar 2026 rates; the next scheduled indexation is 20 Sep 2026.",
     coverage: [
       { key: "investment", labelJa: "投資制度", labelEn: "Investment", status: "partial", effective: "2026-27 financial year", lastUpdated: "2026-08-17", updateJa: "Super・投資口座・拠出上限を反映。carry-forward、bring-forward等の詳細判定は未実装。", updateEn: "Super, investment accounts and contribution caps are modelled; detailed carry-forward/bring-forward eligibility is not implemented." },
-      { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "partial", effective: "2026-27 / Age Pension Mar 2026 rates", lastUpdated: "2026-08-17", updateJa: "Age Pensionの資産・所得テストとSuper取崩しを反映。Work Bonus等は未実装。", updateEn: "Age Pension means tests and Super drawdown are modelled; Work Bonus and some edge cases are not implemented." },
+      { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "partial", effective: "2026-27 / Age Pension Mar 2026 rates", lastUpdated: "2026-08-17", updateJa: "Age Pensionの資産・所得テスト、Work Bonus年次近似、Super取崩しを反映。Work Bonusの隔週厳密計算等は未実装。", updateEn: "Age Pension means tests, annualised Work Bonus and Super drawdown are modelled; fortnightly Work Bonus detail and some edge cases are not implemented." },
       { key: "healthcare", labelJa: "医療", labelEn: "Healthcare", status: "partial", effective: "2026-27 / 2026 calendar-year Safety Nets", lastUpdated: "2026-08-21", updateJa: "Medicare前提の自己負担に加え、2026年PBS Safety Net概算とMedicare Safety Net閾値を反映。診療ごとのSafety Net還付・aged care資力調査は未自動化。", updateEn: "Adds a 2026 PBS Safety Net estimate and Medicare Safety Net thresholds to the Medicare out-of-pocket model; item-level Safety Net rebates and aged-care means testing remain manual." },
-      { key: "tax", labelJa: "税金", labelEn: "Tax", status: "partial", effective: "2026-27 financial year", lastUpdated: "2026-08-17", updateJa: "居住者所得税・Medicare levy・CGTを反映。LITO/SAPTO/MLS等は未実装。", updateEn: "Resident income tax, Medicare levy and CGT are modelled; LITO, SAPTO and MLS are not implemented." },
+      { key: "tax", labelJa: "税金", labelEn: "Tax", status: "partial", effective: "2026-27 financial year", lastUpdated: "2026-08-21", updateJa: "居住者所得税・LITO・Medicare levy・CGTを反映。SAPTO/MLS等は未実装。", updateEn: "Resident income tax, LITO, Medicare levy and CGT are modelled; SAPTO and MLS are not implemented." },
       { key: "estate", labelJa: "相続", labelEn: "Estate", status: "partial", effective: "2026-27", lastUpdated: "2026-08-17", updateJa: "相続目標は資産計画に反映。Super death benefit等の税務自動計算は未実装。", updateEn: "Estate targets feed the plan; tax treatment of Super death benefits is not automated." },
     ],
   },
@@ -663,13 +663,14 @@ export const AU_COUNTRY_RULES = {
     implemented: true,
     model: "australiaIncomeTaxPlusMedicareLevy",
     effectiveTaxYear: "2026-27",
-    lastUpdated: "2026-07-18",
-    sourceName: "Australian Taxation Office (ATO) — Tax rates for Australian residents",
+    lastUpdated: "2026-08-21",
+    sourceName: "Australian Taxation Office (ATO) — Tax rates for Australian residents / Low income tax offset",
     sourceUrl: "https://www.ato.gov.au/tax-rates-and-codes/tax-rates-australian-residents",
     sourceUrls: {
       incomeTax: "https://www.ato.gov.au/tax-rates-and-codes/tax-rates-australian-residents",
       medicareLevy: "https://www.ato.gov.au/individuals-and-families/medicare-and-private-health-insurance/medicare-levy",
       capitalGains: "https://www.ato.gov.au/individuals-and-families/investments-and-assets/capital-gains-tax",
+      lito: "https://www.ato.gov.au/individuals-and-families/income-deductions-offsets-and-records/tax-offsets/low-income-tax-offset",
       div293: "https://www.ato.gov.au/individuals-and-families/super-for-individuals-and-families/super/growing-your-super/how-to-save-more-in-your-super/division-293-tax",
     },
     region: "Australian residents (foreign residents not implemented)",
@@ -687,6 +688,16 @@ export const AU_COUNTRY_RULES = {
       scheduledSecondBandRateFrom2027: 0.14, // 2027年7月1日から。本年度は未適用。
     },
     medicareLevy: { rate: 0.02 },
+    // Low Income Tax Offset (LITO)。非還付型で、所得税本体を0未満にはしない。
+    lowIncomeTaxOffset: {
+      maximum: 700,
+      fullOffsetIncomeMax: 37500,
+      firstTaperIncomeMax: 45000,
+      eligibilityIncomeMax: 66667,
+      firstTaperRate: 0.05,
+      secondBandBase: 325,
+      secondTaperRate: 0.015,
+    },
     // Superannuationの税制
     superannuation: {
       contributionsTaxRate: 0.15,           // 税引前拠出への課税
@@ -713,15 +724,31 @@ export const AU_COUNTRY_RULES = {
       }
       return tax;
     },
+    // LITO（Low Income Tax Offset）。ATOの所得帯別計算をそのまま実装する。
+    calculateLowIncomeTaxOffset(taxableIncome) {
+      const income = Math.max(0, Number(taxableIncome) || 0);
+      const l = this.lowIncomeTaxOffset;
+      if (income <= l.fullOffsetIncomeMax) return l.maximum;
+      if (income <= l.firstTaperIncomeMax) {
+        return Math.max(0, l.maximum - (income - l.fullOffsetIncomeMax) * l.firstTaperRate);
+      }
+      if (income <= l.eligibilityIncomeMax) {
+        return Math.max(0, l.secondBandBase - (income - l.firstTaperIncomeMax) * l.secondTaperRate);
+      }
+      return 0;
+    },
     // Medicare levy（2%）。低所得者の減免は未実装。
     calculateMedicareLevy(taxableIncome) {
       return Math.max(0, Number(taxableIncome) || 0) * this.medicareLevy.rate;
     },
     // 所得税＋Medicare levy の合計
     calculateTotalTax(taxableIncome) {
-      const incomeTax = this.calculateIncomeTax(taxableIncome);
+      const incomeTaxBeforeOffsets = this.calculateIncomeTax(taxableIncome);
+      const litoEntitlement = this.calculateLowIncomeTaxOffset(taxableIncome);
+      const litoApplied = Math.min(incomeTaxBeforeOffsets, litoEntitlement);
+      const incomeTax = Math.max(0, incomeTaxBeforeOffsets - litoApplied);
       const medicareLevy = this.calculateMedicareLevy(taxableIncome);
-      return { incomeTax, medicareLevy, total: incomeTax + medicareLevy };
+      return { incomeTaxBeforeOffsets, litoEntitlement, litoApplied, incomeTax, medicareLevy, total: incomeTax + medicareLevy };
     },
     getMarginalRate(taxableIncome) {
       const income = Math.max(0, Number(taxableIncome) || 0);
@@ -805,7 +832,6 @@ export const AU_COUNTRY_RULES = {
       return Math.max(0, withGain - base);
     },
     notImplemented: [
-      "Low Income Tax Offset（LITO・最大$700）",
       "Seniors and Pensioners Tax Offset（SAPTO・最大$2,230）",
       "Medicare levyの低所得者減免",
       "Medicare Levy Surcharge（民間医療保険未加入の高所得者）",
