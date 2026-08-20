@@ -1210,25 +1210,57 @@ function AUInvestmentAccountsPanel({
 }
 
 
-// ---------- オーストラリア選択時：医療費パネル（Medicare前提の簡易モデル） ----------
-function AUHealthcarePanel({ auInvestment, onUpdate, totalAnnual }) {
+// ---------- オーストラリア選択時：医療費パネル（Medicare + 2026 PBS Safety Net） ----------
+function AUHealthcarePanel({ auInvestment, onUpdate, totalAnnual, healthcareRules }) {
   const { t, money } = useContext(LocaleContext);
   const h = auInvestment.healthcare;
+  const pbsMode = h.pbsMode || "manual";
+  const pbsAnnual = healthcareRules.getPharmaceuticalAnnual(h);
+  const ms = healthcareRules.medicareSafetyNet2026;
+  const pbs = h.pbsConcessional ? healthcareRules.pbs2026.concessional : healthcareRules.pbs2026.general;
   return (
     <div>
       <div className="note" style={{ marginBottom: 12 }}>
         <Info size={13} />
-        <span>{t("auTaxSourceNote", { taxYear: "2026-27" })}</span>
+        <span>{t("auHealthcareSourceNote")}</span>
       </div>
       <Field guide={t("auHealthcareGuide")} label={t("auGapLabel")} unit="A$" step={50} value={h.gapAnnual} onChange={(v) => onUpdate("gapAnnual", v)} />
+      <div className="note" style={{ marginBottom: 12 }}>
+        <Info size={13} />
+        <span>{t("auMedicareSafetyNetNote", { omsn: money(ms.originalThreshold), emsnConcession: money(ms.extendedThresholdConcessionalOrFtbA), emsnGeneral: money(ms.extendedThresholdGeneral) })}</span>
+      </div>
       <Field label={t("auPrivateHealthLabel")} unit="A$" step={10} value={h.privateHealthInsuranceMonthly} onChange={(v) => onUpdate("privateHealthInsuranceMonthly", v)} />
-      <Field label={t("auPharmaceuticalLabel")} unit="A$" step={50} value={h.pharmaceuticalAnnual} onChange={(v) => onUpdate("pharmaceuticalAnnual", v)} />
+      <label className="field">
+        <span>{t("auPbsModeLabel")}</span>
+        <select value={pbsMode} onChange={(e) => onUpdate("pbsMode", e.target.value)}>
+          <option value="manual">{t("auPbsManualLabel")}</option>
+          <option value="estimate">{t("auPbsEstimateLabel")}</option>
+        </select>
+      </label>
+      {pbsMode === "estimate" ? (
+        <>
+          <label className="check-row">
+            <input type="checkbox" checked={Boolean(h.pbsConcessional)} onChange={(e) => onUpdate("pbsConcessional", e.target.checked)} />
+            <span>{t("auPbsConcessionalLabel")}</span>
+          </label>
+          <Field label={t("auPbsPrescriptionsLabel")} unit={t("auPbsScriptsUnit")} step={1} value={h.pbsPrescriptionsAnnual} onChange={(v) => onUpdate("pbsPrescriptionsAnnual", v)} />
+          <div className="stat-grid" style={{ marginTop: 10 }}>
+            <StatCard label={t("auPbsEstimatedAnnualLabel")} value={money(pbsAnnual)} sub={t("auPbsEstimatedAnnualSub", { copay: money(pbs.maxCopayBeforeSafetyNet), threshold: money(pbs.safetyNetThreshold) })} />
+          </div>
+          <div className="note" style={{ marginTop: 10, marginBottom: 12 }}>
+            <Info size={13} />
+            <span>{t("auPbsEstimateNote")}</span>
+          </div>
+        </>
+      ) : (
+        <Field label={t("auPharmaceuticalLabel")} unit="A$" step={50} value={h.pharmaceuticalAnnual} onChange={(v) => onUpdate("pharmaceuticalAnnual", v)} />
+      )}
       <Field label={t("auDentalLabel")} unit="A$" step={50} value={h.dentalAnnual} onChange={(v) => onUpdate("dentalAnnual", v)} />
       <Field label={t("auOpticalLabel")} unit="A$" step={50} value={h.opticalAnnual} onChange={(v) => onUpdate("opticalAnnual", v)} />
       <Field label={t("auAgedCareLabel")} unit="A$" step={500} value={h.agedCareAnnual} onChange={(v) => onUpdate("agedCareAnnual", v)} />
       <Field label={t("auOtherOutOfPocketLabel")} unit="A$" step={50} value={h.otherOutOfPocketAnnual} onChange={(v) => onUpdate("otherOutOfPocketAnnual", v)} />
       <div className="stat-grid" style={{ marginTop: 10 }}>
-        <StatCard label={t("auTotalTaxLabel")} value={money(totalAnnual)} sub={t("auExpensesTotalSub")} tone="danger" />
+        <StatCard label={t("auHealthcareTotalLabel")} value={money(totalAnnual)} sub={t("auHealthcareTotalSub")} tone="danger" />
       </div>
     </div>
   );
@@ -1713,6 +1745,9 @@ const DEFAULT_INPUTS = {
       healthcare: {
         gapAnnual: 0,
         privateHealthInsuranceMonthly: 0,
+        pbsMode: "manual",
+        pbsPrescriptionsAnnual: 0,
+        pbsConcessional: false,
         pharmaceuticalAnnual: 0,
         dentalAnnual: 0,
         opticalAnnual: 0,
