@@ -402,9 +402,11 @@ describe("AU境界：Age Pension は所得テストと資産テストの低い�
     expect(near(p, ret.getAgePensionByIncomeTest(income, "single"))).toBe(true);
   });
 
-  it("Work Bonus の年額は A$11,800（所得テストからの除外枠・適用は未実装）", () => {
-    expect(ret.agePension.workBonusAnnual).toBe(11800);
-    expect(ret.notImplemented.join(" / ")).toMatch(/Work Bonus/);
+  it("Work Bonus は A$300/隔週、残高上限 A$11,800 として年次近似で反映する", () => {
+    expect(ret.agePension.workBonusFortnightly).toBe(300);
+    expect(ret.agePension.workBonusMaxBalance).toBe(11800);
+    expect(ret.agePension.workBonusNewRecipientBalance).toBe(4000);
+    expect(ret.notImplemented.join(" / ")).toMatch(/Work Bonus.*隔週単位/);
   });
 });
 
