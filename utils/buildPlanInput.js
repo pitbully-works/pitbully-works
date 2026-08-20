@@ -669,6 +669,8 @@ export function buildPlanInput(ctx, overrides = {}) {
       const auAcc = inputs.auInvestment || {};
       const auPension = auAcc.agePension || {};
       const auOtherIncome = Number(auPension.otherAnnualIncome) || 0;
+      const auEmploymentIncome = Number(auPension.employmentIncomeAnnual) || 0;
+      const auWorkBonusBalance = Number(auPension.workBonusBalance) || 0;
       const auStatus = auPension.status;
       const auHomeowner = auPension.homeowner;
       const auBothQualified = auPension.bothQualified;
@@ -690,6 +692,8 @@ export function buildPlanInput(ctx, overrides = {}) {
           const baseMonthly = ret.getAgePensionHousehold({
             age,
             annualIncome: auOtherIncome,
+            employmentIncomeAnnual: auEmploymentIncome,
+            workBonusBalance: auWorkBonusBalance,
             assessableAssets: (ctx && ctx.assessedAssets !== null && ctx.assessedAssets !== undefined)
               ? ctx.assessedAssets : 0,
             financialAssets: (ctx && ctx.deemedAssets !== null && ctx.deemedAssets !== undefined)
