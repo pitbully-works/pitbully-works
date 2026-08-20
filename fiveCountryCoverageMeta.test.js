@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { JP_COUNTRY_RULES, US_COUNTRY_RULES, GB_COUNTRY_RULES, CA_COUNTRY_RULES, AU_COUNTRY_RULES } from "./countryRules/index.js";
 import fs from "node:fs";
+import path from "node:path";
 
 const countries = [JP_COUNTRY_RULES, US_COUNTRY_RULES, GB_COUNTRY_RULES, CA_COUNTRY_RULES, AU_COUNTRY_RULES];
 const requiredKeys = ["investment", "retirement", "healthcare", "tax", "estate"];
@@ -26,7 +27,7 @@ describe("5-country rule coverage metadata", () => {
   });
 
   it("renders the unified coverage panel in App", () => {
-    const app = fs.readFileSync(new URL("./App.jsx", import.meta.url), "utf8");
+    const app = fs.readFileSync(path.resolve(process.cwd(), "App.jsx"), "utf8");
     expect(app).toContain("5か国制度の対応状況");
     expect(app).toContain("rules.meta.coverage.map");
     expect(app).toContain("最終確認");
