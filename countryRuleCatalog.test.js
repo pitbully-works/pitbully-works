@@ -5,6 +5,7 @@ import {
   buildCountryRuleCatalog,
   getAllCountryRuleCatalog,
   auditCountryRuleCatalog,
+  summarizeCountryRuleCatalog,
 } from "./utils/countryRuleCatalog.js";
 
 const COUNTRIES = ["JP", "US", "GB", "CA", "AU"];
@@ -37,6 +38,30 @@ describe("5-country common rule catalog", () => {
 
   it("reports no structural metadata gaps in the common catalog", () => {
     expect(auditCountryRuleCatalog()).toEqual([]);
+  });
+
+
+  it.each(COUNTRIES)("%s has an official source for every common section", (country) => {
+    for (const row of buildCountryRuleCatalog(country)) {
+      expect(row.officialSourceCount).toBeGreaterThan(0);
+      expect(row.officialSources[0].url).toMatch(/^https:\/\//);
+    }
+  });
+
+  it.each(COUNTRIES)("%s exposes limitations for every partial section", (country) => {
+    for (const row of buildCountryRuleCatalog(country).filter((item) => item.status === "partial")) {
+      expect(row.limitationCount).toBeGreaterThan(0);
+      expect(row.limitations[0]).toBeTruthy();
+    }
+  });
+
+  it("summarizes common-schema completeness without changing calculations", () => {
+    for (const country of COUNTRIES) {
+      const summary = summarizeCountryRuleCatalog(country);
+      expect(summary.sectionCount).toBe(5);
+      expect(summary.implementedCount + summary.partialCount + summary.notImplementedCount).toBe(5);
+      expect(summary.officialSourceCount).toBeGreaterThanOrEqual(5);
+    }
   });
 
   it("does not pretend missing estate calculators exist", () => {

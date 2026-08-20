@@ -5923,6 +5923,11 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                   <div style={{ marginTop: 3, color: "#BFC9CE", fontSize: 10, lineHeight: 1.55 }}>
                     {language === "ja" ? item.updateJa : item.updateEn}
                   </div>
+                  <div style={{ marginTop: 3, color: "#82939C", fontSize: 9.5, lineHeight: 1.45 }}>
+                    {language === "ja"
+                      ? `公式ソース ${item.officialSourceCount}件${item.limitationCount > 0 ? ` ・ 未自動化/制限 ${item.limitationCount}件` : ""}`
+                      : `${item.officialSourceCount} official source${item.officialSourceCount === 1 ? "" : "s"}${item.limitationCount > 0 ? ` · ${item.limitationCount} limitation${item.limitationCount === 1 ? "" : "s"}` : ""}`}
+                  </div>
                 </div>
               );
             })}
