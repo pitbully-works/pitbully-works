@@ -21,7 +21,7 @@ export const GB_COUNTRY_RULES = {
     coverage: [
       { key: "investment", labelJa: "投資制度", labelEn: "Investment", status: "implemented", effective: "2026/27 tax year", lastUpdated: "2026-08-17", updateJa: "ISA・SIPP・職域年金・GIAを反映。予定されるCash ISA変更は将来制度として保持。", updateEn: "ISA, SIPP, workplace pension and GIA are modelled; the scheduled Cash ISA change is kept as a future rule." },
       { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "implemented", effective: "2026/27 tax year", lastUpdated: "2026-08-17", updateJa: "State Pensionと私的年金の受給・繰下げを反映。NI記録からの自動見込額算定は未実装。", updateEn: "State Pension and private-pension access/deferral are modelled; automatic entitlement from NI history is not implemented." },
-      { key: "healthcare", labelJa: "医療", labelEn: "Healthcare", status: "partial", effective: "2026/27", lastUpdated: "2026-08-17", updateJa: "NHS前提の自己負担入力方式。地域別処方箋・歯科・介護の自動計算は未実装。", updateEn: "Uses NHS-based user-entered out-of-pocket costs; regional prescription, dental and social-care calculations are not automated." },
+      { key: "healthcare", labelJa: "医療", labelEn: "Healthcare", status: "partial", effective: "2026/27", lastUpdated: "2026-08-21", updateJa: "地域別処方箋、EnglandのNHS歯科料金、Englandの介護資産判定を追加。その他地域の歯科・介護は利用者入力。", updateEn: "Adds regional prescription rules, NHS dental charges for England and England social-care capital assessment; dental/social-care costs in other nations remain user-entered." },
       { key: "tax", labelJa: "税金", labelEn: "Tax", status: "implemented", effective: "2026/27 tax year", lastUpdated: "2026-08-21", updateJa: "England/Wales/NIの所得税・配当・CGTに加え、2026/27 Scottish Income Taxを反映。", updateEn: "Models England/Wales/NI income tax, dividends and CGT, plus 2026/27 Scottish Income Tax." },
       { key: "estate", labelJa: "相続", labelEn: "Estate", status: "implemented", effective: "2026/27", lastUpdated: "2026-08-21", updateJa: "Inheritance TaxのNRB・RNRB・£2m超のテーパー・配偶者等の未使用枠移転を概算。", updateEn: "Estimates Inheritance Tax using the NRB, RNRB, the £2m taper and transferable unused spouse/civil-partner bands." },
     ],
@@ -358,13 +358,53 @@ export const GB_COUNTRY_RULES = {
 
   healthcare: {
     implemented: true,
-    // NHSでカバーされることを前提に、自己負担が生じうる費目のみ年間費用を入力する簡易モデル。
-    // 日本式（高額療養費を織り込んだ年代別自己負担）の計算式は使用しない。
-    model: "selfInputAnnualCostsWithNhs",
+    model: "regionalNhsPlusUserCosts",
     effectiveTaxYear: "2026/27",
-    lastUpdated: "2026-07-13",
-    sourceName: "NHS (nhs.uk) — Help with health costs",
+    lastUpdated: "2026-08-21",
+    sourceName: "NHS / NHSBSA / GOV.UK — health costs and adult social care",
     sourceUrl: "https://www.nhs.uk/nhs-services/help-with-health-costs/",
+    sourceUrls: {
+      prescriptionEngland: "https://www.nhs.uk/nhs-services/prescriptions/nhs-prescription-charges/",
+      dentalEngland: "https://www.nhsbsa.nhs.uk/help-nhs-dental-costs",
+      socialCareEngland: "https://www.gov.uk/government/publications/social-care-charging-for-local-authorities-2026-to-2027",
+    },
+    regions: ["england", "scotland", "wales", "northernIreland"],
+    prescription: {
+      englandChargePerItem: 9.90,
+      freeRegions: ["scotland", "wales", "northernIreland"],
+    },
+    dentalEngland: {
+      band1: 27.90,
+      band2: 76.60,
+      band3: 332.10,
+    },
+    socialCareEngland: {
+      lowerCapitalLimit: 14250,
+      upperCapitalLimit: 23250,
+      tariffUnit: 250,
+      tariffIncomePerWeekPerUnit: 1,
+    },
+    getPrescriptionAnnual(region, chargeableItemsAnnual, exempt = false) {
+      if (exempt) return 0;
+      const r = String(region || "england");
+      if (this.prescription.freeRegions.includes(r)) return 0;
+      return Math.max(0, Number(chargeableItemsAnnual) || 0) * this.prescription.englandChargePerItem;
+    },
+    getEnglandDentalAnnual(band1Courses, band2Courses, band3Courses, exempt = false) {
+      if (exempt) return 0;
+      const n = (v) => Math.max(0, Number(v) || 0);
+      return n(band1Courses) * this.dentalEngland.band1
+        + n(band2Courses) * this.dentalEngland.band2
+        + n(band3Courses) * this.dentalEngland.band3;
+    },
+    getEnglandSocialCareAssessment(capital) {
+      const c = Math.max(0, Number(capital) || 0);
+      const sc = this.socialCareEngland;
+      if (c > sc.upperCapitalLimit) return { status: "selfFunder", weeklyTariffIncome: 0 };
+      if (c <= sc.lowerCapitalLimit) return { status: "belowLowerLimit", weeklyTariffIncome: 0 };
+      const units = Math.ceil((c - sc.lowerCapitalLimit) / sc.tariffUnit);
+      return { status: "meansTested", weeklyTariffIncome: units * sc.tariffIncomePerWeekPerUnit };
+    },
     costItems: [
       "nhsBasicAnnual",
       "privateHealthInsuranceMonthly",
@@ -376,16 +416,24 @@ export const GB_COUNTRY_RULES = {
     getAnnualTotal(healthcare) {
       const h = healthcare || {};
       const n = (v) => Number(v) || 0;
+      const region = h.region || "england";
+      const prescriptionAnnual = h.prescriptionMode === "auto"
+        ? this.getPrescriptionAnnual(region, h.prescriptionItemsAnnual, Boolean(h.prescriptionExempt))
+        : n(h.prescriptionAnnual);
+      const dentalAnnual = h.dentalMode === "auto" && region === "england"
+        ? this.getEnglandDentalAnnual(h.dentalBand1Courses, h.dentalBand2Courses, h.dentalBand3Courses, Boolean(h.dentalExempt))
+        : n(h.dentalAnnual);
       return n(h.nhsBasicAnnual)
         + n(h.privateHealthInsuranceMonthly) * 12
-        + n(h.dentalAnnual)
-        + n(h.prescriptionAnnual)
+        + dentalAnnual
+        + prescriptionAnnual
         + n(h.longTermCareAnnual)
         + n(h.otherOutOfPocketAnnual);
     },
     notImplemented: [
-      "NHS処方箋料・歯科料金の自動計算（England / Scotland / Wales / Northern Ireland で制度が異なるため、金額は利用者入力）",
-      "自治体によるLong-term care（社会的介護）の資力調査（means test）判定",
+      "Scotland / Wales / Northern Ireland のNHS歯科料金の自動計算",
+      "England以外の社会的介護（social care）の資力調査と地域別負担額の自動計算",
+      "Englandの介護費そのものの自動算定（資産判定のみ対応。実際の負担額は自治体評価・所得等で変わる）",
     ],
   },
 
