@@ -514,7 +514,7 @@ export const EN_TRANSLATIONS = {
     "benefitSurgery": "Surgery {amount}",
     "birthDateLabel": "Date of Birth",
     "requiredLabel": "Required",
-    "birthDateRequiredPrompt": "Date of birth is required.",
+    "birthDateRequiredPrompt": "Enter your date of birth.",
     "birthDateRequiredSimulationNote": "Age-dependent pension, investment and net-worth projections are paused until you enter it.",
     "birthDateNotePrefix": "Current age calculated from date of birth: ",
     "birthDateNoteSuffix": " (as of today). This figure is used automatically as the Current Age throughout the simulation.",
