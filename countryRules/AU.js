@@ -24,7 +24,7 @@ export const AU_COUNTRY_RULES = {
     coverage: [
       { key: "investment", labelJa: "投資制度", labelEn: "Investment", status: "partial", effective: "2026-27 financial year", lastUpdated: "2026-08-17", updateJa: "Super・投資口座・拠出上限を反映。carry-forward、bring-forward等の詳細判定は未実装。", updateEn: "Super, investment accounts and contribution caps are modelled; detailed carry-forward/bring-forward eligibility is not implemented." },
       { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "partial", effective: "2026-27 / Age Pension Mar 2026 rates", lastUpdated: "2026-08-17", updateJa: "Age Pensionの資産・所得テストとSuper取崩しを反映。Work Bonus等は未実装。", updateEn: "Age Pension means tests and Super drawdown are modelled; Work Bonus and some edge cases are not implemented." },
-      { key: "healthcare", labelJa: "医療", labelEn: "Healthcare", status: "partial", effective: "2026-27", lastUpdated: "2026-08-17", updateJa: "Medicare前提の自己負担入力方式。Safety Net・aged care資力調査は未実装。", updateEn: "Uses user-entered costs under Medicare; Safety Nets and aged-care means testing are not automated." },
+      { key: "healthcare", labelJa: "医療", labelEn: "Healthcare", status: "partial", effective: "2026-27 / 2026 calendar-year Safety Nets", lastUpdated: "2026-08-21", updateJa: "Medicare前提の自己負担に加え、2026年PBS Safety Net概算とMedicare Safety Net閾値を反映。診療ごとのSafety Net還付・aged care資力調査は未自動化。", updateEn: "Adds a 2026 PBS Safety Net estimate and Medicare Safety Net thresholds to the Medicare out-of-pocket model; item-level Safety Net rebates and aged-care means testing remain manual." },
       { key: "tax", labelJa: "税金", labelEn: "Tax", status: "partial", effective: "2026-27 financial year", lastUpdated: "2026-08-17", updateJa: "居住者所得税・Medicare levy・CGTを反映。LITO/SAPTO/MLS等は未実装。", updateEn: "Resident income tax, Medicare levy and CGT are modelled; LITO, SAPTO and MLS are not implemented." },
       { key: "estate", labelJa: "相続", labelEn: "Estate", status: "partial", effective: "2026-27", lastUpdated: "2026-08-17", updateJa: "相続目標は資産計画に反映。Super death benefit等の税務自動計算は未実装。", updateEn: "Estate targets feed the plan; tax treatment of Super death benefits is not automated." },
     ],
@@ -562,13 +562,32 @@ export const AU_COUNTRY_RULES = {
 
   healthcare: {
     implemented: true,
-    // Medicare（公的医療保険）でカバーされることを前提に、
-    // 自己負担が生じうる費目のみ年間費用を入力する簡易モデル。
-    model: "selfInputAnnualCostsWithMedicare",
+    // Medicare（公的医療保険）を土台にした自己負担モデル。
+    // 2026年のPBS Safety Netは、標準的な最大自己負担額を使った概算を選択できる。
+    // Medicare Safety Netは、診療ごとのMBS schedule fee / 実請求額が必要なため、
+    // 閾値を表示するに留め、gapAnnualを機械的に減額しない（過小評価防止）。
+    model: "medicareWithPbs2026AndSafetyNetReference",
     effectiveTaxYear: "2026-27",
-    lastUpdated: "2026-07-18",
-    sourceName: "Services Australia — Medicare",
-    sourceUrl: "https://www.servicesaustralia.gov.au/medicare",
+    lastUpdated: "2026-08-21",
+    sourceName: "Australian Government — Medicare / PBS Safety Nets",
+    sourceUrl: "https://www.health.gov.au/topics/medicare/about/safety-nets",
+    sourceUrls: {
+      medicare: "https://www.servicesaustralia.gov.au/medicare",
+      medicareSafetyNets: "https://www.health.gov.au/topics/medicare/about/safety-nets",
+      pbsSafetyNet: "https://www.servicesaustralia.gov.au/pbs-safety-net-thresholds",
+    },
+    pbs2026: {
+      effectiveCalendarYear: "2026",
+      general: { maxCopayBeforeSafetyNet: 25.00, safetyNetThreshold: 1748.20, copayAfterSafetyNet: 7.70 },
+      concessional: { maxCopayBeforeSafetyNet: 7.70, safetyNetThreshold: 277.20, copayAfterSafetyNet: 0.00 },
+    },
+    medicareSafetyNet2026: {
+      originalThreshold: 594.40,
+      extendedThresholdConcessionalOrFtbA: 861.20,
+      extendedThresholdGeneral: 2699.10,
+      extendedBenefitRate: 0.80,
+      greatestPermissibleGapFrom20251101: 104.50,
+    },
     costItems: [
       "gapAnnual",
       "privateHealthInsuranceMonthly",
@@ -578,21 +597,46 @@ export const AU_COUNTRY_RULES = {
       "agedCareAnnual",
       "otherOutOfPocketAnnual",
     ],
+    // PBS対象薬をすべて上限自己負担額で購入する前提の簡易推計。
+    // 実際は薬価・ブランド差額・Safety Net記録状況等で異なるため「概算」として扱う。
+    getPbsAnnualOutOfPocket({ prescriptionsAnnual, concessional } = {}) {
+      const count = Math.max(0, Math.floor(Number(prescriptionsAnnual) || 0));
+      if (count <= 0) return 0;
+      const rule = concessional ? this.pbs2026.concessional : this.pbs2026.general;
+      let paid = 0;
+      for (let i = 0; i < count; i++) {
+        if (paid + 1e-9 >= rule.safetyNetThreshold) {
+          paid += rule.copayAfterSafetyNet;
+        } else {
+          paid += rule.maxCopayBeforeSafetyNet;
+        }
+        paid = Math.round(paid * 100) / 100;
+      }
+      return paid;
+    },
+    getPharmaceuticalAnnual(healthcare) {
+      const h = healthcare || {};
+      if ((h.pbsMode || "manual") !== "estimate") return Number(h.pharmaceuticalAnnual) || 0;
+      return this.getPbsAnnualOutOfPocket({
+        prescriptionsAnnual: h.pbsPrescriptionsAnnual,
+        concessional: Boolean(h.pbsConcessional),
+      });
+    },
     getAnnualTotal(healthcare) {
       const h = healthcare || {};
       const n = (v) => Number(v) || 0;
       return n(h.gapAnnual)
         + n(h.privateHealthInsuranceMonthly) * 12
-        + n(h.pharmaceuticalAnnual)
+        + this.getPharmaceuticalAnnual(h)
         + n(h.dentalAnnual)
         + n(h.opticalAnnual)
         + n(h.agedCareAnnual)
         + n(h.otherOutOfPocketAnnual);
     },
     notImplemented: [
-      "Medicare Levy Surcharge（民間医療保険未加入の高所得者への1〜1.5%の追加課税）",
-      "PBS Safety Net（薬剤費の自己負担上限）",
-      "Medicare Safety Net（診療費の自己負担上限）",
+      "Medicare Levy Surcharge（2026-27年度の所得閾値を公式公表値で確定後に自動化）",
+      "Medicare levyの低所得者減免（家族状況・SAPTO等の詳細条件を含む）",
+      "Medicare Safety Netの診療ごとの自動還付計算（MBS schedule feeと実請求額が必要）",
       "Aged care（高齢者介護）の資力調査に基づく自己負担額",
     ],
   },
