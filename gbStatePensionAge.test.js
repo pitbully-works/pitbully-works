@@ -186,47 +186,26 @@ describe("GB：State Pension age と繰下げ受給の関係", () => {
   });
 });
 
-describe("GB：スコットランド税率は未実装であることの固定", () => {
-  it("適用地域は England / Wales / Northern Ireland に限定されている", () => {
-    expect(tax.region).toBe("England, Wales & Northern Ireland");
-    expect(tax.regionsImplemented).toEqual(["england", "wales", "northernIreland"]);
-    expect(tax.regionsImplemented.includes("scotland")).toBe(false);
+describe("GB：2026/27スコットランド所得税の実装固定", () => {
+  it("適用地域に Scotland を含む", () => {
+    expect(tax.region).toBe("United Kingdom");
+    expect(tax.regionsImplemented).toEqual(["england", "wales", "northernIreland", "scotland"]);
+    expect(tax.regionsImplemented.includes("scotland")).toBe(true);
   });
 
-  it("スコットランドは implemented: false で、税率・バンドを持たない", () => {
-    expect(tax.scotland.implemented).toBe(false);
-    expect(tax.scotland.bands).toBe(null);
-    expect(tax.scotland.rates).toBe(null);
+  it("スコットランドは implemented: true で6段階の税率バンドを持つ", () => {
+    expect(tax.scotland.implemented).toBe(true);
+    expect(tax.scotland.bands.map((b) => b.rate)).toEqual([0.19, 0.20, 0.21, 0.42, 0.45, 0.48]);
   });
 
-  it("未実装リストにスコットランド税率が明記されている", () => {
+  it("未実装リストにスコットランド所得税を含めない", () => {
     const listed = tax.notImplemented.some((n) => n.includes("スコットランド") || n.toLowerCase().includes("scottish"));
-    expect(listed).toBe(true);
+    expect(listed).toBe(false);
   });
 
-  it("スコットランド独自の税率（19% / 21% / 42% / 45% / 48%）が混入していない", () => {
-    // イングランド等のバンドは 20 / 40 / 45% の3段のみ。
-    const rates = tax.incomeTax.bands.map((b) => b.rate);
-    expect(rates).toEqual([0.20, 0.40, 0.45]);
-    for (const scottishOnly of [0.19, 0.21, 0.42, 0.48]) {
-      expect(rates.includes(scottishOnly)).toBe(false);
-    }
-  });
-
-  it("スコットランドのバンド数（6段）ではなく3段である", () => {
-    expect(tax.incomeTax.bands).toHaveLength(3);
-  });
-
-  it("スコットランド居住者向けの参照先URLは案内として保持している", () => {
-    expect(typeof tax.sourceUrls.scotland).toBe("string");
-    expect(tax.sourceUrls.scotland.includes("scottish-income-tax")).toBe(true);
-  });
-
-  it("所得税計算はスコットランド税率を適用しない（£30,000 で確認）", () => {
-    // イングランド等：(30,000 − 12,570) × 20% = 3,486
-    // スコットランドなら19%/20%/21%の複数段になり金額が変わる
-    const r = tax.calculateIncomeTax(30000);
-    expect(near(r.tax, (30000 - 12570) * 0.20, 1e-9)).toBe(true);
+  it("England等の税率バンドとScotlandの税率バンドを分離して保持する", () => {
+    expect(tax.incomeTax.bands.map((b) => b.rate)).toEqual([0.20, 0.40, 0.45]);
+    expect(tax.scotland.bands.map((b) => b.rate)).toEqual([0.19, 0.20, 0.21, 0.42, 0.45, 0.48]);
   });
 });
 

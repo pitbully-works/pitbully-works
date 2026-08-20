@@ -440,11 +440,11 @@ describe("United Kingdom (GB) core calculations", () => {
     expect(total).toBe(100 + 600 + 200 + 120 + 0 + 80);
   });
 
-  it("Scottish rates are explicitly not implemented", () => {
-    expect(tax.scotland.implemented).toBe(false);
-    expect(tax.scotland.bands).toBeNull();
-    expect(tax.scotland.rates).toBeNull();
-    expect(tax.region).toBe("England, Wales & Northern Ireland");
+  it("Scottish Income Tax 2026/27 is implemented", () => {
+    expect(tax.scotland.implemented).toBe(true);
+    expect(tax.scotland.bands.map((b) => b.rate)).toEqual([0.19, 0.20, 0.21, 0.42, 0.45, 0.48]);
+    expect(tax.regionsImplemented.includes("scotland")).toBe(true);
+    expect(tax.region).toBe("United Kingdom");
   });
 });
 describe("country rules stay independent", () => {
