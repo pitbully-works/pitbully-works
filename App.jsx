@@ -40,6 +40,10 @@ import {
 import { buildNisaBreakdown, breakdownPrincipalItems, breakdownReturnBars, breakdownTotals } from "./utils/nisaBreakdown.js";
 import { describeSchedulePace } from "./utils/schedulePace.js";
 import { newSci, sciPress, sciExpr, sciFormat, sciTokensFromExpr, normalizeSciHistory, sciClearHistory } from "./utils/scientificCalculator.js";
+import {
+  RULE_UPDATE_STORAGE_KEY, BUILTIN_RULE_UPDATES, normalizeRuleUpdateState,
+  applyApprovedRuleUpdates, mergeRuleUpdateManifests, isUpdateEffective,
+} from "./utils/ruleUpdates.js";
 // 国に依存しない共通UI部品（入力欄・ガイド・内訳グラフ）と表示基盤（LocaleContext等）は ui/ 配下へ分離。
 import {
   yen,
@@ -1756,7 +1760,63 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     }
   };
 
-  const rules = useMemo(() => getCountryRules(country), [country]);
+  // 制度更新センター。入力データとは別キーで承認状態を保存し、制度改正が誤って
+  // ユーザー資産データを書き換えないよう完全に分離する。
+  const [ruleUpdateState, setRuleUpdateState] = useState(() => normalizeRuleUpdateState({}));
+  const [ruleUpdates, setRuleUpdates] = useState(BUILTIN_RULE_UPDATES);
+  const [showRuleUpdates, setShowRuleUpdates] = useState(false);
+  const [ruleSourceAlerts, setRuleSourceAlerts] = useState([]);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage?.getItem(RULE_UPDATE_STORAGE_KEY);
+      if (raw) setRuleUpdateState(normalizeRuleUpdateState(JSON.parse(raw)));
+    } catch { /* 制度通知が読めなくても計算本体は継続 */ }
+  }, []);
+
+  const persistRuleUpdateState = useCallback((next) => {
+    const normalized = normalizeRuleUpdateState(next);
+    setRuleUpdateState(normalized);
+    try { window.localStorage?.setItem(RULE_UPDATE_STORAGE_KEY, JSON.stringify(normalized)); } catch { /* noop */ }
+  }, []);
+
+  const checkRuleUpdates = useCallback(async () => {
+    let remote = [];
+    try {
+      const response = await fetch(`/rules-updates.json?ts=${Date.now()}`, { cache: "no-store" });
+      if (response.ok) {
+        const payload = await response.json();
+        remote = Array.isArray(payload?.updates) ? payload.updates : [];
+      }
+    } catch { /* オフライン時は内蔵済みの確認済み制度情報を使う */ }
+    setRuleUpdates(mergeRuleUpdateManifests(remote));
+    try {
+      const sourceResponse = await fetch(`/rules-source-status.json?ts=${Date.now()}`, { cache: "no-store" });
+      if (sourceResponse.ok) {
+        const sourcePayload = await sourceResponse.json();
+        setRuleSourceAlerts((sourcePayload?.sources || []).filter((item) => item.country === country && item.changed));
+      }
+    } catch { /* 監視状態を取得できなくても既存計算には影響させない */ }
+    const next = { ...ruleUpdateState, lastCheckedAt: new Date().toISOString() };
+    persistRuleUpdateState(next);
+  }, [ruleUpdateState, persistRuleUpdateState, country]);
+
+  useEffect(() => { checkRuleUpdates(); /* 起動時に1回だけ確認 */ // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const baseRules = useMemo(() => getCountryRules(country), [country]);
+  const rules = useMemo(
+    () => applyApprovedRuleUpdates(baseRules, country, ruleUpdates, ruleUpdateState),
+    [baseRules, country, ruleUpdates, ruleUpdateState]
+  );
+  const countryRuleUpdates = useMemo(
+    () => ruleUpdates.filter((item) => item.country === country),
+    [ruleUpdates, country]
+  );
+  const pendingRuleUpdates = useMemo(
+    () => countryRuleUpdates.filter((item) => !ruleUpdateState.approved?.[item.id] && !ruleUpdateState.dismissed?.[item.id]),
+    [countryRuleUpdates, ruleUpdateState]
+  );
   const countryDisplayName = useMemo(
     () => SUPPORTED_COUNTRIES.find((c) => c.code === country)?.name || country,
     [country]
@@ -5370,6 +5430,86 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         <div className="locale-preview-warning no-print">
           <Info size={13} />
           <span>{t(`${country.toLowerCase()}CountryNote`)}</span>
+        </div>
+      )}
+      {countryRuleUpdates.length > 0 && (
+        <div className="card no-print" style={{ borderColor: pendingRuleUpdates.length ? "#D9A54F" : "var(--line)", marginBottom: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
+            <div>
+              <div className="field-label" style={{ marginBottom: 3 }}>
+                {language === "ja" ? "制度更新センター" : "Rules update center"}
+                {pendingRuleUpdates.length > 0 ? ` · ${pendingRuleUpdates.length}${language === "ja" ? "件の確認" : " pending"}` : ""}
+              </div>
+              <div className="stat-sub">
+                {language === "ja"
+                  ? "制度変更は確認・承認後に反映します。将来施行の制度は承認しても施行日までは計算に入りません。"
+                  : "Rule changes are applied only after review and approval. Future rules stay inactive until their effective date."}
+              </div>
+            </div>
+            <button type="button" className="history-action" onClick={() => setShowRuleUpdates((v) => !v)}>
+              {showRuleUpdates ? (language === "ja" ? "閉じる" : "Close") : (language === "ja" ? "確認する" : "Review")}
+            </button>
+          </div>
+          {showRuleUpdates && (
+            <div style={{ marginTop: 12 }}>
+              {ruleSourceAlerts.length > 0 && (
+                <div className="save-warning" style={{ marginBottom: 10 }}>
+                  <Info size={13} />
+                  <span>
+                    {language === "ja"
+                      ? `公式制度ページの変更を${ruleSourceAlerts.length}件検知しました。内容を確認し、制度データ更新が必要か判断してください。`
+                      : `${ruleSourceAlerts.length} official rule source change(s) detected. Review before changing calculation data.`}
+                  </span>
+                </div>
+              )}
+              {countryRuleUpdates.map((update) => {
+                const approved = !!ruleUpdateState.approved?.[update.id];
+                const effective = isUpdateEffective(update);
+                return (
+                  <div key={update.id} style={{ borderTop: "1px solid var(--line)", paddingTop: 12, marginTop: 10 }}>
+                    <div style={{ fontWeight: 700 }}>{language === "ja" ? update.titleJa : (update.titleEn || update.titleJa)}</div>
+                    <div className="stat-sub" style={{ marginTop: 4 }}>{language === "ja" ? update.summaryJa : (update.summaryEn || update.summaryJa)}</div>
+                    <div className="stat-sub" style={{ marginTop: 5 }}>
+                      {language === "ja" ? "検知" : "Detected"}: {update.detectedAt || "—"} · {language === "ja" ? "施行日" : "Effective"}: {update.effectiveDate || "—"}
+                    </div>
+                    <div style={{ overflowX: "auto", marginTop: 8 }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+                        <thead><tr><th style={{ textAlign: "left" }}>{language === "ja" ? "項目" : "Item"}</th><th>{language === "ja" ? "現在" : "Current"}</th><th>{language === "ja" ? "新制度" : "New"}</th></tr></thead>
+                        <tbody>{(update.changes || []).map((change, idx) => (
+                          <tr key={`${update.id}-${idx}`} style={{ borderTop: "1px solid var(--line)" }}>
+                            <td style={{ padding: "6px 2px" }}>{change.labelJa || change.path}</td>
+                            <td style={{ textAlign: "center" }}>{Number(change.before).toLocaleString()}</td>
+                            <td style={{ textAlign: "center", fontWeight: 700 }}>{Number(change.after).toLocaleString()}</td>
+                          </tr>
+                        ))}</tbody>
+                      </table>
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 9, alignItems: "center" }}>
+                      {!approved ? (
+                        <>
+                          <button type="button" className="history-action" onClick={() => persistRuleUpdateState({ ...ruleUpdateState, approved: { ...ruleUpdateState.approved, [update.id]: true }, dismissed: { ...ruleUpdateState.dismissed, [update.id]: false } })}>
+                            {effective ? (language === "ja" ? "承認して反映" : "Approve & apply") : (language === "ja" ? "承認する（施行日に自動反映）" : "Approve for effective date")}
+                          </button>
+                          <button type="button" className="history-action" onClick={() => persistRuleUpdateState({ ...ruleUpdateState, dismissed: { ...ruleUpdateState.dismissed, [update.id]: true } })}>
+                            {language === "ja" ? "今回は保留" : "Not now"}
+                          </button>
+                        </>
+                      ) : (
+                        <span className="stat-sub" style={{ fontWeight: 700 }}>
+                          {effective ? (language === "ja" ? "✓ 承認済み・反映中" : "✓ Approved and active") : (language === "ja" ? `✓ 承認済み・${update.effectiveDate}から自動反映` : `✓ Approved; activates ${update.effectiveDate}`)}
+                        </span>
+                      )}
+                      {update.sourceUrl && <a href={update.sourceUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11 }}>{update.sourceLabel || (language === "ja" ? "公式情報" : "Official source")}</a>}
+                    </div>
+                  </div>
+                );
+              })}
+              <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <button type="button" className="history-action" onClick={checkRuleUpdates}>{language === "ja" ? "今すぐ制度変更を確認" : "Check now"}</button>
+                <span className="stat-sub">{language === "ja" ? "最終確認" : "Last checked"}: {ruleUpdateState.lastCheckedAt ? new Date(ruleUpdateState.lastCheckedAt).toLocaleString(dateLocale) : "—"}</span>
+              </div>
+            </div>
+          )}
         </div>
       )}
       {(saveStatus === "unavailable" || saveStatus === "error") && (
