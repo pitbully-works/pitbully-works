@@ -1741,6 +1741,8 @@ const DEFAULT_INPUTS = {
         // Age Pensionの所得テストで評価される、年金以外の年間収入。
         // 金融資産からのみなし収入（Deeming）は別途自動で加算されるので、ここには含めない。
         otherAnnualIncome: 0,
+        employmentIncomeAnnual: 0,
+        workBonusBalance: 0,
       },
       // 医療費（Medicare前提の簡易モデル）
       healthcare: {
@@ -2416,6 +2418,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const auAgePensionQualifyingAge = (auIsAU && rules.retirement.implemented)
     ? rules.retirement.getQualifyingAge() : 67;
   const auOtherAnnualIncome = Number(auInvestment.agePension.otherAnnualIncome) || 0;
+  const auEmploymentIncomeAnnual = Number(auInvestment.agePension.employmentIncomeAnnual) || 0;
+  const auTotalOtherIncomeAnnual = auOtherAnnualIncome + auEmploymentIncomeAnnual;
   const auExpensesAnnual = (Number(auInvestment.expensesMonthly) || 0) * 12;
   // 【重要】Age Pension の資産テスト／Deemingの対象は、AU版の3口座だけではない。
   //   共通で持っている銀行預金・個別株・金・民間年金原資も対象に含まれる
@@ -3370,7 +3374,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     : country === "US" ? usSSAnnualBenefit
     : country === "GB" ? gbRetirementIncomeAnnual
     : country === "CA" ? caRetirementIncomeAnnual
-    : country === "AU" ? (auAgePensionAnnualSeed + auOtherAnnualIncome) : 0;
+    : country === "AU" ? (auAgePensionAnnualSeed + auTotalOtherIncomeAnnual) : 0;
   // 画面表示と統合エンジンで同じ受給開始年齢を使う。ここがずれると
   // 「表示された税額」と「グラフから実際に引かれる税額」が食い違うため、国別に1か所で決める。
   const publicPensionStartForTax = country === "JP" ? effectivePublicPensionStartAge
@@ -3412,7 +3416,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       caCppAnnual, caCppStartAge, caOasAnnual, caOasStartAge, caAdditionalPensionAnnual, caHealthcareAnnual,
       // Age Pension はエンジン側が毎ステップ再判定するため、ここはシード（上書きされる）
       auAgePensionAnnual: auAgePensionAnnualSeed,
-      auAgePensionQualifyingAge, auOtherAnnualIncome, auHealthcareAnnual,
+      auAgePensionQualifyingAge, auOtherAnnualIncome: auTotalOtherIncomeAnnual, auHealthcareAnnual,
     },
   }), [
     country, rules, effectiveCurrentAge, effectiveCurrentAssets, effectivePostRetireReturn,
@@ -3423,7 +3427,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     usSSMonthlyBenefit, usTotalHealthcareAnnual, usClaimAge,
     gbStatePensionAnnual, gbAdditionalPensionAnnual, gbEffectiveClaimAge, gbHealthcareAnnual,
     caCppAnnual, caCppStartAge, caOasAnnual, caOasStartAge, caAdditionalPensionAnnual, caHealthcareAnnual,
-    auAgePensionAnnualSeed, auAgePensionQualifyingAge, auOtherAnnualIncome, auHealthcareAnnual, t,
+    auAgePensionAnnualSeed, auAgePensionQualifyingAge, auOtherAnnualIncome, auEmploymentIncomeAnnual, auTotalOtherIncomeAnnual, auHealthcareAnnual, t,
   ]);
 
   const integrated = useMemo(() => simulationReady ? runIntegratedPlan(buildPlanInput(planCtx)) : { yearly: [], finalNetWorth: 0, loanPayoffAges: [], depletionAge: null }, [simulationReady, planCtx]);
@@ -3472,7 +3476,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
   const auAssessableAssetsAtQualifyingAge = auAgePensionFromEngine.assessableAssets;
   const auAgePensionAnnual = auAgePensionFromEngine.agePensionAnnual;
-  const auRetirementIncomeAnnual = auAgePensionAnnual + auOtherAnnualIncome;
+  const auRetirementIncomeAnnual = auAgePensionAnnual + auTotalOtherIncomeAnnual;
   const auWithdrawalNeeded = Math.max(0, auExpensesAnnual + auHealthcareAnnual - auRetirementIncomeAnnual);
   const auIncomeSurplus = Math.max(0, auRetirementIncomeAnnual - (auExpensesAnnual + auHealthcareAnnual));
 
