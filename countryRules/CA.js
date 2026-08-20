@@ -23,7 +23,7 @@ export const CA_COUNTRY_RULES = {
     coverage: [
       { key: "investment", labelJa: "投資制度", labelEn: "Investment", status: "implemented", effective: "2026 calendar year", lastUpdated: "2026-08-17", updateJa: "TFSA・RRSP・非登録口座・RRIF最低取崩しを反映。FHSA等は未実装。", updateEn: "TFSA, RRSP, non-registered accounts and RRIF minimum withdrawals are modelled; FHSA and related plans are not implemented." },
       { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "partial", effective: "2026 / OAS & GIS Jul-Sep", lastUpdated: "2026-08-20", updateJa: "CPP・OAS・OAS回収税・GIS/Allowanceの公表上限・CPP Post-Retirement Benefitを反映。GISの正確な支給額、QPP、CPP履歴からの自動算定は未実装。", updateEn: "CPP, OAS, OAS recovery tax, published GIS/Allowance maxima and CPP Post-Retirement Benefit are modelled; exact GIS entitlement, QPP and automatic CPP entitlement from history are not implemented." },
-      { key: "healthcare", labelJa: "医療", labelEn: "Healthcare", status: "partial", effective: "2026", lastUpdated: "2026-08-17", updateJa: "州医療保険を前提に自己負担を入力。州別薬剤・歯科・介護費の自動計算は未実装。", updateEn: "Uses user-entered out-of-pocket costs under provincial coverage; provincial drug, dental and long-term-care rules are not automated." },
+      { key: "healthcare", labelJa: "医療", labelEn: "Healthcare", status: "partial", effective: "2026", lastUpdated: "2026-08-21", updateJa: "州・準州の公的医療保険を前提に自己負担を計算し、Canadian Dental Care Plan（CDCP）の所得別自己負担率を自動計算。州別薬剤・視力・介護費は未実装。", updateEn: "Models out-of-pocket costs under provincial/territorial coverage and the income-based Canadian Dental Care Plan (CDCP) co-payment; provincial drug, vision and long-term-care charges remain manual." },
       { key: "tax", labelJa: "税金", labelEn: "Tax", status: "partial", effective: "2026 tax year", lastUpdated: "2026-08-17", updateJa: "連邦所得税を反映。州税・QPP・配当税額控除等は未実装。", updateEn: "Federal income tax is modelled; provincial tax, QPP and dividend credits are not implemented." },
       { key: "estate", labelJa: "相続", labelEn: "Estate", status: "partial", effective: "2026", lastUpdated: "2026-08-17", updateJa: "相続目標は資産計画に反映。死亡時のみなし譲渡等の自動計算は未実装。", updateEn: "Estate targets feed the plan; deemed disposition and related death-tax calculations are not automated." },
     ],
@@ -359,37 +359,75 @@ export const CA_COUNTRY_RULES = {
 
   healthcare: {
     implemented: true,
-    // 州・準州の公的医療保険（Medicare）でカバーされることを前提に、
-    // 自己負担が生じうる費目のみ年間費用を入力する簡易モデル。
-    model: "selfInputAnnualCostsWithProvincialCoverage",
+    model: "provincialCoveragePlusCdcp",
     effectiveTaxYear: "2026",
-    lastUpdated: "2026-07-18",
-    sourceName: "Government of Canada — Canada's health care system",
+    lastUpdated: "2026-08-21",
+    sourceName: "Health Canada / Service Canada — Canada Health Act and Canadian Dental Care Plan",
     sourceUrl: "https://www.canada.ca/en/health-canada/services/canada-health-care-system.html",
-    costItems: [
-      "basicAnnual",
-      "privateHealthInsuranceMonthly",
-      "prescriptionAnnual",
-      "dentalAnnual",
-      "visionAnnual",
-      "longTermCareAnnual",
-      "otherOutOfPocketAnnual",
+    sourceUrls: {
+      healthSystem: "https://www.canada.ca/en/health-canada/services/canada-health-care-system.html",
+      publicCoverage: "https://www.canada.ca/en/health-canada/services/health-care-system/canada-health-care-system-medicare/canada-health-act/how-publicly-funded-coverage-works.html",
+      cdcpEligibility: "https://www.canada.ca/en/services/benefits/dental/dental-care-plan/qualify.html",
+    },
+    provinces: [
+      "AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT",
     ],
+    provinceNames: {
+      AB: "Alberta", BC: "British Columbia", MB: "Manitoba", NB: "New Brunswick",
+      NL: "Newfoundland and Labrador", NS: "Nova Scotia", NT: "Northwest Territories",
+      NU: "Nunavut", ON: "Ontario", PE: "Prince Edward Island", QC: "Quebec",
+      SK: "Saskatchewan", YT: "Yukon",
+    },
+    canadaHealthAct: {
+      physicianEquivalentPolicyEffective: "2026-04-01",
+      coreInsuredServices: ["medically necessary hospital", "physician", "certain surgical-dental"],
+    },
+    cdcp: {
+      incomeLimitExclusive: 90000,
+      fullCoverageIncomeExclusive: 70000,
+      fortyPercentCopayIncomeExclusive: 80000,
+      copayRates: { under70000: 0, from70000To79999: 0.40, from80000To89999: 0.60 },
+    },
+    getCdcpEligibility(healthcare) {
+      const h = healthcare || {};
+      const income = Math.max(0, Number(h.adjustedFamilyNetIncome) || 0);
+      const eligible = !h.hasPrivateDentalCoverage && h.taxReturnFiled !== false && h.canadianResident !== false && income < this.cdcp.incomeLimitExclusive;
+      let copayRate = null;
+      if (eligible) {
+        if (income < this.cdcp.fullCoverageIncomeExclusive) copayRate = this.cdcp.copayRates.under70000;
+        else if (income < this.cdcp.fortyPercentCopayIncomeExclusive) copayRate = this.cdcp.copayRates.from70000To79999;
+        else copayRate = this.cdcp.copayRates.from80000To89999;
+      }
+      return { eligible, copayRate, adjustedFamilyNetIncome: income };
+    },
+    getCdcpDentalOutOfPocket(healthcare) {
+      const h = healthcare || {};
+      const eligibleFees = Math.max(0, Number(h.cdcpEligibleFeesAnnual) || 0);
+      const e = this.getCdcpEligibility(h);
+      if (!e.eligible || e.copayRate === null) return eligibleFees;
+      return eligibleFees * e.copayRate;
+    },
+    getAnnualDentalCost(healthcare) {
+      const h = healthcare || {};
+      if ((h.dentalMode || "manual") === "cdcp") return this.getCdcpDentalOutOfPocket(h);
+      return Math.max(0, Number(h.dentalAnnual) || 0);
+    },
     getAnnualTotal(healthcare) {
       const h = healthcare || {};
       const n = (v) => Number(v) || 0;
       return n(h.basicAnnual)
         + n(h.privateHealthInsuranceMonthly) * 12
         + n(h.prescriptionAnnual)
-        + n(h.dentalAnnual)
+        + this.getAnnualDentalCost(h)
         + n(h.visionAnnual)
         + n(h.longTermCareAnnual)
         + n(h.otherOutOfPocketAnnual);
     },
     notImplemented: [
-      "州・準州ごとの医療保険料（British Columbia の MSP など）の自動計算",
-      "処方薬・歯科・視力の公的補助（州により制度が大きく異なるため、金額は利用者入力）",
+      "州・準州ごとの処方薬プランの自己負担額の自動計算",
+      "州・準州ごとの視力補助の自動計算",
       "長期介護（Long-term care）の州別自己負担額",
+      "CDCP fee scheduleを超える歯科医院独自料金や、対象外サービスの追加負担",
     ],
   },
 
