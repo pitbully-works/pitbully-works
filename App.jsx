@@ -1766,6 +1766,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const [ruleUpdateState, setRuleUpdateState] = useState(() => normalizeRuleUpdateState({}));
   const [ruleUpdates, setRuleUpdates] = useState(BUILTIN_RULE_UPDATES);
   const [showRuleUpdates, setShowRuleUpdates] = useState(false);
+  const [showRuleUpdateHistory, setShowRuleUpdateHistory] = useState(false);
   const [ruleSourceStatuses, setRuleSourceStatuses] = useState([]);
 
   useEffect(() => {
@@ -1780,6 +1781,34 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     setRuleUpdateState(normalized);
     try { window.localStorage?.setItem(RULE_UPDATE_STORAGE_KEY, JSON.stringify(normalized)); } catch { /* noop */ }
   }, []);
+
+  const recordRuleUpdateDecision = useCallback((update, action) => {
+    const nowIso = new Date().toISOString();
+    const historyEntry = {
+      id: `${update.id}-${action}-${nowIso}`,
+      updateId: update.id,
+      country: update.country,
+      category: update.category || "",
+      titleJa: update.titleJa || update.id,
+      titleEn: update.titleEn || update.titleJa || update.id,
+      action,
+      decidedAt: nowIso,
+      effectiveDate: update.effectiveDate || "",
+    };
+    const next = {
+      ...ruleUpdateState,
+      approved: {
+        ...ruleUpdateState.approved,
+        [update.id]: action === "approved",
+      },
+      dismissed: {
+        ...ruleUpdateState.dismissed,
+        [update.id]: action === "deferred",
+      },
+      history: [...(ruleUpdateState.history || []), historyEntry].slice(-100),
+    };
+    persistRuleUpdateState(next);
+  }, [ruleUpdateState, persistRuleUpdateState]);
 
   const checkRuleUpdates = useCallback(async () => {
     let remote = [];
@@ -5499,7 +5528,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
             className="no-print"
             aria-hidden="true"
             onClick={() => setShowRuleUpdates(false)}
-            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.58)", zIndex: 1998 }}
+            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.82)", zIndex: 1998 }}
           />
           <div
             id="section-rule-updates"
@@ -5514,8 +5543,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               left: "50%",
               transform: "translateX(-50%)",
               width: "min(720px, calc(100vw - 28px))",
-              maxHeight: "86vh",
+              maxHeight: "82vh",
               overflowY: "auto",
+              background: "#151C20",
+              opacity: 1,
               borderColor: ruleAttentionCount > 0 ? "#E06B5A" : deferredRuleUpdates.length > 0 ? "#D9A54F" : "#54B07A",
               boxShadow: "0 18px 60px rgba(0,0,0,0.45)",
               margin: 0,
@@ -5591,10 +5622,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 9, alignItems: "center" }}>
                       {!approved ? (
                         <>
-                          <button type="button" className="history-action" onClick={() => persistRuleUpdateState({ ...ruleUpdateState, approved: { ...ruleUpdateState.approved, [update.id]: true }, dismissed: { ...ruleUpdateState.dismissed, [update.id]: false } })}>
+                          <button type="button" className="history-action" onClick={() => recordRuleUpdateDecision(update, "approved")}>
                             {effective ? (language === "ja" ? "承認して反映" : "Approve & apply") : (language === "ja" ? "承認する（施行日に自動反映）" : "Approve for effective date")}
                           </button>
-                          <button type="button" className="history-action" onClick={() => persistRuleUpdateState({ ...ruleUpdateState, dismissed: { ...ruleUpdateState.dismissed, [update.id]: true } })}>
+                          <button type="button" className="history-action" onClick={() => recordRuleUpdateDecision(update, "deferred")}>
                             {language === "ja" ? "今回は保留" : "Not now"}
                           </button>
                         </>
@@ -5608,6 +5639,40 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                   </div>
                 );
               })}
+              <div style={{ borderTop: "1px solid var(--line)", marginTop: 14, paddingTop: 12 }}>
+                <button
+                  type="button"
+                  className="history-action"
+                  onClick={() => setShowRuleUpdateHistory((v) => !v)}
+                  aria-expanded={showRuleUpdateHistory}
+                >
+                  {language === "ja" ? `制度変更履歴（${(ruleUpdateState.history || []).length}件）` : `Rule history (${(ruleUpdateState.history || []).length})`}
+                </button>
+                {showRuleUpdateHistory && (
+                  <div style={{ marginTop: 9, display: "flex", flexDirection: "column", gap: 7 }}>
+                    {(ruleUpdateState.history || []).length === 0 ? (
+                      <div className="stat-sub">{language === "ja" ? "まだ承認・保留の履歴はありません。" : "No approval or deferral history yet."}</div>
+                    ) : (
+                      [...ruleUpdateState.history].reverse().slice(0, 20).map((entry) => (
+                        <div key={entry.id} style={{ border: "1px solid var(--line)", borderRadius: 6, padding: "8px 10px", background: "#182027" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "flex-start" }}>
+                            <div style={{ fontSize: 11, fontWeight: 700 }}>
+                              {language === "ja" ? entry.titleJa : (entry.titleEn || entry.titleJa)}
+                            </div>
+                            <span style={{ fontSize: 10, whiteSpace: "nowrap", color: entry.action === "approved" ? "#7BCB91" : "#E1B55D" }}>
+                              {entry.action === "approved" ? (language === "ja" ? "承認" : "Approved") : (language === "ja" ? "保留" : "Deferred")}
+                            </span>
+                          </div>
+                          <div className="stat-sub" style={{ marginTop: 3 }}>
+                            {entry.decidedAt ? new Date(entry.decidedAt).toLocaleString(dateLocale) : "—"}
+                            {entry.effectiveDate ? ` · ${language === "ja" ? "施行日" : "Effective"}: ${entry.effectiveDate}` : ""}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
               <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                 <button type="button" className="history-action" onClick={checkRuleUpdates}>{language === "ja" ? "今すぐ制度変更を確認" : "Check now"}</button>
                 <span className="stat-sub">{language === "ja" ? "最終確認" : "Last checked"}: {ruleUpdateState.lastCheckedAt ? new Date(ruleUpdateState.lastCheckedAt).toLocaleString(dateLocale) : "—"}</span>

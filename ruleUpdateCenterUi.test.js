@@ -19,7 +19,7 @@ describe("制度更新センター UI", () => {
   it("制度更新センターはモーダルで開き、背景タップと閉じる操作を持つ", () => {
     expect(app).toContain('role="dialog"');
     expect(app).toContain('aria-modal="true"');
-    expect(app).toContain('background: "rgba(0,0,0,0.58)"');
+    expect(app).toContain('background: "rgba(0,0,0,0.82)"');
     expect(app).toContain('onClick={() => setShowRuleUpdates(false)}');
   });
 
