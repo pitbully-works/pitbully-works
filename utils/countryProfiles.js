@@ -1,5 +1,18 @@
 export const PROFILE_COUNTRIES = Object.freeze(["JP", "US", "GB", "CA", "AU"]);
 export const PROFILE_STORAGE_VERSION = 3;
+export const MAX_SNAPSHOT_HISTORY = 1000;
+
+export function normalizeProfileStorageVersion(value) {
+  if (value === undefined || value === null || value === "") return null;
+  const n = Number(value);
+  return Number.isInteger(n) && n >= 1 && n <= 1000000 ? n : null;
+}
+
+export function isPlainRecord(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+}
 // 名前・生年月日・現在年齢も国別プロファイルに完全分離する。
 export const PROFILE_SHARED_KEYS = Object.freeze([]);
 const META = Object.freeze({
@@ -69,7 +82,7 @@ export function normalizeProfileCurrency(value, country = "JP") {
 }
 
 export function normalizeCountryKeyedRecord(value) {
-  const src = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  const src = isPlainRecord(value) ? value : {};
   const out = {};
   // First accept noisy-but-valid keys (" us ", "gb", ...).
   // Then let an exact canonical key win if both forms exist, so corrupted/legacy
@@ -122,14 +135,15 @@ export function resolvePersistedActiveCountry(value, profiles, fallback = "JP") 
 }
 
 export function migrateCountryProfiles(defaultInputs, parsed) {
-  const p = parsed && typeof parsed === "object" ? parsed : {};
-  if (p.profileStorageVersion >= PROFILE_STORAGE_VERSION && p.profiles && typeof p.profiles === "object") {
+  const p = isPlainRecord(parsed) ? parsed : {};
+  const storageVersion = normalizeProfileStorageVersion(p.profileStorageVersion);
+  if (storageVersion !== null && storageVersion >= PROFILE_STORAGE_VERSION && isPlainRecord(p.profiles)) {
     const profiles = normalizeCountryKeyedRecord(p.profiles);
     return { profiles, activeCountry: resolvePersistedActiveCountry(p.activeCountry ?? p.inputs?.country, profiles), migratedLegacy: false };
   }
   // v2 は名前・生年月日・現在年齢を国間で共有していた。v3 では完全分離する。
   // 移行時は現在開いていた国だけ本人情報を保持し、他国にコピーされていた本人情報を消す。
-  if (p.profileStorageVersion === 2 && p.profiles && typeof p.profiles === "object") {
+  if (storageVersion === 2 && isPlainRecord(p.profiles)) {
     const rawProfiles = normalizeCountryKeyedRecord(p.profiles);
     const activeCountry = resolvePersistedActiveCountry(p.activeCountry ?? p.inputs?.country, rawProfiles);
     const profiles = {};
