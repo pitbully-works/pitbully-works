@@ -1009,7 +1009,7 @@ function AUAccountFields({ accountKey, title, account, onUpdateAccount, borderCo
 // ---------- オーストラリア選択時：投資口座パネル（Super / 投資口座 / 現金 ＋ 税制） ----------
 function AUInvestmentAccountsPanel({
   auInvestment, onUpdate, onUpdateAccount, age, investmentRules, taxRules,
-  sgContribution, totalConcessional, concessionalRemaining, nonConcessionalRemaining,
+  sgContribution, totalConcessional, concessionalRemaining, effectiveConcessionalCap, carryForwardApplied, nonConcessionalRemaining,
   superContributionTax, salarySacrificeSaving, listoAnnual, listoIncome, taxResult, capitalGainsTax, totalTax, marginalRate,
 }) {
   const { t, money } = useContext(LocaleContext);
@@ -1035,6 +1035,12 @@ function AUInvestmentAccountsPanel({
 
       <Field guide={t("auAnnualSalaryGuide")} label={t("auAnnualSalaryLabel")} unit="A$" step={1000} value={auInvestment.annualSalary} onChange={(v) => onUpdate("annualSalary", v)} />
       <Field guide={t("auSalarySacrificeGuide")} label={t("auSalarySacrificeLabel")} unit="A$" step={500} value={auInvestment.voluntaryConcessional} onChange={(v) => onUpdate("voluntaryConcessional", v)} />
+      <Field guide={t("auCarryForwardBalanceGuide")} label={t("auCarryForwardBalanceLabel")} unit="A$" step={1000} value={auInvestment.carryForwardPriorYearBalance} onChange={(v) => onUpdate("carryForwardPriorYearBalance", v)} />
+      <Field guide={t("auCarryForwardAvailableGuide")} label={t("auCarryForwardAvailableLabel")} unit="A$" step={500} value={auInvestment.carryForwardAvailableUnusedCap} onChange={(v) => onUpdate("carryForwardAvailableUnusedCap", v)} />
+      <div className="note" style={{ marginBottom: 10 }}>
+        <Info size={13} />
+        <span>{t(carryForwardApplied > 0 ? "auCarryForwardAppliedNote" : "auCarryForwardNotAppliedNote", { amount: money(carryForwardApplied), threshold: money(l.carryForwardBalanceThreshold) })}</span>
+      </div>
       <Field guide={t("auDiv293IncomeGuide")} label={t("auDiv293IncomeLabel")} unit="A$" step={1000} value={auInvestment.div293Income} onChange={(v) => onUpdate("div293Income", v)} />
       <div className="note" style={{ marginBottom: 10 }}>
         <Info size={13} />
@@ -1077,8 +1083,8 @@ function AUInvestmentAccountsPanel({
         />
         <StatCard
           label={t("auConcessionalCapLabel", { taxYear: investmentRules.effectiveTaxYear })}
-          value={money(l.concessionalCap)}
-          sub={t("auConcessionalCapSub", { amount: money(l.concessionalCap) })}
+          value={money(effectiveConcessionalCap)}
+          sub={t("auConcessionalCapSub", { amount: money(effectiveConcessionalCap) })}
         />
         <StatCard
           label={t("auConcessionalRemainingLabel")}
@@ -1096,7 +1102,7 @@ function AUInvestmentAccountsPanel({
           <div className="note" style={{ borderLeftColor: "#C2694F", marginTop: 6 }}>
             <Info size={13} style={{ color: "#C2694F" }} />
             <span>{t("auConcessionalOverProjectionNote", {
-              cap: money(l.concessionalCap),
+              cap: money(effectiveConcessionalCap),
               excess: money(-concessionalRemaining),
             })}</span>
           </div>
@@ -1772,6 +1778,10 @@ const DEFAULT_INPUTS = {
     auInvestment: {
       annualSalary: 0,             // 年間給与（SG拠出額・所得税・Div293の判定に使用）
       voluntaryConcessional: 0,    // 給与犠牲などの任意の税引前拠出（年額）
+      // Carry-forward concessional contributions：ATOオンラインサービスに表示される
+      // 「利用可能な繰越額」と前年6/30時点のTotal super balanceを入力する。
+      carryForwardPriorYearBalance: 0,
+      carryForwardAvailableUnusedCap: 0,
       // Division 293 income（概算）。ATOの定義は課税所得＋報告対象フリンジベネフィット＋
       // 純投資損失＋純賃貸損失等の合計で、年収そのものではない。0（未入力）なら
       // annualSalary で代用し、画面に簡易計算である旨を表示する。
@@ -2419,7 +2429,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     ? rules.investment.getTotalConcessional(auSalary, auVoluntaryConcessional) : 0;
   const auConcessionalCap = (auIsAU && rules.investment.implemented)
     ? rules.investment.getConcessionalCap() : 0;
-  const auConcessionalRemaining = auConcessionalCap - auTotalConcessional;
+  const auCarryForwardApplied = (auIsAU && rules.investment.implemented)
+    ? rules.investment.getCarryForwardAvailable(
+        auInvestment.carryForwardPriorYearBalance, auInvestment.carryForwardAvailableUnusedCap
+      ) : 0;
+  const auEffectiveConcessionalCap = auConcessionalCap + auCarryForwardApplied;
+  const auConcessionalRemaining = auEffectiveConcessionalCap - auTotalConcessional;
   const auNonConcessionalRemaining = (auIsAU && rules.investment.implemented)
     ? rules.investment.getNonConcessionalRemaining(auInvestment.superannuation.annualContribution) : 0;
 
@@ -2457,7 +2472,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   // 拠出課税・Division 293 の課税標準には concessional cap 適用後の額を使う
   // （cap超過分は low tax contributions ではなく、別枠で課税されるため）。
   const auCappedConcessional = (auIsAU && rules.investment.implemented)
-    ? rules.investment.getCappedConcessional(auSalary, auVoluntaryConcessional) : 0;
+    ? rules.investment.getCappedConcessional(
+        auSalary, auVoluntaryConcessional,
+        auInvestment.carryForwardPriorYearBalance, auInvestment.carryForwardAvailableUnusedCap
+      ) : 0;
   const auSuperContributionTax = (auIsAU && rules.tax.implemented)
     ? rules.tax.calculateSuperContributionTax(auCappedConcessional, auDiv293IncomeResolved.income)
     : { baseTax: 0, div293Tax: 0, total: 0, effectiveRate: 0, div293Applies: false };
@@ -3571,6 +3589,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       div293TaxAnnual: auDiv293Tax,
       div293PaidFrom: auDiv293PaidFrom,
       listoAnnual: auListoAnnual,
+      carryForwardPriorYearBalance: inputs.auInvestment.carryForwardPriorYearBalance,
+      carryForwardAvailableUnusedCap: inputs.auInvestment.carryForwardAvailableUnusedCap,
     });
   }, [simulationReady, country, rules, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, inputs.auInvestment, auWithdrawalNeeded, auDiv293Tax, auDiv293PaidFrom, auListoAnnual]);
 
@@ -7089,6 +7109,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               sgContribution={auSgContribution}
               totalConcessional={auTotalConcessional}
               concessionalRemaining={auConcessionalRemaining}
+              effectiveConcessionalCap={auEffectiveConcessionalCap}
+              carryForwardApplied={auCarryForwardApplied}
               nonConcessionalRemaining={auNonConcessionalRemaining}
               superContributionTax={auSuperContributionTax}
               salarySacrificeSaving={auSalarySacrificeSaving}
@@ -8378,7 +8400,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               <StatCard
                 label={t("auConcessionalRemainingLabel")}
                 value={money(Math.max(0, auConcessionalRemaining))}
-                sub={t("auConcessionalCapSub", { amount: money(rules.investment.getConcessionalCap()) })}
+                sub={t("auConcessionalCapSub", { amount: money(auEffectiveConcessionalCap) })}
                 tone={auConcessionalRemaining < 0 ? "danger" : "good"}
               />
               <StatCard
