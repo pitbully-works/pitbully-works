@@ -112,6 +112,14 @@ export function migrateCountryProfiles(defaultInputs, parsed) {
   }
   return { profiles: {}, activeCountry: "JP", migratedLegacy: false };
 }
+export function targetCountryFromBackup(value) {
+  // 新形式バックアップで国コードが明示されている場合は、未知コードをJPへ黙って落とさない。
+  // 国コードが無い古い/初期バックアップだけは、従来互換のためJPとして扱う。
+  if (value === undefined || value === null || String(value).trim() === "") return "JP";
+  const code = String(value).trim().toUpperCase();
+  return PROFILE_COUNTRIES.includes(code) ? code : null;
+}
+
 export function targetCountryFromKakeibo(payload) {
   const raw = payload && typeof payload === "object" ? payload.countryCode : undefined;
   // 旧家計簿データは countryCode を持たないためJPとして互換維持する。
