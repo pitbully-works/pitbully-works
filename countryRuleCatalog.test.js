@@ -24,6 +24,15 @@ describe("5-country common rule catalog", () => {
     }
   });
 
+  it.each(COUNTRIES)("%s catalog accepts lowercase/whitespace without losing rules or sources", (country) => {
+    const canonical = buildCountryRuleCatalog(country);
+    const normalized = buildCountryRuleCatalog(`  ${country.toLowerCase()}  `);
+    expect(normalized).toEqual(canonical);
+    expect(summarizeCountryRuleCatalog(`  ${country.toLowerCase()}  `)).toEqual(
+      summarizeCountryRuleCatalog(country)
+    );
+  });
+
   it.each(COUNTRIES)("%s carries common labels, dates and coverage notes", (country) => {
     for (const row of buildCountryRuleCatalog(country)) {
       expect(row.labelJa).toBeTruthy();
