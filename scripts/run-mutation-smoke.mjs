@@ -33,6 +33,9 @@ const mutants = [
   ["Rule source status is registry-bound", "utils/ruleUpdates.js", "!registered || registered.country !== country || seen.has(id)", "!registered || registered.country !== country", "ruleSourceFeedAtomicValidation.test.js"],
   ["Rule source watcher caps streamed bodies", "scripts/check-rule-sources.mjs", "if (total > MAX_SOURCE_RESPONSE_BYTES) {", "if (total > Number.MAX_SAFE_INTEGER) {", "ruleSourceWatcherHardening.test.js"],
   ["Rule source watcher rejects tiny bodies", "scripts/check-rule-sources.mjs", "if (normalized.length < MIN_NORMALIZED_SOURCE_CHARS) {", "if (normalized.length < 0) {", "ruleSourceWatcherHardening.test.js"],
+  ["Rule source feed requires complete registry coverage", "utils/ruleUpdates.js", "if (payload.sources.length !== registryById.size) return null;", "if (payload.sources.length > registryById.size) return null;", "ruleSourceStatusCompleteness.test.js"],
+  ["Rule source feed rejects watcher errors", "utils/ruleUpdates.js", "if (typeof item.error === \"string\" && item.error.trim()) return null;", "if (typeof item.error === \"string\" && false) return null;", "ruleSourceStatusCompleteness.test.js"],
+  ["Rule check timestamp comes from watcher feed", "App.jsx", "const checkedAt = sourceCheckedAt;", "const checkedAt = new Date().toISOString();", "ruleUpdateCheckIntegrity.test.js"],
 ];
 
 if (!fs.existsSync(vitestBin)) {
