@@ -156,10 +156,24 @@ export function normalizeRuleUpdateState(raw) {
   };
 }
 
+function parseStrictRuleDate(value) {
+  const text = String(value || "").trim();
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(year, month - 1, day, 0, 0, 0, 0);
+  // JavaScript normalizes impossible dates (e.g. 2026-02-30 -> March).
+  // Remote rule manifests must never become effective on such a silently shifted date.
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
+  return date;
+}
+
 export function isUpdateEffective(update, now = new Date()) {
   if (!update?.effectiveDate) return true;
-  const effective = new Date(`${update.effectiveDate}T00:00:00`);
-  return Number.isFinite(effective.getTime()) && now >= effective;
+  const effective = parseStrictRuleDate(update.effectiveDate);
+  return !!effective && Number.isFinite(now?.getTime?.()) && now >= effective;
 }
 
 export function applyApprovedRuleUpdates(baseRules, country, updates, state, now = new Date()) {
