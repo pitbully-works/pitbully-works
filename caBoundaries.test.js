@@ -337,9 +337,10 @@ describe("CA境界：2026年の連邦税バンド", () => {
     expect(tax.getMarginalRate(0)).toBe(0.14);
   });
 
-  it("州・準州の所得税は未実装であることが宣言されている", () => {
-    expect(tax.province.implemented).toBe(false);
-    expect(tax.region).toMatch(/Federal only/);
+  it("オンタリオ州税が実装され、他地域は未対応として残る", () => {
+    expect(tax.province.implemented).toBe(true);
+    expect(tax.province.implementedRegions).toEqual(["ON"]);
+    expect(tax.region).toMatch(/Ontario/);
   });
 
   it("第1バンド上限ちょうどの総額税＝58,523 × 14%", () => {

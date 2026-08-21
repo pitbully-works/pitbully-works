@@ -582,12 +582,11 @@ describe("Canada (CA) core calculations", () => {
     expect(capped).toBeCloseTo(atRoom, 6);
   });
 
-  it("TFSA is tax-free and provincial tax is explicitly not implemented", () => {
+  it("TFSA is tax-free and Ontario provincial tax is implemented", () => {
     expect(tax.tfsaTaxFree).toBe(true);
-    expect(tax.province.implemented).toBe(false);
-    expect(tax.province.brackets).toBeNull();
-    expect(tax.province.rates).toBeNull();
-    expect(tax.region).toBe("Federal only (provincial / territorial tax not included)");
+    expect(tax.province.implemented).toBe(true);
+    expect(tax.province.implementedRegions).toContain("ON");
+    expect(tax.region).toMatch(/Ontario/);
   });
   it("liquid plus restricted equals total across all ages", () => {
     const a = {

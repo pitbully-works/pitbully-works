@@ -888,6 +888,13 @@ function CAInvestmentAccountsPanel({ caInvestment, onUpdate, onUpdateAccount, ag
             sub={t("caFederalTaxSub", { amount: money(taxResult.basicPersonalAmount) })}
           />
           <StatCard
+            label={t("caProvincialTaxLabel", { province: taxResult.provinceCode || "ON" })}
+            value={taxResult.provincialTaxUnsupported ? t("caProvincialTaxUnsupportedValue") : money(taxResult.provincialTax)}
+            sub={taxResult.provincialTaxUnsupported
+              ? t("caProvincialTaxUnsupportedSub")
+              : t("caOntarioTaxSub", { surtax: money(taxResult.ontarioSurtax || 0), premium: money(taxResult.ontarioHealthPremium || 0) })}
+          />
+          <StatCard
             label={t("caCgtLabel")}
             value={money(taxResult.capitalGainsTax)}
             sub={t("caCgtSub", { pct: pct(taxRules.capitalGains.inclusionRate) })}
@@ -2481,18 +2488,29 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const caFederalTaxResult = (caIsCA && rules.tax.implemented)
     ? rules.tax.calculateFederalTax(caGrossIncome)
     : { taxableIncome: 0, grossTax: 0, basicPersonalAmount: 0, bpaCredit: 0, tax: 0 };
+  const caProvinceCode = caInvestment.healthcare?.province || "ON";
+  const caProvincialTaxResult = (caIsCA && rules.tax.implemented && typeof rules.tax.calculateProvincialTax === "function")
+    ? rules.tax.calculateProvincialTax(caGrossIncome, caProvinceCode)
+    : { tax: 0, unsupported: true, provinceCode: caProvinceCode };
   const caCapitalGainsTax = (caIsCA && rules.tax.implemented)
     ? rules.tax.calculateCapitalGainsTax(caInvestment.estimatedCapitalGainAnnual, caGrossIncome)
+    : 0;
+  const caProvincialCapitalGainsTax = (caIsCA && rules.tax.implemented && typeof rules.tax.calculateProvincialCapitalGainsTax === "function")
+    ? rules.tax.calculateProvincialCapitalGainsTax(caInvestment.estimatedCapitalGainAnnual, caGrossIncome, caProvinceCode)
     : 0;
   const caMarginalRate = (caIsCA && rules.tax.implemented) ? rules.tax.getMarginalRate(caGrossIncome) : 0;
   const caRrspRoom = (caIsCA && rules.investment.implemented)
     ? rules.investment.getRrspRoom(caPriorEarnedIncome, caInvestment)
     : 0;
-  const caRrspTaxSaving = (caIsCA && rules.tax.implemented)
+  const caFederalRrspTaxSaving = (caIsCA && rules.tax.implemented)
     ? rules.tax.calculateRrspTaxSaving(caInvestment.rrsp.annualContribution, caGrossIncome, caRrspRoom)
     : 0;
-  // 税額合計（RRSP拠出による軽減後）。軽減が税額を上回ってもマイナス表示にはしない。
-  const caTotalTax = Math.max(0, caFederalTaxResult.tax + caCapitalGainsTax - caRrspTaxSaving);
+  const caProvincialRrspTaxSaving = (caIsCA && rules.tax.implemented && typeof rules.tax.calculateProvincialRrspTaxSaving === "function")
+    ? rules.tax.calculateProvincialRrspTaxSaving(caInvestment.rrsp.annualContribution, caGrossIncome, caRrspRoom, caProvinceCode)
+    : 0;
+  const caRrspTaxSaving = caFederalRrspTaxSaving + caProvincialRrspTaxSaving;
+  // 税額合計（連邦＋対応州、CGT、RRSP拠出による軽減後）。未対応州では州税を0として明示表示する。
+  const caTotalTax = Math.max(0, caFederalTaxResult.tax + caProvincialTaxResult.tax + caCapitalGainsTax + caProvincialCapitalGainsTax - caRrspTaxSaving);
 
   const caHealthcareAnnual = (caIsCA && rules.healthcare.implemented)
     ? rules.healthcare.getAnnualTotal(caInvestment.healthcare)
@@ -7249,7 +7267,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               taxResult={{
                 federalTax: caFederalTaxResult.tax,
                 basicPersonalAmount: caFederalTaxResult.basicPersonalAmount,
-                capitalGainsTax: caCapitalGainsTax,
+                provincialTax: caProvincialTaxResult.tax,
+                provincialTaxUnsupported: caProvincialTaxResult.unsupported === true,
+                provinceCode: caProvinceCode,
+                ontarioHealthPremium: caProvincialTaxResult.healthPremium || 0,
+                ontarioSurtax: caProvincialTaxResult.surtax || 0,
+                capitalGainsTax: caCapitalGainsTax + caProvincialCapitalGainsTax,
                 rrspTaxSaving: caRrspTaxSaving,
                 marginalRate: caMarginalRate,
                 totalTax: caTotalTax,
