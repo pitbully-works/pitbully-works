@@ -2,10 +2,17 @@
 // 承認済みでも effectiveDate より前は計算へ適用しない。
 export const RULE_UPDATE_STORAGE_KEY = "nisa-lifeplan-rule-updates-v1";
 export const RULE_UPDATE_COUNTRIES = Object.freeze(["JP", "US", "GB", "CA", "AU"]);
+export const MAX_REMOTE_RULE_UPDATES = 500;
+export const MAX_RULE_CHANGES_PER_UPDATE = 100;
 
 export function normalizeRuleCountry(value) {
   const code = String(value || "").trim().toUpperCase();
   return RULE_UPDATE_COUNTRIES.includes(code) ? code : null;
+}
+
+export function normalizeRuleUpdateId(value) {
+  const id = typeof value === "string" ? value.trim() : "";
+  return id && id.length <= 200 ? id : null;
 }
 
 // Remote rule manifests can supply sourceUrl. Render only normal web links; never
@@ -15,6 +22,7 @@ export function safeRuleSourceUrl(value) {
   if (!text) return "";
   try {
     const url = new URL(text);
+    if (url.username || url.password) return "";
     return url.protocol === "https:" || url.protocol === "http:" ? url.href : "";
   } catch {
     return "";
@@ -22,9 +30,22 @@ export function safeRuleSourceUrl(value) {
 }
 
 function hasOwnTrue(map, id) {
-  return !!map
-    && Object.prototype.hasOwnProperty.call(map, id)
-    && map[id] === true;
+  const key = normalizeRuleUpdateId(id);
+  return !!key
+    && !!map
+    && Object.prototype.hasOwnProperty.call(map, key)
+    && map[key] === true;
+}
+
+function normalizeDecisionMap(value) {
+  const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  const out = {};
+  for (const [rawId, rawDecision] of Object.entries(source)) {
+    const id = normalizeRuleUpdateId(rawId);
+    if (!id || typeof rawDecision !== "boolean") continue;
+    out[id] = rawDecision;
+  }
+  return out;
 }
 
 // Approval/defer maps are keyed by externally supplied update IDs.
@@ -142,27 +163,48 @@ function setByPath(root, path, value) {
   }
   const leaf = parts[parts.length - 1];
   if (!Object.prototype.hasOwnProperty.call(cursor, leaf)) return false;
+  const current = cursor[leaf];
+  // Remote updates may change statutory scalar values only. Never replace a
+  // verified function/object/array with remote data, and keep primitive types
+  // compatible so a number cannot silently become a string or boolean.
+  if (typeof current === "function" || (current && typeof current === "object")) return false;
+  if (typeof current === "number") {
+    if (typeof value !== "number" || !Number.isFinite(value)) return false;
+  } else if (typeof current === "boolean") {
+    if (typeof value !== "boolean") return false;
+  } else if (typeof current === "string") {
+    if (typeof value !== "string") return false;
+  } else if (current === null) {
+    if (value !== null && !["string", "number", "boolean"].includes(typeof value)) return false;
+    if (typeof value === "number" && !Number.isFinite(value)) return false;
+  } else {
+    return false;
+  }
   cursor[leaf] = value;
   return true;
 }
 
 export function normalizeRuleUpdateState(raw) {
-  const source = raw && typeof raw === "object" ? raw : {};
+  const source = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
   const history = Array.isArray(source.history)
     ? source.history
-      .filter((item) => item && typeof item === "object")
+      .filter((item) => item && typeof item === "object" && !Array.isArray(item))
       .map((item) => {
         const country = normalizeRuleCountry(item.country);
-        return country ? { ...item, country } : null;
+        const id = normalizeRuleUpdateId(item.id);
+        const updateId = item.updateId == null ? null : normalizeRuleUpdateId(item.updateId);
+        const action = item.action === "approved" || item.action === "deferred" ? item.action : null;
+        if (!country || !id || (item.updateId != null && !updateId) || !action) return null;
+        return { ...item, id, ...(updateId ? { updateId } : {}), country, action };
       })
       .filter(Boolean)
       .slice(-100)
     : [];
   return {
-    approved: source.approved && typeof source.approved === "object" ? source.approved : {},
-    dismissed: source.dismissed && typeof source.dismissed === "object" ? source.dismissed : {},
+    approved: normalizeDecisionMap(source.approved),
+    dismissed: normalizeDecisionMap(source.dismissed),
     history,
-    lastCheckedAt: typeof source.lastCheckedAt === "string" ? source.lastCheckedAt : "",
+    lastCheckedAt: typeof source.lastCheckedAt === "string" ? source.lastCheckedAt.trim() : "",
   };
 }
 
@@ -194,12 +236,14 @@ export function applyApprovedRuleUpdates(baseRules, country, updates, state, now
   // Never let two invalid/unknown country codes match through `null === null`.
   // The calculation engine only supports the explicit five-country set.
   if (!code) return result;
-  for (const update of updates || []) {
+  const safeUpdates = Array.isArray(updates) ? updates.slice(0, MAX_REMOTE_RULE_UPDATES + BUILTIN_RULE_UPDATES.length) : [];
+  for (const update of safeUpdates) {
     const updateCountry = normalizeRuleCountry(update?.country);
-    if (!updateCountry || updateCountry !== code) continue;
-    if (!isRuleUpdateApproved(state, update.id)) continue;
+    const updateId = normalizeRuleUpdateId(update?.id);
+    if (!updateCountry || updateCountry !== code || !updateId) continue;
+    if (!isRuleUpdateApproved(state, updateId)) continue;
     if (!isUpdateEffective(update, now)) continue;
-    const changes = Array.isArray(update?.changes) ? update.changes : [];
+    const changes = Array.isArray(update?.changes) ? update.changes.slice(0, MAX_RULE_CHANGES_PER_UPDATE) : [];
     for (const change of changes) {
       if (!change || typeof change !== "object") continue;
       if (typeof change.path !== "string" || !change.path.trim()) continue;
@@ -212,17 +256,21 @@ export function applyApprovedRuleUpdates(baseRules, country, updates, state, now
 export function mergeRuleUpdateManifests(remoteUpdates) {
   const byId = new Map(BUILTIN_RULE_UPDATES.map((item) => [item.id, item]));
   if (Array.isArray(remoteUpdates)) {
-    for (const item of remoteUpdates) {
-      if (!item || typeof item.id !== "string") continue;
+    for (const item of remoteUpdates.slice(0, MAX_REMOTE_RULE_UPDATES)) {
+      if (!item || typeof item !== "object" || Array.isArray(item)) continue;
+      const id = normalizeRuleUpdateId(item.id);
       const country = normalizeRuleCountry(item.country);
-      if (!country) continue;
+      if (!id || !country) continue;
       // IDs are global approval keys. Once an ID is present, a later remote row must
       // never replace it — even within the same country. Otherwise an already-approved
       // ID could silently acquire different paths/values without a fresh approval.
       // Built-ins therefore always win, and the first valid remote row wins among
       // duplicate remote IDs.
-      if (byId.has(item.id)) continue;
-      byId.set(item.id, { ...item, country });
+      if (byId.has(id)) continue;
+      const changes = Array.isArray(item.changes)
+        ? item.changes.filter((change) => change && typeof change === "object" && !Array.isArray(change)).slice(0, MAX_RULE_CHANGES_PER_UPDATE)
+        : [];
+      byId.set(id, { ...item, id, country, changes });
     }
   }
   return [...byId.values()];
