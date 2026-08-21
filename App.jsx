@@ -2261,16 +2261,20 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
   const checkRuleUpdates = useCallback(async () => {
     let remote = [];
+    let manifestChecked = false;
+    let sourceStatusChecked = false;
     try {
       const response = await fetch(`/rules-updates.json?ts=${Date.now()}`, { cache: "no-store" });
       const payload = await readBoundedJsonResponse(response, MAX_RULE_MANIFEST_RESPONSE_CHARS);
       remote = Array.isArray(payload?.updates) ? payload.updates : [];
+      manifestChecked = true;
     } catch { /* オフライン時は内蔵済みの確認済み制度情報を使う */ }
     setRuleUpdates(mergeRuleUpdateManifests(remote));
     try {
       const sourceResponse = await fetch(`/rules-source-status.json?ts=${Date.now()}`, { cache: "no-store" });
       const sourcePayload = await readBoundedJsonResponse(sourceResponse, MAX_RULE_SOURCE_STATUS_RESPONSE_CHARS);
       if (sourcePayload) {
+        sourceStatusChecked = true;
         setRuleSourceStatuses(Array.isArray(sourcePayload?.sources)
           ? sourcePayload.sources.slice(0, 500).map((item) => {
               if (!item || typeof item !== "object" || Array.isArray(item)) return null;
@@ -2293,9 +2297,20 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           : []);
       }
     } catch { /* 監視状態を取得できなくても既存計算には影響させない */ }
-    const next = { ...ruleUpdateState, lastCheckedAt: new Date().toISOString() };
-    persistRuleUpdateState(next);
-  }, [ruleUpdateState, persistRuleUpdateState]);
+
+    // 「最終確認」は2つの外部データを両方正常取得できた時だけ更新する。
+    // オフライン/部分失敗を成功扱いして次回確認日を先送りしない。
+    // また非同期取得中に承認・確認済み操作が入っても、開始時点の古い state で
+    // それらを巻き戻さないよう、完了時点の state を基準に更新する。
+    if (manifestChecked && sourceStatusChecked) {
+      const checkedAt = new Date().toISOString();
+      setRuleUpdateState((current) => {
+        const normalized = normalizeRuleUpdateState({ ...current, lastCheckedAt: checkedAt });
+        try { window.localStorage?.setItem(RULE_UPDATE_STORAGE_KEY, JSON.stringify(normalized)); } catch { /* noop */ }
+        return normalized;
+      });
+    }
+  }, []);
 
   useEffect(() => { checkRuleUpdates(); /* 起動時に1回だけ確認 */ // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
