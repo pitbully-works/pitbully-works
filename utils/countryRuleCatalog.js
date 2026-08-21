@@ -64,13 +64,14 @@ function coverageMap(rules) {
   return new Map((Array.isArray(rules?.meta?.coverage) ? rules.meta.coverage : []).map((item) => [item.key, item]));
 }
 
-export function buildCountryRuleCatalog(country, rules = COUNTRY_RULES[country]) {
-  const code = String(country || "").toUpperCase();
-  const coverage = coverageMap(rules);
+export function buildCountryRuleCatalog(country, rules) {
+  const code = String(country || "").trim().toUpperCase();
+  const resolvedRules = rules ?? COUNTRY_RULES[code];
+  const coverage = coverageMap(resolvedRules);
 
   return COUNTRY_RULE_SECTION_KEYS.map((key) => {
     const cov = coverage.get(key) || {};
-    const section = rules?.[key] || null;
+    const section = resolvedRules?.[key] || null;
     const registrySources = findRegistrySources(code, key);
     const labels = COUNTRY_RULE_SECTION_LABELS[key];
     const status = cov.status || (section?.implemented === true ? "implemented" : "notImplemented");
@@ -85,7 +86,7 @@ export function buildCountryRuleCatalog(country, rules = COUNTRY_RULES[country])
       labelEn: cov.labelEn || labels.en,
       status,
       implemented: status !== "notImplemented" && section?.implemented !== false,
-      effective: cov.effective || section?.effectiveTaxYear || section?.effectiveYear || rules?.meta?.effectivePeriod || null,
+      effective: cov.effective || section?.effectiveTaxYear || section?.effectiveYear || resolvedRules?.meta?.effectivePeriod || null,
       lastUpdated: cov.lastUpdated || section?.lastUpdated || rules?.meta?.verifiedAsOf || null,
       updateJa: cov.updateJa || "",
       updateEn: cov.updateEn || "",
@@ -128,7 +129,7 @@ export function auditCountryRuleCatalog() {
 export function summarizeCountryRuleCatalog(country) {
   const rows = buildCountryRuleCatalog(country);
   return {
-    country: String(country || "").toUpperCase(),
+    country: String(country || "").trim().toUpperCase(),
     sectionCount: rows.length,
     implementedCount: rows.filter((row) => row.status === "implemented").length,
     partialCount: rows.filter((row) => row.status === "partial").length,

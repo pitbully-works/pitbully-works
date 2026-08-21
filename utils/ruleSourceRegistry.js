@@ -51,5 +51,6 @@ export const RULE_SOURCE_REGISTRY = [
 ];
 
 export function getRuleSourcesForCountry(country) {
-  return RULE_SOURCE_REGISTRY.filter((source) => source.country === country);
+  const code = String(country || "").trim().toUpperCase();
+  return RULE_SOURCE_REGISTRY.filter((source) => source.country === code);
 }
