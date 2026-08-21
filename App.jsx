@@ -1010,7 +1010,7 @@ function AUAccountFields({ accountKey, title, account, onUpdateAccount, borderCo
 function AUInvestmentAccountsPanel({
   auInvestment, onUpdate, onUpdateAccount, age, investmentRules, taxRules,
   sgContribution, totalConcessional, concessionalRemaining, nonConcessionalRemaining,
-  superContributionTax, salarySacrificeSaving, taxResult, capitalGainsTax, totalTax, marginalRate,
+  superContributionTax, salarySacrificeSaving, listoAnnual, listoIncome, taxResult, capitalGainsTax, totalTax, marginalRate,
 }) {
   const { t, money } = useContext(LocaleContext);
   // 画面に出す数値・年度・税率はすべて AU_COUNTRY_RULES から取り出す。
@@ -1039,6 +1039,18 @@ function AUInvestmentAccountsPanel({
       <div className="note" style={{ marginBottom: 10 }}>
         <Info size={13} />
         <span>{div293Estimated ? t("auDiv293IncomeEstimatedNote") : t("auDiv293IncomeExplicitNote")}</span>
+      </div>
+
+
+      <div className="field-label" style={{ marginBottom: 6 }}>{t("auListoEligibilityLabel")}</div>
+      <div className="chip-row" style={{ marginBottom: 6 }}>
+        <button className={`chip ${auInvestment.listoEligible ? "chip-active" : ""}`} onClick={() => onUpdate("listoEligible", true)}>{t("auYes")}</button>
+        <button className={`chip ${!auInvestment.listoEligible ? "chip-active" : ""}`} onClick={() => onUpdate("listoEligible", false)}>{t("auNo")}</button>
+      </div>
+      <Field guide={t("auListoIncomeGuide")} label={t("auListoIncomeLabel")} unit="A$" step={1000} value={auInvestment.listoAdjustedTaxableIncome} onChange={(v) => onUpdate("listoAdjustedTaxableIncome", v)} />
+      <div className="note" style={{ marginBottom: 10 }}>
+        <Info size={13} />
+        <span>{t(auInvestment.listoAdjustedTaxableIncome > 0 ? "auListoIncomeExplicitNote" : "auListoIncomeEstimatedNote", { income: money(listoIncome) })}</span>
       </div>
 
       <div className="field-label" style={{ marginBottom: 6 }}>{t("auDiv293PaidFromLabel")}</div>
@@ -1116,6 +1128,12 @@ function AUInvestmentAccountsPanel({
           value={money(salarySacrificeSaving)}
           sub={t("auSalarySacrificeSavingSub", { pct: pct(marginalRate) })}
           tone="good"
+        />
+        <StatCard
+          label={t("auListoLabel")}
+          value={money(listoAnnual)}
+          sub={auInvestment.listoEligible ? t("auListoAppliedSub") : t("auListoNotAppliedSub")}
+          tone={listoAnnual > 0 ? "good" : undefined}
         />
       </div>
       <div className="note" style={{ marginTop: 10 }}>
@@ -1724,6 +1742,10 @@ const DEFAULT_INPUTS = {
       div293Income: 0,
       // Division 293 税の支払元："super"（Super残高から）／"outside"（口座外の現金から）
       div293PaidFrom: "super",
+      // LISTOは年齢・ビザ・10% eligible income test等があるため、利用者が対象条件を満たす場合のみ有効化。
+      listoEligible: false,
+      // 0なら「年収 − 給与犠牲」をATIの概算として使用。分かる場合は明示入力する。
+      listoAdjustedTaxableIncome: 0,
       estimatedCapitalGainAnnual: 0,
       capitalGainHeldOver12Months: true,
       // withdrawalTaxPct：60歳以降のSuperからの引出は非課税(0%)。
@@ -2394,6 +2416,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const auDiv293Tax = auSuperContributionTax.div293Tax;
   const auSalarySacrificeSaving = (auIsAU && rules.tax.implemented)
     ? rules.tax.calculateSalarySacrificeSaving(auVoluntaryConcessional, auSalary) : 0;
+  const auListoIncome = Math.max(0, Number(auInvestment.listoAdjustedTaxableIncome) || auTaxableIncome);
+  const auListoAnnual = (auIsAU && rules.tax.implemented && typeof rules.tax.calculateLowIncomeSuperTaxOffset === "function")
+    ? rules.tax.calculateLowIncomeSuperTaxOffset(auListoIncome, auCappedConcessional, auInvestment.listoEligible === true)
+    : 0;
   const auCapitalGainsTax = (auIsAU && rules.tax.implemented)
     ? rules.tax.calculateCapitalGainsTax(
         auInvestment.estimatedCapitalGainAnnual,
@@ -3496,8 +3522,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       earningsTaxAccumulation: rules.tax.superannuation.earningsTaxAccumulation,
       div293TaxAnnual: auDiv293Tax,
       div293PaidFrom: auDiv293PaidFrom,
+      listoAnnual: auListoAnnual,
     });
-  }, [simulationReady, country, rules, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, inputs.auInvestment, auWithdrawalNeeded, auDiv293Tax, auDiv293PaidFrom]);
+  }, [simulationReady, country, rules, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, inputs.auInvestment, auWithdrawalNeeded, auDiv293Tax, auDiv293PaidFrom, auListoAnnual]);
 
 
   // チャート用データ。行の age は「その時点で実際に到達している年齢」（整数）で、
@@ -7017,6 +7044,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               nonConcessionalRemaining={auNonConcessionalRemaining}
               superContributionTax={auSuperContributionTax}
               salarySacrificeSaving={auSalarySacrificeSaving}
+              listoAnnual={auListoAnnual}
+              listoIncome={auListoIncome}
               taxResult={auTaxResult}
               capitalGainsTax={auCapitalGainsTax}
               totalTax={auTotalTax}
