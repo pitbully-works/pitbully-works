@@ -20,9 +20,10 @@ describe("five-country final contamination guards", () => {
     expect(profileMeta(country)).toEqual(EXPECTED_META[country]);
   });
 
-  it.each(PROFILE_COUNTRIES)("%s resolves its own rules even with lowercase input", (country) => {
+  it.each(PROFILE_COUNTRIES)("%s resolves its own rules with case/whitespace normalization", (country) => {
     expect(getCountryRules(country)).toBe(COUNTRY_RULES[country]);
     expect(getCountryRules(country.toLowerCase())).toBe(COUNTRY_RULES[country]);
+    expect(getCountryRules(`  ${country.toLowerCase()}  `)).toBe(COUNTRY_RULES[country]);
   });
 
 
@@ -48,6 +49,7 @@ describe("five-country final contamination guards", () => {
     for (const [key, labels] of Object.entries(CATEGORY_LABELS)) {
       expect(labels[country], `${country}:${key}`).toBeTruthy();
       expect(getCategoryLabel(key, country)).toBe(labels[country]);
+      expect(getCategoryLabel(key, `  ${country.toLowerCase()}  `)).toBe(labels[country]);
     }
   });
 
