@@ -25,7 +25,7 @@ export const AU_COUNTRY_RULES = {
       { key: "investment", labelJa: "投資制度", labelEn: "Investment", status: "partial", effective: "2026-27 financial year", lastUpdated: "2026-08-17", updateJa: "Super・投資口座・拠出上限を反映。carry-forward、bring-forward等の詳細判定は未実装。", updateEn: "Super, investment accounts and contribution caps are modelled; detailed carry-forward/bring-forward eligibility is not implemented." },
       { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "partial", effective: "2026-27 / Age Pension Mar 2026 rates", lastUpdated: "2026-08-17", updateJa: "Age Pensionの資産・所得テスト、Work Bonus年次近似、Super取崩しを反映。Work Bonusの隔週厳密計算等は未実装。", updateEn: "Age Pension means tests, annualised Work Bonus and Super drawdown are modelled; fortnightly Work Bonus detail and some edge cases are not implemented." },
       { key: "healthcare", labelJa: "医療", labelEn: "Healthcare", status: "partial", effective: "2026-27 / 2026 calendar-year Safety Nets", lastUpdated: "2026-08-21", updateJa: "Medicare前提の自己負担に加え、2026年PBS Safety Net概算とMedicare Safety Net閾値を反映。診療ごとのSafety Net還付・aged care資力調査は未自動化。", updateEn: "Adds a 2026 PBS Safety Net estimate and Medicare Safety Net thresholds to the Medicare out-of-pocket model; item-level Safety Net rebates and aged-care means testing remain manual." },
-      { key: "tax", labelJa: "税金", labelEn: "Tax", status: "partial", effective: "2026-27 financial year", lastUpdated: "2026-08-21", updateJa: "居住者所得税・LITO・SAPTO・Medicare levy・CGTを反映。MLS等は未実装。", updateEn: "Resident income tax, LITO, SAPTO, Medicare levy and CGT are modelled; MLS is not implemented." },
+      { key: "tax", labelJa: "税金", labelEn: "Tax", status: "partial", effective: "2026-27 financial year", lastUpdated: "2026-08-21", updateJa: "居住者所得税・LITO・SAPTO・Medicare levy・MLS・CGTを反映。", updateEn: "Resident income tax, LITO, SAPTO, Medicare levy, MLS and CGT are modelled." },
       { key: "estate", labelJa: "相続", labelEn: "Estate", status: "partial", effective: "2026-27", lastUpdated: "2026-08-17", updateJa: "相続目標は資産計画に反映。Super death benefit等の税務自動計算は未実装。", updateEn: "Estate targets feed the plan; tax treatment of Super death benefits is not automated." },
     ],
   },
@@ -675,6 +675,7 @@ export const AU_COUNTRY_RULES = {
       div293: "https://www.ato.gov.au/individuals-and-families/super-for-individuals-and-families/super/growing-your-super/how-to-save-more-in-your-super/division-293-tax",
       listo: "https://www.ato.gov.au/individuals-and-families/super-for-individuals-and-families/super/growing-and-keeping-track-of-your-super/how-to-save-more-in-your-super/government-super-contributions/low-income-super-tax-offset",
       sapto: "https://www.ato.gov.au/individuals-and-families/income-deductions-offsets-and-records/tax-offsets/seniors-and-pensioners-tax-offset",
+      medicareLevySurcharge: "https://www.privatehealth.gov.au/health_insurance/surcharges_incentives/medicare_levy.htm",
     },
     region: "Australian residents (foreign residents not implemented)",
     // 2026-27年度の税率。第2バンドは2026年7月1日に16%→15%へ引下げ済み。
@@ -703,6 +704,31 @@ export const AU_COUNTRY_RULES = {
       },
       phaseInRate: 0.10,
     },
+    // Medicare Levy Surcharge (MLS), 2026-27.
+    // incomeForSurcharge は taxable income と同一とは限らないため、呼出側で明示値を渡せる。
+    medicareLevySurcharge: {
+      effectiveTaxYear: "2026-27",
+      singleThresholds: [105000, 123000, 164000],
+      familyThresholds: [210000, 246000, 328000],
+      rates: [0, 0.01, 0.0125, 0.015],
+      dependentChildIncrementAfterFirst: 1500,
+    },
+    calculateMedicareLevySurcharge(incomeForSurcharge, options = {}) {
+      if (options.hasAppropriateHospitalCover === true) return 0;
+      const income = Math.max(0, Number(incomeForSurcharge) || 0);
+      const family = options.family === true;
+      const children = Math.max(0, Math.floor(Number(options.dependentChildren) || 0));
+      const cfg = this.medicareLevySurcharge;
+      const extra = family ? Math.max(0, children - 1) * cfg.dependentChildIncrementAfterFirst : 0;
+      const thresholds = (family ? cfg.familyThresholds : cfg.singleThresholds).map((x) => x + extra);
+      let rate = 0;
+      if (income > thresholds[2]) rate = cfg.rates[3];
+      else if (income > thresholds[1]) rate = cfg.rates[2];
+      else if (income > thresholds[0]) rate = cfg.rates[1];
+      const uncoveredDays = Math.max(0, Math.min(365, Number(options.uncoveredDays ?? 365) || 0));
+      return income * rate * (uncoveredDays / 365);
+    },
+
     // Low Income Tax Offset (LITO)。非還付型で、所得税本体を0未満にはしない。
     lowIncomeTaxOffset: {
       maximum: 700,
@@ -817,7 +843,14 @@ export const AU_COUNTRY_RULES = {
       const saptoApplied = Math.min(afterLito, saptoEntitlement);
       const incomeTax = Math.max(0, afterLito - saptoApplied);
       const medicareLevy = this.calculateMedicareLevy(taxableIncome, { saptoEligible: options.saptoEligible === true });
-      return { incomeTaxBeforeOffsets, litoEntitlement, litoApplied, saptoEntitlement, saptoApplied, incomeTax, medicareLevy, total: incomeTax + medicareLevy };
+      const mlsIncome = Math.max(0, Number(options.mlsIncome) || Number(taxableIncome) || 0);
+      const medicareLevySurcharge = this.calculateMedicareLevySurcharge(mlsIncome, {
+        hasAppropriateHospitalCover: options.hasAppropriateHospitalCover === true,
+        family: options.mlsFamily === true,
+        dependentChildren: options.mlsDependentChildren || 0,
+        uncoveredDays: options.mlsUncoveredDays ?? 365,
+      });
+      return { incomeTaxBeforeOffsets, litoEntitlement, litoApplied, saptoEntitlement, saptoApplied, incomeTax, medicareLevy, medicareLevySurcharge, total: incomeTax + medicareLevy + medicareLevySurcharge };
     },
     getMarginalRate(taxableIncome) {
       const income = Math.max(0, Number(taxableIncome) || 0);
@@ -903,7 +936,6 @@ export const AU_COUNTRY_RULES = {
     notImplemented: [
       "SAPTOの配偶者間の未使用税額控除移転（spouse transfer）と資格条件の完全自動判定",
       "Medicare levyの家族所得による減免・日割り免除",
-      "Medicare Levy Surcharge（民間医療保険未加入の高所得者）",
       "HECS-HELP（学生ローン）の返済",
       "非居住者（foreign resident）の税率",
       "60歳未満のSuper引き出しへの課税（low rate capは保持）",
