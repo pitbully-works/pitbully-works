@@ -1921,6 +1921,10 @@ const DEFAULT_INPUTS = {
         includeMedicareLevy: true,
         paymentRoute: "direct",
         dependantSharePercent: 100,
+        incomeStreamEnabled: false,
+        incomeStreamDependant: true,
+        incomeStreamRecipientAge: 60,
+        incomeStreamDeceasedAge: 60,
       },
       // 医療費（Medicare前提の簡易モデル）
       healthcare: {
@@ -7864,6 +7868,25 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                     <span>{t("auEstateSuperDeathLimitNote")}</span>
                   </div>
                 </>}
+                <div style={{ borderTop: "1px solid var(--border)", marginTop: 14, paddingTop: 12 }}>
+                  <label className="checkbox-row">
+                    <input type="checkbox" checked={!!e.incomeStreamEnabled} onChange={(ev) => updateAuInvestmentNested("estate", "incomeStreamEnabled", ev.target.checked)} />
+                    <span>{t("auEstateIncomeStreamEnable")}</span>
+                  </label>
+                  {e.incomeStreamEnabled && (() => {
+                    const tr = rules.estate.getSuperDeathBenefitIncomeStreamTreatment({ recipientAge: e.incomeStreamRecipientAge, deceasedAge: e.incomeStreamDeceasedAge, isDeathBenefitsDependant: e.incomeStreamDependant !== false });
+                    return <>
+                      <div className="field-label" style={{ marginBottom: 6 }}>{t("auEstateBeneficiaryType")}</div>
+                      <div className="chip-row" style={{ marginBottom: 10 }}>
+                        <button className={`chip ${e.incomeStreamDependant !== false ? "chip-active" : ""}`} onClick={() => updateAuInvestmentNested("estate", "incomeStreamDependant", true)}>{t("auEstateDependant")}</button>
+                        <button className={`chip ${e.incomeStreamDependant === false ? "chip-active" : ""}`} onClick={() => updateAuInvestmentNested("estate", "incomeStreamDependant", false)}>{t("auEstateNonDependant")}</button>
+                      </div>
+                      <Field label={t("auEstateRecipientAge")} unit={t("auEstateAgeUnit")} step={1} min={0} max={120} value={e.incomeStreamRecipientAge ?? 60} onChange={(v) => updateAuInvestmentNested("estate", "incomeStreamRecipientAge", v)} />
+                      <Field label={t("auEstateDeceasedAge")} unit={t("auEstateAgeUnit")} step={1} min={0} max={120} value={e.incomeStreamDeceasedAge ?? 60} onChange={(v) => updateAuInvestmentNested("estate", "incomeStreamDeceasedAge", v)} />
+                      <div className="note"><Info size={13} /><span>{t(`auEstateIncomeStream_${tr.treatment}`)}</span></div>
+                    </>;
+                  })()}
+                </div>
               </div>
             );
           })()}
