@@ -343,7 +343,7 @@ export const JA_TRANSLATIONS = {
     "auTaxAdvantagedSub": "Superannuation（運用益への課税が15%に軽減され、退職後は非課税）",
     "auTaxHandledInInvestmentNote": "オーストラリアの税制（所得税・Medicare levy・Super拠出課税・譲渡益課税）は、セクション02「Investment Account」内でまとめて計算しています。",
     "auTaxSectionLabel": "Tax（{taxYear}会計年度）",
-    "auTaxSourceNote": "所得税・Medicare levy・譲渡益課税は{taxYear}年度のATO公表値に基づく概算です。LITO・SAPTOなどの税額控除、Medicare Levy Surcharge、HECS-HELPの返済は未実装です。",
+    "auTaxSourceNote": "所得税・Medicare levy・譲渡益課税は{taxYear}年度のATO公表値に基づく概算です。LITO・SAPTOと単身者のMedicare levy低所得減免を反映しています。家族所得によるMedicare levy減免、Medicare Levy Surcharge、HECS-HELPの返済は未実装です。",
     "auTotalAssetsLabel": "総資産（3口座の合計）",
     "auTotalAssetsSub": "Superannuation＋投資口座＋現金貯蓄のすべての合計",
     "auTotalTaxLabel": "税額合計（概算）",
