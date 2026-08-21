@@ -35,7 +35,7 @@ import { pickCurrentAnchor } from "./utils/currentSection.js";
 import { isKakeiboPayload, mergeKakeiboInputs, checkKakeiboAmountUnit } from "./utils/importFromKakeibo.js";
 import {
   PROFILE_COUNTRIES, PROFILE_STORAGE_VERSION, applySharedIdentity, forceCountryMeta,
-  makeCountryProfile, migrateCountryProfiles, normalizeProfileCountry, normalizeCountryKeyedRecord, targetCountryFromKakeibo, targetCountryFromBackup,
+  makeCountryProfile, migrateCountryProfiles, normalizeProfileCountry, normalizeProfileCurrency, normalizeCountryKeyedRecord, targetCountryFromKakeibo, targetCountryFromBackup,
 } from "./utils/countryProfiles.js";
 import { buildNisaBreakdown, breakdownPrincipalItems, breakdownReturnBars, breakdownTotals } from "./utils/nisaBreakdown.js";
 import { describeSchedulePace } from "./utils/schedulePace.js";
@@ -2098,8 +2098,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   // 重要：このブロックはファイル内で最初期（他のuseMemo/useCallbackより前）に置くこと。
   // useMemoのファクトリ関数はレンダー中に同期的に即時実行されるため、
   // t/money/label をこれより後方で定義すると初期化前アクセスのエラーになる。
-  const country = inputs.country || "JP";
-  const baseCurrency = inputs.baseCurrency || "JPY";
+  // 保存データや外部連携に表記揺れが混ざっても、画面・計算へ渡す直前で必ず正規化する。
+  // これにより " us " / " usd " のような値が国別分岐や通貨表示をすり抜けない。
+  const country = normalizeProfileCountry(inputs.country || "JP");
+  const baseCurrency = normalizeProfileCurrency(inputs.baseCurrency, country);
   const language = inputs.language || "ja";
   // 国別計算エンジンのルールセット。投資/年金/医療費/税制それぞれの implemented フラグを
   // 見て、未実装の国では日本の数値をそのまま見せないよう画面側で分岐する。
