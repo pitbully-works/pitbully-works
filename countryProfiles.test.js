@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { PROFILE_COUNTRIES, PROFILE_STORAGE_VERSION, applySharedIdentity, forceCountryMeta, makeCountryProfile, migrateCountryProfiles, normalizeProfileCurrency, normalizeCountryKeyedRecord, normalizeSnapshotDate, resolvePersistedActiveCountry, snapshotStorageKey, legacyJpSnapshotStorageKey, targetCountryFromKakeibo, targetCountryFromBackup, normalizeStockWatchlist, snapshotDateFromStorageKey } from "./utils/countryProfiles.js";
+import { PROFILE_COUNTRIES, PROFILE_STORAGE_VERSION, applySharedIdentity, forceCountryMeta, makeCountryProfile, migrateCountryProfiles, normalizeProfileCurrency, normalizeCountryKeyedRecord, normalizeSnapshotDate, resolvePersistedActiveCountry, snapshotStorageKey, legacyJpSnapshotStorageKey, targetCountryFromKakeibo, targetCountryFromBackup, normalizeStockWatchlist, snapshotDateFromStorageKey, normalizeProfileStorageVersion, isPlainRecord, MAX_SNAPSHOT_HISTORY } from "./utils/countryProfiles.js";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 const defaults={country:"JP",baseCurrency:"JPY",language:"ja",userName:"",birthDate:"",currentAge:35,currentAssets:0,banks:[],pensionMonthly:0,livingCostMonthly:0};
@@ -209,5 +209,38 @@ describe("batch hardening 6: persisted watchlists and snapshot integrity", () =>
     expect(app).toContain('normalizeStockWatchlist(parsed.watchlist, "JP")');
     expect(app).toContain("watchlist: normalizeStockWatchlist(entry.watchlist, currentCountry)");
     expect(app).toContain("const safeNextWatchlist = normalizeStockWatchlist(nextWatchlist, code)");
+  });
+});
+
+
+describe("batch hardening: backup version and history bounds", () => {
+  it("accepts canonical numeric-string versions but rejects malformed versions", () => {
+    expect(normalizeProfileStorageVersion(PROFILE_STORAGE_VERSION)).toBe(PROFILE_STORAGE_VERSION);
+    expect(normalizeProfileStorageVersion(String(PROFILE_STORAGE_VERSION))).toBe(PROFILE_STORAGE_VERSION);
+    expect(normalizeProfileStorageVersion("3.5")).toBeNull();
+    expect(normalizeProfileStorageVersion("abc")).toBeNull();
+    expect(normalizeProfileStorageVersion(-1)).toBeNull();
+  });
+
+  it("recognizes only plain record containers for persisted maps", () => {
+    expect(isPlainRecord({ JP: {} })).toBe(true);
+    expect(isPlainRecord(Object.create(null))).toBe(true);
+    expect(isPlainRecord([])).toBe(false);
+    expect(isPlainRecord(null)).toBe(false);
+    expect(isPlainRecord(new Date())).toBe(false);
+  });
+
+  it("does not reinterpret a current-version numeric string as an old JP-only backup", () => {
+    const app = readFileSync(join(process.cwd(), "App.jsx"), "utf8");
+    expect(app).toContain("const backupVersion = normalizeProfileStorageVersion(parsed.profileStorageVersion)");
+    expect(app).toContain("if (backupVersion === PROFILE_STORAGE_VERSION)");
+    expect(app).toContain('if (!isPlainRecord(parsed.profiles)) throw new Error("Invalid country profiles in backup")');
+  });
+
+  it("bounds snapshot reads and in-memory history", () => {
+    const app = readFileSync(join(process.cwd(), "App.jsx"), "utf8");
+    expect(MAX_SNAPSHOT_HISTORY).toBe(1000);
+    expect(app).toContain(".slice(0, MAX_SNAPSHOT_HISTORY)");
+    expect(app).toContain("snapshotDateFromStorageKey(currentCountry, key)");
   });
 });

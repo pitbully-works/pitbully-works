@@ -37,7 +37,7 @@ import {
   PROFILE_COUNTRIES, PROFILE_STORAGE_VERSION, applySharedIdentity, forceCountryMeta,
   makeCountryProfile, migrateCountryProfiles, normalizeProfileCountry, normalizeProfileCurrency, normalizeCountryKeyedRecord,
   normalizeSnapshotDate, snapshotStorageKey, legacyJpSnapshotStorageKey, snapshotDateFromStorageKey,
-  targetCountryFromKakeibo, targetCountryFromBackup, normalizeStockWatchlist,
+  targetCountryFromKakeibo, targetCountryFromBackup, normalizeStockWatchlist, normalizeProfileStorageVersion, isPlainRecord, MAX_SNAPSHOT_HISTORY,
 } from "./utils/countryProfiles.js";
 import { buildNisaBreakdown, breakdownPrincipalItems, breakdownReturnBars, breakdownTotals } from "./utils/nisaBreakdown.js";
 import { describeSchedulePace } from "./utils/schedulePace.js";
@@ -3021,10 +3021,15 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       }
       setImportBirthMismatch(null);
       setImportScheduleOverlaps([]);
-      if (Number(parsed.profileStorageVersion) > PROFILE_STORAGE_VERSION) {
+      const backupVersion = normalizeProfileStorageVersion(parsed.profileStorageVersion);
+      if (parsed.profileStorageVersion !== undefined && backupVersion === null) {
+        throw new Error(`Invalid backup version: ${String(parsed.profileStorageVersion)}`);
+      }
+      if (backupVersion !== null && backupVersion > PROFILE_STORAGE_VERSION) {
         throw new Error(`Unsupported backup version: ${parsed.profileStorageVersion}`);
       }
-      if (parsed.profileStorageVersion === PROFILE_STORAGE_VERSION && parsed.profiles && typeof parsed.profiles === "object") {
+      if (backupVersion === PROFILE_STORAGE_VERSION) {
+        if (!isPlainRecord(parsed.profiles)) throw new Error("Invalid country profiles in backup");
         const restored = {};
         const normalizedProfiles = normalizeCountryKeyedRecord(parsed.profiles);
         const sharedSource = normalizedProfiles.JP || parsed.inputs || inputs;
@@ -3041,7 +3046,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         }
         const activeInputs = restored[active] || makeCountryProfile(DEFAULT_INPUTS, active, sharedSource);
         countryProfilesRef.current = { ...restored, [active]: activeInputs };
-        const rawRestoredWatchlists = parsed.watchlists && typeof parsed.watchlists === "object" ? normalizeCountryKeyedRecord(parsed.watchlists) : {};
+        const rawRestoredWatchlists = isPlainRecord(parsed.watchlists) ? normalizeCountryKeyedRecord(parsed.watchlists) : {};
         const restoredWatchlists = {};
         PROFILE_COUNTRIES.forEach((code) => {
           if (Array.isArray(rawRestoredWatchlists[code])) restoredWatchlists[code] = normalizeStockWatchlist(rawRestoredWatchlists[code], code);
@@ -3079,11 +3084,17 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       // over every country's stored history. Legacy `snapshot:YYYY-MM-DD` keys are
       // JP-only and remain readable for backward compatibility.
       const countryPrefix = `${SNAPSHOT_PREFIX}${currentCountry}:`;
-      const relevantKeys = keys.filter((key) => {
-        if (typeof key !== "string") return false;
-        if (key.startsWith(countryPrefix)) return true;
-        return currentCountry === "JP" && /^snapshot:\d{4}-\d{2}-\d{2}$/.test(key);
-      });
+      const relevantKeys = keys
+        .filter((key) => {
+          if (typeof key !== "string") return false;
+          if (key.startsWith(countryPrefix)) return true;
+          return currentCountry === "JP" && /^snapshot:\d{4}-\d{2}-\d{2}$/.test(key);
+        })
+        .map((key) => ({ key, date: snapshotDateFromStorageKey(currentCountry, key) }))
+        .filter((item) => !!item.date)
+        .sort((a, b) => (a.date < b.date ? 1 : -1))
+        .slice(0, MAX_SNAPSHOT_HISTORY)
+        .map((item) => item.key);
       setHistoryDebug(t("storageKeyCountDebug", { count: relevantKeys.length }));
       const entries = await Promise.all(
         relevantKeys.map(async (k) => {
@@ -3110,7 +3121,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         const sameCountryPrev = prev.filter((h) => targetCountryFromBackup(h?.country) === currentCountry);
         const map = new Map(sameCountryPrev.map((h) => [h.date, h]));
         clean.forEach((h) => map.set(h.date, h));
-        return [...map.values()].sort((a, b) => (a.date < b.date ? 1 : -1));
+        return [...map.values()].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, MAX_SNAPSHOT_HISTORY);
       });
     } catch (e) {
       setHistoryDebug(t("historyFetchErrorDebug", { message: e?.message || t("unknownShort") }));
@@ -3159,7 +3170,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       // without re-fetching every stored snapshot on each keystroke
       setHistory((prev) => {
         const others = prev.filter((h) => targetCountryFromBackup(h?.country) === code && h.date !== date);
-        return [snapshot, ...others].sort((a, b) => (a.date < b.date ? 1 : -1));
+        return [snapshot, ...others].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, MAX_SNAPSHOT_HISTORY);
       });
       setSaveStatus("saved");
       setSaveMessage(t("saveMessageLastSaved", { time: new Date().toLocaleTimeString(dateLocale, { hour: "2-digit", minute: "2-digit" }) }));
