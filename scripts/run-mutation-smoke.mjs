@@ -30,7 +30,9 @@ const mutants = [
   ["Rule update persistence uses latest state", "App.jsx", 'typeof nextOrUpdater === "function" ? nextOrUpdater(current) : nextOrUpdater', 'typeof nextOrUpdater === "function" ? nextOrUpdater : nextOrUpdater', "ruleUpdateStateConcurrency.test.js"],
   ["Rule check timestamp requires both feeds", "App.jsx", "if (manifestChecked && sourceStatusChecked) {", "if (manifestChecked || sourceStatusChecked) {", "ruleUpdateCheckIntegrity.test.js"],
   ["Rule manifest requires documented schema", "App.jsx", "if (payload?.schemaVersion === 1 && Array.isArray(payload?.updates)) {", "if (Array.isArray(payload?.updates)) {", "ruleUpdateFeedValidation.test.js"],
-  ["Rule source status is registry-bound", "App.jsx", "!registeredSource || registeredSource.country !== normalizedCountry", "registeredSource && registeredSource.country !== normalizedCountry", "ruleSourceTrustBoundary.test.js"],
+  ["Rule source status is registry-bound", "utils/ruleUpdates.js", "!registered || registered.country !== country || seen.has(id)", "!registered || registered.country !== country", "ruleSourceFeedAtomicValidation.test.js"],
+  ["Rule source watcher caps streamed bodies", "scripts/check-rule-sources.mjs", "if (total > MAX_SOURCE_RESPONSE_BYTES) {", "if (total > Number.MAX_SAFE_INTEGER) {", "ruleSourceWatcherHardening.test.js"],
+  ["Rule source watcher rejects tiny bodies", "scripts/check-rule-sources.mjs", "if (normalized.length < MIN_NORMALIZED_SOURCE_CHARS) {", "if (normalized.length < 0) {", "ruleSourceWatcherHardening.test.js"],
 ];
 
 if (!fs.existsSync(vitestBin)) {
