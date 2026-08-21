@@ -20,7 +20,8 @@ export function newSci() {
 }
 function isSciDigit(t) { return /^[0-9.]$/.test(t); }
 export function sciExpr(sci) {
-  return ((sci && sci.tokens) || []).map((t) => (SCI_FUNCS[t] ? `${t}(` : t)).join("");
+  const tokens = Array.isArray(sci?.tokens) ? sci.tokens.slice(0, SCI_TOKENS_MAX) : [];
+  return tokens.map((t) => (SCI_FUNCS[t] ? `${t}(` : String(t ?? "").slice(0, 8))).join("");
 }
 export function sciFormat(n) {
   if (!Number.isFinite(n)) return "";
@@ -118,15 +119,24 @@ function sciRunRpn(rpn, deg) {
 }
 export function sciEvaluate(tokens, opts = {}) {
   if (!Array.isArray(tokens) || !tokens.length) return { ok: false, error: "" };
-  const list = sciTokenize(tokens, opts.ans || 0); if (!list) return { ok: false, error: "式が正しくありません" };
+  if (tokens.length > SCI_TOKENS_MAX) return { ok: false, error: "式が長すぎます" };
+  const boundedTokens = tokens.slice(0, SCI_TOKENS_MAX);
+  const list = sciTokenize(boundedTokens, Number.isFinite(opts.ans) ? opts.ans : 0); if (!list) return { ok: false, error: "式が正しくありません" };
   const rpn = sciToRpn(list); if (!rpn) return { ok: false, error: "かっこが合っていません" };
   const r = sciRunRpn(rpn, opts.deg !== false); if (!r) return { ok: false, error: "式が正しくありません" };
   if (r.divZero) return { ok: false, error: "0では割れません" }; if (!Number.isFinite(r.value)) return { ok: false, error: "計算できません" };
   return { ok: true, value: r.value };
 }
 export function sciPress(state, key) {
-  const s = Object.assign(newSci(), state || {}); s.tokens = (s.tokens || []).slice(); s.history = (s.history || []).slice(); s.error = "";
-  const k = String(key);
+  const src = state && typeof state === "object" ? state : {};
+  const s = newSci();
+  s.tokens = Array.isArray(src.tokens) ? src.tokens.slice(0, SCI_TOKENS_MAX) : [];
+  s.history = normalizeSciHistory(src.history);
+  s.result = Number.isFinite(src.result) ? src.result : null;
+  s.ans = Number.isFinite(src.ans) ? src.ans : 0;
+  s.deg = typeof src.deg === "boolean" ? src.deg : true;
+  s.error = "";
+  const k = String(key).slice(0, 16);
   if (k === "AC") { const keep = { ans: s.ans, deg: s.deg, history: s.history }; return Object.assign(newSci(), keep); }
   if (k === "deg") { s.deg = !s.deg; return s; }
   if (k === "DEL") { if (s.result !== null) { s.result = null; return s; } s.tokens.pop(); return s; }
@@ -139,7 +149,7 @@ export function sciPress(state, key) {
 }
 
 export function sciTokensFromExpr(expr) {
-  const text = String(expr || "");
+  const text = String(expr || "").slice(0, SCI_TOKENS_MAX * 8);
   const out = [];
   for (let i = 0; i < text.length;) {
     let matched = false;
@@ -150,12 +160,18 @@ export function sciTokensFromExpr(expr) {
     if (text.startsWith("√(", i)) { out.push("√"); i += 2; continue; }
     if (text.startsWith("Ans", i)) { out.push("Ans"); i += 3; continue; }
     out.push(text[i]); i += 1;
+    if (out.length >= SCI_TOKENS_MAX) break;
   }
-  return out;
+  return out.slice(0, SCI_TOKENS_MAX);
 }
 
 export function normalizeSciHistory(raw) {
   if (!Array.isArray(raw)) return [];
-  return raw.map((h) => { if (!h || typeof h !== "object") return null; const expr = String(h.expr == null ? "" : h.expr).slice(0, SCI_TOKENS_MAX * 4); const value = Number(h.value); return expr && Number.isFinite(value) ? { expr, value } : null; }).filter(Boolean).slice(0, SCI_HISTORY_MAX);
+  return raw.slice(0, SCI_HISTORY_MAX).map((h) => {
+    if (!h || typeof h !== "object" || Array.isArray(h)) return null;
+    const expr = String(h.expr == null ? "" : h.expr).slice(0, SCI_TOKENS_MAX * 4);
+    const value = Number(h.value);
+    return expr && Number.isFinite(value) ? { expr, value } : null;
+  }).filter(Boolean);
 }
 export function sciClearHistory(state) { const s = Object.assign(newSci(), state || {}); s.history = []; return s; }
