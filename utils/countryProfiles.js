@@ -1,6 +1,7 @@
 export const PROFILE_COUNTRIES = Object.freeze(["JP", "US", "GB", "CA", "AU"]);
 export const PROFILE_STORAGE_VERSION = 3;
 export const MAX_SNAPSHOT_HISTORY = 1000;
+export const MAX_PERSISTED_ARRAY_ITEMS = 5000;
 
 export function normalizeProfileStorageVersion(value) {
   if (value === undefined || value === null || value === "") return null;
@@ -196,6 +197,15 @@ export function targetCountryFromBackup(value) {
 }
 
 
+export function localCalendarDateKey(value = new Date()) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export function normalizeSnapshotDate(value) {
   const text = typeof value === "string" ? value.trim() : "";
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
@@ -230,7 +240,7 @@ export function normalizeStockWatchlist(value, country = "JP") {
     return Number.isFinite(n) && n >= 0 ? n : 0;
   };
   return value
-    .filter((item) => item && typeof item === "object" && !Array.isArray(item))
+    .filter((item) => isPlainRecord(item))
     .map((item) => {
       const name = String(item.name ?? "").trim().slice(0, 200);
       if (!name) return null;
