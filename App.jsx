@@ -772,6 +772,7 @@ function CAInvestmentAccountsPanel({ caInvestment, onUpdate, onUpdateAccount, ag
   const pct = (rate) => `${Number((rate * 100).toFixed(2))}`;
 
   const tfsaLimit = investmentRules.getTfsaAnnualLimit();
+  const tfsaRoom = investmentRules.getTfsaContributionRoom(caInvestment);
   const tfsaRemaining = investmentRules.getTfsaRemaining(caInvestment);
   const rrspRemaining = rrspRoom - (Number(caInvestment.rrsp.annualContribution) || 0);
   const split = investmentRules.splitAssets(age, caInvestment);
@@ -786,6 +787,9 @@ function CAInvestmentAccountsPanel({ caInvestment, onUpdate, onUpdateAccount, ag
 
       <Field guide={t("caAnnualIncomeGuide")} label={t("caAnnualIncomeLabel")} unit="C$" step={1000} value={caInvestment.annualIncome} onChange={(v) => onUpdate("annualIncome", v)} />
       <Field guide={t("caPriorEarnedIncomeGuide")} label={t("caPriorEarnedIncomeLabel")} unit="C$" step={1000} value={caInvestment.priorEarnedIncome} onChange={(v) => onUpdate("priorEarnedIncome", v)} />
+      <Field guide={t("caTfsaOfficialRoomGuide")} label={t("caTfsaOfficialRoomLabel")} unit="C$" step={500} value={caInvestment.officialTfsaRoom} onChange={(v) => onUpdate("officialTfsaRoom", v)} />
+      <Field label={t("caTfsaPriorUnusedLabel")} unit="C$" step={500} value={caInvestment.priorUnusedTfsaRoom} onChange={(v) => onUpdate("priorUnusedTfsaRoom", v)} />
+      <Field guide={t("caTfsaPriorWithdrawalGuide")} label={t("caTfsaPriorWithdrawalLabel")} unit="C$" step={500} value={caInvestment.priorYearTfsaWithdrawals} onChange={(v) => onUpdate("priorYearTfsaWithdrawals", v)} />
       <Field label="RRSP deduction limit (latest Notice of Assessment)" unit="C$" step={500} value={caInvestment.rrspDeductionLimitFromNoa} onChange={(v) => onUpdate("rrspDeductionLimitFromNoa", v)} />
       <Field label="Unused RRSP deduction room carried forward" unit="C$" step={500} value={caInvestment.unusedRrspDeductionRoom} onChange={(v) => onUpdate("unusedRrspDeductionRoom", v)} />
       <Field label="Pension Adjustment (PA)" unit="C$" step={500} value={caInvestment.pensionAdjustment} onChange={(v) => onUpdate("pensionAdjustment", v)} />
@@ -800,7 +804,7 @@ function CAInvestmentAccountsPanel({ caInvestment, onUpdate, onUpdateAccount, ag
         <StatCard
           label={t("caTfsaLimitLabel", { taxYear: investmentRules.effectiveTaxYear })}
           value={money(tfsaLimit)}
-          sub={t("caTfsaRemainingSub", { amount: money(tfsaLimit) })}
+          sub={t("caTfsaRoomTotalSub", { amount: money(tfsaRoom) })}
         />
         <StatCard
           label={t("caTfsaRemainingLabel")}
@@ -1804,6 +1808,9 @@ const DEFAULT_INPUTS = {
     caInvestment: {
       annualIncome: 0,        // 年間総所得（連邦所得税・RRSP税軽減・OASクローバックの判定に使用）
       priorEarnedIncome: 0,   // 前年の稼得所得
+      officialTfsaRoom: 0,    // 自分の記録で算出した当年1/1時点のTFSA利用可能枠（入力時は最優先）
+      priorUnusedTfsaRoom: 0, // 前年末までの未使用TFSA枠
+      priorYearTfsaWithdrawals: 0, // 前年のTFSA引出額。当年1/1に枠へ復活
       rrspDeductionLimitFromNoa: 0, // 最新Notice of Assessment / ReassessmentのRRSP deduction limit（最優先）
       unusedRrspDeductionRoom: 0,
       pensionAdjustment: 0,
