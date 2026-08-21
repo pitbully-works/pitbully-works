@@ -453,6 +453,14 @@ export function buildPlanInput(ctx, overrides = {}) {
     const listoAnnual = typeof rules.tax.calculateLowIncomeSuperTaxOffset === "function"
       ? rules.tax.calculateLowIncomeSuperTaxOffset(listoIncome, concessionalGross, acc.listoEligible === true)
       : 0;
+    const coContributionIncome = Math.max(0, Number(acc.coContributionTotalIncome) || Number(acc.annualSalary) || 0);
+    const coContributionAnnual = typeof rules.tax.calculateGovernmentSuperCoContribution === "function"
+      ? rules.tax.calculateGovernmentSuperCoContribution(
+          coContributionIncome,
+          Number((acc.superannuation || {}).annualContribution) || 0,
+          acc.coContributionEligible === true
+        )
+      : 0;
     const concessionalNet = Math.max(
       0,
       concessionalGross * (1 - contribTax)
@@ -466,7 +474,7 @@ export function buildPlanInput(ctx, overrides = {}) {
         id: key, group: "investment", drawCategory: catMap[key],
         balance: Number(a.currentValue) || 0,
         annualReturnPct: a.expectedReturnPct,
-        monthlyContribution: ((Number(a.annualContribution) || 0) + (isSuper ? concessionalNet + listoAnnual : 0)) / 12,
+        monthlyContribution: ((Number(a.annualContribution) || 0) + (isSuper ? concessionalNet + listoAnnual + coContributionAnnual : 0)) / 12,
         contribEndAge: Number(a.contributionEndAge) || retireAge,
         withdrawalTaxPct: Number(a.withdrawalTaxPct) || 0,
         drawOrder: ord(key, i),
