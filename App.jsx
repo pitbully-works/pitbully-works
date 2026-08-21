@@ -1009,7 +1009,8 @@ function AUAccountFields({ accountKey, title, account, onUpdateAccount, borderCo
 // ---------- オーストラリア選択時：投資口座パネル（Super / 投資口座 / 現金 ＋ 税制） ----------
 function AUInvestmentAccountsPanel({
   auInvestment, onUpdate, onUpdateAccount, age, investmentRules, taxRules,
-  sgContribution, totalConcessional, concessionalRemaining, effectiveConcessionalCap, carryForwardApplied, nonConcessionalRemaining,
+  sgContribution, totalConcessional, concessionalRemaining, effectiveConcessionalCap, carryForwardApplied,
+  effectiveNonConcessionalCap, bringForwardOneOffApplied, nonConcessionalRemaining,
   superContributionTax, salarySacrificeSaving, listoAnnual, listoIncome, coContributionAnnual, coContributionIncome, taxResult, capitalGainsTax, totalTax, marginalRate,
 }) {
   const { t, money } = useContext(LocaleContext);
@@ -1041,6 +1042,21 @@ function AUInvestmentAccountsPanel({
         <Info size={13} />
         <span>{t(carryForwardApplied > 0 ? "auCarryForwardAppliedNote" : "auCarryForwardNotAppliedNote", { amount: money(carryForwardApplied), threshold: money(l.carryForwardBalanceThreshold) })}</span>
       </div>
+      <div className="field-label" style={{ marginTop: 10 }}>{t("auBringForwardUseLabel")}</div>
+      <div className="chip-row" style={{ marginBottom: 8 }}>
+        <button className={`chip ${auInvestment.bringForwardUseAtoCap ? "chip-active" : ""}`} onClick={() => onUpdate("bringForwardUseAtoCap", true)}>{t("auYes")}</button>
+        <button className={`chip ${!auInvestment.bringForwardUseAtoCap ? "chip-active" : ""}`} onClick={() => onUpdate("bringForwardUseAtoCap", false)}>{t("auNo")}</button>
+      </div>
+      {auInvestment.bringForwardUseAtoCap && (
+        <>
+          <Field guide={t("auBringForwardAvailableGuide")} label={t("auBringForwardAvailableLabel")} unit="A$" step={1000} value={auInvestment.bringForwardAvailableCap} onChange={(v) => onUpdate("bringForwardAvailableCap", v)} />
+          <Field guide={t("auBringForwardOneOffGuide")} label={t("auBringForwardOneOffLabel")} unit="A$" step={1000} value={auInvestment.bringForwardOneOffContribution} onChange={(v) => onUpdate("bringForwardOneOffContribution", v)} />
+          <div className="note" style={{ marginBottom: 10 }}>
+            <Info size={13} />
+            <span>{t("auBringForwardAppliedNote", { cap: money(effectiveNonConcessionalCap), amount: money(bringForwardOneOffApplied) })}</span>
+          </div>
+        </>
+      )}
       <Field guide={t("auDiv293IncomeGuide")} label={t("auDiv293IncomeLabel")} unit="A$" step={1000} value={auInvestment.div293Income} onChange={(v) => onUpdate("div293Income", v)} />
       <div className="note" style={{ marginBottom: 10 }}>
         <Info size={13} />
@@ -1134,6 +1150,17 @@ function AUInvestmentAccountsPanel({
         onUpdateAccount={onUpdateAccount} borderColor="#B08FD6"
       />
       <div className="stat-grid" style={{ marginTop: 12 }}>
+        <StatCard
+          label={t("auNonConcessionalCapLabel")}
+          value={money(effectiveNonConcessionalCap)}
+          sub={t("auNonConcessionalCapSub")}
+        />
+        <StatCard
+          label={t("auNonConcessionalRemainingLabel")}
+          value={money(Math.max(0, nonConcessionalRemaining))}
+          sub={t("auNonConcessionalRemainingSub")}
+          tone={nonConcessionalRemaining < 0 ? "danger" : "good"}
+        />
         <StatCard
           label={t("auContributionTaxLabel", { pct: pct(superTax.contributionsTaxRate) })}
           value={money(superContributionTax.total)}
@@ -1799,6 +1826,10 @@ const DEFAULT_INPUTS = {
       // 「利用可能な繰越額」と前年6/30時点のTotal super balanceを入力する。
       carryForwardPriorYearBalance: 0,
       carryForwardAvailableUnusedCap: 0,
+      // Bring-forward non-concessional contributions: ATO/MyGovに表示される現在の利用可能上限を使う。
+      bringForwardUseAtoCap: false,
+      bringForwardAvailableCap: 0,
+      bringForwardOneOffContribution: 0,
       // Division 293 income（概算）。ATOの定義は課税所得＋報告対象フリンジベネフィット＋
       // 純投資損失＋純賃貸損失等の合計で、年収そのものではない。0（未入力）なら
       // annualSalary で代用し、画面に簡易計算である旨を表示する。
@@ -2455,8 +2486,23 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       ) : 0;
   const auEffectiveConcessionalCap = auConcessionalCap + auCarryForwardApplied;
   const auConcessionalRemaining = auEffectiveConcessionalCap - auTotalConcessional;
+  const auEffectiveNonConcessionalCap = (auIsAU && rules.investment.implemented)
+    ? rules.investment.getEffectiveNonConcessionalCap(
+        effectiveCurrentAge, auInvestment.carryForwardPriorYearBalance,
+        auInvestment.bringForwardUseAtoCap === true, auInvestment.bringForwardAvailableCap
+      ) : 0;
+  const auBringForwardOneOffApplied = (auIsAU && rules.investment.implemented)
+    ? rules.investment.getBringForwardOneOffApplied(
+        effectiveCurrentAge, auInvestment.carryForwardPriorYearBalance,
+        auInvestment.bringForwardUseAtoCap === true, auInvestment.bringForwardAvailableCap,
+        auInvestment.superannuation.annualContribution, auInvestment.bringForwardOneOffContribution
+      ) : 0;
   const auNonConcessionalRemaining = (auIsAU && rules.investment.implemented)
-    ? rules.investment.getNonConcessionalRemaining(auInvestment.superannuation.annualContribution) : 0;
+    ? rules.investment.getNonConcessionalRemaining(
+        auInvestment.superannuation.annualContribution, effectiveCurrentAge,
+        auInvestment.carryForwardPriorYearBalance, auInvestment.bringForwardUseAtoCap === true,
+        auInvestment.bringForwardAvailableCap, auInvestment.bringForwardOneOffContribution
+      ) : 0;
 
   // 課税所得＝給与 − 給与犠牲（税引前拠出は課税所得から控除される）
   const auTaxableIncome = Math.max(0, auSalary - auVoluntaryConcessional);
@@ -7140,6 +7186,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               concessionalRemaining={auConcessionalRemaining}
               effectiveConcessionalCap={auEffectiveConcessionalCap}
               carryForwardApplied={auCarryForwardApplied}
+              effectiveNonConcessionalCap={auEffectiveNonConcessionalCap}
+              bringForwardOneOffApplied={auBringForwardOneOffApplied}
               nonConcessionalRemaining={auNonConcessionalRemaining}
               superContributionTax={auSuperContributionTax}
               salarySacrificeSaving={auSalarySacrificeSaving}
