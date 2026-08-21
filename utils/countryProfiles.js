@@ -185,6 +185,45 @@ export function legacyJpSnapshotStorageKey(date) {
   return normalizedDate ? `snapshot:${normalizedDate}` : null;
 }
 
+
+export function normalizeStockWatchlist(value, country = "JP") {
+  if (!Array.isArray(value)) return [];
+  const code = normalizeProfileCountry(country);
+  const currency = profileMeta(code).baseCurrency;
+  const finiteNonNegative = (v) => {
+    const n = Number(v);
+    return Number.isFinite(n) && n >= 0 ? n : 0;
+  };
+  return value
+    .filter((item) => item && typeof item === "object" && !Array.isArray(item))
+    .map((item) => {
+      const name = String(item.name ?? "").trim().slice(0, 200);
+      if (!name) return null;
+      const sector = String(item.sector ?? "").trim().slice(0, 200);
+      return {
+        name,
+        sector,
+        shares: finiteNonNegative(item.shares),
+        value: finiteNonNegative(item.value),
+        currency,
+      };
+    })
+    .filter(Boolean)
+    .slice(0, 500);
+}
+
+export function snapshotDateFromStorageKey(country, key) {
+  if (typeof key !== "string") return null;
+  const code = targetCountryFromBackup(country);
+  if (!code) return null;
+  const canonicalPrefix = `snapshot:${code}:`;
+  if (key.startsWith(canonicalPrefix)) return normalizeSnapshotDate(key.slice(canonicalPrefix.length));
+  if (code === "JP" && /^snapshot:\d{4}-\d{2}-\d{2}$/.test(key)) {
+    return normalizeSnapshotDate(key.slice("snapshot:".length));
+  }
+  return null;
+}
+
 export function targetCountryFromKakeibo(payload) {
   const raw = payload && typeof payload === "object" ? payload.countryCode : undefined;
   // 旧家計簿データは countryCode を持たないためJPとして互換維持する。
