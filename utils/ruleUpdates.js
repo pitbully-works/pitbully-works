@@ -8,6 +8,19 @@ export function normalizeRuleCountry(value) {
   return RULE_UPDATE_COUNTRIES.includes(code) ? code : null;
 }
 
+// Remote rule manifests can supply sourceUrl. Render only normal web links; never
+// pass javascript:, data:, file:, or other active/opaque schemes into an href.
+export function safeRuleSourceUrl(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  try {
+    const url = new URL(text);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.href : "";
+  } catch {
+    return "";
+  }
+}
+
 function hasOwnTrue(map, id) {
   return !!map
     && Object.prototype.hasOwnProperty.call(map, id)
