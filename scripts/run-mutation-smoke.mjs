@@ -41,6 +41,8 @@ const mutants = [
   ["Remote rule manifest rejects duplicate approval IDs", "utils/ruleUpdates.js", "if (!id || !country || seen.has(id)) return null;", "if (!id || !country) return null;", "ruleUpdateManifestAtomicValidation.test.js"],
   ["Autosave writes are serialized", "App.jsx", "saveQueueRef.current = saveQueueRef.current.then(run, run);", "saveQueueRef.current = run();", "persistenceSaveOrdering.test.js"],
   ["Stale autosave completion cannot claim saved", "App.jsx", "if (generation !== saveGenerationRef.current) return;\n        setHistory((prev) => {", "if (false) return;\n        setHistory((prev) => {", "persistenceSaveOrdering.test.js"],
+  ["Semantic persisted data is recovered before fallback", "App.jsx", "if (rawPersistedValue !== null) {", "if (false) {", "backupRestoreAtomicity.test.js"],
+  ["Current backup country maps reject unknown buckets", "utils/countryProfiles.js", "if (!PROFILE_COUNTRIES.includes(code) || seen.has(code)) return false;", "if (seen.has(code)) return false;", "backupRestoreAtomicity.test.js"],
 ];
 
 if (!fs.existsSync(vitestBin)) {
