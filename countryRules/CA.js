@@ -21,7 +21,7 @@ export const CA_COUNTRY_RULES = {
     noteJa: "2026年制度を2026年8月17日に確認。OASは2026年7〜9月四半期の公表値を基準にしています。",
     noteEn: "2026 rules verified on 17 Aug 2026. OAS uses the July-September 2026 quarterly figures.",
     coverage: [
-      { key: "investment", labelJa: "投資制度", labelEn: "Investment", status: "implemented", effective: "2026 calendar year", lastUpdated: "2026-08-17", updateJa: "TFSA・RRSP・非登録口座・RRIF最低取崩しに加え、FHSAの年間枠・繰越・生涯上限を反映。RESP・RDSPは未実装。", updateEn: "TFSA, RRSP, non-registered accounts and RRIF minimum withdrawals are modelled, plus FHSA annual room, carryforward and lifetime limit; RESP and RDSP remain unimplemented." },
+      { key: "investment", labelJa: "投資制度", labelEn: "Investment", status: "implemented", effective: "2026 calendar year", lastUpdated: "2026-08-17", updateJa: "TFSAの年間枠・未使用枠繰越・前年引出しの翌年復活、RRSP、非登録口座、RRIF最低取崩し、FHSAの年間枠・繰越・生涯上限を反映。RESP・RDSPは未実装。", updateEn: "TFSA annual room, unused-room carryforward and prior-year withdrawal restoration, RRSP, non-registered accounts, RRIF minimum withdrawals, plus FHSA annual room, carryforward and lifetime limit are modelled; RESP and RDSP remain unimplemented." },
       { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "partial", effective: "2026 / OAS & GIS Jul-Sep", lastUpdated: "2026-08-20", updateJa: "CPP・OAS・OAS回収税・GIS/Allowanceの公表上限・CPP Post-Retirement Benefitを反映。GISの正確な支給額、QPP、CPP履歴からの自動算定は未実装。", updateEn: "CPP, OAS, OAS recovery tax, published GIS/Allowance maxima and CPP Post-Retirement Benefit are modelled; exact GIS entitlement, QPP and automatic CPP entitlement from history are not implemented." },
       { key: "healthcare", labelJa: "医療", labelEn: "Healthcare", status: "partial", effective: "2026", lastUpdated: "2026-08-21", updateJa: "州・準州の公的医療保険を前提に自己負担を計算し、CDCPの所得別自己負担率とオンタリオ州の2026年長期介護ホーム最大自己負担額を自動計算。その他の州・準州の薬剤・視力・介護費は手入力。", updateEn: "Models out-of-pocket costs under provincial/territorial coverage, the income-based CDCP co-payment and Ontario 2026 long-term-care home maximum co-payments; drug, vision and long-term-care charges outside Ontario remain manual." },
       { key: "tax", labelJa: "税金", labelEn: "Tax", status: "partial", effective: "2026 tax year", lastUpdated: "2026-08-21", updateJa: "連邦所得税に加え、オンタリオ州の所得税・サータックス・Ontario Health Premiumを反映。その他12地域、QPP、配当税額控除等は未実装。", updateEn: "Federal income tax plus Ontario income tax, surtax and Ontario Health Premium are modelled; the other 12 regions, QPP and dividend credits remain unimplemented." },
@@ -77,8 +77,19 @@ export const CA_COUNTRY_RULES = {
     // ---------- 計算関数（すべて純関数） ----------
     _num(v) { return Number(v) || 0; },
     getTfsaAnnualLimit() { return this.limits.tfsaAnnualLimit; },
-    getTfsaRemaining(accounts) {
-      return this.limits.tfsaAnnualLimit - this._num((accounts.tfsa || {}).annualContribution);
+    // TFSAの当年利用可能枠。利用者が自分の記録から計算した年初時点の利用可能枠を
+    // 入力した場合はそれを最優先。未入力時はCRA式
+    // 「当年ドル上限 + 前年末未使用枠 + 前年引出し額」で年初枠を概算する。
+    // 当年中の引出しは翌年1月1日まで枠を復活させないため、ここには加えない。
+    getTfsaContributionRoom({ officialTfsaRoom = 0, priorUnusedTfsaRoom = 0, priorYearTfsaWithdrawals = 0 } = {}) {
+      const official = this._num(officialTfsaRoom);
+      if (official > 0) return official;
+      return this.limits.tfsaAnnualLimit
+        + Math.max(0, this._num(priorUnusedTfsaRoom))
+        + Math.max(0, this._num(priorYearTfsaWithdrawals));
+    },
+    getTfsaRemaining(accounts = {}) {
+      return this.getTfsaContributionRoom(accounts) - this._num((accounts.tfsa || {}).annualContribution);
     },
     // RRSP deduction limit。最新Notice of Assessment / Reassessmentの値があればそれを最優先。
     // 未入力時だけCRA式（未使用枠 + min(前年稼得所得18%, 年間上限) - PA + PAR - net PSPA）で概算する。
@@ -209,7 +220,6 @@ export const CA_COUNTRY_RULES = {
       };
     },
     notImplemented: [
-      "RRSP・TFSAの未使用枠の繰越（キャリーフォワード）",
       "FHSAのre-participation room・excess amount等の複雑な個別調整（基本の年間枠・繰越・生涯上限は実装済み）／RESP／RDSP",
       "RRSPからの引出し時の源泉徴収税（withholding tax）。引出時課税は口座ごとの withdrawalTaxPct（単一税率）で近似しており、実際の限界税率や源泉徴収率とは一致しない",
       "RRIF最低取崩し率に配偶者（通常は年下の配偶者）の年齢を使う選択（spousal age election）。RRIF開設時に一度だけ選べ、以後は変更できない",
