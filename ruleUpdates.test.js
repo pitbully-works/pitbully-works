@@ -186,6 +186,33 @@ describe("rule update center", () => {
       .toBe(JP_COUNTRY_RULES.retirement.currentMonthlyLimits.firstInsured);
   });
 
+  it("存在しない日付のremote制度更新をJavaScriptの日付繰上げで誤適用しない", () => {
+    const updates = [{
+      id: "REMOTE-INVALID-EFFECTIVE-DATE",
+      country: "JP",
+      effectiveDate: "2026-02-30",
+      changes: [{ path: "retirement.currentMonthlyLimits.firstInsured", after: 999999997 }],
+    }];
+    const state = normalizeRuleUpdateState({ approved: { "REMOTE-INVALID-EFFECTIVE-DATE": true } });
+    const rules = applyApprovedRuleUpdates(JP_COUNTRY_RULES, "JP", updates, state, new Date("2026-03-10T12:00:00"));
+
+    expect(rules.retirement.currentMonthlyLimits.firstInsured)
+      .toBe(JP_COUNTRY_RULES.retirement.currentMonthlyLimits.firstInsured);
+  });
+
+  it("実在するうるう日は通常どおり有効日として扱う", () => {
+    const updates = [{
+      id: "REMOTE-LEAP-DATE",
+      country: "JP",
+      effectiveDate: "2028-02-29",
+      changes: [{ path: "retirement.currentMonthlyLimits.firstInsured", after: 75003 }],
+    }];
+    const state = normalizeRuleUpdateState({ approved: { "REMOTE-LEAP-DATE": true } });
+    const rules = applyApprovedRuleUpdates(JP_COUNTRY_RULES, "JP", updates, state, new Date("2028-02-29T12:00:00"));
+
+    expect(rules.retirement.currentMonthlyLimits.firstInsured).toBe(75003);
+  });
+
 });
 
 
