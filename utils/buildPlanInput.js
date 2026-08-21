@@ -461,6 +461,18 @@ export function buildPlanInput(ctx, overrides = {}) {
           acc.coContributionEligible === true
         )
       : 0;
+    // Bring-forward (non-concessional) is modelled as an explicit one-off current-year amount.
+    // This avoids incorrectly repeating a 2/3-year bring-forward cap every projection year.
+    const recurringNonConcessionalAnnual = Math.min(
+      Math.max(0, Number((acc.superannuation || {}).annualContribution) || 0),
+      inv.getNonConcessionalCap()
+    );
+    const bringForwardOneOffApplied = typeof inv.getBringForwardOneOffApplied === "function"
+      ? inv.getBringForwardOneOffApplied(
+          effectiveCurrentAge, acc.carryForwardPriorYearBalance, acc.bringForwardUseAtoCap === true,
+          acc.bringForwardAvailableCap, recurringNonConcessionalAnnual, acc.bringForwardOneOffContribution
+        )
+      : 0;
     const concessionalNet = Math.max(
       0,
       concessionalGross * (1 - contribTax)
@@ -474,12 +486,19 @@ export function buildPlanInput(ctx, overrides = {}) {
         id: key, group: "investment", drawCategory: catMap[key],
         balance: Number(a.currentValue) || 0,
         annualReturnPct: a.expectedReturnPct,
-        monthlyContribution: ((Number(a.annualContribution) || 0) + (isSuper ? concessionalNet + listoAnnual + coContributionAnnual : 0)) / 12,
+        monthlyContribution: isSuper ? 0 : (Number(a.annualContribution) || 0) / 12,
         contribEndAge: Number(a.contributionEndAge) || retireAge,
         withdrawalTaxPct: Number(a.withdrawalTaxPct) || 0,
         drawOrder: ord(key, i),
       };
       if (isSuper) {
+        const superEndAge = Number(a.contributionEndAge) || retireAge;
+        pool.contributionFn = (age, dt, stepIndex) => {
+          const recurring = age <= superEndAge + 1e-9
+            ? (recurringNonConcessionalAnnual + concessionalNet + listoAnnual + coContributionAnnual) * dt
+            : 0;
+          return recurring + (stepIndex === 0 ? bringForwardOneOffApplied : 0);
+        };
         pool.accessAge = inv.preservationAge; // preservation age まで取り崩せない
         // 60〜64歳は condition of release（退職等）が必要、65歳以降は無条件。
         // simulateGrowth の canAccessSuperAt と同じ規則をエンジンにも渡す。
