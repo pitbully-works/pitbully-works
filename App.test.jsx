@@ -146,6 +146,28 @@ describe("BUG-3 saved data: shallow merge", () => {
   it("top-level array is not treated as a saved input object", () => {
     expect(mergeSavedInputs(defaults, [{ country: "US" }])).toBe(defaults);
   });
+
+
+  it("drops unknown saved keys at every nesting level", () => {
+    const merged = mergeSavedInputs(defaults, {
+      surprise: 123,
+      ideco: { currentValue: 77, hiddenRemoteField: 999 },
+    });
+    expect(merged.surprise).toBeUndefined();
+    expect(merged.ideco.currentValue).toBe(77);
+    expect(merged.ideco.hiddenRemoteField).toBeUndefined();
+  });
+
+  it("does not let malformed persisted container types replace verified defaults", () => {
+    const merged = mergeSavedInputs(defaults, {
+      banks: "not-an-array",
+      ideco: [],
+      gbInvestment: "broken",
+    });
+    expect(merged.banks).toEqual([]);
+    expect(merged.ideco).toEqual(defaults.ideco);
+    expect(merged.gbInvestment).toEqual(defaults.gbInvestment);
+  });
 });
 describe("Japan (JP) core calculations", () => {
   const base = {

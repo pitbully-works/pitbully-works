@@ -1598,20 +1598,30 @@ export const RETIRED_INPUT_KEYS = ["tsumitateUsed", "growthUsed"];
 export const UNSAFE_SAVED_INPUT_KEYS = new Set(["__proto__", "prototype", "constructor"]);
 
 export function mergeSavedInputs(defaults, saved) {
-  if (!saved || typeof saved !== "object" || Array.isArray(saved)) return defaults;
+  if (!isPlainRecord(defaults) || !isPlainRecord(saved)) return defaults;
   const out = { ...defaults };
   Object.keys(saved).forEach((key) => {
     // Imported/saved JSON is untrusted input. Never assign prototype-related
     // keys because out["__proto__"] can mutate the destination prototype.
     if (UNSAFE_SAVED_INPUT_KEYS.has(key)) return;
-    // 廃止した項目は、既定値に無いので入れ子の中まで消える心配がない
-    if (RETIRED_INPUT_KEYS.includes(key) && !(key in defaults)) return;
+    // Only fields present in the current schema may be restored. This also drops
+    // retired/typo/remote-injected fields at every nesting level.
+    if (!Object.prototype.hasOwnProperty.call(defaults, key)) return;
+    if (RETIRED_INPUT_KEYS.includes(key)) return;
     const savedValue = saved[key];
     const defaultValue = defaults[key];
-    const bothPlainObjects =
-      savedValue && typeof savedValue === "object" && !Array.isArray(savedValue) &&
-      defaultValue && typeof defaultValue === "object" && !Array.isArray(defaultValue);
-    out[key] = bothPlainObjects ? mergeSavedInputs(defaultValue, savedValue) : savedValue;
+    // Preserve the verified container shape. Corrupt persisted values such as
+    // banks:"bad" or ideco:[] must not replace an array/object that calculation
+    // code later expects to iterate or dereference.
+    if (Array.isArray(defaultValue)) {
+      if (Array.isArray(savedValue)) out[key] = savedValue;
+      return;
+    }
+    if (isPlainRecord(defaultValue)) {
+      if (isPlainRecord(savedValue)) out[key] = mergeSavedInputs(defaultValue, savedValue);
+      return;
+    }
+    out[key] = savedValue;
   });
   return out;
 }
@@ -2853,7 +2863,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           const sharedSource = migrated.profiles.JP || parsed.inputs || {};
           PROFILE_COUNTRIES.forEach((code) => {
             const raw = migrated.profiles[code];
-            if (!raw || typeof raw !== "object") return;
+            if (!isPlainRecord(raw)) return;
             const blank = makeCountryProfile(DEFAULT_INPUTS, code, sharedSource);
             const merged = mergeSavedInputs(blank, raw);
             profiles[code] = forceCountryMeta(applySharedIdentity(merged, sharedSource), code);
@@ -3035,7 +3045,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         const sharedSource = normalizedProfiles.JP || parsed.inputs || inputs;
         PROFILE_COUNTRIES.forEach((code) => {
           const raw = normalizedProfiles[code];
-          if (!raw || typeof raw !== "object") return;
+          if (!isPlainRecord(raw)) return;
           const blank = makeCountryProfile(DEFAULT_INPUTS, code, sharedSource);
           restored[code] = forceCountryMeta(applySharedIdentity(mergeSavedInputs(blank, raw), sharedSource), code);
         });
@@ -3105,7 +3115,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         })
       );
       const clean = entries.map(({ key, entry }) => {
-        if (!entry || typeof entry !== "object" || Array.isArray(entry)) return null;
+        if (!isPlainRecord(entry)) return null;
         const entryDate = normalizeSnapshotDate(entry.date);
         const keyDate = snapshotDateFromStorageKey(currentCountry, key);
         if (!entryDate || !keyDate || entryDate !== keyDate) return null;

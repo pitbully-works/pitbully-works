@@ -244,3 +244,47 @@ describe("batch hardening: backup version and history bounds", () => {
     expect(app).toContain("snapshotDateFromStorageKey(currentCountry, key)");
   });
 });
+
+describe("batch hardening 8: persisted schema fail-closed boundaries", () => {
+  it("refuses explicit future or malformed persisted profile versions", () => {
+    expect(() => migrateCountryProfiles({}, { profileStorageVersion: PROFILE_STORAGE_VERSION + 1, profiles: { JP: {} } })).toThrow(/Unsupported profile storage version/);
+    expect(() => migrateCountryProfiles({}, { profileStorageVersion: "3.5", inputs: { country: "US" } })).toThrow(/Invalid profile storage version/);
+  });
+
+  it("requires a plain profiles container for the current persisted schema", () => {
+    expect(() => migrateCountryProfiles({}, { profileStorageVersion: PROFILE_STORAGE_VERSION, profiles: [] })).toThrow(/Invalid persisted country profiles/);
+  });
+
+  it("requires plain country profile buckets at both startup and backup restore boundaries", () => {
+    const app = readFileSync(join(process.cwd(), "App.jsx"), "utf8");
+    expect((app.match(/if \(!isPlainRecord\(raw\)\) return;/g) || []).length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("requires snapshot payloads themselves to be plain records", () => {
+    const app = readFileSync(join(process.cwd(), "App.jsx"), "utf8");
+    expect(app).toContain("if (!isPlainRecord(entry)) return null");
+  });
+});
+
+
+describe("batch hardening 8b: legacy bucket shape validation", () => {
+  it("ignores malformed v2 country buckets instead of spreading arrays into profiles", () => {
+    const migrated = migrateCountryProfiles({ currentAge: 35 }, {
+      profileStorageVersion: 2,
+      activeCountry: "US",
+      profiles: { JP: [], US: { country: "US", currentAge: 44 } },
+    });
+    expect(migrated.profiles.JP).toBeUndefined();
+    expect(migrated.profiles.US.currentAge).toBe(44);
+  });
+
+  it("does not reinterpret a legacy top-level inputs array as a JP profile", () => {
+    const migrated = migrateCountryProfiles({}, { inputs: [{ country: "US" }] });
+    expect(migrated.profiles).toEqual({});
+    expect(migrated.activeCountry).toBe("JP");
+  });
+
+  it("uses only a plain valid bucket when recovering from a corrupted active-country code", () => {
+    expect(resolvePersistedActiveCountry("XX", { JP: [], US: { country: "US" } })).toBe("US");
+  });
+});
