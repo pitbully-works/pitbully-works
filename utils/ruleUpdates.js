@@ -152,9 +152,12 @@ export function isUpdateEffective(update, now = new Date()) {
 export function applyApprovedRuleUpdates(baseRules, country, updates, state, now = new Date()) {
   const result = clonePreservingFunctions(baseRules);
   const code = normalizeRuleCountry(country);
+  // Never let two invalid/unknown country codes match through `null === null`.
+  // The calculation engine only supports the explicit five-country set.
+  if (!code) return result;
   for (const update of updates || []) {
     const updateCountry = normalizeRuleCountry(update?.country);
-    if (updateCountry !== code) continue;
+    if (!updateCountry || updateCountry !== code) continue;
     if (!isRuleUpdateApproved(state, update.id)) continue;
     if (!isUpdateEffective(update, now)) continue;
     for (const change of update.changes || []) {
