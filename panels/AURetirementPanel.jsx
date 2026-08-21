@@ -27,6 +27,13 @@ function AURetirementPanel({
   const workBonusBalance = Number(auInvestment.agePension.workBonusBalance) || 0;
   const assessableEmploymentIncome = retirementRules.getAssessableEmploymentIncomeAnnual(employmentIncome, workBonusBalance);
   const assessableIncome = otherIncome + assessableEmploymentIncome + (Number(deemedIncomeAnnual) || 0);
+  const rentAssistanceEligible = !!auInvestment.agePension.rentAssistanceEligible;
+  const rentFortnightly = Number(auInvestment.agePension.rentFortnightly) || 0;
+  const rentAssistanceSharer = !!auInvestment.agePension.rentAssistanceSharer;
+  const rentAssistanceHouseholdAnnual = retirementRules.getRentAssistanceHouseholdAnnual({
+    status, homeowner, eligible: rentAssistanceEligible, rentFortnightly, sharer: rentAssistanceSharer,
+  });
+  const rentAssistancePerPersonAnnual = recipients > 0 ? rentAssistanceHouseholdAnnual / recipients : 0;
 
   return (
     <div>
@@ -101,10 +108,50 @@ function AURetirementPanel({
         onChange={(v) => onUpdateAgePension("workBonusBalance", Math.min(11800, Math.max(0, Number(v) || 0)))}
       />
 
+      {!homeowner && (
+        <>
+          <div className="field-label" style={{ marginTop: 8, marginBottom: 6 }}>{t("auRentAssistanceEligibleLabel")}</div>
+          <div className="chip-row" style={{ marginBottom: 10 }}>
+            <button
+              className={`chip ${rentAssistanceEligible ? "chip-active" : ""}`}
+              onClick={() => onUpdateAgePension("rentAssistanceEligible", true)}
+            >{t("auYes")}</button>
+            <button
+              className={`chip ${!rentAssistanceEligible ? "chip-active" : ""}`}
+              onClick={() => onUpdateAgePension("rentAssistanceEligible", false)}
+            >{t("auNo")}</button>
+          </div>
+          {rentAssistanceEligible && (
+            <>
+              <Field
+                guide={t("auRentFortnightlyGuide")}
+                label={t("auRentFortnightlyLabel")} unit="A$" step={10}
+                value={auInvestment.agePension.rentFortnightly || 0}
+                onChange={(v) => onUpdateAgePension("rentFortnightly", Math.max(0, Number(v) || 0))}
+              />
+              {status === "single" && (
+                <label className="checkbox-row">
+                  <input
+                    type="checkbox"
+                    checked={rentAssistanceSharer}
+                    onChange={(e) => onUpdateAgePension("rentAssistanceSharer", e.target.checked)}
+                  />
+                  <span>{t("auRentAssistanceSharerLabel")}</span>
+                </label>
+              )}
+              <div className="note" style={{ marginBottom: 10 }}>
+                <Info size={13} />
+                <span>{t("auRentAssistanceEstimateNote", { amount: money(rentAssistanceHouseholdAnnual) })}</span>
+              </div>
+            </>
+          )}
+        </>
+      )}
+
       <div className="stat-grid" style={{ marginTop: 10 }}>
         <StatCard
           label={t("auIncomeTestLabel")}
-          value={money(retirementRules.getAgePensionByIncomeTest(assessableIncome, status))}
+          value={money(retirementRules.getAgePensionByIncomeTest(assessableIncome, status, rentAssistancePerPersonAnnual))}
           sub={t("auIncomeTestSub", {
             // 逓減率は1人あたり。カップルは世帯合計の半分（25セント／隔週1.50ドル）。
             amount: money(retirementRules.getIncomeFreeAreaAnnual(status)),
@@ -115,7 +162,7 @@ function AURetirementPanel({
         />
         <StatCard
           label={t("auAssetsTestLabel")}
-          value={money(retirementRules.getAgePensionByAssetsTest(assessableAssets, status, homeowner))}
+          value={money(retirementRules.getAgePensionByAssetsTest(assessableAssets, status, homeowner, rentAssistancePerPersonAnnual))}
           sub={t("auAssetsTestSub", {
             amount: money(retirementRules.getAssetsFreeArea(status, homeowner)),
             taper: retirementRules.getAssetsTaperPerThousandFortnightly(status),
