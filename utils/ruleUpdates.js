@@ -1,6 +1,12 @@
 // 制度更新センター：計算本体と制度変更通知を分離する。
 // 承認済みでも effectiveDate より前は計算へ適用しない。
 export const RULE_UPDATE_STORAGE_KEY = "nisa-lifeplan-rule-updates-v1";
+export const RULE_UPDATE_COUNTRIES = Object.freeze(["JP", "US", "GB", "CA", "AU"]);
+
+export function normalizeRuleCountry(value) {
+  const code = String(value || "").trim().toUpperCase();
+  return RULE_UPDATE_COUNTRIES.includes(code) ? code : null;
+}
 
 export const BUILTIN_RULE_UPDATES = [
   {
@@ -88,12 +94,20 @@ function setByPath(root, path, value) {
 
 export function normalizeRuleUpdateState(raw) {
   const source = raw && typeof raw === "object" ? raw : {};
+  const history = Array.isArray(source.history)
+    ? source.history
+      .filter((item) => item && typeof item === "object")
+      .map((item) => {
+        const country = normalizeRuleCountry(item.country);
+        return country ? { ...item, country } : null;
+      })
+      .filter(Boolean)
+      .slice(-100)
+    : [];
   return {
     approved: source.approved && typeof source.approved === "object" ? source.approved : {},
     dismissed: source.dismissed && typeof source.dismissed === "object" ? source.dismissed : {},
-    history: Array.isArray(source.history)
-      ? source.history.filter((item) => item && typeof item === "object").slice(-100)
-      : [],
+    history,
     lastCheckedAt: typeof source.lastCheckedAt === "string" ? source.lastCheckedAt : "",
   };
 }
@@ -106,9 +120,9 @@ export function isUpdateEffective(update, now = new Date()) {
 
 export function applyApprovedRuleUpdates(baseRules, country, updates, state, now = new Date()) {
   const result = clonePreservingFunctions(baseRules);
-  const code = String(country || '').trim().toUpperCase();
+  const code = normalizeRuleCountry(country);
   for (const update of updates || []) {
-    const updateCountry = String(update?.country || '').trim().toUpperCase();
+    const updateCountry = normalizeRuleCountry(update?.country);
     if (updateCountry !== code) continue;
     if (!state?.approved?.[update.id]) continue;
     if (!isUpdateEffective(update, now)) continue;
@@ -123,7 +137,10 @@ export function mergeRuleUpdateManifests(remoteUpdates) {
   const byId = new Map(BUILTIN_RULE_UPDATES.map((item) => [item.id, item]));
   if (Array.isArray(remoteUpdates)) {
     for (const item of remoteUpdates) {
-      if (item && typeof item.id === "string" && typeof item.country === "string") byId.set(item.id, item);
+      if (!item || typeof item.id !== "string") continue;
+      const country = normalizeRuleCountry(item.country);
+      if (!country) continue;
+      byId.set(item.id, { ...item, country });
     }
   }
   return [...byId.values()];
