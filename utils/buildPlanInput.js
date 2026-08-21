@@ -86,8 +86,10 @@ const INVESTMENT_ACCOUNT_KEYS = {
  * 現在の入力から「退職後の毎月の生活費」を国に関係なく読み出す。
  */
 export function readLivingCostMonthly(country, inputs) {
-  const key = LIVING_COST_PATH[country];
-  if (!key) return Number(inputs.livingCostMonthly) || 0;
+  const code = String(country || "").trim().toUpperCase();
+  if (!Object.prototype.hasOwnProperty.call(LIVING_COST_PATH, code)) return 0;
+  const key = LIVING_COST_PATH[code];
+  if (key === null) return Number(inputs.livingCostMonthly) || 0;
   return Number((inputs[key] || {}).expensesMonthly) || 0;
 }
 
@@ -175,7 +177,7 @@ export function buildScaledNisaPlan({ inputs, effectiveCurrentAge, retireAge, co
 
 export function buildPlanInput(ctx, overrides = {}) {
   const {
-    country, rules, inputs,
+    country: rawCountry, rules, inputs,
     effectiveCurrentAge, effectiveCurrentAssets, effectivePostRetireReturn,
     dynamicFunds, stockTotalNow, effectiveStockReturnPct,
     goldCurrentValue, effectiveGoldReturnPct,
@@ -183,6 +185,10 @@ export function buildPlanInput(ctx, overrides = {}) {
     drawdownOrder, uncategorizedLabel,
     countryDerived = {},
   } = ctx;
+  const country = String(rawCountry || "").trim().toUpperCase();
+  if (!Object.prototype.hasOwnProperty.call(LIVING_COST_PATH, country)) {
+    throw new Error(`Unsupported country: ${rawCountry ?? ""}`);
+  }
 
   // ---- 上書き値の確定（未指定なら現在プランの値）----
   // 「未指定」の判定は3項目とも同じ規則に揃える（undefined / null / 空文字）。

@@ -11,13 +11,14 @@ export const JP_PENSION_INDEXATION_AUTO_GAP_PCT = 0.5;
 export const GB_PENSION_TRIPLE_LOCK_FLOOR_PCT = 2.5;
 
 export function resolvePublicPensionIndexationPct(country, inflationPct, setting = {}) {
+  const code = String(country || "").trim().toUpperCase();
   const mode = setting?.mode || "auto";
   if (mode === "off") return 0;
   if (mode === "manual") return clamp(num(setting?.manualPct), -5, 10);
   const inflation = clamp(num(inflationPct), 0, 10);
-  if (country === "JP") return clamp(inflation - JP_PENSION_INDEXATION_AUTO_GAP_PCT, 0, 10);
-  if (country === "GB") return clamp(Math.max(inflation, GB_PENSION_TRIPLE_LOCK_FLOOR_PCT), 0, 10);
-  if (country === "US" || country === "CA" || country === "AU") return inflation;
+  if (code === "JP") return clamp(inflation - JP_PENSION_INDEXATION_AUTO_GAP_PCT, 0, 10);
+  if (code === "GB") return clamp(Math.max(inflation, GB_PENSION_TRIPLE_LOCK_FLOOR_PCT), 0, 10);
+  if (code === "US" || code === "CA" || code === "AU") return inflation;
   return 0;
 }
 
