@@ -134,7 +134,7 @@ describe("rule update center", () => {
         { id: "h2", country: "XX", action: "approved" },
       ],
     });
-    expect(state.history).toEqual([{ id: "h1", country: "CA", action: "approved" }]);
+    expect(state.history).toEqual([{ id: "h1", country: "CA", action: "approved", decidedAt: "", effectiveDate: "" }]);
   });
 
   it("承認済みremote制度更新でもprototype pollution用pathは適用しない", () => {

@@ -7,7 +7,7 @@ const watcher = fs.readFileSync(path.resolve(process.cwd(), "scripts/check-rule-
 
 describe("5-country rules update center UI", () => {
   it("filters rule history by selected country", () => {
-    expect(app).toContain("entry.country === country");
+    expect(app).toContain("normalizeRuleCountry(entry?.country) === country");
     expect(app).toContain("normalizeRuleCountry(item.country)");
     expect(app).toContain("countryRuleUpdateHistory");
   });
