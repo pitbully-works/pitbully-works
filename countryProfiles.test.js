@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { PROFILE_COUNTRIES, PROFILE_STORAGE_VERSION, applySharedIdentity, forceCountryMeta, makeCountryProfile, migrateCountryProfiles, targetCountryFromKakeibo } from "./utils/countryProfiles.js";
+import { PROFILE_COUNTRIES, PROFILE_STORAGE_VERSION, applySharedIdentity, forceCountryMeta, makeCountryProfile, migrateCountryProfiles, targetCountryFromKakeibo, targetCountryFromBackup } from "./utils/countryProfiles.js";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 const defaults={country:"JP",baseCurrency:"JPY",language:"ja",userName:"",birthDate:"",currentAge:35,currentAssets:0,banks:[],pensionMonthly:0,livingCostMonthly:0};
@@ -13,3 +13,16 @@ describe("5-country life-plan profiles",()=>{
  it("forces each country currency",()=>{expect(forceCountryMeta({},"JP").baseCurrency).toBe("JPY");expect(forceCountryMeta({},"US").baseCurrency).toBe("USD");expect(forceCountryMeta({},"GB").baseCurrency).toBe("GBP");expect(forceCountryMeta({},"CA").baseCurrency).toBe("CAD");expect(forceCountryMeta({},"AU").baseCurrency).toBe("AUD");});
 });
 describe("App integration",()=>{const app=readFileSync(join(process.cwd(), "App.jsx"),"utf8");it("uses profile storage",()=>expect(app).toContain("profileStorageVersion: PROFILE_STORAGE_VERSION"));it("routes kakeibo by countryCode",()=>expect(app).toContain("targetCountryFromKakeibo(parsed)"));it("validates country/currency pair",()=>expect(app).toContain("Country/currency mismatch"));it("stores country history separately",()=>expect(app).toContain('SNAPSHOT_PREFIX + code + ":" + date'));it("country select saves current and restores target",()=>{expect(app).toContain("countryProfilesRef.current = { ...countryProfilesRef.current, [currentCountry]: inputs }");expect(app).toContain("const rawTarget = countryProfilesRef.current[nextCountry]");});it("history is filtered by explicit profile country",()=>{expect(app).toContain('const entryCountry = entry.country || "JP"');expect(app).toContain('const sameCountryPrev = prev.filter((h) => (h?.country || "JP") === currentCountry)');expect(app).toContain('(h?.country || "JP") === code && h.date !== date');});});
+
+describe("backup active-country strictness", () => {
+  it.each(["JP", "US", "GB", "CA", "AU"])("%s: lowercase and surrounding spaces normalize safely", (code) => {
+    expect(targetCountryFromBackup(`  ${code.toLowerCase()}  `)).toBe(code);
+  });
+  it("missing country remains legacy-JP compatible", () => {
+    expect(targetCountryFromBackup(undefined)).toBe("JP");
+    expect(targetCountryFromBackup("   ")).toBe("JP");
+  });
+  it("explicit unknown country is rejected instead of silently becoming JP", () => {
+    expect(targetCountryFromBackup("XX")).toBeNull();
+  });
+});

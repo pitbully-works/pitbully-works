@@ -35,7 +35,7 @@ import { pickCurrentAnchor } from "./utils/currentSection.js";
 import { isKakeiboPayload, mergeKakeiboInputs, checkKakeiboAmountUnit } from "./utils/importFromKakeibo.js";
 import {
   PROFILE_COUNTRIES, PROFILE_STORAGE_VERSION, applySharedIdentity, forceCountryMeta,
-  makeCountryProfile, migrateCountryProfiles, normalizeProfileCountry, targetCountryFromKakeibo,
+  makeCountryProfile, migrateCountryProfiles, normalizeProfileCountry, targetCountryFromKakeibo, targetCountryFromBackup,
 } from "./utils/countryProfiles.js";
 import { buildNisaBreakdown, breakdownPrincipalItems, breakdownReturnBars, breakdownTotals } from "./utils/nisaBreakdown.js";
 import { describeSchedulePace } from "./utils/schedulePace.js";
@@ -2998,7 +2998,11 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           const blank = makeCountryProfile(DEFAULT_INPUTS, code, sharedSource);
           restored[code] = forceCountryMeta(applySharedIdentity(mergeSavedInputs(blank, raw), sharedSource), code);
         });
-        const active = normalizeProfileCountry(parsed.activeCountry || parsed.inputs?.country || "JP");
+        const activeRaw = parsed.activeCountry ?? parsed.inputs?.country;
+        const active = targetCountryFromBackup(activeRaw);
+        if (!active) {
+          throw new Error(t("importCountryUnsupportedError", { country: String(activeRaw || "") }));
+        }
         const activeInputs = restored[active] || makeCountryProfile(DEFAULT_INPUTS, active, sharedSource);
         countryProfilesRef.current = { ...restored, [active]: activeInputs };
         const restoredWatchlists = parsed.watchlists && typeof parsed.watchlists === "object" ? { ...parsed.watchlists } : {};
