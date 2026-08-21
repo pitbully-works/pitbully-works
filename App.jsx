@@ -2202,10 +2202,13 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     } catch { /* 制度通知が読めなくても計算本体は継続 */ }
   }, []);
 
-  const persistRuleUpdateState = useCallback((next) => {
-    const normalized = normalizeRuleUpdateState(next);
-    setRuleUpdateState(normalized);
-    try { window.localStorage?.setItem(RULE_UPDATE_STORAGE_KEY, JSON.stringify(normalized)); } catch { /* noop */ }
+  const persistRuleUpdateState = useCallback((nextOrUpdater) => {
+    setRuleUpdateState((current) => {
+      const next = typeof nextOrUpdater === "function" ? nextOrUpdater(current) : nextOrUpdater;
+      const normalized = normalizeRuleUpdateState(next);
+      try { window.localStorage?.setItem(RULE_UPDATE_STORAGE_KEY, JSON.stringify(normalized)); } catch { /* noop */ }
+      return normalized;
+    });
   }, []);
 
   const recordRuleUpdateDecision = useCallback((update, action) => {
@@ -2225,39 +2228,38 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       decidedAt: nowIso,
       effectiveDate: typeof update?.effectiveDate === "string" ? update.effectiveDate : "",
     };
-    const next = {
-      ...ruleUpdateState,
+    persistRuleUpdateState((current) => ({
+      ...current,
       approved: {
-        ...ruleUpdateState.approved,
+        ...current.approved,
         [updateId]: safeAction === "approved",
       },
       dismissed: {
-        ...ruleUpdateState.dismissed,
+        ...current.dismissed,
         [updateId]: safeAction === "deferred",
       },
-      history: [...(ruleUpdateState.history || []), historyEntry].slice(-100),
-    };
-    persistRuleUpdateState(next);
-  }, [ruleUpdateState, persistRuleUpdateState]);
+      history: [...(current.history || []), historyEntry].slice(-100),
+    }));
+  }, [persistRuleUpdateState]);
 
   const deleteRuleUpdateHistoryEntry = useCallback((entryId) => {
     const ok = window.confirm(language === "ja" ? "この制度変更履歴を削除しますか？" : "Delete this change-history entry?");
     if (!ok) return;
-    persistRuleUpdateState({
-      ...ruleUpdateState,
-      history: (ruleUpdateState.history || []).filter((entry) => entry.id !== entryId),
-    });
-  }, [language, ruleUpdateState, persistRuleUpdateState]);
+    persistRuleUpdateState((current) => ({
+      ...current,
+      history: (current.history || []).filter((entry) => entry.id !== entryId),
+    }));
+  }, [language, persistRuleUpdateState]);
 
   const clearCountryRuleUpdateHistory = useCallback(() => {
     if (!(ruleUpdateState.history || []).some((entry) => normalizeRuleCountry(entry?.country) === country)) return;
     const ok = window.confirm(language === "ja" ? "この国の制度変更履歴をすべて削除しますか？" : "Delete all change history for this country?");
     if (!ok) return;
-    persistRuleUpdateState({
-      ...ruleUpdateState,
-      history: (ruleUpdateState.history || []).filter((entry) => normalizeRuleCountry(entry?.country) !== country),
-    });
-  }, [language, country, ruleUpdateState, persistRuleUpdateState]);
+    persistRuleUpdateState((current) => ({
+      ...current,
+      history: (current.history || []).filter((entry) => normalizeRuleCountry(entry?.country) !== country),
+    }));
+  }, [language, country, ruleUpdateState.history, persistRuleUpdateState]);
 
   const checkRuleUpdates = useCallback(async () => {
     let remote = [];
@@ -2357,14 +2359,14 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       ? alert.hash.trim().toLowerCase()
       : "";
     if (!id || !hash) return;
-    persistRuleUpdateState({
-      ...ruleUpdateState,
+    persistRuleUpdateState((current) => ({
+      ...current,
       sourceAcknowledgedHashes: {
-        ...(ruleUpdateState.sourceAcknowledgedHashes || {}),
+        ...(current.sourceAcknowledgedHashes || {}),
         [id]: hash,
       },
-    });
-  }, [ruleUpdateState, persistRuleUpdateState]);
+    }));
+  }, [persistRuleUpdateState]);
   const ruleAttentionCount = pendingRuleUpdates.length + ruleSourceAlerts.length;
   const scheduledRuleUpdates = useMemo(
     () => countryRuleUpdates.filter((item) => isRuleUpdateApproved(ruleUpdateState, item.id) && !isUpdateEffective(item)),
