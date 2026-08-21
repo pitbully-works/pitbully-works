@@ -30,10 +30,10 @@ const mutants = [
   ["Rule update persistence uses latest state", "App.jsx", 'typeof nextOrUpdater === "function" ? nextOrUpdater(current) : nextOrUpdater', 'typeof nextOrUpdater === "function" ? nextOrUpdater : nextOrUpdater', "ruleUpdateStateConcurrency.test.js"],
   ["Rule check timestamp requires both feeds", "App.jsx", "if (manifestChecked && sourceStatusChecked) {", "if (manifestChecked || sourceStatusChecked) {", "ruleUpdateCheckIntegrity.test.js"],
   ["Rule manifest requires documented schema", "App.jsx", "if (payload?.schemaVersion === 1 && Array.isArray(payload?.updates)) {", "if (Array.isArray(payload?.updates)) {", "ruleUpdateFeedValidation.test.js"],
-  ["Rule source status is registry-bound", "utils/ruleUpdates.js", "!registered || registered.country !== country || seen.has(id)", "!registered || registered.country !== country", "ruleSourceFeedAtomicValidation.test.js"],
+  ["Rule source status URL is registry-bound", "utils/ruleUpdates.js", "url: safeRuleSourceUrl(registered.url)", "url: safeRuleSourceUrl(item.url)", "ruleSourceFeedAtomicValidation.test.js"],
   ["Rule source watcher caps streamed bodies", "scripts/check-rule-sources.mjs", "if (total > MAX_SOURCE_RESPONSE_BYTES) {", "if (total > Number.MAX_SAFE_INTEGER) {", "ruleSourceWatcherHardening.test.js"],
   ["Rule source watcher rejects tiny bodies", "scripts/check-rule-sources.mjs", "if (normalized.length < MIN_NORMALIZED_SOURCE_CHARS) {", "if (normalized.length < 0) {", "ruleSourceWatcherHardening.test.js"],
-  ["Rule source feed requires complete registry coverage", "utils/ruleUpdates.js", "if (payload.sources.length !== registryById.size) return null;", "if (payload.sources.length > registryById.size) return null;", "ruleSourceStatusCompleteness.test.js"],
+  ["Rule source feed requires one pass timestamp", "utils/ruleUpdates.js", "if (!itemCheckedAt || itemCheckedAt !== feedCheckedAt) return null;", "if (!itemCheckedAt) return null;", "ruleSourceStatusCompleteness.test.js"],
   ["Rule source feed rejects watcher errors", "utils/ruleUpdates.js", "if (typeof item.error === \"string\" && item.error.trim()) return null;", "if (typeof item.error === \"string\" && false) return null;", "ruleSourceStatusCompleteness.test.js"],
   ["Rule check timestamp comes from watcher feed", "App.jsx", "const checkedAt = sourceCheckedAt;", "const checkedAt = new Date().toISOString();", "ruleUpdateCheckIntegrity.test.js"],
 ];
