@@ -533,7 +533,7 @@ describe("batch hardening 15: bounded normalization work", () => {
     }));
     const state = normalizeRuleUpdateState({ history });
     expect(state.history).toHaveLength(100);
-    expect(state.history[0].id).toBe(`h-${MAX_RULE_HISTORY_INPUT_ROWS}`);
+    expect(state.history[0].id).toBe(`h-${MAX_RULE_HISTORY_INPUT_ROWS - 50}`);
     expect(state.history.at(-1).id).toBe(`h-${MAX_RULE_HISTORY_INPUT_ROWS + 49}`);
   });
 });
