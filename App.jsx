@@ -2967,7 +2967,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           throw new Error(t("importCountryUnsupportedError", { country: String(parsed.countryCode || "") }));
         }
         const expectedCurrency = DEFAULT_CURRENCY_BY_COUNTRY[target];
-        if (parsed.baseCurrency && parsed.baseCurrency !== expectedCurrency) {
+        const importedCurrency = parsed.baseCurrency == null
+          ? ""
+          : String(parsed.baseCurrency).trim().toUpperCase();
+        if (importedCurrency && importedCurrency !== expectedCurrency) {
           throw new Error(`Country/currency mismatch: ${target} requires ${expectedCurrency}`);
         }
         const currentCode = normalizeProfileCountry(inputs.country);
