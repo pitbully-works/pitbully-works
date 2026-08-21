@@ -186,7 +186,7 @@ function setByPath(root, path, value) {
   return true;
 }
 
-function normalizeRuleCheckedAt(value) {
+export function normalizeRuleTimestamp(value) {
   if (typeof value !== "string") return "";
   const text = value.trim();
   if (!text || text.length > 40) return "";
@@ -205,7 +205,12 @@ export function normalizeRuleUpdateState(raw) {
         const updateId = item.updateId == null ? null : normalizeRuleUpdateId(item.updateId);
         const action = item.action === "approved" || item.action === "deferred" ? item.action : null;
         if (!country || !id || (item.updateId != null && !updateId) || !action) return null;
-        return { ...item, id, ...(updateId ? { updateId } : {}), country, action };
+        const decidedAt = normalizeRuleTimestamp(item.decidedAt);
+        const effectiveDate = normalizeRuleDateString(item.effectiveDate);
+        return {
+          ...item, id, ...(updateId ? { updateId } : {}), country, action,
+          decidedAt, effectiveDate,
+        };
       })
       .filter(Boolean)
       .slice(-100)
@@ -214,22 +219,27 @@ export function normalizeRuleUpdateState(raw) {
     approved: normalizeDecisionMap(source.approved),
     dismissed: normalizeDecisionMap(source.dismissed),
     history,
-    lastCheckedAt: normalizeRuleCheckedAt(source.lastCheckedAt),
+    lastCheckedAt: normalizeRuleTimestamp(source.lastCheckedAt),
   };
 }
 
-function parseStrictRuleDate(value) {
+export function normalizeRuleDateString(value) {
   const text = String(value || "").trim();
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
-  if (!match) return null;
+  if (!match) return "";
   const year = Number(match[1]);
   const month = Number(match[2]);
   const day = Number(match[3]);
   const date = new Date(year, month - 1, day, 0, 0, 0, 0);
-  // JavaScript normalizes impossible dates (e.g. 2026-02-30 -> March).
-  // Remote rule manifests must never become effective on such a silently shifted date.
-  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
-  return date;
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return "";
+  return text;
+}
+
+function parseStrictRuleDate(value) {
+  const text = normalizeRuleDateString(value);
+  if (!text) return null;
+  const [year, month, day] = text.split("-").map(Number);
+  return new Date(year, month - 1, day, 0, 0, 0, 0);
 }
 
 export function isUpdateEffective(update, now = new Date()) {
@@ -280,7 +290,9 @@ export function mergeRuleUpdateManifests(remoteUpdates) {
       const changes = Array.isArray(item.changes)
         ? item.changes.filter((change) => change && typeof change === "object" && !Array.isArray(change)).slice(0, MAX_RULE_CHANGES_PER_UPDATE)
         : [];
-      byId.set(id, { ...item, id, country, changes });
+      const effectiveDate = normalizeRuleDateString(item.effectiveDate);
+      const sourceUrl = safeRuleSourceUrl(item.sourceUrl);
+      byId.set(id, { ...item, id, country, changes, effectiveDate, sourceUrl });
     }
   }
   return [...byId.values()];
