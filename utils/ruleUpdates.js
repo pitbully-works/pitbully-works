@@ -69,6 +69,13 @@ export function normalizeRuleSourceStatusFeed(payload, registry) {
     registryById.set(id, { ...source, id, country });
   }
 
+  // A status feed represents one completed watcher pass, not a partial list.
+  // Requiring exact registry coverage prevents an empty/truncated deployment from
+  // being mistaken for a successful official-source check.
+  if (payload.sources.length !== registryById.size) return null;
+  const feedCheckedAt = normalizeRuleTimestamp(payload.checkedAt);
+  if (!feedCheckedAt) return null;
+
   const seen = new Set();
   const normalized = [];
   for (const item of payload.sources) {
@@ -79,17 +86,25 @@ export function normalizeRuleSourceStatusFeed(payload, registry) {
     if (!id || !country || !registered || registered.country !== country || seen.has(id)) return null;
     seen.add(id);
 
+    // A fetch error means this source was not verified on this watcher pass. Even
+    // when an older hash is retained for alert continuity, the app must not count
+    // the whole document as a successful fresh check. Successful rows always carry
+    // a concrete SHA-256 and the same pass timestamp as the top-level feed.
+    if (typeof item.error === "string" && item.error.trim()) return null;
     const rawHash = typeof item.hash === "string" ? item.hash.trim().toLowerCase() : "";
-    if (rawHash && !/^[a-f0-9]{64}$/.test(rawHash)) return null;
+    if (!/^[a-f0-9]{64}$/.test(rawHash)) return null;
+    const itemCheckedAt = normalizeRuleTimestamp(item.checkedAt);
+    if (!itemCheckedAt || itemCheckedAt !== feedCheckedAt) return null;
     normalized.push({
       id,
       country,
       changed: item.changed === true,
       hash: rawHash,
+      checkedAt: itemCheckedAt,
       url: safeRuleSourceUrl(registered.url),
     });
   }
-  return normalized;
+  return seen.size === registryById.size ? normalized : null;
 }
 
 
