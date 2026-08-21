@@ -3016,10 +3016,23 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     setImportScheduleOverlaps(Array.isArray(nextNotice.overlaps) ? nextNotice.overlaps : []);
   };
 
+  const handleImportTextChange = (value) => {
+    if (typeof value !== "string") return;
+    if (value.length > MAX_PERSISTED_JSON_CHARS) {
+      setImportError(t("importFailedError", { message: "Backup text is too large" }));
+      setImportOk(false);
+      return;
+    }
+    setImportText(value);
+  };
+
   const importBackup = () => {
     setImportError("");
     setImportOk(false);
     try {
+      if (typeof importText !== "string" || importText.length > MAX_PERSISTED_JSON_CHARS) {
+        throw new RangeError("Backup text is too large");
+      }
       const parsed = JSON.parse(importText);
       if (!isPlainRecord(parsed)) throw new Error(t("importInputsNotFoundError"));
       /* 家計簿から来たデータは、通常のバックアップ復元とは別あつかい。
@@ -6783,7 +6796,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           <div className="field-label" style={{ marginBottom: 4 }}>{t("backupImportLabel")}</div>
           <textarea
             value={importText}
-            onChange={(e) => setImportText(e.target.value)}
+            onChange={(e) => handleImportTextChange(e.target.value)}
             placeholder={t("backupImportPlaceholder")}
             style={{
               width: "100%", height: 100, background: "var(--panel-2)", color: "var(--text)",

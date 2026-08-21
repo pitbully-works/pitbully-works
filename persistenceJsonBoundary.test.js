@@ -33,3 +33,13 @@ describe("persisted JSON trust-boundary caps", () => {
     expect(storage).toContain('throw new RangeError("Storage value is too large")');
   });
 });
+
+describe("backup paste size boundary", () => {
+  it("rejects oversized backup text both while editing and immediately before JSON.parse", () => {
+    expect(app).toContain("handleImportTextChange");
+    expect(app).toContain("value.length > MAX_PERSISTED_JSON_CHARS");
+    expect(app).toContain('importText.length > MAX_PERSISTED_JSON_CHARS');
+    expect(app).toContain('throw new RangeError("Backup text is too large")');
+    expect(app).toContain('onChange={(e) => handleImportTextChange(e.target.value)}');
+  });
+});

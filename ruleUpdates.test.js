@@ -506,3 +506,34 @@ describe("remote rule manifest metadata hardening", () => {
     expect(state.history[0]).not.toHaveProperty("unexpected");
   });
 });
+
+describe("batch hardening 15: bounded normalization work", () => {
+  it("caps approval/defer maps before retaining external IDs", async () => {
+    const { MAX_RULE_DECISION_ENTRIES } = await import("./utils/ruleUpdates.js");
+    const approved = Object.fromEntries(Array.from({ length: MAX_RULE_DECISION_ENTRIES + 5 }, (_, i) => [`id-${i}`, true]));
+    const state = normalizeRuleUpdateState({ approved });
+    expect(Object.keys(state.approved)).toHaveLength(MAX_RULE_DECISION_ENTRIES);
+    expect(state.approved["id-0"]).toBe(true);
+    expect(state.approved[`id-${MAX_RULE_DECISION_ENTRIES + 1}`]).toBeUndefined();
+  });
+
+  it("caps raw change rows before filtering malformed entries", () => {
+    const changes = Array.from({ length: 100 }, () => null);
+    changes.push({ path: "tax.implemented", after: true });
+    const merged = mergeRuleUpdateManifests([{
+      id: "REMOTE-RAW-CHANGE-CAP", country: "US", effectiveDate: "2026-01-01", changes,
+    }]);
+    expect(merged.find((x) => x.id === "REMOTE-RAW-CHANGE-CAP")?.changes).toEqual([]);
+  });
+
+  it("bounds raw history work before normalizing the retained tail", async () => {
+    const { MAX_RULE_HISTORY_INPUT_ROWS } = await import("./utils/ruleUpdates.js");
+    const history = Array.from({ length: MAX_RULE_HISTORY_INPUT_ROWS + 50 }, (_, i) => ({
+      id: `h-${i}`, country: "JP", action: "approved", decidedAt: "2026-08-21T00:00:00Z",
+    }));
+    const state = normalizeRuleUpdateState({ history });
+    expect(state.history).toHaveLength(100);
+    expect(state.history[0].id).toBe(`h-${MAX_RULE_HISTORY_INPUT_ROWS}`);
+    expect(state.history.at(-1).id).toBe(`h-${MAX_RULE_HISTORY_INPUT_ROWS + 49}`);
+  });
+});

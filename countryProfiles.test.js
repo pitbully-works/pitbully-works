@@ -342,3 +342,12 @@ describe("snapshot/local persistence boundary hardening", () => {
     ]);
   });
 });
+
+describe("batch hardening 15: bounded watchlist work", () => {
+  it("caps raw watchlist rows before filtering malformed entries", async () => {
+    const { normalizeStockWatchlist } = await import("./utils/countryProfiles.js");
+    const rows = Array.from({ length: 500 }, () => null);
+    rows.push({ name: "Should not be reached", shares: 1 });
+    expect(normalizeStockWatchlist(rows, "US")).toEqual([]);
+  });
+});
