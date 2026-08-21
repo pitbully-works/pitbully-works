@@ -44,7 +44,9 @@ describe("bounded remote JSON boundary", () => {
 
   it("stops a streamed body as soon as the byte cap is exceeded", async () => {
     let cancelled = false;
-    const chunks = [new TextEncoder().encode('{"x":"'), new TextEncoder().encode("a".repeat(100))];
+    // 20 Japanese characters are 60 UTF-8 bytes but only 20 JS characters.
+    // This isolates the byte cap from the later decoded-character cap.
+    const chunks = [new TextEncoder().encode('{"x":"'), new TextEncoder().encode("あ".repeat(20))];
     let index = 0;
     const res = {
       ok: true,
