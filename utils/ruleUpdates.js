@@ -8,6 +8,24 @@ export function normalizeRuleCountry(value) {
   return RULE_UPDATE_COUNTRIES.includes(code) ? code : null;
 }
 
+function hasOwnTrue(map, id) {
+  return !!map
+    && Object.prototype.hasOwnProperty.call(map, id)
+    && map[id] === true;
+}
+
+// Approval/defer maps are keyed by externally supplied update IDs.
+// Never read them with a plain truthiness lookup because names such as
+// "toString" or "constructor" exist on Object.prototype and would otherwise
+// look approved even when the user never approved them.
+export function isRuleUpdateApproved(state, id) {
+  return hasOwnTrue(state?.approved, id);
+}
+
+export function isRuleUpdateDismissed(state, id) {
+  return hasOwnTrue(state?.dismissed, id);
+}
+
 export const BUILTIN_RULE_UPDATES = [
   {
     id: "JP-NISA-2027-MINOR-TSUMITATE",
@@ -124,7 +142,7 @@ export function applyApprovedRuleUpdates(baseRules, country, updates, state, now
   for (const update of updates || []) {
     const updateCountry = normalizeRuleCountry(update?.country);
     if (updateCountry !== code) continue;
-    if (!state?.approved?.[update.id]) continue;
+    if (!isRuleUpdateApproved(state, update.id)) continue;
     if (!isUpdateEffective(update, now)) continue;
     for (const change of update.changes || []) {
       if (change.path) setByPath(result, change.path, change.after);
