@@ -158,4 +158,32 @@ describe("rule update center", () => {
     expect(({}).pollutedByRuleUpdate2).toBeUndefined();
   });
 
+  it("未知国コード同士がnull一致して制度更新を適用しない", () => {
+    const updates = [{
+      id: "REMOTE-UNKNOWN-COUNTRY",
+      country: "XX",
+      effectiveDate: "2026-01-01",
+      changes: [{ path: "retirement.currentMonthlyLimits.firstInsured", after: 999999999 }],
+    }];
+    const state = normalizeRuleUpdateState({ approved: { "REMOTE-UNKNOWN-COUNTRY": true } });
+    const rules = applyApprovedRuleUpdates(JP_COUNTRY_RULES, "XX", updates, state, new Date("2026-08-21T12:00:00"));
+
+    expect(rules.retirement.currentMonthlyLimits.firstInsured)
+      .toBe(JP_COUNTRY_RULES.retirement.currentMonthlyLimits.firstInsured);
+  });
+
+  it("有効な国に対して未知国の制度更新を適用しない", () => {
+    const updates = [{
+      id: "REMOTE-UNKNOWN-IN-JP",
+      country: "XX",
+      effectiveDate: "2026-01-01",
+      changes: [{ path: "retirement.currentMonthlyLimits.firstInsured", after: 999999998 }],
+    }];
+    const state = normalizeRuleUpdateState({ approved: { "REMOTE-UNKNOWN-IN-JP": true } });
+    const rules = applyApprovedRuleUpdates(JP_COUNTRY_RULES, "JP", updates, state, new Date("2026-08-21T12:00:00"));
+
+    expect(rules.retirement.currentMonthlyLimits.firstInsured)
+      .toBe(JP_COUNTRY_RULES.retirement.currentMonthlyLimits.firstInsured);
+  });
+
 });
