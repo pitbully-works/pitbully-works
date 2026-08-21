@@ -843,13 +843,22 @@ export const AU_COUNTRY_RULES = {
       const saptoApplied = Math.min(afterLito, saptoEntitlement);
       const incomeTax = Math.max(0, afterLito - saptoApplied);
       const medicareLevy = this.calculateMedicareLevy(taxableIncome, { saptoEligible: options.saptoEligible === true });
-      const mlsIncome = Math.max(0, Number(options.mlsIncome) || Number(taxableIncome) || 0);
-      const medicareLevySurcharge = this.calculateMedicareLevySurcharge(mlsIncome, {
-        hasAppropriateHospitalCover: options.hasAppropriateHospitalCover === true,
-        family: options.mlsFamily === true,
-        dependentChildren: options.mlsDependentChildren || 0,
-        uncoveredDays: options.mlsUncoveredDays ?? 365,
-      });
+      // MLSは民間病院保険の加入状況・家族構成等が必要なため、
+      // mlsIncome が明示された場合だけ計算する。
+      // これによりCGTや給与犠牲など、MLS条件を持たない内部計算へ
+      // 「未加入」と仮定したMLSを誤って加算しない。
+      const hasMlsContext = Object.prototype.hasOwnProperty.call(options, "mlsIncome");
+      const mlsIncome = hasMlsContext
+        ? Math.max(0, Number(options.mlsIncome) || 0)
+        : 0;
+      const medicareLevySurcharge = hasMlsContext
+        ? this.calculateMedicareLevySurcharge(mlsIncome, {
+            hasAppropriateHospitalCover: options.hasAppropriateHospitalCover === true,
+            family: options.mlsFamily === true,
+            dependentChildren: options.mlsDependentChildren || 0,
+            uncoveredDays: options.mlsUncoveredDays ?? 365,
+          })
+        : 0;
       return { incomeTaxBeforeOffsets, litoEntitlement, litoApplied, saptoEntitlement, saptoApplied, incomeTax, medicareLevy, medicareLevySurcharge, total: incomeTax + medicareLevy + medicareLevySurcharge };
     },
     getMarginalRate(taxableIncome) {
