@@ -99,7 +99,7 @@ const GLOBALS = new Set([
   "Math", "Number", "String", "Object", "Array", "JSON", "Boolean", "Date",
   "console", "isNaN", "parseFloat", "parseInt", "undefined", "null", "true",
   "false", "NaN", "Infinity", "window", "document", "React", "Intl", "Promise",
-  "Map", "Set", "Error", "RegExp", "Symbol", "localStorage", "setTimeout",
+  "Map", "Set", "WeakMap", "WeakSet", "Error", "TypeError", "RangeError", "ReferenceError", "SyntaxError", "URIError", "EvalError", "RegExp", "Symbol", "localStorage", "setTimeout",
   "clearTimeout", "navigator", "alert", "confirm", "Blob", "URL", "URLSearchParams", "structuredClone",
 ]);
 
