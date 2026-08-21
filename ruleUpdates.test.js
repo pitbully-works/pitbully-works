@@ -60,6 +60,18 @@ describe("rule update center", () => {
     expect(merged.some((item) => item.id === "REMOTE-XX")).toBe(false);
   });
 
+
+  it("remote制度更新は既存IDを別国へすり替えられない", () => {
+    const builtin = BUILTIN_RULE_UPDATES.find((item) => item.id === "JP-IDECO-2026-12-01");
+    const merged = mergeRuleUpdateManifests([
+      { id: "JP-IDECO-2026-12-01", country: "US", titleEn: "wrong-country replacement", changes: [] },
+    ]);
+    const kept = merged.find((item) => item.id === "JP-IDECO-2026-12-01");
+    expect(kept?.country).toBe("JP");
+    expect(kept?.titleJa).toBe(builtin?.titleJa);
+    expect(kept?.titleEn).not.toBe("wrong-country replacement");
+  });
+
   it("保存済み制度変更履歴も国コードを正規化し、未知国履歴は除外する", () => {
     const state = normalizeRuleUpdateState({
       history: [
