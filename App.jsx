@@ -3209,14 +3209,16 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   }, [loaded, refreshHistory]);
 
   const restoreSnapshot = (entry) => {
-    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return;
+    // Restore is a trust boundary too: rows normally come through refreshHistory(),
+    // but stale in-memory/UI data must not bypass the same structural checks.
+    if (!isPlainRecord(entry) || !normalizeSnapshotDate(entry.date)) return;
     const currentCountry = normalizeProfileCountry(inputs.country);
     const entryCountry = targetCountryFromBackup(entry.country);
     // History is displayed per country, but re-check at the restore boundary too.
     // A malformed/stale row must never switch the active country or import another
     // country's currency through entry.inputs.country/baseCurrency.
     if (entryCountry !== currentCountry) return;
-    if (entry.inputs && typeof entry.inputs === "object" && !Array.isArray(entry.inputs)) {
+    if (isPlainRecord(entry.inputs)) {
       setInputs((prev) => forceCountryMeta(mergeSavedInputs(prev, entry.inputs), currentCountry));
     }
     if (Array.isArray(entry.watchlist)) setWatchlist(normalizeStockWatchlist(entry.watchlist, currentCountry));

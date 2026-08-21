@@ -7,25 +7,30 @@
 
   window.storage = {
     async get(key) {
-      const raw = localStorage.getItem(NS + key);
+      const raw = window.localStorage.getItem(NS + key);
       if (raw === null) return null;
       return { key, value: raw, shared: false };
     },
     async set(key, value) {
-      localStorage.setItem(NS + key, value);
+      window.localStorage.setItem(NS + key, value);
       return { key, value, shared: false };
     },
     async delete(key) {
-      localStorage.removeItem(NS + key);
+      window.localStorage.removeItem(NS + key);
       return { key, deleted: true, shared: false };
     },
     async list(prefix) {
       const keys = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const k = localStorage.key(i);
-        if (k && k.startsWith(NS + (prefix || ""))) keys.push(k.slice(NS.length));
+      const safePrefix = typeof prefix === "string" ? prefix : "";
+      // Snapshot the matching names and sort them so callers do not depend on
+      // browser-specific localStorage enumeration order. Namespace stripping is
+      // performed only after the prefix check, preventing unrelated app keys from leaking.
+      for (let i = 0; i < window.localStorage.length; i++) {
+        const k = window.localStorage.key(i);
+        if (k && k.startsWith(NS + safePrefix)) keys.push(k.slice(NS.length));
       }
-      return { keys, prefix, shared: false };
+      keys.sort();
+      return { keys, prefix: safePrefix, shared: false };
     },
   };
 })();
