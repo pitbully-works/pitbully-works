@@ -35,7 +35,8 @@ import { pickCurrentAnchor } from "./utils/currentSection.js";
 import { isKakeiboPayload, mergeKakeiboInputs, checkKakeiboAmountUnit } from "./utils/importFromKakeibo.js";
 import {
   PROFILE_COUNTRIES, PROFILE_STORAGE_VERSION, applySharedIdentity, forceCountryMeta,
-  makeCountryProfile, migrateCountryProfiles, normalizeProfileCountry, normalizeProfileCurrency, normalizeCountryKeyedRecord, targetCountryFromKakeibo, targetCountryFromBackup,
+  makeCountryProfile, migrateCountryProfiles, normalizeProfileCountry, normalizeProfileCurrency, normalizeCountryKeyedRecord,
+  normalizeSnapshotDate, snapshotStorageKey, legacyJpSnapshotStorageKey, targetCountryFromKakeibo, targetCountryFromBackup,
 } from "./utils/countryProfiles.js";
 import { buildNisaBreakdown, breakdownPrincipalItems, breakdownReturnBars, breakdownTotals } from "./utils/nisaBreakdown.js";
 import { describeSchedulePace } from "./utils/schedulePace.js";
@@ -3058,21 +3059,30 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     }
     try {
       const list = await window.storage.list(SNAPSHOT_PREFIX, false);
-      const keys = list?.keys || [];
-      setHistoryDebug(t("storageKeyCountDebug", { count: keys.length }));
-      if (!keys.length) return; // nothing stored yet — leave any locally-known entries as-is
+      const keys = Array.isArray(list?.keys) ? list.keys : [];
+      const currentCountry = normalizeProfileCountry(inputs.country);
+      // Read only the active country's snapshots. This avoids cross-country data
+      // touching the current history path and prevents an unbounded Promise.all
+      // over every country's stored history. Legacy `snapshot:YYYY-MM-DD` keys are
+      // JP-only and remain readable for backward compatibility.
+      const countryPrefix = `${SNAPSHOT_PREFIX}${currentCountry}:`;
+      const relevantKeys = keys.filter((key) => {
+        if (typeof key !== "string") return false;
+        if (key.startsWith(countryPrefix)) return true;
+        return currentCountry === "JP" && /^snapshot:\d{4}-\d{2}-\d{2}$/.test(key);
+      });
+      setHistoryDebug(t("storageKeyCountDebug", { count: relevantKeys.length }));
       const entries = await Promise.all(
-        keys.map(async (k) => {
+        relevantKeys.map(async (k) => {
           try {
             const res = await window.storage.get(k, false);
             return res?.value ? JSON.parse(res.value) : null;
           } catch (e) { return null; }
         })
       );
-      const currentCountry = normalizeProfileCountry(inputs.country);
       const clean = entries.filter((entry) => {
         if (!entry || typeof entry !== "object" || Array.isArray(entry)) return false;
-        if (typeof entry.date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(entry.date)) return false;
+        if (!normalizeSnapshotDate(entry.date)) return false;
         // v1 snapshots had no explicit country field. Those are legacy JP data even if
         // inputs.country happened to have been switched before country profiles existed.
         const entryCountry = targetCountryFromBackup(entry.country);
@@ -3127,7 +3137,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         watchlist: nextWatchlist,
       };
       snapshot.country = code;
-      await window.storage.set(SNAPSHOT_PREFIX + code + ":" + date, JSON.stringify(snapshot), false);
+      await window.storage.set(snapshotStorageKey(code, date), JSON.stringify(snapshot), false);
       // upsert today's entry locally so the history list reflects it immediately
       // without re-fetching every stored snapshot on each keystroke
       setHistory((prev) => {
@@ -3167,9 +3177,18 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     document.getElementById("simulator")?.scrollIntoView({ behavior: "smooth" });
   };
   const deleteSnapshot = async (date) => {
+    const normalizedDate = normalizeSnapshotDate(date);
+    if (!normalizedDate || !window.storage) return;
+    const currentCountry = normalizeProfileCountry(inputs.country);
+    const keys = [snapshotStorageKey(currentCountry, normalizedDate)];
+    // v1 snapshots had the legacy key `snapshot:YYYY-MM-DD` and were JP-only.
+    // Delete that key too when viewing JP so old history does not reappear after refresh.
+    if (currentCountry === "JP") keys.push(legacyJpSnapshotStorageKey(normalizedDate));
     try {
-      await window.storage?.delete(SNAPSHOT_PREFIX + date, false);
-      setHistory((prev) => prev.filter((h) => h.date !== date));
+      await Promise.all(keys.filter(Boolean).map((key) => window.storage.delete(key, false)));
+      setHistory((prev) => prev.filter((h) => !(
+        targetCountryFromBackup(h?.country) === currentCountry && h.date === normalizedDate
+      )));
     } catch (e) {
       // ignore
     }

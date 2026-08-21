@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { PROFILE_COUNTRIES, PROFILE_STORAGE_VERSION, applySharedIdentity, forceCountryMeta, makeCountryProfile, migrateCountryProfiles, normalizeProfileCurrency, normalizeCountryKeyedRecord, resolvePersistedActiveCountry, targetCountryFromKakeibo, targetCountryFromBackup } from "./utils/countryProfiles.js";
+import { PROFILE_COUNTRIES, PROFILE_STORAGE_VERSION, applySharedIdentity, forceCountryMeta, makeCountryProfile, migrateCountryProfiles, normalizeProfileCurrency, normalizeCountryKeyedRecord, normalizeSnapshotDate, resolvePersistedActiveCountry, snapshotStorageKey, legacyJpSnapshotStorageKey, targetCountryFromKakeibo, targetCountryFromBackup } from "./utils/countryProfiles.js";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 const defaults={country:"JP",baseCurrency:"JPY",language:"ja",userName:"",birthDate:"",currentAge:35,currentAssets:0,banks:[],pensionMonthly:0,livingCostMonthly:0};
@@ -12,7 +12,7 @@ describe("5-country life-plan profiles",()=>{
  it("kakeibo country routes import",()=>{for(const c of PROFILE_COUNTRIES){expect(targetCountryFromKakeibo({countryCode:c})).toBe(c);expect(targetCountryFromKakeibo({countryCode:c.toLowerCase()})).toBe(c);}expect(targetCountryFromKakeibo({countryCode:"XX"})).toBeNull();expect(targetCountryFromKakeibo({})).toBe("JP");});
  it("forces each country currency",()=>{expect(forceCountryMeta({},"JP").baseCurrency).toBe("JPY");expect(forceCountryMeta({},"US").baseCurrency).toBe("USD");expect(forceCountryMeta({},"GB").baseCurrency).toBe("GBP");expect(forceCountryMeta({},"CA").baseCurrency).toBe("CAD");expect(forceCountryMeta({},"AU").baseCurrency).toBe("AUD");});
 });
-describe("App integration",()=>{const app=readFileSync(join(process.cwd(), "App.jsx"),"utf8");it("uses profile storage",()=>expect(app).toContain("profileStorageVersion: PROFILE_STORAGE_VERSION"));it("normalizes country and currency again at the render/calculation boundary",()=>{expect(app).toContain('const country = normalizeProfileCountry(inputs.country || "JP")');expect(app).toContain('const baseCurrency = normalizeProfileCurrency(inputs.baseCurrency, country)');});it("routes kakeibo by countryCode",()=>expect(app).toContain("targetCountryFromKakeibo(parsed)"));it("validates country/currency pair",()=>expect(app).toContain("Country/currency mismatch"));it("normalizes imported currency code before country/currency validation",()=>{expect(app).toContain('String(parsed.baseCurrency).trim().toUpperCase()');expect(app).toContain('if (importedCurrency && importedCurrency !== expectedCurrency)');});it("stores country history separately",()=>expect(app).toContain('SNAPSHOT_PREFIX + code + ":" + date'));it("country select saves current and restores target",()=>{expect(app).toContain("countryProfilesRef.current = { ...countryProfilesRef.current, [currentCountry]: inputs }");expect(app).toContain("const rawTarget = countryProfilesRef.current[nextCountry]");});it("history country is normalized and unknown codes are not mixed into JP",()=>{expect(app).toContain('const entryCountry = targetCountryFromBackup(entry.country)');expect(app).toContain('const sameCountryPrev = prev.filter((h) => targetCountryFromBackup(h?.country) === currentCountry)');expect(app).toContain('targetCountryFromBackup(h?.country) === code && h.date !== date');});});
+describe("App integration",()=>{const app=readFileSync(join(process.cwd(), "App.jsx"),"utf8");it("uses profile storage",()=>expect(app).toContain("profileStorageVersion: PROFILE_STORAGE_VERSION"));it("normalizes country and currency again at the render/calculation boundary",()=>{expect(app).toContain('const country = normalizeProfileCountry(inputs.country || "JP")');expect(app).toContain('const baseCurrency = normalizeProfileCurrency(inputs.baseCurrency, country)');});it("routes kakeibo by countryCode",()=>expect(app).toContain("targetCountryFromKakeibo(parsed)"));it("validates country/currency pair",()=>expect(app).toContain("Country/currency mismatch"));it("normalizes imported currency code before country/currency validation",()=>{expect(app).toContain('String(parsed.baseCurrency).trim().toUpperCase()');expect(app).toContain('if (importedCurrency && importedCurrency !== expectedCurrency)');});it("stores country history separately",()=>expect(app).toContain('snapshotStorageKey(code, date)'));it("country select saves current and restores target",()=>{expect(app).toContain("countryProfilesRef.current = { ...countryProfilesRef.current, [currentCountry]: inputs }");expect(app).toContain("const rawTarget = countryProfilesRef.current[nextCountry]");});it("history country is normalized and unknown codes are not mixed into JP",()=>{expect(app).toContain('const entryCountry = targetCountryFromBackup(entry.country)');expect(app).toContain('const sameCountryPrev = prev.filter((h) => targetCountryFromBackup(h?.country) === currentCountry)');expect(app).toContain('targetCountryFromBackup(h?.country) === code && h.date !== date');});});
 
 describe("backup active-country strictness", () => {
   it.each(["JP", "US", "GB", "CA", "AU"])("%s: lowercase and surrounding spaces normalize safely", (code) => {
@@ -111,9 +111,41 @@ describe("batch hardening: country/currency and history restore boundaries", () 
     expect(app).toContain("if (Array.isArray(entry.watchlist)) setWatchlist(entry.watchlist)");
   });
 
-  it("drops malformed history rows without a canonical date key", () => {
+  it("drops malformed or impossible history dates", () => {
     const app = readFileSync(join(process.cwd(), "App.jsx"), "utf8");
-    expect(app).toContain('typeof entry.date !== "string"');
-    expect(app).toContain('/^\\d{4}-\\d{2}-\\d{2}$/.test(entry.date)');
+    expect(app).toContain('if (!normalizeSnapshotDate(entry.date)) return false');
+  });
+});
+
+
+describe("batch hardening: history storage keys and strict dates", () => {
+  it("accepts only real YYYY-MM-DD calendar dates", () => {
+    expect(normalizeSnapshotDate("2026-08-21")).toBe("2026-08-21");
+    expect(normalizeSnapshotDate(" 2028-02-29 ")).toBe("2028-02-29");
+    expect(normalizeSnapshotDate("2026-02-30")).toBeNull();
+    expect(normalizeSnapshotDate("2026-13-01")).toBeNull();
+    expect(normalizeSnapshotDate("08/21/2026")).toBeNull();
+  });
+
+  it("builds country-scoped snapshot keys and keeps legacy JP key compatibility", () => {
+    expect(snapshotStorageKey(" us ", "2026-08-21")).toBe("snapshot:US:2026-08-21");
+    expect(snapshotStorageKey("XX", "2026-08-21")).toBeNull();
+    expect(snapshotStorageKey("JP", "2026-02-30")).toBeNull();
+    expect(legacyJpSnapshotStorageKey("2026-08-21")).toBe("snapshot:2026-08-21");
+  });
+
+  it("reads only the active country's storage keys while retaining legacy JP snapshots", () => {
+    const app = readFileSync(join(process.cwd(), "App.jsx"), "utf8");
+    expect(app).toContain('const countryPrefix = `${SNAPSHOT_PREFIX}${currentCountry}:`');
+    expect(app).toContain('if (key.startsWith(countryPrefix)) return true');
+    expect(app).toContain('currentCountry === "JP" && /^snapshot:');
+    expect(app).toContain('relevantKeys.map(async (k) =>');
+  });
+
+  it("deletes the current country's new-format key and the JP legacy key", () => {
+    const app = readFileSync(join(process.cwd(), "App.jsx"), "utf8");
+    expect(app).toContain('snapshotStorageKey(currentCountry, normalizedDate)');
+    expect(app).toContain('legacyJpSnapshotStorageKey(normalizedDate)');
+    expect(app).toContain('window.storage.delete(key, false)');
   });
 });
