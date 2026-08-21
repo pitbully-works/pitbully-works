@@ -52,6 +52,47 @@ export function safeRuleSourceUrl(value) {
   }
 }
 
+// Validate rule-source status as one atomic feed. A single unknown/duplicate/malformed
+// row rejects the whole payload so a partially corrupted deployment cannot both
+// discard a valid alert and advance lastCheckedAt. The registry remains the source
+// of truth for country and URL; the remote file contributes status only.
+export function normalizeRuleSourceStatusFeed(payload, registry) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
+  if (payload.schemaVersion !== 1 || !Array.isArray(payload.sources) || payload.sources.length > 500) return null;
+  if (!Array.isArray(registry)) return null;
+
+  const registryById = new Map();
+  for (const source of registry) {
+    const id = normalizeRuleUpdateId(source?.id);
+    const country = normalizeRuleCountry(source?.country);
+    if (!id || !country || registryById.has(id)) return null;
+    registryById.set(id, { ...source, id, country });
+  }
+
+  const seen = new Set();
+  const normalized = [];
+  for (const item of payload.sources) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return null;
+    const id = normalizeRuleUpdateId(item.id);
+    const country = normalizeRuleCountry(item.country);
+    const registered = id ? registryById.get(id) : null;
+    if (!id || !country || !registered || registered.country !== country || seen.has(id)) return null;
+    seen.add(id);
+
+    const rawHash = typeof item.hash === "string" ? item.hash.trim().toLowerCase() : "";
+    if (rawHash && !/^[a-f0-9]{64}$/.test(rawHash)) return null;
+    normalized.push({
+      id,
+      country,
+      changed: item.changed === true,
+      hash: rawHash,
+      url: safeRuleSourceUrl(registered.url),
+    });
+  }
+  return normalized;
+}
+
+
 function hasOwnTrue(map, id) {
   const key = normalizeRuleUpdateId(id);
   return !!key
