@@ -87,9 +87,11 @@ import {
 // ============================================================================
 const KAKEIBO_APP_URL = "https://kakeibo-lemon.vercel.app/";
 
-function buildKakeiboBridgeUrl(country) {
-  const code = ["JP", "US", "GB", "CA", "AU"].includes(country) ? country : "JP";
-  return `${KAKEIBO_APP_URL}?country=${encodeURIComponent(code)}`;
+export function buildKakeiboBridgeUrl(country) {
+  const raw = String(country || "").trim().toUpperCase();
+  const code = ["JP", "US", "GB", "CA", "AU"].includes(raw) ? raw : null;
+  // 未知の国コードをJPへ勝手に変換しない。国が不明な場合は家計簿側の保存国/初期判定に委ねる。
+  return code ? `${KAKEIBO_APP_URL}?country=${encodeURIComponent(code)}` : KAKEIBO_APP_URL;
 }
 
 // ホーム画面に追加したPWA（standalone表示）で開いているかどうか。
@@ -198,9 +200,8 @@ function detectBrowserInitialCountry() {
 
 export function countryFromLaunchUrl(search) {
   try {
-    const query = String(search || "").replace(/^\?/, "");
-    const entry = query.split("&").find((part) => part.startsWith("country="));
-    const raw = String(entry ? entry.slice("country=".length) : "").toUpperCase();
+    const params = new URLSearchParams(String(search || "").replace(/^\?/, ""));
+    const raw = String(params.get("country") || "").trim().toUpperCase();
     return PROFILE_COUNTRIES.includes(raw) ? raw : null;
   } catch {
     return null;

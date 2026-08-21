@@ -31,5 +31,9 @@ describe("家計簿からの起動国", () => {
     expect(countryFromLaunchUrl("?country=CA")).toBe("CA");
     expect(countryFromLaunchUrl("?country=AU")).toBe("AU");
     expect(countryFromLaunchUrl("?country=xx")).toBeNull();
+    expect(countryFromLaunchUrl("?country=us")).toBe("US");
+    expect(countryFromLaunchUrl("?foo=1&country=GB&bar=2")).toBe("GB");
+    expect(countryFromLaunchUrl("?country=%41%55")).toBe("AU");
+    expect(countryFromLaunchUrl("?country=%20ca%20")).toBe("CA");
   });
 });
