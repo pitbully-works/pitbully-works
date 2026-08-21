@@ -36,6 +36,9 @@ const mutants = [
   ["Rule source feed requires one pass timestamp", "utils/ruleUpdates.js", "if (!itemCheckedAt || itemCheckedAt !== feedCheckedAt) return null;", "if (!itemCheckedAt) return null;", "ruleSourceStatusCompleteness.test.js"],
   ["Rule source feed rejects watcher errors", "utils/ruleUpdates.js", "if (typeof item.error === \"string\" && item.error.trim()) return null;", "if (typeof item.error === \"string\" && false) return null;", "ruleSourceStatusCompleteness.test.js"],
   ["Rule check timestamp comes from watcher feed", "App.jsx", "const checkedAt = sourceCheckedAt;", "const checkedAt = new Date().toISOString();", "ruleUpdateCheckIntegrity.test.js"],
+  ["Remote JSON streaming cap is enforced", "utils/remoteJson.js", "if (totalBytes > maxChars) {", "if (totalBytes > Number.MAX_SAFE_INTEGER) {", "remoteJsonBoundary.test.js"],
+  ["Remote rule feed fetch has a finite timeout", "utils/remoteJson.js", "export const RULE_FEED_FETCH_TIMEOUT_MS = 15_000;", "export const RULE_FEED_FETCH_TIMEOUT_MS = 0;", "remoteJsonBoundary.test.js"],
+  ["Remote rule manifest rejects duplicate approval IDs", "utils/ruleUpdates.js", "if (!id || !country || seen.has(id)) return null;", "if (!id || !country) return null;", "ruleUpdateManifestAtomicValidation.test.js"],
 ];
 
 if (!fs.existsSync(vitestBin)) {
