@@ -1,8 +1,20 @@
 import { describe, it, expect } from "vitest";
 import { runIntegratedPlan } from "./lifePlanEngine.js";
-import { estimateJapanSeniorMedicalAnnual, JP_SENIOR_MEDICAL_75_AVG_ANNUAL_2026, RETIREMENT_TAX_BASIS } from "./utils/retirementTax.js";
+import { estimateJapanSeniorMedicalAnnual, estimatePrivatePensionTax, estimatePublicPensionTax, JP_SENIOR_MEDICAL_75_AVG_ANNUAL_2026, RETIREMENT_TAX_BASIS } from "./utils/retirementTax.js";
 
 describe("retirement taxes/fixed costs regression", () => {
+
+  it.each(["JP", "US", "GB", "CA", "AU"])("%s: retirement-tax helpers normalize lowercase and surrounding whitespace", (country) => {
+    const noisy = `  ${country.toLowerCase()}  `;
+    expect(estimatePublicPensionTax(noisy, 3000000, 70)).toBe(estimatePublicPensionTax(country, 3000000, 70));
+    const plans = [{ contribFromAge: 40, contribToAge: 60, payoutFromAge: 65, payoutToAge: 75, monthlyContribution: 10000, monthlyPayout: 30000 }];
+    expect(estimatePrivatePensionTax(noisy, plans)).toBe(estimatePrivatePensionTax(country, plans));
+  });
+
+  it("does not silently apply the JP private-pension proxy to an unknown country", () => {
+    const plans = [{ contribFromAge: 40, contribToAge: 60, payoutFromAge: 65, payoutToAge: 75, monthlyContribution: 10000, monthlyPayout: 30000 }];
+    expect(estimatePrivatePensionTax("XX", plans)).toBe(0);
+  });
   it("uses 2026/27 national-average Japan 75+ medical premium only when enabled", () => {
     expect(estimateJapanSeniorMedicalAnnual({ mode: "auto" })).toBe(JP_SENIOR_MEDICAL_75_AVG_ANNUAL_2026);
     expect(estimateJapanSeniorMedicalAnnual({ mode: "manual", manualAnnual: 123456 })).toBe(123456);
