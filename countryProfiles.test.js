@@ -95,3 +95,25 @@ describe("App defensive boundary helpers", () => {
     expect(app).toContain('if (code === "US") return DEFAULT_WATCHLIST_US');
   });
 });
+
+describe("batch hardening: country/currency and history restore boundaries", () => {
+  it("never accepts another supported country's currency for the selected country", () => {
+    expect(normalizeProfileCurrency("JPY", "US")).toBe("USD");
+    expect(normalizeProfileCurrency("USD", "JP")).toBe("JPY");
+    expect(normalizeProfileCurrency("AUD", "CA")).toBe("CAD");
+  });
+
+  it("re-checks snapshot country and metadata at the restore boundary", () => {
+    const app = readFileSync(join(process.cwd(), "App.jsx"), "utf8");
+    expect(app).toContain("const entryCountry = targetCountryFromBackup(entry.country)");
+    expect(app).toContain("if (entryCountry !== currentCountry) return");
+    expect(app).toContain("forceCountryMeta(mergeSavedInputs(prev, entry.inputs), currentCountry)");
+    expect(app).toContain("if (Array.isArray(entry.watchlist)) setWatchlist(entry.watchlist)");
+  });
+
+  it("drops malformed history rows without a canonical date key", () => {
+    const app = readFileSync(join(process.cwd(), "App.jsx"), "utf8");
+    expect(app).toContain('typeof entry.date !== "string"');
+    expect(app).toContain('/^\\d{4}-\\d{2}-\\d{2}$/.test(entry.date)');
+  });
+});

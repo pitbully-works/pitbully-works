@@ -386,3 +386,19 @@ describe("rule update source URL safety", () => {
     expect(safeRuleSourceUrl("https://official.example@evil.example/rules")).toBe("");
   });
 });
+
+describe("batch hardening: persisted rule-update state", () => {
+  it("normalizes approval maps into null-prototype dictionaries", () => {
+    const raw = JSON.parse('{"approved":{"__proto__":true,"NORMAL":true}}');
+    const state = normalizeRuleUpdateState(raw);
+    expect(Object.getPrototypeOf(state.approved)).toBeNull();
+    expect(isRuleUpdateApproved(state, "__proto__")).toBe(true);
+    expect(isRuleUpdateApproved(state, "NORMAL")).toBe(true);
+  });
+
+  it("drops invalid lastCheckedAt timestamps and canonicalizes valid ones", () => {
+    expect(normalizeRuleUpdateState({ lastCheckedAt: "not-a-date" }).lastCheckedAt).toBe("");
+    expect(normalizeRuleUpdateState({ lastCheckedAt: " 2026-08-21T10:00:00Z " }).lastCheckedAt)
+      .toBe("2026-08-21T10:00:00.000Z");
+  });
+});

@@ -3071,7 +3071,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       );
       const currentCountry = normalizeProfileCountry(inputs.country);
       const clean = entries.filter((entry) => {
-        if (!entry) return false;
+        if (!entry || typeof entry !== "object" || Array.isArray(entry)) return false;
+        if (typeof entry.date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(entry.date)) return false;
         // v1 snapshots had no explicit country field. Those are legacy JP data even if
         // inputs.country happened to have been switched before country profiles existed.
         const entryCountry = targetCountryFromBackup(entry.country);
@@ -3150,8 +3151,17 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   }, [loaded, refreshHistory]);
 
   const restoreSnapshot = (entry) => {
-    if (entry.inputs) setInputs((prev) => mergeSavedInputs(prev, entry.inputs));
-    if (entry.watchlist) setWatchlist(entry.watchlist);
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return;
+    const currentCountry = normalizeProfileCountry(inputs.country);
+    const entryCountry = targetCountryFromBackup(entry.country);
+    // History is displayed per country, but re-check at the restore boundary too.
+    // A malformed/stale row must never switch the active country or import another
+    // country's currency through entry.inputs.country/baseCurrency.
+    if (entryCountry !== currentCountry) return;
+    if (entry.inputs && typeof entry.inputs === "object" && !Array.isArray(entry.inputs)) {
+      setInputs((prev) => forceCountryMeta(mergeSavedInputs(prev, entry.inputs), currentCountry));
+    }
+    if (Array.isArray(entry.watchlist)) setWatchlist(entry.watchlist);
   };
   const scrollToSimulator = () => {
     document.getElementById("simulator")?.scrollIntoView({ behavior: "smooth" });
