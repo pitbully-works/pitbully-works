@@ -537,7 +537,7 @@ describe("CA境界：未実装項目が明示されている", () => {
 
   it("州税・QPPは未実装として列挙され、PAはRRSP枠計算に実装済み", () => {
     const all = [...inv.notImplemented, ...ret.notImplemented, ...tax.notImplemented].join(" / ");
-    expect(all).toMatch(/州・準州の所得税/);
+    expect(all).toMatch(/オンタリオ州以外の州・準州所得税/);
     expect(all).toMatch(/QPP/);
     expect(all).not.toMatch(/Pension Adjustment|PA）/);
 
