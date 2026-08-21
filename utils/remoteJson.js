@@ -24,28 +24,34 @@ async function readBoundedResponseText(response, maxChars) {
     const decoder = new TextDecoder();
     let totalBytes = 0;
     let text = "";
+    const cancelReader = async () => {
+      try { await reader.cancel?.(); } catch {}
+    };
     try {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        if (!(value instanceof Uint8Array)) return null;
+        if (!ArrayBuffer.isView(value) || typeof value.byteLength !== "number") {
+          await cancelReader();
+          return null;
+        }
         totalBytes += value.byteLength;
         // maxChars is intentionally also used as a conservative byte cap. UTF-8
         // JSON can require multiple bytes per character, so this fails closed.
         if (totalBytes > maxChars) {
-          try { await reader.cancel(); } catch {}
+          await cancelReader();
           return null;
         }
         text += decoder.decode(value, { stream: true });
         if (text.length > maxChars) {
-          try { await reader.cancel(); } catch {}
+          await cancelReader();
           return null;
         }
       }
       text += decoder.decode();
       return text.length > 0 && text.length <= maxChars ? text : null;
     } catch {
-      try { await reader.cancel(); } catch {}
+      await cancelReader();
       return null;
     }
   }
