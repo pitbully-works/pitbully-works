@@ -26,7 +26,7 @@ export const AU_COUNTRY_RULES = {
       { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "partial", effective: "2026-27 / Age Pension Mar 2026 rates / Rent Assistance & CSHC Jul 2026 rates", lastUpdated: "2026-08-21", updateJa: "Age Pensionの資産・所得テスト、Work Bonus年次近似、Super取崩し、子なし世帯のRent Assistanceに加え、Commonwealth Seniors Health Cardの所得上限による見込み判定を実装。", updateEn: "Age Pension means tests, annualised Work Bonus, Super drawdown and Rent Assistance for households without dependent children are modelled, plus an income-limit estimator for the Commonwealth Seniors Health Card." },
       { key: "healthcare", labelJa: "医療", labelEn: "Healthcare", status: "partial", effective: "2026-27 / 2026 calendar-year Safety Nets", lastUpdated: "2026-08-21", updateJa: "Medicare前提の自己負担に加え、2026年PBS Safety Net概算とMedicare Safety Net閾値を反映。診療ごとのSafety Net還付・aged care資力調査は未自動化。", updateEn: "Adds a 2026 PBS Safety Net estimate and Medicare Safety Net thresholds to the Medicare out-of-pocket model; item-level Safety Net rebates and aged-care means testing remain manual." },
       { key: "tax", labelJa: "税金", labelEn: "Tax", status: "partial", effective: "2026-27 financial year", lastUpdated: "2026-08-21", updateJa: "居住者所得税・LITO・SAPTO・Medicare levy・MLS・CGTを反映。", updateEn: "Resident income tax, LITO, SAPTO, Medicare levy, MLS and CGT are modelled." },
-      { key: "estate", labelJa: "相続", labelEn: "Estate", status: "partial", effective: "2026-27", lastUpdated: "2026-08-21", updateJa: "オーストラリアには相続税はありません。Super death benefitの一括受取について、death benefits dependant / non-dependant別の税額概算を実装。所得ストリーム・遺産管理人経由などの詳細税務は未自動化。", updateEn: "Australia has no inheritance tax. A lump-sum Super death-benefit estimator now models tax for death-benefits dependants versus non-dependants; income streams and detailed deceased-estate treatment remain manual." },
+      { key: "estate", labelJa: "相続", labelEn: "Estate", status: "partial", effective: "2026-27", lastUpdated: "2026-08-21", updateJa: "オーストラリアには相続税はありません。Super death benefitの一括受取について、death benefits dependant / non-dependant別の税額概算を実装。所得ストリームの基本税務区分と遺産経由の受益者按分まで対応。最終所得税額など詳細税務は未自動化。", updateEn: "Australia has no inheritance tax. A lump-sum Super death-benefit estimator now models tax for death-benefits dependants versus non-dependants; basic income-stream tax treatment and deceased-estate beneficiary splitting are supported; final income-tax calculations remain manual." },
     ],
   },
   investment: {
@@ -1246,8 +1246,23 @@ export const AU_COUNTRY_RULES = {
         nonDependantSharePercent: nonDependantShare * 100,
       };
     },
+    getSuperDeathBenefitIncomeStreamTreatment({
+      recipientAge = 0,
+      deceasedAge = 0,
+      isDeathBenefitsDependant = true,
+    } = {}) {
+      const rAge = Math.max(0, Number(recipientAge) || 0);
+      const dAge = Math.max(0, Number(deceasedAge) || 0);
+      if (!isDeathBenefitsDependant) {
+        return { eligible: false, taxFreeComponentTaxFree: true, taxedElementTaxFree: false, taxedElementOffsetRate: 0, untaxedElementTaxFree: false, untaxedElementOffsetRate: 0, treatment: "nonDependantIneligible" };
+      }
+      if (rAge >= 60 || dAge >= 60) {
+        return { eligible: true, taxFreeComponentTaxFree: true, taxedElementTaxFree: true, taxedElementOffsetRate: 0, untaxedElementTaxFree: false, untaxedElementOffsetRate: 0.10, treatment: "age60Plus" };
+      }
+      return { eligible: true, taxFreeComponentTaxFree: true, taxedElementTaxFree: false, taxedElementOffsetRate: 0.15, untaxedElementTaxFree: false, untaxedElementOffsetRate: 0, treatment: "bothUnder60" };
+    },
     notImplemented: [
-      "Super death benefit income streams（受取人・死亡者の年齢、taxed/untaxed elementによる課税）",
+      "Super death benefit income streamsの最終税額（所得税率・defined benefit等を含む完全計算）",
       "複数受益者のdependant/non-dependant比率による比例按分は実装済み。各受益者ごとにcomponent構成が異なるケース・特殊なdependant判定は未実装",
       "CGT・deceased estate trust return・非居住者受益者など死亡後の資産税務の完全自動計算",
     ],
