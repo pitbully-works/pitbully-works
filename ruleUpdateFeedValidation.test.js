@@ -5,9 +5,10 @@ import path from "node:path";
 const app = fs.readFileSync(path.resolve(process.cwd(), "App.jsx"), "utf8");
 
 describe("rule update feed validation", () => {
-  it("accepts the manifest only when schemaVersion 1 and updates[] are both present", () => {
-    expect(app).toContain("if (payload?.schemaVersion === 1 && Array.isArray(payload?.updates)) {");
-    expect(app).toContain("setRuleUpdates(mergeRuleUpdateManifests(payload.updates));");
+  it("accepts the manifest only after atomic manifest normalization", () => {
+    expect(app).toContain("const normalizedManifestUpdates = normalizeRuleUpdateManifestFeed(payload);");
+    expect(app).toContain("if (normalizedManifestUpdates) {");
+    expect(app).toContain("setRuleUpdates(mergeRuleUpdateManifests(normalizedManifestUpdates));");
   });
 
   it("does not replace last-known-good remote rules with an empty fallback after a bad fetch", () => {

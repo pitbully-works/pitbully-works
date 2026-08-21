@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   readBoundedJsonResponse,
+  fetchBoundedJson,
+  RULE_FEED_FETCH_TIMEOUT_MS,
   MAX_RULE_MANIFEST_RESPONSE_CHARS,
   MAX_RULE_SOURCE_STATUS_RESPONSE_CHARS,
 } from "./utils/remoteJson.js";
@@ -38,6 +40,46 @@ describe("bounded remote JSON boundary", () => {
   it("rejects non-OK responses and invalid limits", async () => {
     await expect(readBoundedJsonResponse(response("{}", { ok: false }), 100)).resolves.toBeNull();
     await expect(readBoundedJsonResponse(response("{}"), 0)).resolves.toBeNull();
+  });
+
+  it("stops a streamed body as soon as the byte cap is exceeded", async () => {
+    let cancelled = false;
+    const chunks = [new TextEncoder().encode('{"x":"'), new TextEncoder().encode("a".repeat(100))];
+    let index = 0;
+    const res = {
+      ok: true,
+      headers: { get: vi.fn(() => null) },
+      body: {
+        getReader: () => ({
+          read: vi.fn(async () => index < chunks.length ? { done: false, value: chunks[index++] } : { done: true }),
+          cancel: vi.fn(async () => { cancelled = true; }),
+        }),
+      },
+    };
+    await expect(readBoundedJsonResponse(res, 50)).resolves.toBeNull();
+    expect(cancelled).toBe(true);
+  });
+
+  it("aborts feed fetches that exceed the hard timeout", async () => {
+    vi.useFakeTimers();
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn((_url, options) => new Promise((_resolve, reject) => {
+      options.signal.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")));
+    }));
+    try {
+      const pending = fetchBoundedJson("/rules-updates.json", 1000, 10);
+      await vi.advanceTimersByTimeAsync(11);
+      await expect(pending).resolves.toBeNull();
+      expect(globalThis.fetch).toHaveBeenCalledWith("/rules-updates.json", expect.objectContaining({ cache: "no-store", signal: expect.anything() }));
+    } finally {
+      globalThis.fetch = originalFetch;
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps a finite default timeout for rule feeds", () => {
+    expect(RULE_FEED_FETCH_TIMEOUT_MS).toBeGreaterThan(0);
+    expect(RULE_FEED_FETCH_TIMEOUT_MS).toBeLessThanOrEqual(30_000);
   });
 
   it("keeps separate conservative limits for manifests and source-status payloads", () => {

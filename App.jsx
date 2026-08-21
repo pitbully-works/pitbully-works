@@ -45,11 +45,11 @@ import { newSci, sciPress, sciExpr, sciFormat, sciTokensFromExpr, normalizeSciHi
 import {
   RULE_UPDATE_STORAGE_KEY, BUILTIN_RULE_UPDATES, normalizeRuleUpdateState,
   applyApprovedRuleUpdates, mergeRuleUpdateManifests, isUpdateEffective, normalizeRuleCountry,
-  isRuleUpdateApproved, isRuleUpdateDismissed, safeRuleSourceUrl, normalizeRuleUpdateId, normalizeRuleDateString, normalizeRuleSourceStatusFeed, normalizeRuleTimestamp,
+  isRuleUpdateApproved, isRuleUpdateDismissed, safeRuleSourceUrl, normalizeRuleUpdateId, normalizeRuleDateString, normalizeRuleUpdateManifestFeed, normalizeRuleSourceStatusFeed, normalizeRuleTimestamp,
 } from "./utils/ruleUpdates.js";
 import { RULE_SOURCE_REGISTRY, getRuleSourcesForCountry } from "./utils/ruleSourceRegistry.js";
 import { buildCountryRuleCatalog } from "./utils/countryRuleCatalog.js";
-import { readBoundedJsonResponse, MAX_RULE_MANIFEST_RESPONSE_CHARS, MAX_RULE_SOURCE_STATUS_RESPONSE_CHARS } from "./utils/remoteJson.js";
+import { fetchBoundedJson, MAX_RULE_MANIFEST_RESPONSE_CHARS, MAX_RULE_SOURCE_STATUS_RESPONSE_CHARS } from "./utils/remoteJson.js";
 // 国に依存しない共通UI部品（入力欄・ガイド・内訳グラフ）と表示基盤（LocaleContext等）は ui/ 配下へ分離。
 import {
   yen,
@@ -2266,20 +2266,18 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     let sourceStatusChecked = false;
     let sourceCheckedAt = "";
     try {
-      const response = await fetch(`/rules-updates.json?ts=${Date.now()}`, { cache: "no-store" });
-      const payload = await readBoundedJsonResponse(response, MAX_RULE_MANIFEST_RESPONSE_CHARS);
-      // A syntactically valid JSON object is not enough. Only accept the documented
-      // feed schema; otherwise keep the last known-good remote rules in memory.
-      // This prevents a transient `{}`/wrong-schema deployment from silently removing
-      // an already-approved remote rule from the active calculation.
-      if (payload?.schemaVersion === 1 && Array.isArray(payload?.updates)) {
-        setRuleUpdates(mergeRuleUpdateManifests(payload.updates));
+      const payload = await fetchBoundedJson(`/rules-updates.json?ts=${Date.now()}`, MAX_RULE_MANIFEST_RESPONSE_CHARS);
+      // Validate the manifest atomically. One malformed/duplicate row invalidates the
+      // whole feed so a truncated or partially corrupt deployment cannot be counted as
+      // a successful check while silently dropping remote rules.
+      const normalizedManifestUpdates = normalizeRuleUpdateManifestFeed(payload);
+      if (normalizedManifestUpdates) {
+        setRuleUpdates(mergeRuleUpdateManifests(normalizedManifestUpdates));
         manifestChecked = true;
       }
     } catch { /* オフライン/壊れた配信時は直前の有効な制度情報を保持 */ }
     try {
-      const sourceResponse = await fetch(`/rules-source-status.json?ts=${Date.now()}`, { cache: "no-store" });
-      const sourcePayload = await readBoundedJsonResponse(sourceResponse, MAX_RULE_SOURCE_STATUS_RESPONSE_CHARS);
+      const sourcePayload = await fetchBoundedJson(`/rules-source-status.json?ts=${Date.now()}`, MAX_RULE_SOURCE_STATUS_RESPONSE_CHARS);
       // Treat the status document atomically: unknown IDs, country mismatches,
       // duplicate rows, malformed hashes, or an oversized feed invalidate the whole
       // document. Keep the last-known-good alerts and do not advance lastCheckedAt.
