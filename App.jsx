@@ -36,7 +36,8 @@ import { isKakeiboPayload, mergeKakeiboInputs, checkKakeiboAmountUnit } from "./
 import {
   PROFILE_COUNTRIES, PROFILE_STORAGE_VERSION, applySharedIdentity, forceCountryMeta,
   makeCountryProfile, migrateCountryProfiles, normalizeProfileCountry, normalizeProfileCurrency, normalizeCountryKeyedRecord,
-  normalizeSnapshotDate, snapshotStorageKey, legacyJpSnapshotStorageKey, targetCountryFromKakeibo, targetCountryFromBackup,
+  normalizeSnapshotDate, snapshotStorageKey, legacyJpSnapshotStorageKey, snapshotDateFromStorageKey,
+  targetCountryFromKakeibo, targetCountryFromBackup, normalizeStockWatchlist,
 } from "./utils/countryProfiles.js";
 import { buildNisaBreakdown, breakdownPrincipalItems, breakdownReturnBars, breakdownTotals } from "./utils/nisaBreakdown.js";
 import { describeSchedulePace } from "./utils/schedulePace.js";
@@ -2862,9 +2863,13 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           countryProfilesRef.current = { ...profiles, [activeCountry]: activeInputs };
           const savedWatchlists = parsed.watchlists && typeof parsed.watchlists === "object" ? normalizeCountryKeyedRecord(parsed.watchlists) : {};
           if (!parsed.watchlists && Array.isArray(parsed.watchlist)) savedWatchlists.JP = parsed.watchlist;
-          countryWatchlistsRef.current = savedWatchlists;
+          const safeSavedWatchlists = {};
+          PROFILE_COUNTRIES.forEach((code) => {
+            if (Array.isArray(savedWatchlists[code])) safeSavedWatchlists[code] = normalizeStockWatchlist(savedWatchlists[code], code);
+          });
+          countryWatchlistsRef.current = safeSavedWatchlists;
           setInputs(activeInputs);
-          setWatchlist(Array.isArray(savedWatchlists[activeCountry]) ? savedWatchlists[activeCountry] : defaultWatchlistFor(activeCountry));
+          setWatchlist(Object.prototype.hasOwnProperty.call(safeSavedWatchlists, activeCountry) ? safeSavedWatchlists[activeCountry] : defaultWatchlistFor(activeCountry));
         } else {
           // 保存データがまったく無い「本当の初回」だけ自動判定する。
           // 2回目以降は保存された activeCountry を上の分岐で復元するため、旅行やVPN等で勝手に国は変わらない。
@@ -2921,7 +2926,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     try {
       const code = normalizeProfileCountry(inputs.country);
       const profiles = { ...countryProfilesRef.current, [code]: inputs };
-      const watchlists = { ...countryWatchlistsRef.current, [code]: watchlist };
+      const watchlists = { ...countryWatchlistsRef.current, [code]: normalizeStockWatchlist(watchlist, code) };
       return JSON.stringify({
         profileStorageVersion: PROFILE_STORAGE_VERSION,
         activeCountry: code,
@@ -2929,7 +2934,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         watchlists,
         // backward compatibility for old importers
         inputs,
-        watchlist,
+        watchlist: normalizeStockWatchlist(watchlist, code),
       }, null, 2);
     } catch (e) {
       return "";
@@ -3016,7 +3021,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       }
       setImportBirthMismatch(null);
       setImportScheduleOverlaps([]);
-      if (parsed.profileStorageVersion >= PROFILE_STORAGE_VERSION && parsed.profiles && typeof parsed.profiles === "object") {
+      if (Number(parsed.profileStorageVersion) > PROFILE_STORAGE_VERSION) {
+        throw new Error(`Unsupported backup version: ${parsed.profileStorageVersion}`);
+      }
+      if (parsed.profileStorageVersion === PROFILE_STORAGE_VERSION && parsed.profiles && typeof parsed.profiles === "object") {
         const restored = {};
         const normalizedProfiles = normalizeCountryKeyedRecord(parsed.profiles);
         const sharedSource = normalizedProfiles.JP || parsed.inputs || inputs;
@@ -3033,15 +3041,19 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         }
         const activeInputs = restored[active] || makeCountryProfile(DEFAULT_INPUTS, active, sharedSource);
         countryProfilesRef.current = { ...restored, [active]: activeInputs };
-        const restoredWatchlists = parsed.watchlists && typeof parsed.watchlists === "object" ? normalizeCountryKeyedRecord(parsed.watchlists) : {};
+        const rawRestoredWatchlists = parsed.watchlists && typeof parsed.watchlists === "object" ? normalizeCountryKeyedRecord(parsed.watchlists) : {};
+        const restoredWatchlists = {};
+        PROFILE_COUNTRIES.forEach((code) => {
+          if (Array.isArray(rawRestoredWatchlists[code])) restoredWatchlists[code] = normalizeStockWatchlist(rawRestoredWatchlists[code], code);
+        });
         countryWatchlistsRef.current = restoredWatchlists;
         setInputs(activeInputs);
-        setWatchlist(Array.isArray(restoredWatchlists[active]) ? restoredWatchlists[active] : defaultWatchlistFor(active));
+        setWatchlist(Object.prototype.hasOwnProperty.call(restoredWatchlists, active) ? restoredWatchlists[active] : defaultWatchlistFor(active));
       } else {
         // Old backup: preserve all old values as JP, never reinterpret yen as foreign currency.
         const jpBlank = makeCountryProfile(DEFAULT_INPUTS, "JP", parsed.inputs || inputs);
         const jpInputs = forceCountryMeta(mergeSavedInputs(jpBlank, parsed.inputs), "JP");
-        const jpWatchlist = Array.isArray(parsed.watchlist) ? parsed.watchlist : defaultWatchlistFor("JP");
+        const jpWatchlist = Array.isArray(parsed.watchlist) ? normalizeStockWatchlist(parsed.watchlist, "JP") : defaultWatchlistFor("JP");
         countryProfilesRef.current = { JP: jpInputs };
         countryWatchlistsRef.current = { JP: jpWatchlist };
         setInputs(jpInputs);
@@ -3077,18 +3089,21 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         relevantKeys.map(async (k) => {
           try {
             const res = await window.storage.get(k, false);
-            return res?.value ? JSON.parse(res.value) : null;
-          } catch (e) { return null; }
+            return { key: k, entry: res?.value ? JSON.parse(res.value) : null };
+          } catch (e) { return { key: k, entry: null }; }
         })
       );
-      const clean = entries.filter((entry) => {
-        if (!entry || typeof entry !== "object" || Array.isArray(entry)) return false;
-        if (!normalizeSnapshotDate(entry.date)) return false;
+      const clean = entries.map(({ key, entry }) => {
+        if (!entry || typeof entry !== "object" || Array.isArray(entry)) return null;
+        const entryDate = normalizeSnapshotDate(entry.date);
+        const keyDate = snapshotDateFromStorageKey(currentCountry, key);
+        if (!entryDate || !keyDate || entryDate !== keyDate) return null;
         // v1 snapshots had no explicit country field. Those are legacy JP data even if
         // inputs.country happened to have been switched before country profiles existed.
         const entryCountry = targetCountryFromBackup(entry.country);
-        return entryCountry === currentCountry;
-      });
+        if (entryCountry !== currentCountry) return null;
+        return { ...entry, watchlist: normalizeStockWatchlist(entry.watchlist, currentCountry) };
+      }).filter(Boolean);
       // Keep only the active country's local history too. Otherwise switching JP -> US
       // can leave JP rows visible until a full reload even though storage filtering is correct.
       setHistory((prev) => {
@@ -3111,8 +3126,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     setSaveStatus("saving");
     try {
       const code = normalizeProfileCountry(nextInputs.country);
+      const safeNextWatchlist = normalizeStockWatchlist(nextWatchlist, code);
       countryProfilesRef.current = { ...countryProfilesRef.current, [code]: nextInputs };
-      countryWatchlistsRef.current = { ...countryWatchlistsRef.current, [code]: nextWatchlist };
+      countryWatchlistsRef.current = { ...countryWatchlistsRef.current, [code]: safeNextWatchlist };
       await window.storage.set(
         STORAGE_KEY,
         JSON.stringify({
@@ -3121,7 +3137,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           profiles: countryProfilesRef.current,
           watchlists: countryWatchlistsRef.current,
           inputs: nextInputs,
-          watchlist: nextWatchlist,
+          watchlist: safeNextWatchlist,
         }),
         false
       );
@@ -3135,7 +3151,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         goldGrams: nextInputs.gold?.currentGrams ?? 0,
         bankTotal,
         inputs: nextInputs,
-        watchlist: nextWatchlist,
+        watchlist: safeNextWatchlist,
       };
       snapshot.country = code;
       await window.storage.set(snapshotStorageKey(code, date), JSON.stringify(snapshot), false);
@@ -3172,7 +3188,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     if (entry.inputs && typeof entry.inputs === "object" && !Array.isArray(entry.inputs)) {
       setInputs((prev) => forceCountryMeta(mergeSavedInputs(prev, entry.inputs), currentCountry));
     }
-    if (Array.isArray(entry.watchlist)) setWatchlist(entry.watchlist);
+    if (Array.isArray(entry.watchlist)) setWatchlist(normalizeStockWatchlist(entry.watchlist, currentCountry));
   };
   const scrollToSimulator = () => {
     document.getElementById("simulator")?.scrollIntoView({ behavior: "smooth" });

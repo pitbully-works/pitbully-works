@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { PROFILE_COUNTRIES, PROFILE_STORAGE_VERSION, applySharedIdentity, forceCountryMeta, makeCountryProfile, migrateCountryProfiles, normalizeProfileCurrency, normalizeCountryKeyedRecord, normalizeSnapshotDate, resolvePersistedActiveCountry, snapshotStorageKey, legacyJpSnapshotStorageKey, targetCountryFromKakeibo, targetCountryFromBackup } from "./utils/countryProfiles.js";
+import { PROFILE_COUNTRIES, PROFILE_STORAGE_VERSION, applySharedIdentity, forceCountryMeta, makeCountryProfile, migrateCountryProfiles, normalizeProfileCurrency, normalizeCountryKeyedRecord, normalizeSnapshotDate, resolvePersistedActiveCountry, snapshotStorageKey, legacyJpSnapshotStorageKey, targetCountryFromKakeibo, targetCountryFromBackup, normalizeStockWatchlist, snapshotDateFromStorageKey } from "./utils/countryProfiles.js";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 const defaults={country:"JP",baseCurrency:"JPY",language:"ja",userName:"",birthDate:"",currentAge:35,currentAssets:0,banks:[],pensionMonthly:0,livingCostMonthly:0};
@@ -108,12 +108,13 @@ describe("batch hardening: country/currency and history restore boundaries", () 
     expect(app).toContain("const entryCountry = targetCountryFromBackup(entry.country)");
     expect(app).toContain("if (entryCountry !== currentCountry) return");
     expect(app).toContain("forceCountryMeta(mergeSavedInputs(prev, entry.inputs), currentCountry)");
-    expect(app).toContain("if (Array.isArray(entry.watchlist)) setWatchlist(entry.watchlist)");
+    expect(app).toContain("setWatchlist(normalizeStockWatchlist(entry.watchlist, currentCountry))");
   });
 
   it("drops malformed or impossible history dates", () => {
     const app = readFileSync(join(process.cwd(), "App.jsx"), "utf8");
-    expect(app).toContain('if (!normalizeSnapshotDate(entry.date)) return false');
+    expect(app).toContain('const entryDate = normalizeSnapshotDate(entry.date)');
+    expect(app).toContain('if (!entryDate || !keyDate || entryDate !== keyDate) return null');
   });
 });
 
@@ -164,5 +165,49 @@ describe("batch hardening 5: UI boundary normalization", () => {
   it("formats only strict real rule dates", () => {
     expect(app).toContain('const normalizedDate = normalizeRuleDateString(isoDate)');
     expect(app).toContain('if (!normalizedDate) return "—"');
+  });
+});
+
+
+describe("batch hardening 6: persisted watchlists and snapshot integrity", () => {
+  it("sanitizes malformed stock watchlists and forces the selected-country currency", () => {
+    const out = normalizeStockWatchlist([
+      null,
+      "bad",
+      { name: "  Example  ", sector: "  Tech ", shares: "3", value: "125.5", currency: "JPY" },
+      { name: "", shares: 9, value: 9 },
+      { name: "Negative", shares: -5, value: Number.POSITIVE_INFINITY },
+    ], " us ");
+    expect(out).toEqual([
+      { name: "Example", sector: "Tech", shares: 3, value: 125.5, currency: "USD" },
+      { name: "Negative", sector: "", shares: 0, value: 0, currency: "USD" },
+    ]);
+  });
+
+  it("caps restored watchlists so corrupted storage cannot create an unbounded render list", () => {
+    const rows = Array.from({ length: 600 }, (_, i) => ({ name: `S${i}`, shares: 1, value: 1 }));
+    expect(normalizeStockWatchlist(rows, "JP")).toHaveLength(500);
+  });
+
+  it("requires a snapshot's internal date to match its storage-key date", () => {
+    expect(snapshotDateFromStorageKey("US", "snapshot:US:2026-08-21")).toBe("2026-08-21");
+    expect(snapshotDateFromStorageKey("US", "snapshot:JP:2026-08-21")).toBeNull();
+    expect(snapshotDateFromStorageKey("JP", "snapshot:2026-08-21")).toBe("2026-08-21");
+    expect(snapshotDateFromStorageKey("JP", "snapshot:2026-02-30")).toBeNull();
+  });
+
+  it("rejects backup schemas from a newer app version instead of guessing their layout", () => {
+    const app = readFileSync(join(process.cwd(), "App.jsx"), "utf8");
+    expect(app).toContain("Number(parsed.profileStorageVersion) > PROFILE_STORAGE_VERSION");
+    expect(app).toContain("Unsupported backup version");
+  });
+
+  it("normalizes watchlists at every persisted-data boundary", () => {
+    const app = readFileSync(join(process.cwd(), "App.jsx"), "utf8");
+    expect(app).toContain("safeSavedWatchlists[code] = normalizeStockWatchlist(savedWatchlists[code], code)");
+    expect(app).toContain("restoredWatchlists[code] = normalizeStockWatchlist(rawRestoredWatchlists[code], code)");
+    expect(app).toContain('normalizeStockWatchlist(parsed.watchlist, "JP")');
+    expect(app).toContain("watchlist: normalizeStockWatchlist(entry.watchlist, currentCountry)");
+    expect(app).toContain("const safeNextWatchlist = normalizeStockWatchlist(nextWatchlist, code)");
   });
 });
