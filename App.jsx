@@ -2977,7 +2977,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     setImportOk(false);
     try {
       const parsed = JSON.parse(importText);
-      if (!parsed.inputs) throw new Error(t("importInputsNotFoundError"));
+      if (!isPlainRecord(parsed)) throw new Error(t("importInputsNotFoundError"));
       /* 家計簿から来たデータは、通常のバックアップ復元とは別あつかい。
          向こうは一部の項目しか持っていないので、丸ごと入れ替えると
          こちらで入れた保障内容などが消えてしまう。届いた項目だけを重ねる。 */
@@ -3050,12 +3050,21 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           restored[code] = forceCountryMeta(applySharedIdentity(mergeSavedInputs(blank, raw), sharedSource), code);
         });
         const activeRaw = parsed.activeCountry ?? parsed.inputs?.country;
-        const active = targetCountryFromBackup(activeRaw);
-        if (!active) {
+        const hasExplicitActive = activeRaw !== undefined && activeRaw !== null && String(activeRaw).trim() !== "";
+        if (hasExplicitActive && !targetCountryFromBackup(activeRaw)) {
           throw new Error(t("importCountryUnsupportedError", { country: String(activeRaw || "") }));
         }
-        const activeInputs = restored[active] || makeCountryProfile(DEFAULT_INPUTS, active, sharedSource);
-        countryProfilesRef.current = { ...restored, [active]: activeInputs };
+        const active = hasExplicitActive
+          ? String(activeRaw).trim().toUpperCase()
+          : resolvePersistedActiveCountry(undefined, restored);
+        if (!isPlainRecord(restored[active])) {
+          throw new Error(`Active country profile missing: ${active}`);
+        }
+        const activeInputs = restored[active];
+        countryProfilesRef.current = restored;
+        if (parsed.watchlists !== undefined && !isPlainRecord(parsed.watchlists)) {
+          throw new Error("Invalid country watchlists in backup");
+        }
         const rawRestoredWatchlists = isPlainRecord(parsed.watchlists) ? normalizeCountryKeyedRecord(parsed.watchlists) : {};
         const restoredWatchlists = {};
         PROFILE_COUNTRIES.forEach((code) => {
@@ -3066,7 +3075,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         setWatchlist(Object.prototype.hasOwnProperty.call(restoredWatchlists, active) ? restoredWatchlists[active] : defaultWatchlistFor(active));
       } else {
         // Old backup: preserve all old values as JP, never reinterpret yen as foreign currency.
-        const jpBlank = makeCountryProfile(DEFAULT_INPUTS, "JP", parsed.inputs || inputs);
+        if (!isPlainRecord(parsed.inputs)) throw new Error(t("importInputsNotFoundError"));
+        const jpBlank = makeCountryProfile(DEFAULT_INPUTS, "JP", parsed.inputs);
         const jpInputs = forceCountryMeta(mergeSavedInputs(jpBlank, parsed.inputs), "JP");
         const jpWatchlist = Array.isArray(parsed.watchlist) ? normalizeStockWatchlist(parsed.watchlist, "JP") : defaultWatchlistFor("JP");
         countryProfilesRef.current = { JP: jpInputs };

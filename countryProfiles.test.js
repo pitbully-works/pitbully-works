@@ -288,3 +288,35 @@ describe("batch hardening 8b: legacy bucket shape validation", () => {
     expect(resolvePersistedActiveCountry("XX", { JP: [], US: { country: "US" } })).toBe("US");
   });
 });
+
+describe("batch hardening 9: backup active-bucket consistency", () => {
+  it("recovers a saved bucket when activeCountry metadata is missing", () => {
+    expect(resolvePersistedActiveCountry(undefined, { US: { country: "US" } })).toBe("US");
+  });
+
+  it("prefers preserved saved data when a supported active marker points to a missing bucket", () => {
+    expect(resolvePersistedActiveCountry("JP", { CA: { country: "CA" } })).toBe("CA");
+  });
+
+  it("still preserves a valid requested country when no saved bucket exists", () => {
+    expect(resolvePersistedActiveCountry("AU", {})).toBe("AU");
+  });
+
+  it("allows current-schema profiles-only backups but requires their active bucket to exist", () => {
+    const app = readFileSync(join(process.cwd(), "App.jsx"), "utf8");
+    expect(app).toContain('if (!isPlainRecord(parsed)) throw new Error(t("importInputsNotFoundError"))');
+    expect(app).toContain('if (!isPlainRecord(restored[active]))');
+    expect(app).toContain('throw new Error(`Active country profile missing: ${active}`)');
+  });
+
+  it("rejects malformed current-schema watchlist containers instead of silently discarding them", () => {
+    const app = readFileSync(join(process.cwd(), "App.jsx"), "utf8");
+    expect(app).toContain('if (parsed.watchlists !== undefined && !isPlainRecord(parsed.watchlists))');
+    expect(app).toContain('throw new Error("Invalid country watchlists in backup")');
+  });
+
+  it("requires legacy backups to contain a plain inputs object", () => {
+    const app = readFileSync(join(process.cwd(), "App.jsx"), "utf8");
+    expect(app).toContain('if (!isPlainRecord(parsed.inputs)) throw new Error(t("importInputsNotFoundError"))');
+  });
+});
