@@ -106,16 +106,29 @@ export function makeCountryProfile(defaultInputs, country, sharedSource = {}) {
   const withCountry = applyCountryDefaults(base, country);
   return forceCountryMeta(applySharedIdentity(withCountry, sharedSource), country);
 }
+export function resolvePersistedActiveCountry(value, profiles, fallback = "JP") {
+  const normalizedProfiles = normalizeCountryKeyedRecord(profiles);
+  const raw = value === undefined || value === null ? "" : String(value).trim();
+  if (!raw) return normalizeProfileCountry(fallback);
+  const code = raw.toUpperCase();
+  if (PROFILE_COUNTRIES.includes(code)) return code;
+  // An explicit unsupported persisted code must not be silently reinterpreted as JP.
+  // Recover by opening an actually existing valid bucket; if none exists, use the safe fallback.
+  return PROFILE_COUNTRIES.find((candidate) => Object.prototype.hasOwnProperty.call(normalizedProfiles, candidate))
+    || normalizeProfileCountry(fallback);
+}
+
 export function migrateCountryProfiles(defaultInputs, parsed) {
   const p = parsed && typeof parsed === "object" ? parsed : {};
   if (p.profileStorageVersion >= PROFILE_STORAGE_VERSION && p.profiles && typeof p.profiles === "object") {
-    return { profiles: normalizeCountryKeyedRecord(p.profiles), activeCountry: normalizeProfileCountry(p.activeCountry || p.inputs?.country || "JP"), migratedLegacy: false };
+    const profiles = normalizeCountryKeyedRecord(p.profiles);
+    return { profiles, activeCountry: resolvePersistedActiveCountry(p.activeCountry ?? p.inputs?.country, profiles), migratedLegacy: false };
   }
   // v2 は名前・生年月日・現在年齢を国間で共有していた。v3 では完全分離する。
   // 移行時は現在開いていた国だけ本人情報を保持し、他国にコピーされていた本人情報を消す。
   if (p.profileStorageVersion === 2 && p.profiles && typeof p.profiles === "object") {
-    const activeCountry = normalizeProfileCountry(p.activeCountry || p.inputs?.country || "JP");
     const rawProfiles = normalizeCountryKeyedRecord(p.profiles);
+    const activeCountry = resolvePersistedActiveCountry(p.activeCountry ?? p.inputs?.country, rawProfiles);
     const profiles = {};
     PROFILE_COUNTRIES.forEach((code) => {
       if (!rawProfiles[code]) return;
