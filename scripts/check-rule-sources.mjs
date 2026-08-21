@@ -43,7 +43,7 @@ for (const source of SOURCES) {
     });
   } catch (error) {
     const old = oldById.get(source.id) || {};
-    next.push({ ...source, hash: old.hash || '', checkedAt: now, changed: false, previousHash: old.previousHash || '', error: String(error?.message || error) });
+    next.push({ ...source, hash: old.hash || '', checkedAt: now, changed: !!old?.changed, previousHash: old.previousHash || '', error: String(error?.message || error) });
   }
 }
 

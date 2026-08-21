@@ -25,6 +25,7 @@ const mutants = [
   ["AU concessional cap", "countryRules/AU.js", "concessionalCap: 32500", "concessionalCap: 32501", "auBoundaries.test.js"],
   ["AU non-concessional cap", "countryRules/AU.js", "nonConcessionalCap: 130000", "nonConcessionalCap: 130001", "auBoundaries.test.js"],
   ["i18n English fallback", "translations/index.js", "const fallbackLanguage = lang === \"ja\" || lang.startsWith(\"ja-\") ? \"ja\" : \"en\";", "const fallbackLanguage = \"ja\";", "i18nStrict.test.js"],
+  ["Rule source alert survives fetch error", "scripts/check-rule-sources.mjs", "checkedAt: now, changed: !!old?.changed, previousHash", "checkedAt: now, changed: false, previousHash", "ruleSourceAutomation.test.js"],
 ];
 
 if (!fs.existsSync(vitestBin)) {
