@@ -52,8 +52,8 @@ function applyCountryDefaults(base, country) {
   return out;
 }
 export function normalizeProfileCountry(value, fallback = "JP") {
-  const normalizedValue = String(value || "").toUpperCase();
-  const normalizedFallback = String(fallback || "").toUpperCase();
+  const normalizedValue = String(value || "").trim().toUpperCase();
+  const normalizedFallback = String(fallback || "").trim().toUpperCase();
   const safeFallback = PROFILE_COUNTRIES.includes(normalizedFallback) ? normalizedFallback : "JP";
   return PROFILE_COUNTRIES.includes(normalizedValue) ? normalizedValue : safeFallback;
 }
