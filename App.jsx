@@ -1889,6 +1889,10 @@ const DEFAULT_INPUTS = {
         otherAnnualIncome: 0,
         employmentIncomeAnnual: 0,
         workBonusBalance: 0,
+        // Rent Assistance（子なし世帯）。非持家かつ対象家賃を払っている場合のみ有効。
+        rentAssistanceEligible: false,
+        rentFortnightly: 0,
+        rentAssistanceSharer: false,
       },
       // 医療費（Medicare前提の簡易モデル）
       healthcare: {
