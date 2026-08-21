@@ -130,7 +130,7 @@ export const JA_TRANSLATIONS = {
     "gbTaxHandledInInvestmentNote": "英国の税制（Income Tax・Dividend Tax・Capital Gains Tax・年金拠出の税軽減）は、セクション02「ISA（Stocks & Shares）」内でまとめて計算しています。",
     "usTaxHandledInInvestmentNote": "米国の税制（連邦所得税・長期キャピタルゲイン課税・NIIT・州税率）は、セクション02「Investment Account」内でまとめて計算しています。表示される金額は概算であり、確定申告の計算ではありません。",
     "gbTaxSectionLabel": "Tax（{taxYear}年度・{region}）",
-    "gbTaxSourceNote": "Income Tax・Dividend Tax・Capital Gains Taxは{taxYear}年度のGOV.UK公表値に基づく概算です（{region}基準）。スコットランド税率、National Insurance、貯蓄利子課税、相続税は未実装です。",
+    "gbTaxSourceNote": "Income Tax・Dividend Tax・Capital Gains Taxは{taxYear}年度のGOV.UK公表値に基づく概算です（{region}基準）。Scottish Income Taxにも対応し、Inheritance Taxは相続セクションで概算します。National Insuranceと貯蓄利子課税は未実装です。",
     "gbTotalAssetsLabel": "総資産（6口座の合計）",
     "gbTotalAssetsSub": "ISA＋SIPP＋Workplace Pension＋GIA＋Cash Savingsのすべての合計",
     "gbTotalTaxLabel": "税額合計（概算・年金軽減後）",

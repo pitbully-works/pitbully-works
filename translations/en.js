@@ -130,7 +130,7 @@ export const EN_TRANSLATIONS = {
     "gbTaxHandledInInvestmentNote": "UK tax — Income Tax, Dividend Tax, Capital Gains Tax and pension tax relief — is calculated together in section 02 (ISA — Stocks & Shares).",
     "usTaxHandledInInvestmentNote": "US tax — federal income tax, long-term capital gains, the Net Investment Income Tax (NIIT) and your state tax rate — is calculated together in section 02 (Investment Account). Figures are estimates for planning, not a tax return.",
     "gbTaxSectionLabel": "Tax ({taxYear} — {region})",
-    "gbTaxSourceNote": "Income Tax, Dividend Tax and Capital Gains Tax are estimates based on GOV.UK figures for {taxYear} ({region}). Scottish Income Tax, National Insurance, tax on savings interest and Inheritance Tax are not implemented.",
+    "gbTaxSourceNote": "Income Tax, Dividend Tax and Capital Gains Tax are estimates based on GOV.UK figures for {taxYear} ({region}). Scottish Income Tax is supported, and Inheritance Tax is estimated in the estate section. National Insurance and tax on savings interest are not implemented.",
     "gbTotalAssetsLabel": "Total Assets (all six accounts)",
     "gbTotalAssetsSub": "ISAs + SIPP + Workplace Pension + GIA + Cash Savings combined",
     "gbTotalTaxLabel": "Total Tax (Estimate, after pension relief)",
