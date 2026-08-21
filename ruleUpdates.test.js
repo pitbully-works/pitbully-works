@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { JP_COUNTRY_RULES } from "./countryRules/JP.js";
-import { BUILTIN_RULE_UPDATES, applyApprovedRuleUpdates, mergeRuleUpdateManifests, normalizeRuleUpdateState, isRuleUpdateApproved, isRuleUpdateDismissed, safeRuleSourceUrl } from "./utils/ruleUpdates.js";
+import { BUILTIN_RULE_UPDATES, applyApprovedRuleUpdates, mergeRuleUpdateManifests, normalizeRuleUpdateState, isRuleUpdateApproved, isRuleUpdateDismissed, safeRuleSourceUrl, normalizeRuleDateString, normalizeRuleTimestamp } from "./utils/ruleUpdates.js";
 
 describe("rule update center", () => {
   it("does not change calculations before approval", () => {
@@ -400,5 +400,37 @@ describe("batch hardening: persisted rule-update state", () => {
     expect(normalizeRuleUpdateState({ lastCheckedAt: "not-a-date" }).lastCheckedAt).toBe("");
     expect(normalizeRuleUpdateState({ lastCheckedAt: " 2026-08-21T10:00:00Z " }).lastCheckedAt)
       .toBe("2026-08-21T10:00:00.000Z");
+  });
+});
+
+
+describe("batch hardening 5: rule metadata normalization", () => {
+  it("normalizes strict calendar dates and rejects impossible dates", () => {
+    expect(normalizeRuleDateString(" 2028-02-29 ")).toBe("2028-02-29");
+    expect(normalizeRuleDateString("2026-02-30")).toBe("");
+    expect(normalizeRuleDateString("2026/08/21")).toBe("");
+  });
+
+  it("normalizes timestamps used by persisted history", () => {
+    expect(normalizeRuleTimestamp(" 2026-08-21T10:00:00Z ")).toBe("2026-08-21T10:00:00.000Z");
+    expect(normalizeRuleTimestamp("not-a-date")).toBe("");
+  });
+
+  it("sanitizes history decidedAt and effectiveDate fields", () => {
+    const state = normalizeRuleUpdateState({ history: [{
+      id: "h1", country: "US", action: "approved",
+      decidedAt: "not-a-date", effectiveDate: "2026-02-30",
+    }] });
+    expect(state.history[0]).toMatchObject({ decidedAt: "", effectiveDate: "" });
+  });
+
+  it("sanitizes remote manifest effectiveDate and sourceUrl at ingress", () => {
+    const merged = mergeRuleUpdateManifests([{
+      id: "REMOTE-META", country: "US", effectiveDate: "2026-02-30",
+      sourceUrl: "javascript:alert(1)", changes: [],
+    }]);
+    const row = merged.find((x) => x.id === "REMOTE-META");
+    expect(row?.effectiveDate).toBe("");
+    expect(row?.sourceUrl).toBe("");
   });
 });

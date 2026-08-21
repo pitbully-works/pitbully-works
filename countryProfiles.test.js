@@ -149,3 +149,20 @@ describe("batch hardening: history storage keys and strict dates", () => {
     expect(app).toContain('window.storage.delete(key, false)');
   });
 });
+
+
+describe("batch hardening 5: UI boundary normalization", () => {
+  const app = readFileSync(join(process.cwd(), "App.jsx"), "utf8");
+  it("normalizes calculator currency before selecting JPY 10k units", () => {
+    expect(app).toContain('const calculatorCurrency = String(baseCurrency || "").trim().toUpperCase()');
+    expect(app).toContain('calculatorCurrency === "JPY"');
+  });
+  it("re-normalizes rule-center country comparisons at render time", () => {
+    expect(app).toContain('normalizeRuleCountry(item?.country) === country');
+    expect(app).toContain('normalizeRuleCountry(entry?.country) === country');
+  });
+  it("formats only strict real rule dates", () => {
+    expect(app).toContain('const normalizedDate = normalizeRuleDateString(isoDate)');
+    expect(app).toContain('if (!normalizedDate) return "—"');
+  });
+});

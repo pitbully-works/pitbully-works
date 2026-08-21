@@ -44,7 +44,7 @@ import { newSci, sciPress, sciExpr, sciFormat, sciTokensFromExpr, normalizeSciHi
 import {
   RULE_UPDATE_STORAGE_KEY, BUILTIN_RULE_UPDATES, normalizeRuleUpdateState,
   applyApprovedRuleUpdates, mergeRuleUpdateManifests, isUpdateEffective, normalizeRuleCountry,
-  isRuleUpdateApproved, isRuleUpdateDismissed, safeRuleSourceUrl, normalizeRuleUpdateId,
+  isRuleUpdateApproved, isRuleUpdateDismissed, safeRuleSourceUrl, normalizeRuleUpdateId, normalizeRuleDateString,
 } from "./utils/ruleUpdates.js";
 import { getRuleSourcesForCountry } from "./utils/ruleSourceRegistry.js";
 import { buildCountryRuleCatalog } from "./utils/countryRuleCatalog.js";
@@ -2038,7 +2038,8 @@ function FloatingScientificCalculator() {
   };
   const close = () => { setOpen(false); setTarget(null); };
   const manualOpen = () => { setTarget(null); setOpen(true); };
-  const unit = baseCurrency === "JPY" ? (ja ? "万円入力" : "¥10k input") : currencySymbol;
+  const calculatorCurrency = String(baseCurrency || "").trim().toUpperCase();
+  const unit = calculatorCurrency === "JPY" ? (ja ? "万円入力" : "¥10k input") : currencySymbol;
   const k = (key, label, cls = "") => <button type="button" className={cls} onClick={() => press(key)}>{label}</button>;
 
   if (!open) {
@@ -2210,12 +2211,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   }, [language, ruleUpdateState, persistRuleUpdateState]);
 
   const clearCountryRuleUpdateHistory = useCallback(() => {
-    if (!(ruleUpdateState.history || []).some((entry) => entry.country === country)) return;
+    if (!(ruleUpdateState.history || []).some((entry) => normalizeRuleCountry(entry?.country) === country)) return;
     const ok = window.confirm(language === "ja" ? "この国の制度変更履歴をすべて削除しますか？" : "Delete all change history for this country?");
     if (!ok) return;
     persistRuleUpdateState({
       ...ruleUpdateState,
-      history: (ruleUpdateState.history || []).filter((entry) => entry.country !== country),
+      history: (ruleUpdateState.history || []).filter((entry) => normalizeRuleCountry(entry?.country) !== country),
     });
   }, [language, country, ruleUpdateState, persistRuleUpdateState]);
 
@@ -2262,7 +2263,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     [country, rules]
   );
   const countryRuleUpdates = useMemo(
-    () => ruleUpdates.filter((item) => item.country === country),
+    () => ruleUpdates.filter((item) => normalizeRuleCountry(item?.country) === country),
     [ruleUpdates, country]
   );
   const pendingRuleUpdates = useMemo(
@@ -2275,11 +2276,11 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   );
   const monitoredRuleSources = useMemo(() => getRuleSourcesForCountry(country), [country]);
   const countryRuleUpdateHistory = useMemo(
-    () => (ruleUpdateState.history || []).filter((entry) => entry.country === country),
+    () => (ruleUpdateState.history || []).filter((entry) => normalizeRuleCountry(entry?.country) === country),
     [ruleUpdateState.history, country]
   );
   const ruleSourceAlerts = useMemo(
-    () => ruleSourceStatuses.filter((item) => item.country === country && item.changed),
+    () => ruleSourceStatuses.filter((item) => normalizeRuleCountry(item?.country) === country && item.changed === true),
     [ruleSourceStatuses, country]
   );
   const ruleAttentionCount = pendingRuleUpdates.length + ruleSourceAlerts.length;
@@ -2315,9 +2316,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     return `${formatted}${unit}`;
   }, []);
   const formatRuleDate = useCallback((isoDate) => {
-    if (!isoDate) return "—";
-    const date = new Date(`${isoDate}T00:00:00`);
-    if (!Number.isFinite(date.getTime())) return isoDate;
+    const normalizedDate = normalizeRuleDateString(isoDate);
+    if (!normalizedDate) return "—";
+    const date = new Date(`${normalizedDate}T00:00:00`);
     const locale = ({ JP: "ja-JP", US: "en-US", GB: "en-GB", CA: "en-CA", AU: "en-AU" }[country]
       || (language === "ja" ? "ja-JP" : "en-US"));
     return date.toLocaleDateString(locale);
