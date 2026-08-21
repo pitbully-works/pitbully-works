@@ -23,7 +23,7 @@ export const AU_COUNTRY_RULES = {
     noteEn: "2026-27 rules verified on 17 Aug 2026. Age Pension uses the 20 Mar 2026 rates; the next scheduled indexation is 20 Sep 2026.",
     coverage: [
       { key: "investment", labelJa: "投資制度", labelEn: "Investment", status: "partial", effective: "2026-27 financial year", lastUpdated: "2026-08-21", updateJa: "Super・投資口座・拠出上限、carry-forward、bring-forwardに加え、適格確認式のDownsizer contribution（最大A$300,000）を今年度一括拠出として反映。", updateEn: "Super, investment accounts and contribution caps are modelled, including concessional carry-forward, non-concessional bring-forward, and an eligibility-confirmed one-off downsizer contribution of up to A$300,000." },
-      { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "partial", effective: "2026-27 / Age Pension Mar 2026 rates", lastUpdated: "2026-08-17", updateJa: "Age Pensionの資産・所得テスト、Work Bonus年次近似、Super取崩しを反映。Work Bonusの隔週厳密計算等は未実装。", updateEn: "Age Pension means tests, annualised Work Bonus and Super drawdown are modelled; fortnightly Work Bonus detail and some edge cases are not implemented." },
+      { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "partial", effective: "2026-27 / Age Pension Mar 2026 rates / Rent Assistance Jul 2026 rates", lastUpdated: "2026-08-21", updateJa: "Age Pensionの資産・所得テスト、Work Bonus年次近似、Super取崩しに加え、子なし世帯のRent Assistanceを資力調査前の最大給付額へ組み込み。", updateEn: "Age Pension means tests, annualised Work Bonus, Super drawdown and Rent Assistance for households without dependent children are modelled, with Rent Assistance included in the maximum rate before means testing." },
       { key: "healthcare", labelJa: "医療", labelEn: "Healthcare", status: "partial", effective: "2026-27 / 2026 calendar-year Safety Nets", lastUpdated: "2026-08-21", updateJa: "Medicare前提の自己負担に加え、2026年PBS Safety Net概算とMedicare Safety Net閾値を反映。診療ごとのSafety Net還付・aged care資力調査は未自動化。", updateEn: "Adds a 2026 PBS Safety Net estimate and Medicare Safety Net thresholds to the Medicare out-of-pocket model; item-level Safety Net rebates and aged-care means testing remain manual." },
       { key: "tax", labelJa: "税金", labelEn: "Tax", status: "partial", effective: "2026-27 financial year", lastUpdated: "2026-08-21", updateJa: "居住者所得税・LITO・SAPTO・Medicare levy・MLS・CGTを反映。", updateEn: "Resident income tax, LITO, SAPTO, Medicare levy, MLS and CGT are modelled." },
       { key: "estate", labelJa: "相続", labelEn: "Estate", status: "partial", effective: "2026-27", lastUpdated: "2026-08-17", updateJa: "相続目標は資産計画に反映。Super death benefit等の税務自動計算は未実装。", updateEn: "Estate targets feed the plan; tax treatment of Super death benefits is not automated." },
@@ -409,6 +409,7 @@ export const AU_COUNTRY_RULES = {
       incomeTest: "https://www.servicesaustralia.gov.au/income-test-for-age-pension",
       assetsTest: "https://www.servicesaustralia.gov.au/assets-test-for-age-pension",
       eligibility: "https://www.servicesaustralia.gov.au/who-can-get-age-pension",
+      rentAssistance: "https://www.servicesaustralia.gov.au/rent-assistance",
     },
     accountTypes: ["agePension"],
     agePension: {
@@ -438,6 +439,14 @@ export const AU_COUNTRY_RULES = {
       workBonusFortnightly: 300,
       workBonusMaxBalance: 11800,
       workBonusNewRecipientBalance: 4000,
+      // Rent Assistance（1 July–19 September 2026 rates）。
+      // Age Pension等の主給付に上乗せされ、最大支給率の一部として所得・資産テストの対象となる。
+      rentAssistance: {
+        ratePerDollarAboveThreshold: 0.75,
+        single: { thresholdFortnightly: 154.80, maxFortnightly: 219.40 },
+        singleSharer: { thresholdFortnightly: 154.80, maxFortnightly: 146.27 },
+        coupleCombined: { thresholdFortnightly: 250.80, maxFortnightly: 206.80 },
+      },
     },
     // Deeming（みなし収入）：金融資産は実際の運用益ではなく、みなし利率で所得を算定する。
     //   レートは2026年3月20日から、しきい値は2026年7月1日から。
@@ -466,6 +475,22 @@ export const AU_COUNTRY_RULES = {
       const upper = Math.max(0, assets - threshold);
       return lower * d.lowerRate + upper * d.upperRate;
     },
+    // Rent Assistance（世帯合計）。持家・対象外住宅なら0。
+    // ここではAge Pension世帯で一般的な「子なし」の率を扱う。単身のシェア居住は専用上限を使用。
+    getRentAssistanceFortnightly({ status, homeowner, eligible, rentFortnightly, sharer = false } = {}) {
+      if (homeowner || !eligible) return 0;
+      const rent = Math.max(0, Number(rentFortnightly) || 0);
+      const rules = this.agePension.rentAssistance;
+      const rule = status === "couple"
+        ? rules.coupleCombined
+        : (sharer ? rules.singleSharer : rules.single);
+      const excessRent = Math.max(0, rent - rule.thresholdFortnightly);
+      return Math.min(rule.maxFortnightly, excessRent * rules.ratePerDollarAboveThreshold);
+    },
+    getRentAssistanceHouseholdAnnual(args = {}) {
+      return this.getRentAssistanceFortnightly(args) * this.agePension.fortnightsPerYear;
+    },
+
     // 最大給付額（年額）。カップルは「1人あたり」の額を返す（世帯合計はこの2倍）。
     getMaxAnnual(status) {
       const p = this.agePension;
@@ -514,15 +539,15 @@ export const AU_COUNTRY_RULES = {
       return Math.max(0, employment - this.getWorkBonusExcludedAnnual(employment, workBonusBalance));
     },
     // 所得テストによる給付額（年額）。
-    getAgePensionByIncomeTest(annualIncome, status) {
-      const max = this.getMaxAnnual(status);
+    getAgePensionByIncomeTest(annualIncome, status, supplementPerPersonAnnual = 0) {
+      const max = this.getMaxAnnual(status) + Math.max(0, Number(supplementPerPersonAnnual) || 0);
       const excess = Math.max(0, (Number(annualIncome) || 0) - this.getIncomeFreeAreaAnnual(status));
       return Math.max(0, max - excess * this.getIncomeTaperPerDollar(status));
     },
     // 資産テストによる給付額（年額）
-    getAgePensionByAssetsTest(assessableAssets, status, homeowner) {
+    getAgePensionByAssetsTest(assessableAssets, status, homeowner, supplementPerPersonAnnual = 0) {
       const p = this.agePension;
-      const max = this.getMaxAnnual(status);
+      const max = this.getMaxAnnual(status) + Math.max(0, Number(supplementPerPersonAnnual) || 0);
       const excess = Math.max(0, (Number(assessableAssets) || 0) - this.getAssetsFreeArea(status, homeowner));
       const reductionPerYear = (excess / 1000)
         * this.getAssetsTaperPerThousandFortnightly(status)
@@ -549,11 +574,19 @@ export const AU_COUNTRY_RULES = {
     },
     // 実際の給付額（1人あたり年額）＝ 所得テストと資産テストの「低い方」。
     // 受給資格年齢未満はゼロ。
-    getAgePension({ age, annualIncome, employmentIncomeAnnual, workBonusBalance, assessableAssets, financialAssets, status, homeowner }) {
+    getAgePension({
+      age, annualIncome, employmentIncomeAnnual, workBonusBalance, assessableAssets, financialAssets,
+      status, homeowner, bothQualified, rentAssistanceEligible = false, rentFortnightly = 0, rentAssistanceSharer = false,
+    }) {
       if ((Number(age) || 0) < this.agePension.qualifyingAge) return 0;
       const income = this.getAssessableIncomeAnnual(annualIncome, financialAssets, status, employmentIncomeAnnual, workBonusBalance);
-      const byIncome = this.getAgePensionByIncomeTest(income, status);
-      const byAssets = this.getAgePensionByAssetsTest(assessableAssets, status, homeowner);
+      const recipients = this.getHouseholdRecipients(status, bothQualified);
+      const rentAssistanceHouseholdAnnual = this.getRentAssistanceHouseholdAnnual({
+        status, homeowner, eligible: rentAssistanceEligible, rentFortnightly, sharer: rentAssistanceSharer,
+      });
+      const supplementPerPersonAnnual = recipients > 0 ? rentAssistanceHouseholdAnnual / recipients : 0;
+      const byIncome = this.getAgePensionByIncomeTest(income, status, supplementPerPersonAnnual);
+      const byAssets = this.getAgePensionByAssetsTest(assessableAssets, status, homeowner, supplementPerPersonAnnual);
       return Math.min(byIncome, byAssets);
     },
     // 世帯合計の給付額（年額）。生活費を世帯合計で扱っているため、投影に入れる年金収入も
@@ -562,8 +595,14 @@ export const AU_COUNTRY_RULES = {
     //   status === "couple" かつ bothQualified === false → 1人分（片方だけが受給）
     // ※ 片方が受給資格年齢未満の場合、その人の積立フェーズのSuperは資産テストの対象外に
     //   なるが、本アプリは世帯の資産をまとめて扱うため、その除外は未実装。
-    getAgePensionHousehold({ age, annualIncome, employmentIncomeAnnual, workBonusBalance, assessableAssets, financialAssets, status, homeowner, bothQualified }) {
-      const perPerson = this.getAgePension({ age, annualIncome, employmentIncomeAnnual, workBonusBalance, assessableAssets, financialAssets, status, homeowner });
+    getAgePensionHousehold({
+      age, annualIncome, employmentIncomeAnnual, workBonusBalance, assessableAssets, financialAssets, status, homeowner, bothQualified,
+      rentAssistanceEligible = false, rentFortnightly = 0, rentAssistanceSharer = false,
+    }) {
+      const perPerson = this.getAgePension({
+        age, annualIncome, employmentIncomeAnnual, workBonusBalance, assessableAssets, financialAssets, status, homeowner, bothQualified,
+        rentAssistanceEligible, rentFortnightly, rentAssistanceSharer,
+      });
       const recipients = (status === "couple" && bothQualified !== false) ? 2 : 1;
       return perPerson * recipients;
     },
@@ -585,6 +624,7 @@ export const AU_COUNTRY_RULES = {
       annualSalary, voluntaryConcessional, div293TaxAnnual, div293PaidFrom,
       expensesAnnual, healthcareAnnual, otherAnnualIncome,
       status, homeowner, bothQualified,
+      rentAssistanceEligible = false, rentFortnightly = 0, rentAssistanceSharer = false,
     }) {
       const qualifyingAge = this.getQualifyingAge();
       const other = Number(otherAnnualIncome) || 0;
@@ -623,6 +663,10 @@ export const AU_COUNTRY_RULES = {
         financialAssets: assessableAssets,
         status,
         homeowner,
+        bothQualified,
+        rentAssistanceEligible,
+        rentFortnightly,
+        rentAssistanceSharer,
       });
       const recipients = this.getHouseholdRecipients(status, bothQualified);
       const deemedIncomeAnnual = this.getDeemedIncomeAnnual(assessableAssets, status);
@@ -638,7 +682,7 @@ export const AU_COUNTRY_RULES = {
       };
     },
     notImplemented: [
-      "Rent Assistance（賃貸住宅手当）",
+      "Rent Assistanceは子なし世帯（単身・単身シェア・カップル合算）の2026年7月率を実装済み。扶養児童あり・疾病別居・一時別居などの特殊率は未実装",
       "Transitional rate pension（2009年以前からの受給者への経過措置）",
       // 【A-2】投影中のAge Pensionは lifePlanEngine 側で毎ステップ再判定している
       //   （publicPensions.monthlyAmountAt + assessedPoolIds）。
