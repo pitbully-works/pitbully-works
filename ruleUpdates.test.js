@@ -200,6 +200,33 @@ describe("rule update center", () => {
       .toBe(JP_COUNTRY_RULES.retirement.currentMonthlyLimits.firstInsured);
   });
 
+  it("施行日が欠落したremote制度更新を即時有効として誤適用しない", () => {
+    const updates = [{
+      id: "REMOTE-MISSING-EFFECTIVE-DATE",
+      country: "JP",
+      changes: [{ path: "retirement.currentMonthlyLimits.firstInsured", after: 999999996 }],
+    }];
+    const state = normalizeRuleUpdateState({ approved: { "REMOTE-MISSING-EFFECTIVE-DATE": true } });
+    const rules = applyApprovedRuleUpdates(JP_COUNTRY_RULES, "JP", updates, state, new Date("2026-08-21T12:00:00"));
+
+    expect(rules.retirement.currentMonthlyLimits.firstInsured)
+      .toBe(JP_COUNTRY_RULES.retirement.currentMonthlyLimits.firstInsured);
+  });
+
+  it("空白だけの施行日も即時有効として扱わない", () => {
+    const updates = [{
+      id: "REMOTE-BLANK-EFFECTIVE-DATE",
+      country: "JP",
+      effectiveDate: "   ",
+      changes: [{ path: "retirement.currentMonthlyLimits.firstInsured", after: 999999995 }],
+    }];
+    const state = normalizeRuleUpdateState({ approved: { "REMOTE-BLANK-EFFECTIVE-DATE": true } });
+    const rules = applyApprovedRuleUpdates(JP_COUNTRY_RULES, "JP", updates, state, new Date("2026-08-21T12:00:00"));
+
+    expect(rules.retirement.currentMonthlyLimits.firstInsured)
+      .toBe(JP_COUNTRY_RULES.retirement.currentMonthlyLimits.firstInsured);
+  });
+
   it("実在するうるう日は通常どおり有効日として扱う", () => {
     const updates = [{
       id: "REMOTE-LEAP-DATE",
