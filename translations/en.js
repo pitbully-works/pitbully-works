@@ -244,6 +244,7 @@ export const EN_TRANSLATIONS = {
     "auAccountBreakdownNote": "Projected balance of each account — superannuation, investment account and cash savings — at your retirement age.",
     "auAgePensionAnnualLabel": "Age Pension (Annual)",
     "auBothQualifiedLabel": "Both partners have reached Age Pension age ({age})",
+    "auPartnerUnderAgeSuperLimitationNote": "If only one partner has reached Age Pension age, the younger partner’s super is generally exempt from the Age Pension assets test and deeming while it remains in accumulation phase and is not paying an income stream. This app does not yet split each partner’s super, so that exemption is not calculated automatically.",
     "auAgePensionHouseholdSub": "Combined household total for two people ({perPerson} each)",
     "auDeemingNote": "The income test applies assumed rates of return to your financial assets (super, bank accounts, shares, investments, bullion) rather than what they actually earn. This is called deeming. The first {threshold} is deemed at {lower}% a year and the balance at {upper}%, giving deemed income of {deemed} a year right now. Your home, contents and car are excluded.",
     "auAgePensionAnnualSub": "The lower of the income test and assets test applies",

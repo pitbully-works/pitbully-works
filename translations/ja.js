@@ -244,6 +244,7 @@ export const JA_TRANSLATIONS = {
     "auAccountBreakdownNote": "退職時点における、Superannuation・投資口座・現金貯蓄の口座別残高の内訳です。",
     "auAgePensionAnnualLabel": "Age Pension 年間受給額",
     "auBothQualifiedLabel": "夫婦とも受給資格年齢（{age}歳）に達している",
+    "auPartnerUnderAgeSuperLimitationNote": "片方だけが{age}歳以上の場合、{age}歳未満の配偶者が受給を開始していないSuperは通常、Age Pensionの資産・Deeming対象から除外されます。現在のアプリは夫婦のSuperを分けて入力しないため、この除外はまだ自動計算していません。",
     "auAgePensionHouseholdSub": "夫婦2人分の世帯合計（1人あたり {perPerson}）",
     "auDeemingNote": "所得テストでは、金融資産（Super・預金・株式・投資・金地金など）に実際の運用益ではなく「みなし利率」を当てはめて所得を算定します（Deeming）。{threshold} までが年{lower}%、それを超える分が年{upper}%で、現在のみなし収入は年 {deemed} です。自宅・家財・自動車は対象外です。",
     "auAgePensionAnnualSub": "所得テストと資産テストの低い方が適用されます",
