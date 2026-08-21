@@ -6457,8 +6457,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                     <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 4 }}>
                       {ruleSourceAlerts.map((alert) => {
                         const registered = monitoredRuleSources.find((source) => source.id === alert.id);
+                        const sourceHref = safeRuleSourceUrl(alert.url) || safeRuleSourceUrl(registered?.url);
+                        if (!sourceHref) return null;
                         return (
-                          <a key={alert.id} href={alert.url || registered?.url} target="_blank" rel="noopener noreferrer" className="history-action" style={{ fontSize: 11, color: "#8ED8FF", borderColor: "#3E8FB8", background: "rgba(62,143,184,0.14)", textDecoration: "none", width: "fit-content" }}>
+                          <a key={alert.id} href={sourceHref} target="_blank" rel="noopener noreferrer" className="history-action" style={{ fontSize: 11, color: "#8ED8FF", borderColor: "#3E8FB8", background: "rgba(62,143,184,0.14)", textDecoration: "none", width: "fit-content" }}>
                             {language === "ja" ? `📄 ${registered ? registered.labelJa.split("「")[0] : "公式ソース"}` : "Open official source"}
                           </a>
                         );

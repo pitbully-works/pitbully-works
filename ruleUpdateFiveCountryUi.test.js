@@ -21,6 +21,12 @@ describe("5-country rules update center UI", () => {
   it("latches an official-source change until the baseline is reviewed", () => {
     expect(watcher).toContain("!!old?.changed || (!!old?.hash && old.hash !== hash)");
   });
+  it("sanitizes watcher-provided source URLs before rendering links", () => {
+    expect(app).toContain("const sourceHref = safeRuleSourceUrl(alert.url) || safeRuleSourceUrl(registered?.url)");
+    expect(app).toContain("if (!sourceHref) return null");
+    expect(app).toContain('href={sourceHref}');
+    expect(app).not.toContain('href={alert.url || registered?.url}');
+  });
   it("shows country-specific verified labels and compact notification status", () => {
     expect(app).toContain('US: "2026 rules verified"');
     expect(app).toContain('GB: "2026/27 rules verified"');
