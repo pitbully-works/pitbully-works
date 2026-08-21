@@ -13,7 +13,9 @@ describe("5-country rules update center UI", () => {
   });
 
   it("keeps source statuses for all countries so country switching works", () => {
-    expect(app).toContain("setRuleSourceStatuses(Array.isArray(sourcePayload?.sources) ? sourcePayload.sources : [])");
+    expect(app).toContain("setRuleSourceStatuses(Array.isArray(sourcePayload?.sources)");
+    expect(app).toContain("sourcePayload.sources.map((item) => {");
+    expect(app).toContain("normalizedCountry ? { ...item, country: normalizedCountry } : null");
   });
 
   it("latches an official-source change until the baseline is reviewed", () => {
