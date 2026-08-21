@@ -1011,7 +1011,7 @@ function AUInvestmentAccountsPanel({
   auInvestment, onUpdate, onUpdateAccount, age, investmentRules, taxRules,
   sgContribution, totalConcessional, concessionalRemaining, effectiveConcessionalCap, carryForwardApplied,
   effectiveNonConcessionalCap, bringForwardOneOffApplied, downsizerApplied, nonConcessionalRemaining,
-  superContributionTax, salarySacrificeSaving, listoAnnual, listoIncome, coContributionAnnual, coContributionIncome, taxResult, capitalGainsTax, totalTax, marginalRate,
+  superContributionTax, salarySacrificeSaving, listoAnnual, listoIncome, coContributionAnnual, coContributionIncome, taxResult, capitalGainsTax, totalTax, helpRepayment, helpRepaymentIncome, marginalRate,
 }) {
   const { t, money } = useContext(LocaleContext);
   // 画面に出す数値・年度・税率はすべて AU_COUNTRY_RULES から取り出す。
@@ -1270,6 +1270,8 @@ function AUInvestmentAccountsPanel({
         </>}
         <Field guide={t("auMlsIncomeGuide")} label={t("auMlsIncomeLabel")} unit="A$" step={1000} value={auInvestment.mlsIncome} onChange={(v) => onUpdate("mlsIncome", v)} />
         <Field guide={t("auMlsUncoveredDaysGuide")} label={t("auMlsUncoveredDaysLabel")} unit={t("daysUnit")} step={1} value={auInvestment.mlsUncoveredDays} onChange={(v) => onUpdate("mlsUncoveredDays", v)} />
+        <Field guide={t("auHelpDebtGuide")} label={t("auHelpDebtLabel")} unit="A$" step={500} value={auInvestment.helpDebtBalance} onChange={(v) => onUpdate("helpDebtBalance", v)} />
+        <Field guide={t("auHelpRepaymentIncomeGuide")} label={t("auHelpRepaymentIncomeLabel")} unit="A$" step={1000} value={auInvestment.helpRepaymentIncome} onChange={(v) => onUpdate("helpRepaymentIncome", v)} />
         <Field guide={t("auCapitalGainGuide")} label={t("auCapitalGainLabel")} unit="A$" step={500} value={auInvestment.estimatedCapitalGainAnnual} onChange={(v) => onUpdate("estimatedCapitalGainAnnual", v)} />
         <label className="checkbox-row">
           <input
@@ -1294,6 +1296,12 @@ function AUInvestmentAccountsPanel({
             label={t("auMlsLabel")}
             value={money(taxResult.medicareLevySurcharge || 0)}
             sub={t("auMlsSub")}
+          />
+          <StatCard
+            label={t("auHelpRepaymentLabel")}
+            value={money(helpRepayment || 0)}
+            sub={t("auHelpRepaymentSub", { income: money(helpRepaymentIncome || 0) })}
+            tone={helpRepayment > 0 ? "danger" : undefined}
           />
           <StatCard
             label={t("auCgtLabel")}
@@ -1870,6 +1878,8 @@ const DEFAULT_INPUTS = {
       medicareSpouseTaxableIncome: 0, // 家族Medicare levy減免用の配偶者課税所得
       mlsIncome: 0, // 0なら課税所得を概算利用
       mlsUncoveredDays: 365,
+      helpDebtBalance: 0,
+      helpRepaymentIncome: 0, // 0なら課税所得を概算利用。ATOのrepayment incomeが分かる場合は入力。
       estimatedCapitalGainAnnual: 0,
       capitalGainHeldOver12Months: true,
       // withdrawalTaxPct：60歳以降のSuperからの引出は非課税(0%)。
@@ -2553,6 +2563,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         mlsUncoveredDays: auInvestment.mlsUncoveredDays ?? 365,
       })
     : { incomeTax: 0, medicareLevy: 0, total: 0 };
+  const auHelpRepaymentIncome = Math.max(0, Number(auInvestment.helpRepaymentIncome) || auTaxableIncome);
+  const auHelpRepayment = (auIsAU && rules.tax.implemented && typeof rules.tax.calculateStudyLoanCompulsoryRepayment === "function")
+    ? rules.tax.calculateStudyLoanCompulsoryRepayment(auHelpRepaymentIncome, Number(auInvestment.helpDebtBalance) || 0)
+    : 0;
   const auMarginalRate = (auIsAU && rules.tax.implemented)
     ? rules.tax.getMarginalRateWithLevy(auTaxableIncome) : 0;
   // Division 293 income：入力があればそれを、無ければ課税所得の概算（年収 − 給与犠牲）を使う。
@@ -7242,6 +7256,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               taxResult={auTaxResult}
               capitalGainsTax={auCapitalGainsTax}
               totalTax={auTotalTax}
+              helpRepayment={auHelpRepayment}
+              helpRepaymentIncome={auHelpRepaymentIncome}
               marginalRate={auMarginalRate}
             />
           ) : (
