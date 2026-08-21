@@ -23,7 +23,7 @@ describe("rule update feed validation", () => {
 
   it("cannot count malformed feeds as a successful full check", () => {
     const sourceValidation = app.indexOf("const normalizedSourceStatuses = normalizeRuleSourceStatusFeed(sourcePayload, RULE_SOURCE_REGISTRY);");
-    const sourceSuccess = app.indexOf("sourceStatusChecked = true;", sourceValidation);
+    const sourceSuccess = app.indexOf("sourceStatusChecked = !!sourceCheckedAt;", sourceValidation);
     expect(sourceValidation).toBeGreaterThan(-1);
     expect(sourceSuccess).toBeGreaterThan(sourceValidation);
     expect(app).toContain("if (manifestChecked && sourceStatusChecked) {");
