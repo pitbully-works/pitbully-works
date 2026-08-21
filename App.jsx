@@ -1264,7 +1264,10 @@ function AUInvestmentAccountsPanel({
           <button className={`chip ${auInvestment.mlsFamily ? "chip-active" : ""}`} onClick={() => onUpdate("mlsFamily", true)}>{t("auMlsFamily")}</button>
           <button className={`chip ${!auInvestment.mlsFamily ? "chip-active" : ""}`} onClick={() => onUpdate("mlsFamily", false)}>{t("auMlsSingle")}</button>
         </div>
-        {auInvestment.mlsFamily && <Field guide={t("auMlsChildrenGuide")} label={t("auMlsChildrenLabel")} unit="" step={1} value={auInvestment.mlsDependentChildren} onChange={(v) => onUpdate("mlsDependentChildren", v)} />}
+        {auInvestment.mlsFamily && <>
+          <Field guide={t("auMedicareSpouseIncomeGuide")} label={t("auMedicareSpouseIncomeLabel")} unit="A$" step={1000} value={auInvestment.medicareSpouseTaxableIncome} onChange={(v) => onUpdate("medicareSpouseTaxableIncome", v)} />
+          <Field guide={t("auMlsChildrenGuide")} label={t("auMlsChildrenLabel")} unit="" step={1} value={auInvestment.mlsDependentChildren} onChange={(v) => onUpdate("mlsDependentChildren", v)} />
+        </>}
         <Field guide={t("auMlsIncomeGuide")} label={t("auMlsIncomeLabel")} unit="A$" step={1000} value={auInvestment.mlsIncome} onChange={(v) => onUpdate("mlsIncome", v)} />
         <Field guide={t("auMlsUncoveredDaysGuide")} label={t("auMlsUncoveredDaysLabel")} unit={t("daysUnit")} step={1} value={auInvestment.mlsUncoveredDays} onChange={(v) => onUpdate("mlsUncoveredDays", v)} />
         <Field guide={t("auCapitalGainGuide")} label={t("auCapitalGainLabel")} unit="A$" step={500} value={auInvestment.estimatedCapitalGainAnnual} onChange={(v) => onUpdate("estimatedCapitalGainAnnual", v)} />
@@ -1721,7 +1724,7 @@ const DEFAULT_INPUTS = {
       adjustedIncome: 0, // 年金拠出上限のテーパリング判定用（0なら annualIncome を使用）
       thresholdIncome: 0, // テーパー適用の第1条件。0なら annualIncome を使用
       dividendIncomeAnnual: 0,
-      // Medicare Levy Surcharge (MLS) 2026-27
+      // Medicare Levy Surcharge (MLS) 2026-27 / Medicare levy家族所得減免
       mlsHospitalCover: false,
       mlsFamily: false,
       mlsDependentChildren: 0,
@@ -1860,10 +1863,11 @@ const DEFAULT_INPUTS = {
       // Government super co-contribution：資格条件は本人確認。0なら年収をtotal incomeの概算として使用。
       coContributionEligible: false,
       coContributionTotalIncome: 0,
-      // Medicare Levy Surcharge (MLS) 2026-27
+      // Medicare Levy Surcharge (MLS) 2026-27 / Medicare levy家族所得減免
       mlsHospitalCover: false,
       mlsFamily: false,
       mlsDependentChildren: 0,
+      medicareSpouseTaxableIncome: 0, // 家族Medicare levy減免用の配偶者課税所得
       mlsIncome: 0, // 0なら課税所得を概算利用
       mlsUncoveredDays: 365,
       estimatedCapitalGainAnnual: 0,
@@ -2528,6 +2532,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const auTaxableIncome = Math.max(0, auSalary - auVoluntaryConcessional);
   const auTaxResult = (auIsAU && rules.tax.implemented)
     ? rules.tax.calculateTotalTax(auTaxableIncome, {
+        medicareFamily: auInvestment.mlsFamily === true,
+        medicareSpouseTaxableIncome: auInvestment.medicareSpouseTaxableIncome || 0,
+        medicareDependentChildren: auInvestment.mlsDependentChildren || 0,
         mlsIncome: Math.max(0, Number(auInvestment.mlsIncome) || auTaxableIncome),
         hasAppropriateHospitalCover: auInvestment.mlsHospitalCover === true,
         mlsFamily: auInvestment.mlsFamily === true,
