@@ -35,7 +35,7 @@ import { pickCurrentAnchor } from "./utils/currentSection.js";
 import { isKakeiboPayload, mergeKakeiboInputs, checkKakeiboAmountUnit } from "./utils/importFromKakeibo.js";
 import {
   PROFILE_COUNTRIES, PROFILE_STORAGE_VERSION, applySharedIdentity, forceCountryMeta,
-  makeCountryProfile, migrateCountryProfiles, normalizeProfileCountry, targetCountryFromKakeibo, targetCountryFromBackup,
+  makeCountryProfile, migrateCountryProfiles, normalizeProfileCountry, normalizeCountryKeyedRecord, targetCountryFromKakeibo, targetCountryFromBackup,
 } from "./utils/countryProfiles.js";
 import { buildNisaBreakdown, breakdownPrincipalItems, breakdownReturnBars, breakdownTotals } from "./utils/nisaBreakdown.js";
 import { describeSchedulePace } from "./utils/schedulePace.js";
@@ -2841,7 +2841,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           const activeCountry = launchCountry() || normalizeProfileCountry(migrated.activeCountry);
           const activeInputs = profiles[activeCountry] || makeCountryProfile(DEFAULT_INPUTS, activeCountry, sharedSource);
           countryProfilesRef.current = { ...profiles, [activeCountry]: activeInputs };
-          const savedWatchlists = parsed.watchlists && typeof parsed.watchlists === "object" ? { ...parsed.watchlists } : {};
+          const savedWatchlists = parsed.watchlists && typeof parsed.watchlists === "object" ? normalizeCountryKeyedRecord(parsed.watchlists) : {};
           if (!parsed.watchlists && Array.isArray(parsed.watchlist)) savedWatchlists.JP = parsed.watchlist;
           countryWatchlistsRef.current = savedWatchlists;
           setInputs(activeInputs);
@@ -2996,9 +2996,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       setImportScheduleOverlaps([]);
       if (parsed.profileStorageVersion >= PROFILE_STORAGE_VERSION && parsed.profiles && typeof parsed.profiles === "object") {
         const restored = {};
-        const sharedSource = parsed.profiles.JP || parsed.inputs || inputs;
+        const normalizedProfiles = normalizeCountryKeyedRecord(parsed.profiles);
+        const sharedSource = normalizedProfiles.JP || parsed.inputs || inputs;
         PROFILE_COUNTRIES.forEach((code) => {
-          const raw = parsed.profiles[code];
+          const raw = normalizedProfiles[code];
           if (!raw || typeof raw !== "object") return;
           const blank = makeCountryProfile(DEFAULT_INPUTS, code, sharedSource);
           restored[code] = forceCountryMeta(applySharedIdentity(mergeSavedInputs(blank, raw), sharedSource), code);
@@ -3010,7 +3011,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         }
         const activeInputs = restored[active] || makeCountryProfile(DEFAULT_INPUTS, active, sharedSource);
         countryProfilesRef.current = { ...restored, [active]: activeInputs };
-        const restoredWatchlists = parsed.watchlists && typeof parsed.watchlists === "object" ? { ...parsed.watchlists } : {};
+        const restoredWatchlists = parsed.watchlists && typeof parsed.watchlists === "object" ? normalizeCountryKeyedRecord(parsed.watchlists) : {};
         countryWatchlistsRef.current = restoredWatchlists;
         setInputs(activeInputs);
         setWatchlist(Array.isArray(restoredWatchlists[active]) ? restoredWatchlists[active] : defaultWatchlistFor(active));

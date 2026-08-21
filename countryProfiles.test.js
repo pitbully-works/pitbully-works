@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { PROFILE_COUNTRIES, PROFILE_STORAGE_VERSION, applySharedIdentity, forceCountryMeta, makeCountryProfile, migrateCountryProfiles, targetCountryFromKakeibo, targetCountryFromBackup } from "./utils/countryProfiles.js";
+import { PROFILE_COUNTRIES, PROFILE_STORAGE_VERSION, applySharedIdentity, forceCountryMeta, makeCountryProfile, migrateCountryProfiles, normalizeCountryKeyedRecord, targetCountryFromKakeibo, targetCountryFromBackup } from "./utils/countryProfiles.js";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 const defaults={country:"JP",baseCurrency:"JPY",language:"ja",userName:"",birthDate:"",currentAge:35,currentAssets:0,banks:[],pensionMonthly:0,livingCostMonthly:0};
@@ -24,5 +24,24 @@ describe("backup active-country strictness", () => {
   });
   it("explicit unknown country is rejected instead of silently becoming JP", () => {
     expect(targetCountryFromBackup("XX")).toBeNull();
+  });
+});
+
+
+describe("country-keyed persisted map normalization", () => {
+  it("restores lowercase/spaced profile keys instead of silently losing that country", () => {
+    const m = migrateCountryProfiles(defaults, {
+      profileStorageVersion: PROFILE_STORAGE_VERSION,
+      activeCountry: " us ",
+      profiles: { " us ": { currentAssets: 4321 } },
+    });
+    expect(m.activeCountry).toBe("US");
+    expect(m.profiles.US.currentAssets).toBe(4321);
+  });
+  it("normalizes watchlist-style maps and ignores unsupported country keys", () => {
+    expect(normalizeCountryKeyedRecord({ " ca ": [1], XX: [2] })).toEqual({ CA: [1] });
+  });
+  it("canonical country key wins when a noisy duplicate also exists", () => {
+    expect(normalizeCountryKeyedRecord({ " us ": [1], US: [2] }).US).toEqual([2]);
   });
 });
