@@ -72,6 +72,34 @@ describe("rule update center", () => {
     expect(kept?.titleEn).not.toBe("wrong-country replacement");
   });
 
+
+  it("remote制度更新は既存IDを同じ国でも上書きできない", () => {
+    const builtin = BUILTIN_RULE_UPDATES.find((item) => item.id === "JP-IDECO-2026-12-01");
+    const merged = mergeRuleUpdateManifests([
+      {
+        id: "JP-IDECO-2026-12-01",
+        country: "JP",
+        titleEn: "same-country replacement",
+        changes: [{ path: "retirement.currentMonthlyLimits.employeeNoCorporatePension", after: 999999999 }],
+      },
+    ]);
+    const kept = merged.find((item) => item.id === "JP-IDECO-2026-12-01");
+    expect(kept?.titleJa).toBe(builtin?.titleJa);
+    expect(kept?.titleEn).not.toBe("same-country replacement");
+    expect(kept?.changes).toEqual(builtin?.changes);
+  });
+
+  it("remote制度更新の重複IDは最初の有効データを保持する", () => {
+    const merged = mergeRuleUpdateManifests([
+      { id: "REMOTE-DUP", country: "US", titleEn: "first", changes: [] },
+      { id: "REMOTE-DUP", country: "US", titleEn: "second", changes: [{ path: "tax.fake", after: 1 }] },
+    ]);
+    const rows = merged.filter((item) => item.id === "REMOTE-DUP");
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.titleEn).toBe("first");
+    expect(rows[0]?.changes).toEqual([]);
+  });
+
   it("保存済み制度変更履歴も国コードを正規化し、未知国履歴は除外する", () => {
     const state = normalizeRuleUpdateState({
       history: [
