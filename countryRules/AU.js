@@ -26,7 +26,7 @@ export const AU_COUNTRY_RULES = {
       { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "partial", effective: "2026-27 / Age Pension Mar 2026 rates / Rent Assistance & CSHC Jul 2026 rates", lastUpdated: "2026-08-21", updateJa: "Age Pensionの資産・所得テスト、Work Bonus年次近似、Super取崩し、子なし世帯のRent Assistanceに加え、Commonwealth Seniors Health Cardの所得上限による見込み判定を実装。", updateEn: "Age Pension means tests, annualised Work Bonus, Super drawdown and Rent Assistance for households without dependent children are modelled, plus an income-limit estimator for the Commonwealth Seniors Health Card." },
       { key: "healthcare", labelJa: "医療", labelEn: "Healthcare", status: "partial", effective: "2026-27 / 2026 calendar-year Safety Nets", lastUpdated: "2026-08-21", updateJa: "Medicare前提の自己負担に加え、2026年PBS Safety Net概算とMedicare Safety Net閾値を反映。診療ごとのSafety Net還付・aged care資力調査は未自動化。", updateEn: "Adds a 2026 PBS Safety Net estimate and Medicare Safety Net thresholds to the Medicare out-of-pocket model; item-level Safety Net rebates and aged-care means testing remain manual." },
       { key: "tax", labelJa: "税金", labelEn: "Tax", status: "partial", effective: "2026-27 financial year", lastUpdated: "2026-08-21", updateJa: "居住者所得税・LITO・SAPTO・Medicare levy・MLS・CGTを反映。", updateEn: "Resident income tax, LITO, SAPTO, Medicare levy, MLS and CGT are modelled." },
-      { key: "estate", labelJa: "相続", labelEn: "Estate", status: "partial", effective: "2026-27", lastUpdated: "2026-08-17", updateJa: "相続目標は資産計画に反映。Super death benefit等の税務自動計算は未実装。", updateEn: "Estate targets feed the plan; tax treatment of Super death benefits is not automated." },
+      { key: "estate", labelJa: "相続", labelEn: "Estate", status: "partial", effective: "2026-27", lastUpdated: "2026-08-21", updateJa: "オーストラリアには相続税はありません。Super death benefitの一括受取について、death benefits dependant / non-dependant別の税額概算を実装。所得ストリーム・遺産管理人経由などの詳細税務は未自動化。", updateEn: "Australia has no inheritance tax. A lump-sum Super death-benefit estimator now models tax for death-benefits dependants versus non-dependants; income streams and detailed deceased-estate treatment remain manual." },
     ],
   },
   investment: {
@@ -1180,6 +1180,59 @@ export const AU_COUNTRY_RULES = {
       "HELP等の学生ローンは2026-27の当年強制返済額を実装済み。将来の債務残高・年次indexation・任意返済の自動投影は未実装",
       "非居住者（foreign resident）の税率",
       "60歳未満のSuper引き出しへの課税（low rate capは保持）",
+    ],
+  },
+
+  estate: {
+    implemented: true,
+    effectiveTaxYear: "2026-27",
+    lastUpdated: "2026-08-21",
+    sourceName: "Australian Taxation Office (ATO) — Tax on super benefits / deceased estates",
+    sourceUrl: "https://www.ato.gov.au/tax-rates-and-codes/key-superannuation-rates-and-thresholds/payments-from-super",
+    sourceUrls: {
+      deathBenefits: "https://www.ato.gov.au/tax-rates-and-codes/key-superannuation-rates-and-thresholds/payments-from-super",
+      deceasedEstates: "https://www.ato.gov.au/individuals-and-families/deceased-estates/doing-trust-tax-returns-for-the-deceased-estate/when-and-how-to-lodge-returns-for-a-deceased-estate",
+    },
+    // Australia has no general inheritance tax. This calculator is intentionally limited to
+    // a Super death-benefit lump sum paid directly to an individual beneficiary.
+    // Death-benefits dependant: lump sum is tax free.
+    // Non-dependant: tax-free component remains tax free; taxed element max 15% + Medicare levy;
+    // untaxed element max 30% + Medicare levy. The Medicare levy is modelled at 2% for a direct payment.
+    medicareLevyRate: 0.02,
+    nonDependantTaxedElementRate: 0.15,
+    nonDependantUntaxedElementRate: 0.30,
+    calculateSuperDeathBenefitLumpSum({
+      taxFreeComponent = 0,
+      taxedElement = 0,
+      untaxedElement = 0,
+      isDeathBenefitsDependant = true,
+      includeMedicareLevy = true,
+    } = {}) {
+      const clean = (v) => Math.max(0, Number(v) || 0);
+      const taxFree = clean(taxFreeComponent);
+      const taxed = clean(taxedElement);
+      const untaxed = clean(untaxedElement);
+      const gross = taxFree + taxed + untaxed;
+      if (isDeathBenefitsDependant) {
+        return { gross, taxFreeComponent: taxFree, taxedElement: taxed, untaxedElement: untaxed, tax: 0, net: gross, effectiveTaxRate: 0 };
+      }
+      const levy = includeMedicareLevy ? this.medicareLevyRate : 0;
+      const tax = taxed * (this.nonDependantTaxedElementRate + levy)
+        + untaxed * (this.nonDependantUntaxedElementRate + levy);
+      return {
+        gross,
+        taxFreeComponent: taxFree,
+        taxedElement: taxed,
+        untaxedElement: untaxed,
+        tax,
+        net: Math.max(0, gross - tax),
+        effectiveTaxRate: gross > 0 ? tax / gross : 0,
+      };
+    },
+    notImplemented: [
+      "Super death benefit income streams（受取人・死亡者の年齢、taxed/untaxed elementによる課税）",
+      "遺産管理人・deceased estateを経由するSuper death benefitの税務とMedicare levyの個別判定",
+      "CGT・deceased estate trust return・非居住者受益者など死亡後の資産税務の完全自動計算",
     ],
   },
 
