@@ -49,6 +49,7 @@ import {
 } from "./utils/ruleUpdates.js";
 import { getRuleSourcesForCountry } from "./utils/ruleSourceRegistry.js";
 import { buildCountryRuleCatalog } from "./utils/countryRuleCatalog.js";
+import { readBoundedJsonResponse, MAX_RULE_MANIFEST_RESPONSE_CHARS, MAX_RULE_SOURCE_STATUS_RESPONSE_CHARS } from "./utils/remoteJson.js";
 // 国に依存しない共通UI部品（入力欄・ガイド・内訳グラフ）と表示基盤（LocaleContext等）は ui/ 配下へ分離。
 import {
   yen,
@@ -2262,16 +2263,14 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     let remote = [];
     try {
       const response = await fetch(`/rules-updates.json?ts=${Date.now()}`, { cache: "no-store" });
-      if (response.ok) {
-        const payload = await response.json();
-        remote = Array.isArray(payload?.updates) ? payload.updates : [];
-      }
+      const payload = await readBoundedJsonResponse(response, MAX_RULE_MANIFEST_RESPONSE_CHARS);
+      remote = Array.isArray(payload?.updates) ? payload.updates : [];
     } catch { /* オフライン時は内蔵済みの確認済み制度情報を使う */ }
     setRuleUpdates(mergeRuleUpdateManifests(remote));
     try {
       const sourceResponse = await fetch(`/rules-source-status.json?ts=${Date.now()}`, { cache: "no-store" });
-      if (sourceResponse.ok) {
-        const sourcePayload = await sourceResponse.json();
+      const sourcePayload = await readBoundedJsonResponse(sourceResponse, MAX_RULE_SOURCE_STATUS_RESPONSE_CHARS);
+      if (sourcePayload) {
         setRuleSourceStatuses(Array.isArray(sourcePayload?.sources)
           ? sourcePayload.sources.slice(0, 500).map((item) => {
               if (!item || typeof item !== "object" || Array.isArray(item)) return null;
