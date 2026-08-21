@@ -785,6 +785,7 @@ export const JA_TRANSLATIONS = {
     "resetAllConfirm2": "本当に、すべて消して最初から始めますか？",
     "importFailedError": "読み込みに失敗しました。正しいバックアップテキストか確認してください。（{message}）",
     "importUnitMissingError": "家計簿の金額の単位が分かりません（amount_unit がありません）。金額が100倍・100分の1になる恐れがあるため取り込みを中止しました。家計簿アプリを最新にしてから、もう一度書き出してください。",
+    "importCountryUnsupportedError": "家計簿データの国コードに対応していません（countryCode: {country}）。別の国のデータを日本へ誤って取り込むのを防ぐため中止しました。",
     "importUnitUnknownError": "家計簿の金額の単位に対応していません（amount_unit: {unit}）。このアプリは主単位（major）で書き出されたものだけを取り込みます。金額が100倍・100分の1になる恐れがあるため中止しました。",
     "importInputsNotFoundError": "入力データが見つかりません",
     "inheritanceAmountPlaceholder": "残したい金額（円）",

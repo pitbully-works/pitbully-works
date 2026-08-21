@@ -785,6 +785,7 @@ export const EN_TRANSLATIONS = {
     "resetAllConfirm2": "Are you sure you want to erase everything and start over?",
     "importFailedError": "Failed to load. Please check that this is the correct backup text. ({message})",
     "importUnitMissingError": "The amount unit from Kakeibo is missing (no amount_unit). The import was stopped because the figures could come in 100x or 1/100 of their true size. Please update the Kakeibo app and export again.",
+    "importCountryUnsupportedError": "The Kakeibo country code is not supported (countryCode: {country}). The import was stopped to prevent data for another country from being silently imported into Japan.",
     "importUnitUnknownError": "The amount unit from Kakeibo is not supported (amount_unit: {unit}). This app only accepts data exported in major units. The import was stopped because the figures could come in 100x or 1/100 of their true size.",
     "importInputsNotFoundError": "Input data not found",
     "inheritanceAmountPlaceholder": "Amount to leave",
