@@ -45,7 +45,7 @@ import { newSci, sciPress, sciExpr, sciFormat, sciTokensFromExpr, normalizeSciHi
 import {
   RULE_UPDATE_STORAGE_KEY, BUILTIN_RULE_UPDATES, normalizeRuleUpdateState,
   applyApprovedRuleUpdates, mergeRuleUpdateManifests, isUpdateEffective, normalizeRuleCountry,
-  isRuleUpdateApproved, isRuleUpdateDismissed, safeRuleSourceUrl, normalizeRuleUpdateId, normalizeRuleDateString, normalizeRuleSourceStatusFeed,
+  isRuleUpdateApproved, isRuleUpdateDismissed, safeRuleSourceUrl, normalizeRuleUpdateId, normalizeRuleDateString, normalizeRuleSourceStatusFeed, normalizeRuleTimestamp,
 } from "./utils/ruleUpdates.js";
 import { RULE_SOURCE_REGISTRY, getRuleSourcesForCountry } from "./utils/ruleSourceRegistry.js";
 import { buildCountryRuleCatalog } from "./utils/countryRuleCatalog.js";
@@ -2264,6 +2264,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const checkRuleUpdates = useCallback(async () => {
     let manifestChecked = false;
     let sourceStatusChecked = false;
+    let sourceCheckedAt = "";
     try {
       const response = await fetch(`/rules-updates.json?ts=${Date.now()}`, { cache: "no-store" });
       const payload = await readBoundedJsonResponse(response, MAX_RULE_MANIFEST_RESPONSE_CHARS);
@@ -2285,7 +2286,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       const normalizedSourceStatuses = normalizeRuleSourceStatusFeed(sourcePayload, RULE_SOURCE_REGISTRY);
       if (normalizedSourceStatuses) {
         setRuleSourceStatuses(normalizedSourceStatuses);
-        sourceStatusChecked = true;
+        sourceCheckedAt = normalizeRuleTimestamp(sourcePayload.checkedAt);
+        sourceStatusChecked = !!sourceCheckedAt;
       }
     } catch { /* 監視状態を取得できなくても既存計算には影響させない */ }
 
@@ -2294,7 +2296,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     // また非同期取得中に承認・確認済み操作が入っても、開始時点の古い state で
     // それらを巻き戻さないよう、完了時点の state を基準に更新する。
     if (manifestChecked && sourceStatusChecked) {
-      const checkedAt = new Date().toISOString();
+      // Record when the official-source watcher actually completed, not when this
+      // device merely downloaded the cached status file. This keeps “Last checked”
+      // truthful even if a user reopens the app many times between watcher runs.
+      const checkedAt = sourceCheckedAt;
       setRuleUpdateState((current) => {
         const normalized = normalizeRuleUpdateState({ ...current, lastCheckedAt: checkedAt });
         try { window.localStorage?.setItem(RULE_UPDATE_STORAGE_KEY, JSON.stringify(normalized)); } catch { /* noop */ }

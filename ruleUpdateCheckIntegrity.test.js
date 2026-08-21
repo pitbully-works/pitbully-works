@@ -9,12 +9,14 @@ describe("rule update check integrity", () => {
     expect(app).toContain("let manifestChecked = false;");
     expect(app).toContain("let sourceStatusChecked = false;");
     expect(app).toContain("manifestChecked = true;");
-    expect(app).toContain("sourceStatusChecked = true;");
+    expect(app).toContain("sourceCheckedAt = normalizeRuleTimestamp(sourcePayload.checkedAt);");
+    expect(app).toContain("sourceStatusChecked = !!sourceCheckedAt;");
     expect(app).toContain("if (manifestChecked && sourceStatusChecked) {");
   });
 
   it("updates lastCheckedAt from the latest state instead of overwriting decisions captured during async fetch", () => {
     expect(app).toContain("setRuleUpdateState((current) => {");
+    expect(app).toContain("const checkedAt = sourceCheckedAt;");
     expect(app).toContain("normalizeRuleUpdateState({ ...current, lastCheckedAt: checkedAt })");
     expect(app).not.toContain("const next = { ...ruleUpdateState, lastCheckedAt: new Date().toISOString() };");
   });

@@ -14,8 +14,10 @@ describe("official rule-source automation", () => {
     expect(workflow).toContain("contents: write");
   });
 
-  it("does not commit merely because checkedAt changed", () => {
-    expect(workflow).toContain("map(({ checkedAt, ...source }) => source)");
+  it("publishes each successful watcher timestamp as an auditable check", () => {
+    expect(workflow).toContain("git diff --quiet -- public/rules-source-status.json");
+    expect(workflow).toContain('echo "changed=true" >> "$GITHUB_OUTPUT"');
+    expect(workflow).not.toContain("map(({ checkedAt, ...source }) => source)");
     expect(workflow).toContain("steps.diff.outputs.changed == 'true'");
   });
 
