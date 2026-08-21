@@ -111,7 +111,10 @@ const CATEGORY_LABELS = {
 function getCategoryLabel(key, country) {
   const entry = CATEGORY_LABELS[key];
   if (!entry) return key;
-  return entry[country] || entry.JP;
+  if (entry[country]) return entry[country];
+  // 未知国や将来追加国で日本語ラベルへ黙ってフォールバックすると、
+  // 他国画面に日本制度名が混入したように見えるため、内部キーを返して欠落を顕在化させる。
+  return country === "JP" ? entry.JP : key;
 }
 
 // 表示層（見出し・金額フォーマット・現在の国/通貨/言語設定）だけを配布するための軽量Context。
