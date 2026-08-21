@@ -2262,23 +2262,28 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   }, [language, country, ruleUpdateState.history, persistRuleUpdateState]);
 
   const checkRuleUpdates = useCallback(async () => {
-    let remote = [];
     let manifestChecked = false;
     let sourceStatusChecked = false;
     try {
       const response = await fetch(`/rules-updates.json?ts=${Date.now()}`, { cache: "no-store" });
       const payload = await readBoundedJsonResponse(response, MAX_RULE_MANIFEST_RESPONSE_CHARS);
-      remote = Array.isArray(payload?.updates) ? payload.updates : [];
-      manifestChecked = true;
-    } catch { /* オフライン時は内蔵済みの確認済み制度情報を使う */ }
-    setRuleUpdates(mergeRuleUpdateManifests(remote));
+      // A syntactically valid JSON object is not enough. Only accept the documented
+      // feed schema; otherwise keep the last known-good remote rules in memory.
+      // This prevents a transient `{}`/wrong-schema deployment from silently removing
+      // an already-approved remote rule from the active calculation.
+      if (payload?.schemaVersion === 1 && Array.isArray(payload?.updates)) {
+        setRuleUpdates(mergeRuleUpdateManifests(payload.updates));
+        manifestChecked = true;
+      }
+    } catch { /* オフライン/壊れた配信時は直前の有効な制度情報を保持 */ }
     try {
       const sourceResponse = await fetch(`/rules-source-status.json?ts=${Date.now()}`, { cache: "no-store" });
       const sourcePayload = await readBoundedJsonResponse(sourceResponse, MAX_RULE_SOURCE_STATUS_RESPONSE_CHARS);
-      if (sourcePayload) {
+      // Do not clear existing alerts or advance lastCheckedAt for malformed status files.
+      if (sourcePayload?.schemaVersion === 1 && Array.isArray(sourcePayload?.sources)) {
         sourceStatusChecked = true;
-        setRuleSourceStatuses(Array.isArray(sourcePayload?.sources)
-          ? sourcePayload.sources.slice(0, 500).map((item) => {
+        setRuleSourceStatuses(sourcePayload.sources
+          .slice(0, 500).map((item) => {
               if (!item || typeof item !== "object" || Array.isArray(item)) return null;
               const normalizedCountry = normalizeRuleCountry(item.country);
               const id = normalizeRuleUpdateId(item.id);
@@ -2295,8 +2300,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 hash,
                 url: safeRuleSourceUrl(item.url),
               };
-            }).filter(Boolean)
-          : []);
+            }).filter(Boolean));
       }
     } catch { /* 監視状態を取得できなくても既存計算には影響させない */ }
 
