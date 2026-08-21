@@ -6,9 +6,8 @@
 //
 // 各カテゴリは必ず `implemented: boolean` を持つ。true の国だけが実際の計算式を持ち、
 // false の国は「まだ実装されていない」ことを示すプレースホルダーのみを持つ。
-// falseのときにJPの数値へフォールバックすることは絶対にしない
-// （フォールバックすると「日本の制度の数値が、あたかも米国・英国の制度の数値であるかのように」
-//   表示されてしまうため。未実装の場合は呼び出し側が明示的にプレビュー/未対応表示を出す）。
+// 5か国はいずれも専用ルールを持つ。未知の国コードだけは未実装プレースホルダーへ落とし、
+// JPの数値へフォールバックしない（他国に日本制度の数値が混入するのを防ぐ）。
 // ============================================================================
 
 import { JP_COUNTRY_RULES } from "./JP.js";
@@ -25,9 +24,6 @@ export const COUNTRY_RULES = {
   GB: GB_COUNTRY_RULES,
   CA: CA_COUNTRY_RULES,
   AU: AU_COUNTRY_RULES,
-  // CA / AU: SUPPORTED_COUNTRIES 側でまだ enabled:false（Coming Soon）のため、
-  // ここに追加しなくても getCountryRules() は自動的に JP へフォールバック値を
-  // 返さず、下記の通り「未定義国は最も安全側の＝未実装として扱う」ようにしてある。
 };
 
 export const UNIMPLEMENTED_COUNTRY_RULES = {
@@ -40,10 +36,9 @@ export const UNIMPLEMENTED_COUNTRY_RULES = {
 };
 
 // 共通計算エンジンの入口。`const rules = getCountryRules(country);` の形で呼び出す。
-// 重要：未対応の国であっても JP の数値へフォールバックしない
-// （フォールバックすると日本の制度の数値が、あたかもその国の制度の数値であるかのように
-//   表示されてしまうため）。JPだけが実装済みの計算式を持ち、それ以外は
-// 「未実装であることが明確に分かるプレースホルダー」を返す。
+// 重要：未知の国コードでもJPの数値へフォールバックしない。
+// 大文字・小文字の違いだけは正規化し、既知5か国なら必ずその国専用ルールを返す。
 export function getCountryRules(country) {
-  return COUNTRY_RULES[country] || UNIMPLEMENTED_COUNTRY_RULES;
+  const code = String(country || "").toUpperCase();
+  return COUNTRY_RULES[code] || UNIMPLEMENTED_COUNTRY_RULES;
 }
