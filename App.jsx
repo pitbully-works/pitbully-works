@@ -3048,13 +3048,13 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         if (!entry) return false;
         // v1 snapshots had no explicit country field. Those are legacy JP data even if
         // inputs.country happened to have been switched before country profiles existed.
-        const entryCountry = entry.country || "JP";
+        const entryCountry = targetCountryFromBackup(entry.country);
         return entryCountry === currentCountry;
       });
       // Keep only the active country's local history too. Otherwise switching JP -> US
       // can leave JP rows visible until a full reload even though storage filtering is correct.
       setHistory((prev) => {
-        const sameCountryPrev = prev.filter((h) => (h?.country || "JP") === currentCountry);
+        const sameCountryPrev = prev.filter((h) => targetCountryFromBackup(h?.country) === currentCountry);
         const map = new Map(sameCountryPrev.map((h) => [h.date, h]));
         clean.forEach((h) => map.set(h.date, h));
         return [...map.values()].sort((a, b) => (a.date < b.date ? 1 : -1));
@@ -3104,7 +3104,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       // upsert today's entry locally so the history list reflects it immediately
       // without re-fetching every stored snapshot on each keystroke
       setHistory((prev) => {
-        const others = prev.filter((h) => (h?.country || "JP") === code && h.date !== date);
+        const others = prev.filter((h) => targetCountryFromBackup(h?.country) === code && h.date !== date);
         return [snapshot, ...others].sort((a, b) => (a.date < b.date ? 1 : -1));
       });
       setSaveStatus("saved");
