@@ -178,7 +178,7 @@ export const AU_COUNTRY_RULES = {
     simulateGrowth({
       currentAge, retireAge, deathAge, accounts, annualWithdrawalNeeded,
       annualSalary, voluntaryConcessional, contributionsTaxRate, earningsTaxAccumulation,
-      div293TaxAnnual, div293PaidFrom, listoAnnual,
+      div293TaxAnnual, div293PaidFrom, listoAnnual, coContributionAnnual,
       carryForwardPriorYearBalance, carryForwardAvailableUnusedCap,
     }) {
       const keys = this.accountTypes;
@@ -187,6 +187,7 @@ export const AU_COUNTRY_RULES = {
       const div293FromSuper = div293PaidFrom !== "outside";
       const earnTax = (earningsTaxAccumulation === undefined || earningsTaxAccumulation === null) ? 0.15 : Number(earningsTaxAccumulation);
       const listo = Math.max(0, Number(listoAnnual) || 0);
+      const coContribution = Math.max(0, Number(coContributionAnnual) || 0);
 
       const balances = {}, contributions = {}, rates = {}, endAges = {}, withdrawalTax = {};
       keys.forEach((k) => {
@@ -246,7 +247,7 @@ export const AU_COUNTRY_RULES = {
         keys.forEach((k) => {
           if (age > endAges[k]) return;
           if (k === "superannuation") {
-            balances[k] += concessionalNet + contributions[k] + listo; // LISTOは政府拠出で、拠出時15%課税の対象外
+            balances[k] += concessionalNet + contributions[k] + listo + coContribution; // LISTO/co-contributionは政府拠出で、拠出時15%課税の対象外
           } else {
             balances[k] += contributions[k];
           }
@@ -340,7 +341,6 @@ export const AU_COUNTRY_RULES = {
       "3年分の前倒し拠出（bring-forward）の可否判定",
       "Transfer Balance Capを超えた分の課税（超過分は積立フェーズに留まり15%課税）",
       "Downsizer contribution（自宅売却時の最大$300,000拠出）",
-      "政府のco-contribution（低・中所得者への最大$500の上乗せ）",
       "残高$3M超の運用益への追加課税（Division 296）",
     ],
   },
@@ -694,6 +694,7 @@ export const AU_COUNTRY_RULES = {
       lito: "https://www.ato.gov.au/individuals-and-families/income-deductions-offsets-and-records/tax-offsets/low-income-tax-offset",
       div293: "https://www.ato.gov.au/individuals-and-families/super-for-individuals-and-families/super/growing-your-super/how-to-save-more-in-your-super/division-293-tax",
       listo: "https://www.ato.gov.au/individuals-and-families/super-for-individuals-and-families/super/growing-and-keeping-track-of-your-super/how-to-save-more-in-your-super/government-super-contributions/low-income-super-tax-offset",
+      coContribution: "https://www.ato.gov.au/individuals-and-families/super-for-individuals-and-families/super/growing-and-keeping-track-of-your-super/how-to-save-more-in-your-super/government-super-contributions/super-co-contributions",
       sapto: "https://www.ato.gov.au/individuals-and-families/income-deductions-offsets-and-records/tax-offsets/seniors-and-pensioners-tax-offset",
       medicareLevySurcharge: "https://www.privatehealth.gov.au/health_insurance/surcharges_incentives/medicare_levy.htm",
     },
@@ -783,6 +784,11 @@ export const AU_COUNTRY_RULES = {
       // ATI <= A$37,000、15%相当、最大A$500。算定額が0超A$10未満ならA$10。
       // 年齢・ビザ・10% eligible income test等は呼出側で eligible=true を明示した場合だけ適用する。
       listo: { incomeMax: 37000, rate: 0.15, maximum: 500, minimum: 10 },
+      // Government super co-contribution 2026-27。個人の税引後拠出に対し50%、最大A$500。
+      // 所得がA$49,293を超えると最大額が逓減し、A$64,293以上で0。
+      // 年齢・ビザ・10% eligible income test・税申告・TSB・non-concessional cap等は
+      // 呼出側で eligible=true を明示した場合だけ適用する。
+      coContribution: { lowerIncomeThreshold: 49293, higherIncomeThreshold: 64293, matchRate: 0.50, maximum: 500, minimum: 20 },
     },
     // LISTO（Low Income Super Tax Offset）。eligibility は年齢・ビザ・10% income test等を含むため、
     // 呼出側で eligible=true を明示した場合だけ算定する。
@@ -793,6 +799,24 @@ export const AU_COUNTRY_RULES = {
       const cfg = this.superannuation.listo;
       if (income > cfg.incomeMax || contributions <= 0) return 0;
       const raw = Math.min(cfg.maximum, contributions * cfg.rate);
+      return raw > 0 && raw < cfg.minimum ? cfg.minimum : raw;
+    },
+    // Government super co-contribution。eligibilityの完全判定には税申告・年齢・ビザ・
+    // 10% eligible income test・前年TSB・non-concessional cap等が必要なため、
+    // 呼出側で eligible=true を明示した場合だけ算定する。
+    calculateGovernmentSuperCoContribution(totalIncome, personalAfterTaxContribution, eligible = false) {
+      if (!eligible) return 0;
+      const income = Math.max(0, Number(totalIncome) || 0);
+      const contribution = Math.max(0, Number(personalAfterTaxContribution) || 0);
+      const cfg = this.superannuation.coContribution;
+      if (contribution <= 0 || income >= cfg.higherIncomeThreshold) return 0;
+      const contributionBased = Math.min(cfg.maximum, contribution * cfg.matchRate);
+      let incomeBasedMaximum = cfg.maximum;
+      if (income > cfg.lowerIncomeThreshold) {
+        const range = cfg.higherIncomeThreshold - cfg.lowerIncomeThreshold;
+        incomeBasedMaximum = Math.max(0, cfg.maximum * (cfg.higherIncomeThreshold - income) / range);
+      }
+      const raw = Math.min(contributionBased, incomeBasedMaximum);
       return raw > 0 && raw < cfg.minimum ? cfg.minimum : raw;
     },
     // 譲渡益：12か月超保有した資産は50%割引
@@ -964,6 +988,7 @@ export const AU_COUNTRY_RULES = {
     },
     notImplemented: [
       "SAPTOの配偶者間の未使用税額控除移転（spouse transfer）と資格条件の完全自動判定",
+      "Government super co-contributionは本人確認入力で反映済み。年齢・ビザ・10% eligible income test・税申告・前年TSB等の完全自動判定は未実装",
       "Medicare levyの家族所得による減免・日割り免除",
       "HECS-HELP（学生ローン）の返済",
       "非居住者（foreign resident）の税率",
