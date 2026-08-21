@@ -1893,6 +1893,13 @@ const DEFAULT_INPUTS = {
         rentAssistanceEligible: false,
         rentFortnightly: 0,
         rentAssistanceSharer: false,
+        // Commonwealth Seniors Health Card (CSHC) 見込み判定用。
+        cshcResidenceEligible: false,
+        cshcNoOtherIncomeSupport: false,
+        cshcAdjustedTaxableIncome: 0,
+        cshcDeemedAccountBasedIncome: 0,
+        cshcIllnessSeparated: false,
+        cshcDependentChildren: 0,
       },
       // 医療費（Medicare前提の簡易モデル）
       healthcare: {
