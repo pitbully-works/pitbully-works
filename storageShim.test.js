@@ -45,11 +45,10 @@ describe("browser storage compatibility shim", () => {
     expect(result.keys).toEqual(["snapshot:a", "snapshot:z"]);
   });
 
-  it("treats a non-string list prefix as empty instead of coercing it", async () => {
-    window.localStorage.setItem("nisa-lifeplan:a", "1");
-    const result = await installShim().list({ bad: true });
-    expect(result.prefix).toBe("");
-    expect(result.keys).toEqual(["a"]);
+  it("rejects malformed list prefixes instead of coercing them", async () => {
+    const storage = installShim();
+    await expect(storage.list({ bad: true })).rejects.toThrow("Invalid storage prefix");
+    await expect(storage.list("bad\0prefix")).rejects.toThrow("Invalid storage prefix");
   });
 
   it("does not replace a storage implementation already supplied by the host", () => {
@@ -77,6 +76,17 @@ describe("browser storage compatibility shim", () => {
     const storage = installShim();
     await expect(storage.set("alpha", { bad: true })).rejects.toThrow("Storage value must be a string");
     expect(window.localStorage.getItem("nisa-lifeplan:alpha")).toBeNull();
+  });
+
+  it("rejects oversized values before they reach localStorage", async () => {
+    const storage = installShim();
+    await expect(storage.set("alpha", "x".repeat(8_000_001))).rejects.toThrow("Storage value is too large");
+    expect(window.localStorage.getItem("nisa-lifeplan:alpha")).toBeNull();
+  });
+
+  it("caps namespaced list results to bound caller memory", () => {
+    expect(source).toContain("const MAX_LIST_KEYS = 5000");
+    expect(source).toContain("if (keys.length >= MAX_LIST_KEYS) break");
   });
 
 });

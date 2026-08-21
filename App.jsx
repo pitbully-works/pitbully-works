@@ -1986,10 +1986,17 @@ const DEFAULT_INPUTS = {
 
 
 const LIFEPLAN_SCI_HISTORY_KEY = "lifeplan-scientific-calculator-history-v1";
+const MAX_SCI_HISTORY_JSON_CHARS = 256_000;
+const MAX_RULE_UPDATE_JSON_CHARS = 1_000_000;
+const MAX_PERSISTED_JSON_CHARS = 8_000_000;
 
 function readSciHistory() {
   if (typeof window === "undefined") return [];
-  try { return normalizeSciHistory(JSON.parse(window.localStorage.getItem(LIFEPLAN_SCI_HISTORY_KEY) || "[]")); }
+  try {
+    const raw = window.localStorage.getItem(LIFEPLAN_SCI_HISTORY_KEY) || "[]";
+    if (raw.length > MAX_SCI_HISTORY_JSON_CHARS) return [];
+    return normalizeSciHistory(JSON.parse(raw));
+  }
   catch { return []; }
 }
 function saveSciHistory(history) {
@@ -2170,7 +2177,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   useEffect(() => {
     try {
       const raw = window.localStorage?.getItem(RULE_UPDATE_STORAGE_KEY);
-      if (raw) setRuleUpdateState(normalizeRuleUpdateState(JSON.parse(raw)));
+      if (raw && raw.length <= MAX_RULE_UPDATE_JSON_CHARS) setRuleUpdateState(normalizeRuleUpdateState(JSON.parse(raw)));
     } catch { /* 制度通知が読めなくても計算本体は継続 */ }
   }, []);
 
@@ -2857,7 +2864,18 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       try {
         const res = await window.storage.get(STORAGE_KEY, false);
         if (res?.value) {
-          const parsed = JSON.parse(res.value);
+          let parsed;
+          try {
+            if (res.value.length > MAX_PERSISTED_JSON_CHARS) throw new RangeError("Saved data is too large");
+            parsed = JSON.parse(res.value);
+          } catch (parseError) {
+            // Never destroy the only copy of malformed persisted data. Preserve the raw
+            // payload under a recovery key before the safe fallback profile is autosaved.
+            try {
+              await window.storage.set(`recovery:inputs:${Date.now()}`, res.value, false);
+            } catch { /* recovery is best-effort when storage itself is unavailable/full */ }
+            throw parseError;
+          }
           const migrated = migrateCountryProfiles(DEFAULT_INPUTS, parsed);
           const profiles = {};
           const sharedSource = migrated.profiles.JP || parsed.inputs || {};
@@ -3120,7 +3138,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         relevantKeys.map(async (k) => {
           try {
             const res = await window.storage.get(k, false);
-            return { key: k, entry: res?.value ? JSON.parse(res.value) : null };
+            if (!res?.value || res.value.length > MAX_PERSISTED_JSON_CHARS) return { key: k, entry: null };
+            return { key: k, entry: JSON.parse(res.value) };
           } catch (e) { return { key: k, entry: null }; }
         })
       );
