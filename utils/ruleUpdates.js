@@ -21,6 +21,14 @@ function normalizeRuleText(value, maxLength = MAX_RULE_TEXT_LENGTH) {
   return text.length <= maxLength ? text : text.slice(0, maxLength);
 }
 
+function normalizeRuleDisplayScalar(value) {
+  if (value === null) return null;
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") return normalizeRuleText(value, 500);
+  return null;
+}
+
 export function normalizeRuleUpdateId(value) {
   const id = typeof value === "string" ? value.trim() : "";
   return id && id.length <= 200 ? id : null;
@@ -226,8 +234,15 @@ export function normalizeRuleUpdateState(raw) {
         const decidedAt = normalizeRuleTimestamp(item.decidedAt);
         const effectiveDate = normalizeRuleDateString(item.effectiveDate);
         return {
-          ...item, id, ...(updateId ? { updateId } : {}), country, action,
-          decidedAt, effectiveDate,
+          id,
+          ...(updateId ? { updateId } : {}),
+          country,
+          action,
+          category: normalizeRuleText(item.category, 100),
+          titleJa: normalizeRuleText(item.titleJa, 500),
+          titleEn: normalizeRuleText(item.titleEn, 500),
+          decidedAt,
+          effectiveDate,
         };
       })
       .filter(Boolean)
@@ -310,18 +325,22 @@ export function mergeRuleUpdateManifests(remoteUpdates) {
           .filter((change) => change && typeof change === "object" && !Array.isArray(change))
           .slice(0, MAX_RULE_CHANGES_PER_UPDATE)
           .map((change) => ({
-            ...change,
             path: typeof change.path === "string" && safeRulePathParts(change.path) ? change.path.trim() : "",
             labelJa: normalizeRuleText(change.labelJa, 500),
             labelEn: normalizeRuleText(change.labelEn, 500),
             unit: normalizeRuleText(change.unit, 50),
+            before: normalizeRuleDisplayScalar(change.before),
+            after: normalizeRuleDisplayScalar(change.after),
           }))
           .filter((change) => !!change.path)
         : [];
       const effectiveDate = normalizeRuleDateString(item.effectiveDate);
+      const detectedAt = normalizeRuleDateString(item.detectedAt);
       const sourceUrl = safeRuleSourceUrl(item.sourceUrl);
+      // Remote manifests are external JSON. Retain only the documented fields the
+      // rule center consumes; unknown nested metadata must not stay resident in state.
       byId.set(id, {
-        ...item, id, country, changes, effectiveDate, sourceUrl,
+        id, country, changes, effectiveDate, detectedAt, sourceUrl,
         category: normalizeRuleText(item.category, 100),
         titleJa: normalizeRuleText(item.titleJa, 500),
         titleEn: normalizeRuleText(item.titleEn, 500),
