@@ -160,6 +160,31 @@ export function targetCountryFromBackup(value) {
   return PROFILE_COUNTRIES.includes(code) ? code : null;
 }
 
+
+export function normalizeSnapshotDate(value) {
+  const text = typeof value === "string" ? value.trim() : "";
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
+  return text;
+}
+
+export function snapshotStorageKey(country, date) {
+  const code = targetCountryFromBackup(country);
+  const normalizedDate = normalizeSnapshotDate(date);
+  if (!code || !normalizedDate) return null;
+  return `snapshot:${code}:${normalizedDate}`;
+}
+
+export function legacyJpSnapshotStorageKey(date) {
+  const normalizedDate = normalizeSnapshotDate(date);
+  return normalizedDate ? `snapshot:${normalizedDate}` : null;
+}
+
 export function targetCountryFromKakeibo(payload) {
   const raw = payload && typeof payload === "object" ? payload.countryCode : undefined;
   // 旧家計簿データは countryCode を持たないためJPとして互換維持する。
