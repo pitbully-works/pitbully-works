@@ -1621,7 +1621,27 @@ export function mergeSavedInputs(defaults, saved) {
       if (isPlainRecord(savedValue)) out[key] = mergeSavedInputs(defaultValue, savedValue);
       return;
     }
-    out[key] = savedValue;
+    // Scalar fields keep the current schema type too. Persisted JSON is untrusted:
+    // a string such as "NaN" must not replace a numeric field, and a truthy string
+    // must not replace a boolean flag. Long strings are capped so one text field cannot
+    // monopolize the whole persisted payload.
+    if (typeof defaultValue === "number") {
+      if (typeof savedValue === "number" && Number.isFinite(savedValue)) out[key] = savedValue;
+      return;
+    }
+    if (typeof defaultValue === "boolean") {
+      if (typeof savedValue === "boolean") out[key] = savedValue;
+      return;
+    }
+    if (typeof defaultValue === "string") {
+      if (typeof savedValue === "string") out[key] = savedValue.slice(0, 20_000);
+      return;
+    }
+    if (defaultValue === null) {
+      if (savedValue === null) out[key] = null;
+      return;
+    }
+    // Unknown scalar/container shapes are intentionally left at the current default.
   });
   return out;
 }
@@ -2257,9 +2277,15 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               if (!item || typeof item !== "object" || Array.isArray(item)) return null;
               const normalizedCountry = normalizeRuleCountry(item.country);
               const id = normalizeRuleUpdateId(item.id);
-              return normalizedCountry && id
-                ? { ...item, id, country: normalizedCountry, changed: item.changed === true }
-                : null;
+              if (!normalizedCountry || !id) return null;
+              // Source-monitor payloads are external data too. Keep only the fields the
+              // UI actually consumes so arbitrary/huge metadata cannot be retained in state.
+              return {
+                id,
+                country: normalizedCountry,
+                changed: item.changed === true,
+                url: safeRuleSourceUrl(item.url),
+              };
             }).filter(Boolean)
           : []);
       }

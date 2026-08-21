@@ -474,3 +474,35 @@ describe("batch hardening 13: remote metadata bounds", () => {
     expect(merged.some((x) => x.id === "OBJECT-COUNTRY")).toBe(false);
   });
 });
+
+describe("remote rule manifest metadata hardening", () => {
+  it("drops unknown remote manifest metadata and normalizes detectedAt", () => {
+    const [remote] = mergeRuleUpdateManifests([{
+      id: "US-META-1", country: "US", detectedAt: "2026-02-30", effectiveDate: "2026-09-01",
+      titleEn: "Title", unknownHuge: { nested: "x" }, changes: [],
+    }]).filter((item) => item.id === "US-META-1");
+    expect(remote.detectedAt).toBe("");
+    expect(remote).not.toHaveProperty("unknownHuge");
+  });
+
+  it("keeps only safe scalar before/after values in remote changes", () => {
+    const [remote] = mergeRuleUpdateManifests([{
+      id: "US-META-2", country: "US", effectiveDate: "2026-09-01",
+      changes: [{ path: "tax.standardDeduction.single", before: { bad: true }, after: Infinity, extra: "drop-me" }],
+    }]).filter((item) => item.id === "US-META-2");
+    expect(remote.changes[0].before).toBeNull();
+    expect(remote.changes[0].after).toBeNull();
+    expect(remote.changes[0]).not.toHaveProperty("extra");
+  });
+
+  it("whitelists persisted history metadata instead of spreading arbitrary fields", () => {
+    const state = normalizeRuleUpdateState({ history: [{
+      id: "h1", updateId: "u1", country: "JP", action: "approved",
+      titleJa: "  題名  ", category: " nisa ", decidedAt: "2026-08-21T12:00:00Z",
+      effectiveDate: "2026-09-01", unexpected: { huge: true },
+    }] });
+    expect(state.history[0].titleJa).toBe("題名");
+    expect(state.history[0].category).toBe("nisa");
+    expect(state.history[0]).not.toHaveProperty("unexpected");
+  });
+});

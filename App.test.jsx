@@ -911,3 +911,23 @@ describe("persisted array bounds", () => {
     expect(result.rows[4999]).toBe(4999);
   });
 });
+
+describe("persisted scalar schema hardening", () => {
+  it("does not let wrong primitive types replace current defaults", () => {
+    const defaults = { amount: 10, enabled: true, label: "ok" };
+    const merged = mergeSavedInputs(defaults, { amount: "999", enabled: "false", label: 123 });
+    expect(merged).toEqual(defaults);
+  });
+
+  it("rejects non-finite persisted numbers", () => {
+    const defaults = { amount: 10 };
+    expect(mergeSavedInputs(defaults, { amount: Infinity }).amount).toBe(10);
+    expect(mergeSavedInputs(defaults, { amount: NaN }).amount).toBe(10);
+  });
+
+  it("caps a restored string field instead of retaining an unbounded payload", () => {
+    const defaults = { memo: "" };
+    const merged = mergeSavedInputs(defaults, { memo: "x".repeat(25_000) });
+    expect(merged.memo).toHaveLength(20_000);
+  });
+});

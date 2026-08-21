@@ -16,7 +16,7 @@ describe("5-country rules update center UI", () => {
     expect(app).toContain("setRuleSourceStatuses(Array.isArray(sourcePayload?.sources)");
     expect(app).toContain("sourcePayload.sources.slice(0, 500).map((item) => {");
     expect(app).toContain("changed: item.changed === true");
-    expect(app).toContain("normalizedCountry && id");
+    expect(app).toContain("if (!normalizedCountry || !id) return null;");
   });
 
   it("defensively renders only array-shaped change rows", () => {
@@ -58,7 +58,15 @@ describe("5-country rules update center UI", () => {
 
   it("applies the same bounded ID normalization to official-source status rows", () => {
     expect(app).toContain("const id = normalizeRuleUpdateId(item.id)");
-    expect(app).toContain("normalizedCountry && id");
+    expect(app).toContain("if (!normalizedCountry || !id) return null;");
   });
 
+});
+
+describe("rule source status ingress hardening", () => {
+  it("whitelists source-monitor fields and sanitizes its URL at ingestion", () => {
+    expect(app).toContain("url: safeRuleSourceUrl(item.url)");
+    expect(app).toContain("changed: item.changed === true");
+    expect(app).not.toContain("? { ...item, id, country: normalizedCountry, changed: item.changed === true }");
+  });
 });
