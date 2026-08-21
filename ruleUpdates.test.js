@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { JP_COUNTRY_RULES } from "./countryRules/JP.js";
-import { BUILTIN_RULE_UPDATES, applyApprovedRuleUpdates, mergeRuleUpdateManifests, normalizeRuleUpdateState } from "./utils/ruleUpdates.js";
+import { BUILTIN_RULE_UPDATES, applyApprovedRuleUpdates, mergeRuleUpdateManifests, normalizeRuleUpdateState, isRuleUpdateApproved, isRuleUpdateDismissed } from "./utils/ruleUpdates.js";
 
 describe("rule update center", () => {
   it("does not change calculations before approval", () => {
@@ -49,6 +49,33 @@ describe("rule update center", () => {
     const canonical = applyApprovedRuleUpdates(JP_COUNTRY_RULES, "JP", BUILTIN_RULE_UPDATES, state, new Date("2026-12-01T12:00:00"));
     const noisy = applyApprovedRuleUpdates(JP_COUNTRY_RULES, "  jp  ", BUILTIN_RULE_UPDATES, state, new Date("2026-12-01T12:00:00"));
     expect(noisy.retirement.currentMonthlyLimits).toEqual(canonical.retirement.currentMonthlyLimits);
+  });
+
+  it("Object.prototype由来のIDを未承認なのに承認済みとして扱わない", () => {
+    const updates = [{
+      id: "toString",
+      country: "JP",
+      effectiveDate: "2026-01-01",
+      changes: [{ path: "retirement.currentMonthlyLimits.firstInsured", after: 999999999 }],
+    }];
+    const state = normalizeRuleUpdateState({});
+    expect(isRuleUpdateApproved(state, "toString")).toBe(false);
+    expect(isRuleUpdateDismissed(state, "constructor")).toBe(false);
+    const rules = applyApprovedRuleUpdates(JP_COUNTRY_RULES, "JP", updates, state, new Date("2026-08-21T12:00:00"));
+    expect(rules.retirement.currentMonthlyLimits.firstInsured).not.toBe(999999999);
+  });
+
+  it("Object.prototypeと同名のIDでも明示承認した場合だけ適用する", () => {
+    const updates = [{
+      id: "toString",
+      country: "JP",
+      effectiveDate: "2026-01-01",
+      changes: [{ path: "retirement.currentMonthlyLimits.firstInsured", after: 75001 }],
+    }];
+    const state = normalizeRuleUpdateState({ approved: { toString: true } });
+    expect(isRuleUpdateApproved(state, "toString")).toBe(true);
+    const rules = applyApprovedRuleUpdates(JP_COUNTRY_RULES, "JP", updates, state, new Date("2026-08-21T12:00:00"));
+    expect(rules.retirement.currentMonthlyLimits.firstInsured).toBe(75001);
   });
 
   it("remote制度更新の国コードを5か国へ正規化し、未知国は取り込まない", () => {

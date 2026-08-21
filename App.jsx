@@ -43,6 +43,7 @@ import { newSci, sciPress, sciExpr, sciFormat, sciTokensFromExpr, normalizeSciHi
 import {
   RULE_UPDATE_STORAGE_KEY, BUILTIN_RULE_UPDATES, normalizeRuleUpdateState,
   applyApprovedRuleUpdates, mergeRuleUpdateManifests, isUpdateEffective, normalizeRuleCountry,
+  isRuleUpdateApproved, isRuleUpdateDismissed,
 } from "./utils/ruleUpdates.js";
 import { getRuleSourcesForCountry } from "./utils/ruleSourceRegistry.js";
 import { buildCountryRuleCatalog } from "./utils/countryRuleCatalog.js";
@@ -2250,11 +2251,11 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     [ruleUpdates, country]
   );
   const pendingRuleUpdates = useMemo(
-    () => countryRuleUpdates.filter((item) => !ruleUpdateState.approved?.[item.id] && !ruleUpdateState.dismissed?.[item.id]),
+    () => countryRuleUpdates.filter((item) => !isRuleUpdateApproved(ruleUpdateState, item.id) && !isRuleUpdateDismissed(ruleUpdateState, item.id)),
     [countryRuleUpdates, ruleUpdateState]
   );
   const deferredRuleUpdates = useMemo(
-    () => countryRuleUpdates.filter((item) => !ruleUpdateState.approved?.[item.id] && !!ruleUpdateState.dismissed?.[item.id]),
+    () => countryRuleUpdates.filter((item) => !isRuleUpdateApproved(ruleUpdateState, item.id) && isRuleUpdateDismissed(ruleUpdateState, item.id)),
     [countryRuleUpdates, ruleUpdateState]
   );
   const monitoredRuleSources = useMemo(() => getRuleSourcesForCountry(country), [country]);
@@ -2268,11 +2269,11 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   );
   const ruleAttentionCount = pendingRuleUpdates.length + ruleSourceAlerts.length;
   const scheduledRuleUpdates = useMemo(
-    () => countryRuleUpdates.filter((item) => !!ruleUpdateState.approved?.[item.id] && !isUpdateEffective(item)),
+    () => countryRuleUpdates.filter((item) => isRuleUpdateApproved(ruleUpdateState, item.id) && !isUpdateEffective(item)),
     [countryRuleUpdates, ruleUpdateState.approved]
   );
   const activeRuleUpdates = useMemo(
-    () => countryRuleUpdates.filter((item) => !!ruleUpdateState.approved?.[item.id] && isUpdateEffective(item)),
+    () => countryRuleUpdates.filter((item) => isRuleUpdateApproved(ruleUpdateState, item.id) && isUpdateEffective(item)),
     [countryRuleUpdates, ruleUpdateState.approved]
   );
   const verifiedRuleStatusLabel = useMemo(() => {
@@ -2307,8 +2308,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     return date.toLocaleDateString(locale);
   }, [country, language]);
   const getRuleUpdateVisualStatus = useCallback((update) => {
-    const approved = !!ruleUpdateState.approved?.[update.id];
-    const deferred = !approved && !!ruleUpdateState.dismissed?.[update.id];
+    const approved = isRuleUpdateApproved(ruleUpdateState, update.id);
+    const deferred = !approved && isRuleUpdateDismissed(ruleUpdateState, update.id);
     if (approved) {
       return isUpdateEffective(update)
         ? { key: "active", color: "#54B07A", ja: "🟢 確認済み・反映中", en: "🟢 Approved & active" }
@@ -6474,7 +6475,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 </span></div>
               )}
               {countryRuleUpdates.map((update) => {
-                const approved = !!ruleUpdateState.approved?.[update.id];
+                const approved = isRuleUpdateApproved(ruleUpdateState, update.id);
                 const effective = isUpdateEffective(update);
                 const updateVisualStatus = getRuleUpdateVisualStatus(update);
                 const categoryAccent = getRuleCategoryAccent(update);
