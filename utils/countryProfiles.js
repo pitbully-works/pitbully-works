@@ -130,14 +130,27 @@ export function resolvePersistedActiveCountry(value, profiles, fallback = "JP") 
   if (PROFILE_COUNTRIES.includes(code)) return code;
   // An explicit unsupported persisted code must not be silently reinterpreted as JP.
   // Recover by opening an actually existing valid bucket; if none exists, use the safe fallback.
-  return PROFILE_COUNTRIES.find((candidate) => Object.prototype.hasOwnProperty.call(normalizedProfiles, candidate))
-    || normalizeProfileCountry(fallback);
+  return PROFILE_COUNTRIES.find((candidate) =>
+    Object.prototype.hasOwnProperty.call(normalizedProfiles, candidate) && isPlainRecord(normalizedProfiles[candidate])
+  ) || normalizeProfileCountry(fallback);
 }
 
 export function migrateCountryProfiles(defaultInputs, parsed) {
   const p = isPlainRecord(parsed) ? parsed : {};
+  const hasExplicitVersion = Object.prototype.hasOwnProperty.call(p, "profileStorageVersion");
   const storageVersion = normalizeProfileStorageVersion(p.profileStorageVersion);
-  if (storageVersion !== null && storageVersion >= PROFILE_STORAGE_VERSION && isPlainRecord(p.profiles)) {
+  // Persisted data may have been written by a newer app version. Never reinterpret
+  // an explicit unknown/future schema as the legacy JP-only format: doing so can
+  // silently move foreign-currency data into the JP bucket. Let the caller fall
+  // back to a fresh safe profile instead.
+  if (hasExplicitVersion && storageVersion === null) {
+    throw new Error(`Invalid profile storage version: ${String(p.profileStorageVersion)}`);
+  }
+  if (storageVersion !== null && storageVersion > PROFILE_STORAGE_VERSION) {
+    throw new Error(`Unsupported profile storage version: ${storageVersion}`);
+  }
+  if (storageVersion === PROFILE_STORAGE_VERSION) {
+    if (!isPlainRecord(p.profiles)) throw new Error("Invalid persisted country profiles");
     const profiles = normalizeCountryKeyedRecord(p.profiles);
     return { profiles, activeCountry: resolvePersistedActiveCountry(p.activeCountry ?? p.inputs?.country, profiles), migratedLegacy: false };
   }
@@ -148,7 +161,7 @@ export function migrateCountryProfiles(defaultInputs, parsed) {
     const activeCountry = resolvePersistedActiveCountry(p.activeCountry ?? p.inputs?.country, rawProfiles);
     const profiles = {};
     PROFILE_COUNTRIES.forEach((code) => {
-      if (!rawProfiles[code]) return;
+      if (!isPlainRecord(rawProfiles[code])) return;
       const src = clone(rawProfiles[code]);
       if (code !== activeCountry) {
         src.userName = "";
@@ -159,7 +172,7 @@ export function migrateCountryProfiles(defaultInputs, parsed) {
     });
     return { profiles, activeCountry, migratedLegacy: true };
   }
-  if (p.inputs && typeof p.inputs === "object") {
+  if (isPlainRecord(p.inputs)) {
     // v1 had one shared bucket. Existing users are Japanese-first, so preserve every value in JP.
     const jp = forceCountryMeta({ ...p.inputs }, "JP");
     return { profiles: { JP: jp }, activeCountry: "JP", migratedLegacy: true };
