@@ -24,7 +24,7 @@ export const CA_COUNTRY_RULES = {
       { key: "investment", labelJa: "投資制度", labelEn: "Investment", status: "implemented", effective: "2026 calendar year", lastUpdated: "2026-08-17", updateJa: "TFSA・RRSP・非登録口座・RRIF最低取崩しを反映。FHSA等は未実装。", updateEn: "TFSA, RRSP, non-registered accounts and RRIF minimum withdrawals are modelled; FHSA and related plans are not implemented." },
       { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "partial", effective: "2026 / OAS & GIS Jul-Sep", lastUpdated: "2026-08-20", updateJa: "CPP・OAS・OAS回収税・GIS/Allowanceの公表上限・CPP Post-Retirement Benefitを反映。GISの正確な支給額、QPP、CPP履歴からの自動算定は未実装。", updateEn: "CPP, OAS, OAS recovery tax, published GIS/Allowance maxima and CPP Post-Retirement Benefit are modelled; exact GIS entitlement, QPP and automatic CPP entitlement from history are not implemented." },
       { key: "healthcare", labelJa: "医療", labelEn: "Healthcare", status: "partial", effective: "2026", lastUpdated: "2026-08-21", updateJa: "州・準州の公的医療保険を前提に自己負担を計算し、CDCPの所得別自己負担率とオンタリオ州の2026年長期介護ホーム最大自己負担額を自動計算。その他の州・準州の薬剤・視力・介護費は手入力。", updateEn: "Models out-of-pocket costs under provincial/territorial coverage, the income-based CDCP co-payment and Ontario 2026 long-term-care home maximum co-payments; drug, vision and long-term-care charges outside Ontario remain manual." },
-      { key: "tax", labelJa: "税金", labelEn: "Tax", status: "partial", effective: "2026 tax year", lastUpdated: "2026-08-17", updateJa: "連邦所得税を反映。州税・QPP・配当税額控除等は未実装。", updateEn: "Federal income tax is modelled; provincial tax, QPP and dividend credits are not implemented." },
+      { key: "tax", labelJa: "税金", labelEn: "Tax", status: "partial", effective: "2026 tax year", lastUpdated: "2026-08-21", updateJa: "連邦所得税に加え、オンタリオ州の所得税・サータックス・Ontario Health Premiumを反映。その他12地域、QPP、配当税額控除等は未実装。", updateEn: "Federal income tax plus Ontario income tax, surtax and Ontario Health Premium are modelled; the other 12 regions, QPP and dividend credits remain unimplemented." },
       { key: "estate", labelJa: "相続", labelEn: "Estate", status: "partial", effective: "2026", lastUpdated: "2026-08-17", updateJa: "相続目標は資産計画に反映。死亡時のみなし譲渡等の自動計算は未実装。", updateEn: "Estate targets feed the plan; deemed disposition and related death-tax calculations are not automated." },
     ],
   },
@@ -468,17 +468,38 @@ export const CA_COUNTRY_RULES = {
     implemented: true,
     model: "canadaFederalIncomeTax",
     effectiveTaxYear: "2026",
-    lastUpdated: "2026-07-18",
-    sourceName: "Canada Revenue Agency (CRA) — Federal tax rates and income brackets",
+    lastUpdated: "2026-08-21",
+    sourceName: "Canada Revenue Agency (CRA) — Federal and Ontario 2026 income tax rates",
     sourceUrl: "https://www.canada.ca/en/revenue-agency/services/tax/individuals/tax-rates-brackets/current-year.html",
     sourceUrls: {
       brackets: "https://www.canada.ca/en/revenue-agency/services/tax/individuals/tax-rates-brackets/current-year.html",
+      ontario: "https://www.canada.ca/en/revenue-agency/services/forms-publications/payroll/t4032-payroll-deductions-tables/t4032on-jan/t4032on-january-general-information.html",
       bpa: "https://www.canada.ca/en/revenue-agency/services/tax/individuals/frequently-asked-questions-individuals/basic-personal-amount.html",
       capitalGains: "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/personal-income/line-12700-capital-gains.html",
     },
-    // 【重要】連邦税のみ実装。州・準州（13地域）はそれぞれ独自の税率・バンド・控除を持つため未実装。
-    region: "Federal only (provincial / territorial tax not included)",
-    province: { implemented: false, brackets: null, rates: null, basicPersonalAmount: null },
+    // 2026-08-21時点：オンタリオ州のみ自動計算。その他12地域は未実装。
+    region: "Federal + Ontario (other provincial / territorial tax not included)",
+    province: {
+      implemented: true,
+      implementedRegions: ["ON"],
+      defaultRegion: "ON",
+      ontario: {
+        bands: [
+          { upTo: 53891, rate: 0.0505 },
+          { upTo: 107785, rate: 0.0915 },
+          { upTo: 150000, rate: 0.1116 },
+          { upTo: 220000, rate: 0.1216 },
+          { upTo: Infinity, rate: 0.1316 },
+        ],
+        basicPersonalAmount: 12989,
+        basicCreditRate: 0.0505,
+        surtaxThreshold1: 5818,
+        surtaxRate1: 0.20,
+        surtaxThreshold2: 7446,
+        surtaxRate2: 0.36,
+        taxReductionBasicAmount: 300,
+      },
+    },
 
     // 2026課税年度の連邦税バンド（最低税率は2025年7月に15%→14%へ引下げ済み）
     incomeTax: {
@@ -503,6 +524,64 @@ export const CA_COUNTRY_RULES = {
     tfsaTaxFree: true,
     // RRSPは拠出時に所得控除、引出し時に全額が課税所得
     rrspModel: "deductOnContributionTaxOnWithdrawal",
+
+
+    calculateOntarioHealthPremium(taxableIncome) {
+      const income = Math.max(0, Number(taxableIncome) || 0);
+      if (income <= 20000) return 0;
+      if (income <= 36000) return Math.min(300, (income - 20000) * 0.06);
+      if (income <= 48000) return Math.min(450, 300 + (income - 36000) * 0.06);
+      if (income <= 72000) return Math.min(600, 450 + (income - 48000) * 0.25);
+      if (income <= 200000) return Math.min(750, 600 + (income - 72000) * 0.25);
+      return Math.min(900, 750 + (income - 200000) * 0.25);
+    },
+    calculateOntarioTax(taxableIncome) {
+      const cfg = this.province.ontario;
+      const income = Math.max(0, Number(taxableIncome) || 0);
+      let grossTax = 0;
+      let lower = 0;
+      for (const b of cfg.bands) {
+        if (income > lower) {
+          grossTax += (Math.min(income, b.upTo) - lower) * b.rate;
+          lower = b.upTo;
+        } else break;
+      }
+      const basicCredit = cfg.basicPersonalAmount * cfg.basicCreditRate;
+      const basicTax = Math.max(0, grossTax - basicCredit);
+      const surtax = basicTax <= cfg.surtaxThreshold1 ? 0
+        : basicTax <= cfg.surtaxThreshold2
+          ? (basicTax - cfg.surtaxThreshold1) * cfg.surtaxRate1
+          : (basicTax - cfg.surtaxThreshold1) * cfg.surtaxRate1
+            + (basicTax - cfg.surtaxThreshold2) * cfg.surtaxRate2;
+      const taxIncludingSurtax = basicTax + surtax;
+      const reduction = Math.min(taxIncludingSurtax, Math.max(0, cfg.taxReductionBasicAmount * 2 - taxIncludingSurtax));
+      const healthPremium = this.calculateOntarioHealthPremium(income);
+      return {
+        taxableIncome: income, grossTax, basicPersonalAmount: cfg.basicPersonalAmount, basicCredit,
+        basicTax, surtax, taxReduction: reduction, healthPremium,
+        tax: Math.max(0, taxIncludingSurtax + healthPremium - reduction),
+      };
+    },
+    calculateProvincialTax(taxableIncome, provinceCode = "ON") {
+      if (provinceCode === "ON") return this.calculateOntarioTax(taxableIncome);
+      return { taxableIncome: Math.max(0, Number(taxableIncome) || 0), tax: 0, unsupported: true, provinceCode };
+    },
+    calculateProvincialCapitalGainsTax(gain, otherIncome, provinceCode = "ON") {
+      const g = Math.max(0, Number(gain) || 0);
+      if (g <= 0 || provinceCode !== "ON") return 0;
+      const taxableGain = g * this.capitalGains.inclusionRate;
+      const base = this.calculateOntarioTax(otherIncome).tax;
+      const withGain = this.calculateOntarioTax((Number(otherIncome) || 0) + taxableGain).tax;
+      return Math.max(0, withGain - base);
+    },
+    calculateProvincialRrspTaxSaving(contribution, income, rrspRoom, provinceCode = "ON") {
+      if (provinceCode !== "ON") return 0;
+      const cap = (rrspRoom === undefined || rrspRoom === null) ? Infinity : Math.max(0, Number(rrspRoom) || 0);
+      const c = Math.min(Math.max(0, Number(contribution) || 0), cap);
+      if (c <= 0) return 0;
+      const g = Math.max(0, Number(income) || 0);
+      return Math.max(0, this.calculateOntarioTax(g).tax - this.calculateOntarioTax(Math.max(0, g - c)).tax);
+    },
 
     // BPA（高所得で逓減）
     getBasicPersonalAmount(income) {
@@ -564,8 +643,8 @@ export const CA_COUNTRY_RULES = {
       return Math.max(0, base - reduced);
     },
     notImplemented: [
-      "州・準州の所得税（13地域すべてで税率・バンド・控除が異なる）",
-      "オンタリオ州などのサータックス（surtax）",
+      "オンタリオ州以外の州・準州所得税（12地域。各地域で税率・バンド・控除が異なる）",
+      "オンタリオ州の扶養家族等を含むTax Reductionの完全計算（基本本人分のみ反映）",
       "ケベック州の連邦税減額（Quebec abatement 16.5%）",
       "配当税額控除（eligible / non-eligible dividend tax credit）",
       "CPP拠出金・EI保険料（所得税とは別の天引き）",
