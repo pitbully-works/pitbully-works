@@ -494,7 +494,17 @@ describe("country normalization at plan-builder boundary", () => {
     const noisy = { ...ctxFor(country), country: `  ${country.toLowerCase()}  ` };
     const a = buildPlanInput(canonical);
     const b = buildPlanInput(noisy);
-    expect(b).toEqual(a);
+
+    // buildPlanInput は healthCostAnnual / monthlyAmountAt / minimumDrawdown などの
+    // 関数を毎回新しく生成する。関数は同じ処理内容でも参照が異なるため、plan オブジェクト
+    // 自体を toEqual() すると国コード正規化とは無関係に失敗する。
+    // 正規化後に実際のシミュレーション結果が完全一致することを比較する。
+    expect(runIntegratedPlan(b)).toEqual(runIntegratedPlan(a));
+
+    // 関数を除いたエンジン入力の構造・数値も完全一致することを固定する。
+    // JSON化すると関数プロパティだけが除外されるため、参照差に影響されない。
+    const serializable = (plan) => JSON.parse(JSON.stringify(plan));
+    expect(serializable(b)).toEqual(serializable(a));
   });
 
   it("未知の国コードをJPの生活費として扱わない", () => {
