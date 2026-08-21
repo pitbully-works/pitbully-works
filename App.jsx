@@ -1010,7 +1010,7 @@ function AUAccountFields({ accountKey, title, account, onUpdateAccount, borderCo
 function AUInvestmentAccountsPanel({
   auInvestment, onUpdate, onUpdateAccount, age, investmentRules, taxRules,
   sgContribution, totalConcessional, concessionalRemaining, effectiveConcessionalCap, carryForwardApplied,
-  effectiveNonConcessionalCap, bringForwardOneOffApplied, nonConcessionalRemaining,
+  effectiveNonConcessionalCap, bringForwardOneOffApplied, downsizerApplied, nonConcessionalRemaining,
   superContributionTax, salarySacrificeSaving, listoAnnual, listoIncome, coContributionAnnual, coContributionIncome, taxResult, capitalGainsTax, totalTax, marginalRate,
 }) {
   const { t, money } = useContext(LocaleContext);
@@ -1054,6 +1054,20 @@ function AUInvestmentAccountsPanel({
           <div className="note" style={{ marginBottom: 10 }}>
             <Info size={13} />
             <span>{t("auBringForwardAppliedNote", { cap: money(effectiveNonConcessionalCap), amount: money(bringForwardOneOffApplied) })}</span>
+          </div>
+        </>
+      )}
+      <div className="field-label" style={{ marginTop: 10 }}>{t("auDownsizerEligibilityLabel")}</div>
+      <div className="chip-row" style={{ marginBottom: 8 }}>
+        <button className={`chip ${auInvestment.downsizerEligible ? "chip-active" : ""}`} onClick={() => onUpdate("downsizerEligible", true)}>{t("auYes")}</button>
+        <button className={`chip ${!auInvestment.downsizerEligible ? "chip-active" : ""}`} onClick={() => onUpdate("downsizerEligible", false)}>{t("auNo")}</button>
+      </div>
+      {auInvestment.downsizerEligible && (
+        <>
+          <Field guide={t("auDownsizerContributionGuide")} label={t("auDownsizerContributionLabel")} unit="A$" step={1000} value={auInvestment.downsizerContribution} onChange={(v) => onUpdate("downsizerContribution", v)} />
+          <div className="note" style={{ marginBottom: 10 }}>
+            <Info size={13} />
+            <span>{t("auDownsizerAppliedNote", { amount: money(downsizerApplied), max: money(l.downsizerContributionMax) })}</span>
           </div>
         </>
       )}
@@ -1830,6 +1844,9 @@ const DEFAULT_INPUTS = {
       bringForwardUseAtoCap: false,
       bringForwardAvailableCap: 0,
       bringForwardOneOffContribution: 0,
+      // Downsizer contribution：ATOの適格要件を本人確認し、今年だけの一括拠出として反映。
+      downsizerEligible: false,
+      downsizerContribution: 0,
       // Division 293 income（概算）。ATOの定義は課税所得＋報告対象フリンジベネフィット＋
       // 純投資損失＋純賃貸損失等の合計で、年収そのものではない。0（未入力）なら
       // annualSalary で代用し、画面に簡易計算である旨を表示する。
@@ -2497,6 +2514,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         auInvestment.bringForwardUseAtoCap === true, auInvestment.bringForwardAvailableCap,
         auInvestment.superannuation.annualContribution, auInvestment.bringForwardOneOffContribution
       ) : 0;
+  const auDownsizerApplied = (auIsAU && rules.investment.implemented && typeof rules.investment.getDownsizerContribution === "function")
+    ? rules.investment.getDownsizerContribution(effectiveCurrentAge, auInvestment.downsizerEligible === true, auInvestment.downsizerContribution)
+    : 0;
   const auNonConcessionalRemaining = (auIsAU && rules.investment.implemented)
     ? rules.investment.getNonConcessionalRemaining(
         auInvestment.superannuation.annualContribution, effectiveCurrentAge,
@@ -3666,6 +3686,11 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       coContributionAnnual: auCoContributionAnnual,
       carryForwardPriorYearBalance: inputs.auInvestment.carryForwardPriorYearBalance,
       carryForwardAvailableUnusedCap: inputs.auInvestment.carryForwardAvailableUnusedCap,
+      bringForwardUseAtoCap: inputs.auInvestment.bringForwardUseAtoCap,
+      bringForwardAvailableCap: inputs.auInvestment.bringForwardAvailableCap,
+      bringForwardOneOffContribution: inputs.auInvestment.bringForwardOneOffContribution,
+      downsizerEligible: inputs.auInvestment.downsizerEligible,
+      downsizerContribution: inputs.auInvestment.downsizerContribution,
     });
   }, [simulationReady, country, rules, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, inputs.auInvestment, auWithdrawalNeeded, auDiv293Tax, auDiv293PaidFrom, auListoAnnual, auCoContributionAnnual]);
 
@@ -7188,6 +7213,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               carryForwardApplied={auCarryForwardApplied}
               effectiveNonConcessionalCap={auEffectiveNonConcessionalCap}
               bringForwardOneOffApplied={auBringForwardOneOffApplied}
+              downsizerApplied={auDownsizerApplied}
               nonConcessionalRemaining={auNonConcessionalRemaining}
               superContributionTax={auSuperContributionTax}
               salarySacrificeSaving={auSalarySacrificeSaving}
