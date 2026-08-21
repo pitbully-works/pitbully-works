@@ -2140,6 +2140,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   // active国だけinputsへ展開し、他国はrefで保持する。
   const countryProfilesRef = useRef({});
   const countryWatchlistsRef = useRef({});
+  // Autosaves can overlap when inputs change quickly. Serialize persistence writes so
+  // an older slow write can never finish after a newer one and overwrite fresh data.
+  const saveQueueRef = useRef(Promise.resolve());
+  const saveGenerationRef = useRef(0);
 
 
   // ---------- 国際化（i18n）：国が"JP"のままなら、moneyはyenと完全に同じ結果を返す ----------
@@ -3238,56 +3242,69 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     }
   }, [t, inputs.country]);
 
-  const save = useCallback(async (nextInputs, nextWatchlist) => {
+  const save = useCallback((nextInputs, nextWatchlist) => {
     if (!window.storage) {
       setSaveStatus("unavailable");
       setSaveMessage(t("saveMessageUnavailable"));
-      return;
+      return Promise.resolve();
     }
+
+    const generation = ++saveGenerationRef.current;
     setSaveStatus("saving");
-    try {
-      const code = normalizeProfileCountry(nextInputs.country);
-      const safeNextWatchlist = normalizeStockWatchlist(nextWatchlist, code);
-      countryProfilesRef.current = { ...countryProfilesRef.current, [code]: nextInputs };
-      countryWatchlistsRef.current = { ...countryWatchlistsRef.current, [code]: safeNextWatchlist };
-      await window.storage.set(
-        STORAGE_KEY,
-        JSON.stringify({
-          profileStorageVersion: PROFILE_STORAGE_VERSION,
-          activeCountry: code,
-          profiles: countryProfilesRef.current,
-          watchlists: countryWatchlistsRef.current,
-          inputs: nextInputs,
-          watchlist: safeNextWatchlist,
-        }),
-        false
-      );
-      // record (or overwrite) today's dated snapshot so history builds up day by day
-      const date = todayKey();
-      const bankTotal = (nextInputs.banks || []).reduce((s, b) => s + (b.balance || 0), 0);
-      const snapshot = {
-        date,
-        currentAssets: (nextInputs.tsumitateHoldings || []).reduce((s, h) => s + (h.value || 0), 0)
-          + (nextInputs.growthHoldings || []).reduce((s, h) => s + (h.value || 0), 0),
-        goldGrams: nextInputs.gold?.currentGrams ?? 0,
-        bankTotal,
-        inputs: nextInputs,
-        watchlist: safeNextWatchlist,
-      };
-      snapshot.country = code;
-      await window.storage.set(snapshotStorageKey(code, date), JSON.stringify(snapshot), false);
-      // upsert today's entry locally so the history list reflects it immediately
-      // without re-fetching every stored snapshot on each keystroke
-      setHistory((prev) => {
-        const others = prev.filter((h) => targetCountryFromBackup(h?.country) === code && h.date !== date);
-        return [snapshot, ...others].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, MAX_SNAPSHOT_HISTORY);
-      });
-      setSaveStatus("saved");
-      setSaveMessage(t("saveMessageLastSaved", { time: new Date().toLocaleTimeString(dateLocale, { hour: "2-digit", minute: "2-digit" }) }));
-    } catch (e) {
-      setSaveStatus("error");
-      setSaveMessage(t("saveMessageFailed", { error: e?.message || t("unknownError") }));
-    }
+
+    const code = normalizeProfileCountry(nextInputs.country);
+    const safeNextWatchlist = normalizeStockWatchlist(nextWatchlist, code);
+    countryProfilesRef.current = { ...countryProfilesRef.current, [code]: nextInputs };
+    countryWatchlistsRef.current = { ...countryWatchlistsRef.current, [code]: safeNextWatchlist };
+
+    // Capture one immutable persistence image for both the main record and today's
+    // snapshot. Later React updates must not change an already queued save.
+    const date = todayKey();
+    const bankTotal = (nextInputs.banks || []).reduce((s, b) => s + (b.balance || 0), 0);
+    const snapshot = {
+      date,
+      currentAssets: (nextInputs.tsumitateHoldings || []).reduce((s, h) => s + (h.value || 0), 0)
+        + (nextInputs.growthHoldings || []).reduce((s, h) => s + (h.value || 0), 0),
+      goldGrams: nextInputs.gold?.currentGrams ?? 0,
+      bankTotal,
+      inputs: nextInputs,
+      watchlist: safeNextWatchlist,
+      country: code,
+    };
+    const mainJson = JSON.stringify({
+      profileStorageVersion: PROFILE_STORAGE_VERSION,
+      activeCountry: code,
+      profiles: countryProfilesRef.current,
+      watchlists: countryWatchlistsRef.current,
+      inputs: nextInputs,
+      watchlist: safeNextWatchlist,
+    });
+    const snapshotJson = JSON.stringify(snapshot);
+    const snapshotKey = snapshotStorageKey(code, date);
+
+    const run = async () => {
+      try {
+        await window.storage.set(STORAGE_KEY, mainJson, false);
+        await window.storage.set(snapshotKey, snapshotJson, false);
+
+        // A newer save may already be queued. Do not let this older completion make
+        // the UI claim everything is saved or replace the latest in-memory history row.
+        if (generation !== saveGenerationRef.current) return;
+        setHistory((prev) => {
+          const others = prev.filter((h) => targetCountryFromBackup(h?.country) === code && h.date !== date);
+          return [snapshot, ...others].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, MAX_SNAPSHOT_HISTORY);
+        });
+        setSaveStatus("saved");
+        setSaveMessage(t("saveMessageLastSaved", { time: new Date().toLocaleTimeString(dateLocale, { hour: "2-digit", minute: "2-digit" }) }));
+      } catch (e) {
+        if (generation !== saveGenerationRef.current) return;
+        setSaveStatus("error");
+        setSaveMessage(t("saveMessageFailed", { error: e?.message || t("unknownError") }));
+      }
+    };
+
+    saveQueueRef.current = saveQueueRef.current.then(run, run);
+    return saveQueueRef.current;
   }, [t, dateLocale]);
 
   useEffect(() => {
