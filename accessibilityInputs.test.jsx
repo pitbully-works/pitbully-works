@@ -2,7 +2,7 @@ import React from "react";
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { LocaleContext } from "./ui/locale.js";
-import { Field, AgeField, LabeledMiniInput } from "./ui/inputs.jsx";
+import { Field, AgeField, LabeledMiniInput, MoneyField } from "./ui/inputs.jsx";
 
 const locale = {
   country: "US",
@@ -34,4 +34,19 @@ describe("common input accessibility", () => {
     withLocale(<LabeledMiniInput label="Hospital days" value={10} onChange={vi.fn()} />);
     expect(screen.getByLabelText("Hospital days")).toBeTruthy();
   });
+
+  it("normalizes lowercase/whitespace JPY before applying the 10k input scale", () => {
+    const noisyLocale = { ...locale, country: "JP", baseCurrency: "  jpy  ", currencySymbol: "¥", t: (key) => ({ unitMan: "万円" }[key] || key) };
+    render(<LocaleContext.Provider value={noisyLocale}><MoneyField label="生活費" value={240000} onChange={vi.fn()} /></LocaleContext.Provider>);
+    expect(screen.getByLabelText("生活費").value).toBe("24");
+    expect(screen.getByText("万円")).toBeTruthy();
+  });
+
+  it("does not apply the JPY 10k scale to noisy non-JPY currency codes", () => {
+    const noisyLocale = { ...locale, baseCurrency: "  usd  ", currencySymbol: "$" };
+    render(<LocaleContext.Provider value={noisyLocale}><MoneyField label="Living cost" value={240000} onChange={vi.fn()} /></LocaleContext.Provider>);
+    expect(screen.getByLabelText("Living cost").value).toBe("240000");
+    expect(screen.getByText("$")).toBeTruthy();
+  });
+
 });
