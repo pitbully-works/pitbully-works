@@ -1919,6 +1919,7 @@ const DEFAULT_INPUTS = {
         taxedElement: 0,
         untaxedElement: 0,
         includeMedicareLevy: true,
+        paymentRoute: "direct",
       },
       // 医療費（Medicare前提の簡易モデル）
       healthcare: {
@@ -7814,6 +7815,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               untaxedElement: e.untaxedElement,
               isDeathBenefitsDependant: e.beneficiaryDependant !== false,
               includeMedicareLevy: e.includeMedicareLevy !== false,
+              paymentRoute: e.paymentRoute === "estate" ? "estate" : "direct",
             });
             return (
               <div className="summary-box" style={{ marginTop: 14 }}>
@@ -7827,6 +7829,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                   <span>{t("auEstateSuperDeathEnable")}</span>
                 </label>
                 {e.superDeathBenefitEnabled && <>
+                  <div className="field-label" style={{ marginBottom: 6 }}>{t("auEstatePaymentRoute")}</div>
+                  <div className="chip-row" style={{ marginBottom: 10 }}>
+                    <button className={`chip ${e.paymentRoute !== "estate" ? "chip-active" : ""}`} onClick={() => updateAuInvestmentNested("estate", "paymentRoute", "direct")}>{t("auEstateRouteDirect")}</button>
+                    <button className={`chip ${e.paymentRoute === "estate" ? "chip-active" : ""}`} onClick={() => updateAuInvestmentNested("estate", "paymentRoute", "estate")}>{t("auEstateRouteEstate")}</button>
+                  </div>
+                  {e.paymentRoute === "estate" && <div className="note" style={{ marginBottom: 10 }}><Info size={13} /><span>{t("auEstateRouteEstateNote")}</span></div>}
                   <div className="field-label" style={{ marginBottom: 6 }}>{t("auEstateBeneficiaryType")}</div>
                   <div className="chip-row" style={{ marginBottom: 10 }}>
                     <button className={`chip ${e.beneficiaryDependant !== false ? "chip-active" : ""}`} onClick={() => updateAuInvestmentNested("estate", "beneficiaryDependant", true)}>{t("auEstateDependant")}</button>
@@ -7835,13 +7843,13 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                   <Field guide={t("auEstateTaxFreeGuide")} label={t("auEstateTaxFreeLabel")} unit="A$" step={1000} value={e.taxFreeComponent || 0} onChange={(v) => updateAuInvestmentNested("estate", "taxFreeComponent", v)} />
                   <Field guide={t("auEstateTaxedGuide")} label={t("auEstateTaxedLabel")} unit="A$" step={1000} value={e.taxedElement || 0} onChange={(v) => updateAuInvestmentNested("estate", "taxedElement", v)} />
                   <Field guide={t("auEstateUntaxedGuide")} label={t("auEstateUntaxedLabel")} unit="A$" step={1000} value={e.untaxedElement || 0} onChange={(v) => updateAuInvestmentNested("estate", "untaxedElement", v)} />
-                  {e.beneficiaryDependant === false && <label className="checkbox-row">
+                  {e.beneficiaryDependant === false && e.paymentRoute !== "estate" && <label className="checkbox-row">
                     <input type="checkbox" checked={e.includeMedicareLevy !== false} onChange={(ev) => updateAuInvestmentNested("estate", "includeMedicareLevy", ev.target.checked)} />
                     <span>{t("auEstateIncludeMedicareLevy")}</span>
                   </label>}
                   <div className="stat-grid" style={{ marginTop: 8 }}>
                     <StatCard label={t("auEstateGrossLabel")} value={money(result.gross)} sub={t("auEstateGrossSub")} />
-                    <StatCard label={t("auEstateTaxLabel")} value={money(result.tax)} sub={e.beneficiaryDependant !== false ? t("auEstateDependantTaxFreeSub") : t("auEstateNonDependantTaxSub")} />
+                    <StatCard label={t("auEstateTaxLabel")} value={money(result.tax)} sub={e.beneficiaryDependant !== false ? t("auEstateDependantTaxFreeSub") : (e.paymentRoute === "estate" ? t("auEstateNonDependantEstateTaxSub") : t("auEstateNonDependantTaxSub"))} />
                     <StatCard label={t("auEstateNetLabel")} value={money(result.net)} sub={t("auEstateNetSub")} />
                   </div>
                   <div className="note" style={{ marginTop: 10 }}>
