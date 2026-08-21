@@ -162,13 +162,14 @@ export const AU_COUNTRY_RULES = {
     simulateGrowth({
       currentAge, retireAge, deathAge, accounts, annualWithdrawalNeeded,
       annualSalary, voluntaryConcessional, contributionsTaxRate, earningsTaxAccumulation,
-      div293TaxAnnual, div293PaidFrom,
+      div293TaxAnnual, div293PaidFrom, listoAnnual,
     }) {
       const keys = this.accountTypes;
       const contribTax = (contributionsTaxRate === undefined || contributionsTaxRate === null) ? 0.15 : Number(contributionsTaxRate);
       const div293Annual = Math.max(0, Number(div293TaxAnnual) || 0);
       const div293FromSuper = div293PaidFrom !== "outside";
       const earnTax = (earningsTaxAccumulation === undefined || earningsTaxAccumulation === null) ? 0.15 : Number(earningsTaxAccumulation);
+      const listo = Math.max(0, Number(listoAnnual) || 0);
 
       const balances = {}, contributions = {}, rates = {}, endAges = {}, withdrawalTax = {};
       keys.forEach((k) => {
@@ -225,7 +226,7 @@ export const AU_COUNTRY_RULES = {
         keys.forEach((k) => {
           if (age > endAges[k]) return;
           if (k === "superannuation") {
-            balances[k] += concessionalNet + contributions[k]; // contributions[k] は税引後拠出（non-concessional）
+            balances[k] += concessionalNet + contributions[k] + listo; // LISTOは政府拠出で、拠出時15%課税の対象外
           } else {
             balances[k] += contributions[k];
           }
@@ -672,6 +673,7 @@ export const AU_COUNTRY_RULES = {
       capitalGains: "https://www.ato.gov.au/individuals-and-families/investments-and-assets/capital-gains-tax",
       lito: "https://www.ato.gov.au/individuals-and-families/income-deductions-offsets-and-records/tax-offsets/low-income-tax-offset",
       div293: "https://www.ato.gov.au/individuals-and-families/super-for-individuals-and-families/super/growing-your-super/how-to-save-more-in-your-super/division-293-tax",
+      listo: "https://www.ato.gov.au/individuals-and-families/super-for-individuals-and-families/super/growing-and-keeping-track-of-your-super/how-to-save-more-in-your-super/government-super-contributions/low-income-super-tax-offset",
       sapto: "https://www.ato.gov.au/individuals-and-families/income-deductions-offsets-and-records/tax-offsets/seniors-and-pensioners-tax-offset",
     },
     region: "Australian residents (foreign residents not implemented)",
@@ -731,6 +733,21 @@ export const AU_COUNTRY_RULES = {
       div293Threshold: 250000,              // 所得＋拠出額がこの額を超えると
       div293AdditionalRate: 0.15,           //   税引前拠出に追加15%（合計30%）
       lowRateCap: 260000,                   // 60歳未満の一時金の低税率枠（2026年7月1日から）
+      // Low Income Super Tax Offset (LISTO)：低所得者の税引前拠出に対する政府のSuper上乗せ。
+      // ATI <= A$37,000、15%相当、最大A$500。算定額が0超A$10未満ならA$10。
+      // 年齢・ビザ・10% eligible income test等は呼出側で eligible=true を明示した場合だけ適用する。
+      listo: { incomeMax: 37000, rate: 0.15, maximum: 500, minimum: 10 },
+    },
+    // LISTO（Low Income Super Tax Offset）。eligibility は年齢・ビザ・10% income test等を含むため、
+    // 呼出側で eligible=true を明示した場合だけ算定する。
+    calculateLowIncomeSuperTaxOffset(adjustedTaxableIncome, concessionalContributions, eligible = false) {
+      if (!eligible) return 0;
+      const income = Math.max(0, Number(adjustedTaxableIncome) || 0);
+      const contributions = Math.max(0, Number(concessionalContributions) || 0);
+      const cfg = this.superannuation.listo;
+      if (income > cfg.incomeMax || contributions <= 0) return 0;
+      const raw = Math.min(cfg.maximum, contributions * cfg.rate);
+      return raw > 0 && raw < cfg.minimum ? cfg.minimum : raw;
     },
     // 譲渡益：12か月超保有した資産は50%割引
     capitalGains: { discountRate: 0.50, minimumHoldingMonths: 12 },
