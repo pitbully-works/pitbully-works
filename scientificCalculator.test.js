@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { newSci, sciPress, sciFormat, sciTokensFromExpr, normalizeSciHistory, sciClearHistory } from "./utils/scientificCalculator.js";
+import { newSci, sciPress, sciFormat, sciTokensFromExpr, normalizeSciHistory, sciClearHistory, sciEvaluate } from "./utils/scientificCalculator.js";
 
 function press(keys) {
   return keys.reduce((state, key) => sciPress(state, key), newSci());
@@ -44,5 +44,39 @@ describe("家計簿仕様の関数電卓", () => {
     replay = sciPress(replay, "=");
     expect(sciFormat(replay.result)).toBe("0.5");
     expect(sciClearHistory(s).history).toEqual([]);
+  });
+});
+
+describe("batch hardening 17: bounded calculator state", () => {
+  it("rejects direct evaluation of oversized token arrays", () => {
+    const r = sciEvaluate(Array.from({ length: 121 }, () => "1"));
+    expect(r.ok).toBe(false);
+    expect(r.error).toBe("式が長すぎます");
+  });
+
+  it("bounds corrupted persisted tokens before copying calculator state", () => {
+    const huge = Array.from({ length: 10000 }, () => "1");
+    const s = sciPress({ ...newSci(), tokens: huge }, "DEL");
+    expect(s.tokens.length).toBeLessThanOrEqual(120);
+  });
+
+  it("bounds raw history work before normalizing entries", () => {
+    const raw = Array.from({ length: 5000 }, (_, i) => ({ expr: String(i + 1), value: i + 1 }));
+    const history = normalizeSciHistory(raw);
+    expect(history).toHaveLength(30);
+    expect(history[0]).toEqual({ expr: "1", value: 1 });
+    expect(history.at(-1)).toEqual({ expr: "30", value: 30 });
+  });
+
+  it("bounds expression replay tokens from oversized strings", () => {
+    const tokens = sciTokensFromExpr("1".repeat(10000));
+    expect(tokens).toHaveLength(120);
+  });
+
+  it("does not preserve invalid scalar state from a corrupted calculator object", () => {
+    const s = sciPress({ tokens: [], history: [], ans: Infinity, result: NaN, deg: "yes" }, "1");
+    expect(s.ans).toBe(0);
+    expect(s.result).toBeNull();
+    expect(s.deg).toBe(true);
   });
 });
