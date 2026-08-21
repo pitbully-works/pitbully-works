@@ -37,8 +37,8 @@ export const UNIMPLEMENTED_COUNTRY_RULES = {
 
 // 共通計算エンジンの入口。`const rules = getCountryRules(country);` の形で呼び出す。
 // 重要：未知の国コードでもJPの数値へフォールバックしない。
-// 大文字・小文字の違いだけは正規化し、既知5か国なら必ずその国専用ルールを返す。
+// 大文字・小文字と前後空白を正規化し、既知5か国なら必ずその国専用ルールを返す。
 export function getCountryRules(country) {
-  const code = String(country || "").toUpperCase();
+  const code = String(country || "").trim().toUpperCase();
   return COUNTRY_RULES[code] || UNIMPLEMENTED_COUNTRY_RULES;
 }
