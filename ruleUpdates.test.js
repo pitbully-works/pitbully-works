@@ -44,4 +44,11 @@ describe("rule update center", () => {
     expect(rules.publicPension.annualRevision.macroSlideBasicPct).toBe(-0.2);
     expect(rules.publicPension.annualRevision.basicPensionFullMonthly).toBe(70608);
   });
+  it("国コードの小文字・前後空白でも承認済み制度更新を同じ国へ適用する", () => {
+    const state = normalizeRuleUpdateState({ approved: { "JP-IDECO-2026-12-01": true } });
+    const canonical = applyApprovedRuleUpdates(JP_COUNTRY_RULES, "JP", BUILTIN_RULE_UPDATES, state, new Date("2026-12-01T12:00:00"));
+    const noisy = applyApprovedRuleUpdates(JP_COUNTRY_RULES, "  jp  ", BUILTIN_RULE_UPDATES, state, new Date("2026-12-01T12:00:00"));
+    expect(noisy.retirement.currentMonthlyLimits).toEqual(canonical.retirement.currentMonthlyLimits);
+  });
+
 });

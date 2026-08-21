@@ -48,5 +48,6 @@ describe("inflation planning regression", () => {
     expect(resolveInflationPct("US", { mode: "auto" })).toBe(2);
     expect(resolveInflationPct("US", { mode: "manual", manualPct: 3.2 })).toBe(3.2);
     expect(resolveInflationPct("US", { mode: "off" })).toBe(0);
+    expect(resolveInflationPct("  au  ", { mode: "auto" })).toBe(2.5);
   });
 });
