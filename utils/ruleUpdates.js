@@ -4,10 +4,21 @@ export const RULE_UPDATE_STORAGE_KEY = "nisa-lifeplan-rule-updates-v1";
 export const RULE_UPDATE_COUNTRIES = Object.freeze(["JP", "US", "GB", "CA", "AU"]);
 export const MAX_REMOTE_RULE_UPDATES = 500;
 export const MAX_RULE_CHANGES_PER_UPDATE = 100;
+export const MAX_RULE_SOURCE_URL_LENGTH = 2048;
+export const MAX_RULE_PATH_LENGTH = 512;
+export const MAX_RULE_PATH_SEGMENTS = 24;
+export const MAX_RULE_TEXT_LENGTH = 4000;
 
 export function normalizeRuleCountry(value) {
-  const code = String(value || "").trim().toUpperCase();
+  if (typeof value !== "string") return null;
+  const code = value.trim().toUpperCase();
   return RULE_UPDATE_COUNTRIES.includes(code) ? code : null;
+}
+
+function normalizeRuleText(value, maxLength = MAX_RULE_TEXT_LENGTH) {
+  if (typeof value !== "string") return "";
+  const text = value.trim();
+  return text.length <= maxLength ? text : text.slice(0, maxLength);
 }
 
 export function normalizeRuleUpdateId(value) {
@@ -18,8 +29,9 @@ export function normalizeRuleUpdateId(value) {
 // Remote rule manifests can supply sourceUrl. Render only normal web links; never
 // pass javascript:, data:, file:, or other active/opaque schemes into an href.
 export function safeRuleSourceUrl(value) {
-  const text = String(value || "").trim();
-  if (!text) return "";
+  if (typeof value !== "string") return "";
+  const text = value.trim();
+  if (!text || text.length > MAX_RULE_SOURCE_URL_LENGTH) return "";
   try {
     const url = new URL(text);
     if (url.username || url.password) return "";
@@ -138,8 +150,11 @@ function clonePreservingFunctions(value) {
 const UNSAFE_RULE_PATH_SEGMENTS = new Set(["__proto__", "prototype", "constructor"]);
 
 function safeRulePathParts(path) {
-  const parts = String(path || "").split(".");
-  if (!parts.length || parts.some((part) => !part || UNSAFE_RULE_PATH_SEGMENTS.has(part))) return null;
+  if (typeof path !== "string") return null;
+  const text = path.trim();
+  if (!text || text.length > MAX_RULE_PATH_LENGTH) return null;
+  const parts = text.split(".");
+  if (!parts.length || parts.length > MAX_RULE_PATH_SEGMENTS || parts.some((part) => !part || part.length > 100 || UNSAFE_RULE_PATH_SEGMENTS.has(part))) return null;
   return parts;
 }
 
@@ -189,7 +204,10 @@ function setByPath(root, path, value) {
 export function normalizeRuleTimestamp(value) {
   if (typeof value !== "string") return "";
   const text = value.trim();
-  if (!text || text.length > 40) return "";
+  // Persisted audit timestamps must be explicit ISO-8601 date-times with a
+  // timezone. Reject locale-dependent strings such as "08/21/2026" so the
+  // same saved state cannot mean different instants on different devices.
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/.test(text)) return "";
   const ms = Date.parse(text);
   return Number.isFinite(ms) ? new Date(ms).toISOString() : "";
 }
@@ -288,11 +306,31 @@ export function mergeRuleUpdateManifests(remoteUpdates) {
       // duplicate remote IDs.
       if (byId.has(id)) continue;
       const changes = Array.isArray(item.changes)
-        ? item.changes.filter((change) => change && typeof change === "object" && !Array.isArray(change)).slice(0, MAX_RULE_CHANGES_PER_UPDATE)
+        ? item.changes
+          .filter((change) => change && typeof change === "object" && !Array.isArray(change))
+          .slice(0, MAX_RULE_CHANGES_PER_UPDATE)
+          .map((change) => ({
+            ...change,
+            path: typeof change.path === "string" && safeRulePathParts(change.path) ? change.path.trim() : "",
+            labelJa: normalizeRuleText(change.labelJa, 500),
+            labelEn: normalizeRuleText(change.labelEn, 500),
+            unit: normalizeRuleText(change.unit, 50),
+          }))
+          .filter((change) => !!change.path)
         : [];
       const effectiveDate = normalizeRuleDateString(item.effectiveDate);
       const sourceUrl = safeRuleSourceUrl(item.sourceUrl);
-      byId.set(id, { ...item, id, country, changes, effectiveDate, sourceUrl });
+      byId.set(id, {
+        ...item, id, country, changes, effectiveDate, sourceUrl,
+        category: normalizeRuleText(item.category, 100),
+        titleJa: normalizeRuleText(item.titleJa, 500),
+        titleEn: normalizeRuleText(item.titleEn, 500),
+        summaryJa: normalizeRuleText(item.summaryJa),
+        summaryEn: normalizeRuleText(item.summaryEn),
+        impactJa: normalizeRuleText(item.impactJa),
+        impactEn: normalizeRuleText(item.impactEn),
+        sourceLabel: normalizeRuleText(item.sourceLabel, 500),
+      });
     }
   }
   return [...byId.values()];
