@@ -1591,11 +1591,15 @@ function SectionNav({ items, country }) {
 // 足され続けていた。一括投資と同じお金を二重に数えるうえ、画面のどこにも出ないため
 // 気づけず、利用者が消す手段も無かった。項目ごと廃止して、取り残しを断ち切る。
 export const RETIRED_INPUT_KEYS = ["tsumitateUsed", "growthUsed"];
+export const UNSAFE_SAVED_INPUT_KEYS = new Set(["__proto__", "prototype", "constructor"]);
 
 export function mergeSavedInputs(defaults, saved) {
-  if (!saved || typeof saved !== "object") return defaults;
+  if (!saved || typeof saved !== "object" || Array.isArray(saved)) return defaults;
   const out = { ...defaults };
   Object.keys(saved).forEach((key) => {
+    // Imported/saved JSON is untrusted input. Never assign prototype-related
+    // keys because out["__proto__"] can mutate the destination prototype.
+    if (UNSAFE_SAVED_INPUT_KEYS.has(key)) return;
     // 廃止した項目は、既定値に無いので入れ子の中まで消える心配がない
     if (RETIRED_INPUT_KEYS.includes(key) && !(key in defaults)) return;
     const savedValue = saved[key];
@@ -2223,9 +2227,13 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       if (sourceResponse.ok) {
         const sourcePayload = await sourceResponse.json();
         setRuleSourceStatuses(Array.isArray(sourcePayload?.sources)
-          ? sourcePayload.sources.map((item) => {
-              const normalizedCountry = normalizeRuleCountry(item?.country);
-              return normalizedCountry ? { ...item, country: normalizedCountry } : null;
+          ? sourcePayload.sources.slice(0, 500).map((item) => {
+              if (!item || typeof item !== "object" || Array.isArray(item)) return null;
+              const normalizedCountry = normalizeRuleCountry(item.country);
+              const id = typeof item.id === "string" ? item.id.trim() : "";
+              return normalizedCountry && id
+                ? { ...item, id, country: normalizedCountry, changed: item.changed === true }
+                : null;
             }).filter(Boolean)
           : []);
       }
@@ -6515,7 +6523,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                       <div style={{ overflowX: "auto", marginTop: 8, border: "1px solid #40535D", borderRadius: 7 }}>
                         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
                           <thead style={{ background: "#1B2930" }}><tr><th style={{ textAlign: "left", padding: "7px 4px" }}>{language === "ja" ? "項目" : "Item"}</th><th>{language === "ja" ? "現在" : "Current"}</th><th>{language === "ja" ? "新制度" : "New"}</th></tr></thead>
-                          <tbody>{(update.changes || []).map((change, idx) => (
+                          <tbody>{(Array.isArray(update.changes) ? update.changes : []).map((change, idx) => (
                             <tr key={`${update.id}-${idx}`} style={{ borderTop: "1px solid var(--line)" }}>
                               <td style={{ padding: "7px 4px" }}>{change.labelJa || change.path}</td>
                               <td style={{ textAlign: "center" }}>{formatRuleChangeValue(change.before, change.unit)}</td>

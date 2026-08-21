@@ -133,6 +133,19 @@ describe("BUG-3 saved data: shallow merge", () => {
     expect(mergeSavedInputs(defaults, null)).toBe(defaults);
     expect(mergeSavedInputs(defaults, "broken")).toBe(defaults);
   });
+
+  it("saved/imported data cannot mutate prototypes through special keys", () => {
+    const malicious = JSON.parse('{"__proto__":{"pollutedSavedInput":"yes"},"ideco":{"__proto__":{"nestedPollution":"yes"},"currentValue":123}}');
+    const merged = mergeSavedInputs(defaults, malicious);
+    expect(merged.ideco.currentValue).toBe(123);
+    expect(Object.prototype.pollutedSavedInput).toBeUndefined();
+    expect(Object.prototype.nestedPollution).toBeUndefined();
+    expect(({}).pollutedSavedInput).toBeUndefined();
+  });
+
+  it("top-level array is not treated as a saved input object", () => {
+    expect(mergeSavedInputs(defaults, [{ country: "US" }])).toBe(defaults);
+  });
 });
 describe("Japan (JP) core calculations", () => {
   const base = {

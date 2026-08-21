@@ -308,6 +308,71 @@ describe("rule update center", () => {
     expect(typeof rules.retirement.implemented).toBe("boolean");
   });
 
+  it("承認・保留マップは配列や非booleanを捨て、IDの前後空白を正規化する", () => {
+    const state = normalizeRuleUpdateState({
+      approved: { "  REMOTE-TRIMMED  ": true, bad: "true", no: false },
+      dismissed: ["not-an-object-map"],
+    });
+    expect(isRuleUpdateApproved(state, "REMOTE-TRIMMED")).toBe(true);
+    expect(isRuleUpdateApproved(state, "bad")).toBe(false);
+    expect(isRuleUpdateDismissed(state, "0")).toBe(false);
+  });
+
+  it("制度変更履歴はIDとactionも検証し、不正行を保存状態へ残さない", () => {
+    const state = normalizeRuleUpdateState({ history: [
+      { id: "  h-ok  ", updateId: "  REMOTE-A  ", country: " us ", action: "approved" },
+      { id: "h-bad-action", country: "US", action: "deleted" },
+      { id: "   ", country: "US", action: "approved" },
+    ] });
+    expect(state.history).toHaveLength(1);
+    expect(state.history[0]).toMatchObject({ id: "h-ok", updateId: "REMOTE-A", country: "US", action: "approved" });
+  });
+
+  it("remote制度更新IDはtrimし、空IDと空白違いの重複を拒否する", () => {
+    const merged = mergeRuleUpdateManifests([
+      { id: "  REMOTE-ID  ", country: "US", effectiveDate: "2026-01-01", changes: [] },
+      { id: "REMOTE-ID", country: "US", effectiveDate: "2026-01-01", titleEn: "duplicate", changes: [] },
+      { id: "   ", country: "US", effectiveDate: "2026-01-01", changes: [] },
+    ]);
+    const rows = merged.filter((item) => item.id === "REMOTE-ID");
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.titleEn).not.toBe("duplicate");
+  });
+
+  it("remote changesはUIで扱える配列へ正規化し、1更新100件までに制限する", () => {
+    const many = Array.from({ length: 105 }, (_, i) => ({ path: "retirement.currentMonthlyLimits.firstInsured", after: 68000 + i }));
+    const merged = mergeRuleUpdateManifests([
+      { id: "REMOTE-OBJECT-CHANGES", country: "JP", effectiveDate: "2026-01-01", changes: { bad: true } },
+      { id: "REMOTE-MANY-CHANGES", country: "JP", effectiveDate: "2026-01-01", changes: [...many, null, "bad"] },
+    ]);
+    expect(merged.find((x) => x.id === "REMOTE-OBJECT-CHANGES")?.changes).toEqual([]);
+    expect(merged.find((x) => x.id === "REMOTE-MANY-CHANGES")?.changes).toHaveLength(100);
+  });
+
+  it("remote制度更新は既存scalarの型を変えず、関数も上書きしない", () => {
+    const updates = [{
+      id: "REMOTE-TYPE-GUARD", country: "JP", effectiveDate: "2026-01-01", changes: [
+        { path: "retirement.currentMonthlyLimits.firstInsured", after: "75000" },
+        { path: "retirement.getMonthlyContributionLimit", after: 1 },
+      ],
+    }];
+    const state = normalizeRuleUpdateState({ approved: { "REMOTE-TYPE-GUARD": true } });
+    const rules = applyApprovedRuleUpdates(JP_COUNTRY_RULES, "JP", updates, state, new Date("2026-08-21T12:00:00"));
+    expect(rules.retirement.currentMonthlyLimits.firstInsured).toBe(68000);
+    expect(typeof rules.retirement.getMonthlyContributionLimit).toBe("function");
+  });
+
+  it("数値ルールへNaNやInfinityを適用しない", () => {
+    const updates = [{
+      id: "REMOTE-NONFINITE", country: "JP", effectiveDate: "2026-01-01", changes: [
+        { path: "retirement.currentMonthlyLimits.firstInsured", after: Number.POSITIVE_INFINITY },
+      ],
+    }];
+    const state = normalizeRuleUpdateState({ approved: { "REMOTE-NONFINITE": true } });
+    const rules = applyApprovedRuleUpdates(JP_COUNTRY_RULES, "JP", updates, state, new Date("2026-08-21T12:00:00"));
+    expect(rules.retirement.currentMonthlyLimits.firstInsured).toBe(68000);
+  });
+
 });
 
 
@@ -318,5 +383,6 @@ describe("rule update source URL safety", () => {
     expect(safeRuleSourceUrl("javascript:alert(1)")).toBe("");
     expect(safeRuleSourceUrl("data:text/html,<script>alert(1)</script>")).toBe("");
     expect(safeRuleSourceUrl("/relative/source")).toBe("");
+    expect(safeRuleSourceUrl("https://official.example@evil.example/rules")).toBe("");
   });
 });

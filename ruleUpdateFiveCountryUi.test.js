@@ -8,14 +8,19 @@ const watcher = fs.readFileSync(path.resolve(process.cwd(), "scripts/check-rule-
 describe("5-country rules update center UI", () => {
   it("filters rule history by selected country", () => {
     expect(app).toContain("entry.country === country");
-    expect(app).toContain("normalizeRuleCountry(item?.country)");
+    expect(app).toContain("normalizeRuleCountry(item.country)");
     expect(app).toContain("countryRuleUpdateHistory");
   });
 
   it("keeps source statuses for all countries so country switching works", () => {
     expect(app).toContain("setRuleSourceStatuses(Array.isArray(sourcePayload?.sources)");
-    expect(app).toContain("sourcePayload.sources.map((item) => {");
-    expect(app).toContain("normalizedCountry ? { ...item, country: normalizedCountry } : null");
+    expect(app).toContain("sourcePayload.sources.slice(0, 500).map((item) => {");
+    expect(app).toContain("changed: item.changed === true");
+    expect(app).toContain("normalizedCountry && id");
+  });
+
+  it("defensively renders only array-shaped change rows", () => {
+    expect(app).toContain("Array.isArray(update.changes) ? update.changes : []");
   });
 
   it("latches an official-source change until the baseline is reviewed", () => {
