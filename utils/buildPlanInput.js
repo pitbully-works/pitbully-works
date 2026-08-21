@@ -714,6 +714,9 @@ export function buildPlanInput(ctx, overrides = {}) {
       const auStatus = auPension.status;
       const auHomeowner = auPension.homeowner;
       const auBothQualified = auPension.bothQualified;
+      const auRentAssistanceEligible = !!auPension.rentAssistanceEligible;
+      const auRentFortnightly = Number(auPension.rentFortnightly) || 0;
+      const auRentAssistanceSharer = !!auPension.rentAssistanceSharer;
       // 資産テストの対象資産：AU版の3口座に加えて、全国共通で持っている
       // 銀行預金・個別株・金・民間年金も含める（自宅は資産として保持していないので対象外）。
       // iDeCo（group: "ideco"）とNISAはJP専用なのでAUでは生成されない。
@@ -741,6 +744,9 @@ export function buildPlanInput(ctx, overrides = {}) {
             status: auStatus,
             homeowner: auHomeowner,
             bothQualified: auBothQualified,
+            rentAssistanceEligible: auRentAssistanceEligible,
+            rentFortnightly: auRentFortnightly,
+            rentAssistanceSharer: auRentAssistanceSharer,
           }) / 12;
           // Age Pensionは年2回指数改定される。将来の各回改定率は未知なので、
           // ライフプランでは選択インフレ率を年次近似として最終給付額へ適用する。
