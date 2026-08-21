@@ -12,12 +12,10 @@ describe("5-country rules update center UI", () => {
     expect(app).toContain("countryRuleUpdateHistory");
   });
 
-  it("keeps source statuses for all countries so country switching works", () => {
-    expect(app).toContain("if (sourcePayload?.schemaVersion === 1 && Array.isArray(sourcePayload?.sources)) {");
-    expect(app).toContain("setRuleSourceStatuses(sourcePayload.sources");
-    expect(app).toContain(".slice(0, 500).map((item) => {");
+  it("keeps validated source statuses for all countries so country switching works", () => {
+    expect(app).toContain("normalizeRuleSourceStatusFeed(sourcePayload, RULE_SOURCE_REGISTRY)");
+    expect(app).toContain("setRuleSourceStatuses(normalizedSourceStatuses)");
     expect(app).toContain("changed: item.changed === true");
-    expect(app).toContain("if (!normalizedCountry || !id || !registeredSource || registeredSource.country !== normalizedCountry) return null;");
   });
 
   it("defensively renders only array-shaped change rows", () => {
@@ -57,20 +55,20 @@ describe("5-country rules update center UI", () => {
     expect(app).toContain("if (!updateId || !updateCountry || !safeAction) return");
   });
 
-  it("applies the same bounded ID normalization to official-source status rows", () => {
-    expect(app).toContain("const id = normalizeRuleUpdateId(item.id)");
-    expect(app).toContain("if (!normalizedCountry || !id || !registeredSource || registeredSource.country !== normalizedCountry) return null;");
+  it("applies bounded ID/country normalization through the shared status validator", () => {
+    const rules = fs.readFileSync(path.resolve(process.cwd(), "utils/ruleUpdates.js"), "utf8");
+    expect(rules).toContain("const id = normalizeRuleUpdateId(item.id)");
+    expect(rules).toContain("const country = normalizeRuleCountry(item.country)");
   });
 
 });
 
 describe("rule source status ingress hardening", () => {
-  it("whitelists source-monitor fields and pins links to the bundled registry", () => {
-    expect(app).toContain("const registeredSource = RULE_SOURCE_REGISTRY.find((source) => source.id === id)");
-    expect(app).toContain("registeredSource.country !== normalizedCountry");
-    expect(app).toContain("url: safeRuleSourceUrl(registeredSource.url)");
+  it("whitelists status fields and pins links to the bundled registry", () => {
+    const rules = fs.readFileSync(path.resolve(process.cwd(), "utils/ruleUpdates.js"), "utf8");
+    expect(rules).toContain("url: safeRuleSourceUrl(registered.url)");
+    expect(rules).toContain("changed: item.changed === true");
+    expect(rules).toContain("seen.has(id)");
     expect(app).not.toContain("url: safeRuleSourceUrl(item.url)");
-    expect(app).toContain("changed: item.changed === true");
-    expect(app).not.toContain("? { ...item, id, country: normalizedCountry, changed: item.changed === true }");
   });
 });

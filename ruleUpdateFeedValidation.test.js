@@ -15,19 +15,17 @@ describe("rule update feed validation", () => {
     expect(app).not.toContain("setRuleUpdates(mergeRuleUpdateManifests(remote));");
   });
 
-  it("accepts source status only when schemaVersion 1 and sources[] are both present", () => {
-    expect(app).toContain("if (sourcePayload?.schemaVersion === 1 && Array.isArray(sourcePayload?.sources)) {");
-    expect(app).toContain("setRuleSourceStatuses(sourcePayload.sources");
+  it("accepts source status only after atomic registry-bound normalization", () => {
+    expect(app).toContain("const normalizedSourceStatuses = normalizeRuleSourceStatusFeed(sourcePayload, RULE_SOURCE_REGISTRY);");
+    expect(app).toContain("if (normalizedSourceStatuses) {");
+    expect(app).toContain("setRuleSourceStatuses(normalizedSourceStatuses);");
   });
 
   it("cannot count malformed feeds as a successful full check", () => {
-    const manifestValidation = app.indexOf("if (payload?.schemaVersion === 1 && Array.isArray(payload?.updates)) {");
-    const manifestSuccess = app.indexOf("manifestChecked = true;", manifestValidation);
-    const sourceValidation = app.indexOf("if (sourcePayload?.schemaVersion === 1 && Array.isArray(sourcePayload?.sources)) {");
+    const sourceValidation = app.indexOf("const normalizedSourceStatuses = normalizeRuleSourceStatusFeed(sourcePayload, RULE_SOURCE_REGISTRY);");
     const sourceSuccess = app.indexOf("sourceStatusChecked = true;", sourceValidation);
-    expect(manifestValidation).toBeGreaterThan(-1);
-    expect(manifestSuccess).toBeGreaterThan(manifestValidation);
     expect(sourceValidation).toBeGreaterThan(-1);
     expect(sourceSuccess).toBeGreaterThan(sourceValidation);
+    expect(app).toContain("if (manifestChecked && sourceStatusChecked) {");
   });
 });

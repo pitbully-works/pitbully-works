@@ -45,7 +45,7 @@ import { newSci, sciPress, sciExpr, sciFormat, sciTokensFromExpr, normalizeSciHi
 import {
   RULE_UPDATE_STORAGE_KEY, BUILTIN_RULE_UPDATES, normalizeRuleUpdateState,
   applyApprovedRuleUpdates, mergeRuleUpdateManifests, isUpdateEffective, normalizeRuleCountry,
-  isRuleUpdateApproved, isRuleUpdateDismissed, safeRuleSourceUrl, normalizeRuleUpdateId, normalizeRuleDateString,
+  isRuleUpdateApproved, isRuleUpdateDismissed, safeRuleSourceUrl, normalizeRuleUpdateId, normalizeRuleDateString, normalizeRuleSourceStatusFeed,
 } from "./utils/ruleUpdates.js";
 import { RULE_SOURCE_REGISTRY, getRuleSourcesForCountry } from "./utils/ruleSourceRegistry.js";
 import { buildCountryRuleCatalog } from "./utils/countryRuleCatalog.js";
@@ -2279,32 +2279,13 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     try {
       const sourceResponse = await fetch(`/rules-source-status.json?ts=${Date.now()}`, { cache: "no-store" });
       const sourcePayload = await readBoundedJsonResponse(sourceResponse, MAX_RULE_SOURCE_STATUS_RESPONSE_CHARS);
-      // Do not clear existing alerts or advance lastCheckedAt for malformed status files.
-      if (sourcePayload?.schemaVersion === 1 && Array.isArray(sourcePayload?.sources)) {
+      // Treat the status document atomically: unknown IDs, country mismatches,
+      // duplicate rows, malformed hashes, or an oversized feed invalidate the whole
+      // document. Keep the last-known-good alerts and do not advance lastCheckedAt.
+      const normalizedSourceStatuses = normalizeRuleSourceStatusFeed(sourcePayload, RULE_SOURCE_REGISTRY);
+      if (normalizedSourceStatuses) {
+        setRuleSourceStatuses(normalizedSourceStatuses);
         sourceStatusChecked = true;
-        setRuleSourceStatuses(sourcePayload.sources
-          .slice(0, 500).map((item) => {
-              if (!item || typeof item !== "object" || Array.isArray(item)) return null;
-              const normalizedCountry = normalizeRuleCountry(item.country);
-              const id = normalizeRuleUpdateId(item.id);
-              const registeredSource = RULE_SOURCE_REGISTRY.find((source) => source.id === id);
-              // The status file may report only a source already pinned in the bundled
-              // registry. Never let a deployed/compromised status JSON invent an
-              // "official" source, move an ID to another country, or replace its URL.
-              if (!normalizedCountry || !id || !registeredSource || registeredSource.country !== normalizedCountry) return null;
-              // Source-monitor payloads are external data too. Keep only the fields the
-              // UI actually consumes so arbitrary/huge metadata cannot be retained in state.
-              const hash = typeof item.hash === "string" && /^[a-f0-9]{64}$/i.test(item.hash.trim())
-                ? item.hash.trim().toLowerCase()
-                : "";
-              return {
-                id,
-                country: normalizedCountry,
-                changed: item.changed === true,
-                hash,
-                url: safeRuleSourceUrl(registeredSource.url),
-              };
-            }).filter(Boolean));
       }
     } catch { /* 監視状態を取得できなくても既存計算には影響させない */ }
 
