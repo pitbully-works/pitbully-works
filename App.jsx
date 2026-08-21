@@ -2957,7 +2957,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           );
         }
         const target = targetCountryFromKakeibo(parsed);
-        const expectedCurrency = DEFAULT_CURRENCY_BY_COUNTRY[target] || "JPY";
+        if (!target) {
+          throw new Error(t("importCountryUnsupportedError", { country: String(parsed.countryCode || "") }));
+        }
+        const expectedCurrency = DEFAULT_CURRENCY_BY_COUNTRY[target];
         if (parsed.baseCurrency && parsed.baseCurrency !== expectedCurrency) {
           throw new Error(`Country/currency mismatch: ${target} requires ${expectedCurrency}`);
         }

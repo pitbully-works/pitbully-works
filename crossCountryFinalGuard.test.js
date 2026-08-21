@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { COUNTRY_RULES, UNIMPLEMENTED_COUNTRY_RULES, getCountryRules } from "./countryRules/index.js";
-import { PROFILE_COUNTRIES, profileMeta } from "./utils/countryProfiles.js";
+import { PROFILE_COUNTRIES, normalizeProfileCountry, profileMeta, targetCountryFromKakeibo } from "./utils/countryProfiles.js";
 import { CATEGORY_LABELS, getCategoryLabel } from "./ui/locale.js";
 
 const EXPECTED_META = {
@@ -23,6 +23,17 @@ describe("five-country final contamination guards", () => {
   it.each(PROFILE_COUNTRIES)("%s resolves its own rules even with lowercase input", (country) => {
     expect(getCountryRules(country)).toBe(COUNTRY_RULES[country]);
     expect(getCountryRules(country.toLowerCase())).toBe(COUNTRY_RULES[country]);
+  });
+
+
+  it.each(PROFILE_COUNTRIES)("%s profile normalization accepts lowercase without changing country", (country) => {
+    expect(normalizeProfileCountry(country.toLowerCase())).toBe(country);
+  });
+
+  it("explicit unknown Kakeibo country is rejected instead of becoming JP", () => {
+    expect(targetCountryFromKakeibo({ countryCode: "XX" })).toBeNull();
+    expect(targetCountryFromKakeibo({ countryCode: "us" })).toBe("US");
+    expect(targetCountryFromKakeibo({})).toBe("JP"); // legacy payload compatibility
   });
 
   it("unknown country never falls back to Japanese statutory rules", () => {
