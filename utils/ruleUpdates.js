@@ -171,8 +171,10 @@ function parseStrictRuleDate(value) {
 }
 
 export function isUpdateEffective(update, now = new Date()) {
-  if (!update?.effectiveDate) return true;
-  const effective = parseStrictRuleDate(update.effectiveDate);
+  // A rule manifest without a valid effective date must fail closed. Remote
+  // updates are statutory changes; treating a missing date as "effective now"
+  // could activate an approved draft earlier than intended.
+  const effective = parseStrictRuleDate(update?.effectiveDate);
   return !!effective && Number.isFinite(now?.getTime?.()) && now >= effective;
 }
 
