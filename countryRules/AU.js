@@ -836,6 +836,7 @@ export const AU_COUNTRY_RULES = {
       coContribution: "https://www.ato.gov.au/individuals-and-families/super-for-individuals-and-families/super/growing-and-keeping-track-of-your-super/how-to-save-more-in-your-super/government-super-contributions/super-co-contributions",
       sapto: "https://www.ato.gov.au/individuals-and-families/income-deductions-offsets-and-records/tax-offsets/seniors-and-pensioners-tax-offset",
       medicareLevySurcharge: "https://www.privatehealth.gov.au/health_insurance/surcharges_incentives/medicare_levy.htm",
+      studyLoan: "https://www.studyassist.gov.au/managing-and-repaying-your-loan/loan-repayments",
     },
     region: "Australian residents (foreign residents not implemented)",
     // 2026-27年度の税率。第2バンドは2026年7月1日に16%→15%へ引下げ済み。
@@ -892,6 +893,29 @@ export const AU_COUNTRY_RULES = {
       else if (income > thresholds[0]) rate = cfg.rates[1];
       const uncoveredDays = Math.max(0, Math.min(365, Number(options.uncoveredDays ?? 365) || 0));
       return income * rate * (uncoveredDays / 365);
+    },
+
+    // Study and training support loans (HELP/VSL/SSL等) 2026-27。
+    // 2025-26以降は限界返済方式。repayment income は taxable income と異なるため、
+    // 呼出側で明示値を渡せる。入力0の場合のみ課税所得を概算利用する。
+    studyLoan: {
+      effectiveTaxYear: "2026-27",
+      minimumRepaymentIncome: 69528,
+      secondThreshold: 129717,
+      firstMarginalRate: 0.15,
+      secondMarginalRate: 0.17,
+      totalIncomeCapRate: 0.10,
+    },
+    calculateStudyLoanCompulsoryRepayment(repaymentIncome, debtBalance = Infinity) {
+      const income = Math.max(0, Number(repaymentIncome) || 0);
+      const debt = Number.isFinite(Number(debtBalance)) ? Math.max(0, Number(debtBalance) || 0) : Infinity;
+      const cfg = this.studyLoan;
+      if (income <= cfg.minimumRepaymentIncome || debt <= 0) return 0;
+      const firstBand = Math.max(0, Math.min(income, cfg.secondThreshold) - cfg.minimumRepaymentIncome);
+      const secondBand = Math.max(0, income - cfg.secondThreshold);
+      const marginal = firstBand * cfg.firstMarginalRate + secondBand * cfg.secondMarginalRate;
+      const capped = Math.min(marginal, income * cfg.totalIncomeCapRate);
+      return Math.min(debt, Math.max(0, capped));
     },
 
     // Low Income Tax Offset (LITO)。非還付型で、所得税本体を0未満にはしない。
@@ -1153,7 +1177,7 @@ export const AU_COUNTRY_RULES = {
       "SAPTOの配偶者間の未使用税額控除移転（spouse transfer）と資格条件の完全自動判定",
       "Government super co-contributionは本人確認入力で反映済み。年齢・ビザ・10% eligible income test・税申告・前年TSB等の完全自動判定は未実装",
       "Medicare levyの家族所得による減免は実装済み。年途中の婚姻・離婚・免除日数などの日割り計算は未実装",
-      "HECS-HELP（学生ローン）の返済",
+      "HELP等の学生ローンは2026-27の当年強制返済額を実装済み。将来の債務残高・年次indexation・任意返済の自動投影は未実装",
       "非居住者（foreign resident）の税率",
       "60歳未満のSuper引き出しへの課税（low rate capは保持）",
     ],
