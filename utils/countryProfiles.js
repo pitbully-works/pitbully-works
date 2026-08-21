@@ -59,6 +59,12 @@ export function normalizeProfileCountry(value, fallback = "JP") {
 }
 export function profileMeta(country) { return META[normalizeProfileCountry(country)] || META.JP; }
 
+export function normalizeProfileCurrency(value, country = "JP") {
+  const code = String(value || "").trim().toUpperCase();
+  const supported = new Set(Object.values(META).map((item) => item.baseCurrency));
+  return supported.has(code) ? code : profileMeta(country).baseCurrency;
+}
+
 export function normalizeCountryKeyedRecord(value) {
   const src = value && typeof value === "object" && !Array.isArray(value) ? value : {};
   const out = {};
