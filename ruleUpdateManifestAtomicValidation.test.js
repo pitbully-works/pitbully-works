@@ -17,6 +17,11 @@ describe("atomic remote rule manifest validation", () => {
     expect(normalizeRuleUpdateManifestFeed({ schemaVersion: 1, updates: [validUpdate()] })).toHaveLength(1);
   });
 
+  it("rejects a manifest without the documented schema version", () => {
+    expect(normalizeRuleUpdateManifestFeed({ updates: [] })).toBeNull();
+    expect(normalizeRuleUpdateManifestFeed({ schemaVersion: 2, updates: [] })).toBeNull();
+  });
+
   it("rejects duplicate IDs so one approval key cannot describe two remote rows", () => {
     const payload = { schemaVersion: 1, updates: [validUpdate(), validUpdate({ country: "CA" })] };
     expect(normalizeRuleUpdateManifestFeed(payload)).toBeNull();
