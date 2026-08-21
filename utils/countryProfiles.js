@@ -52,8 +52,10 @@ function applyCountryDefaults(base, country) {
   return out;
 }
 export function normalizeProfileCountry(value, fallback = "JP") {
-  const safeFallback = PROFILE_COUNTRIES.includes(fallback) ? fallback : "JP";
-  return PROFILE_COUNTRIES.includes(value) ? value : safeFallback;
+  const normalizedValue = String(value || "").toUpperCase();
+  const normalizedFallback = String(fallback || "").toUpperCase();
+  const safeFallback = PROFILE_COUNTRIES.includes(normalizedFallback) ? normalizedFallback : "JP";
+  return PROFILE_COUNTRIES.includes(normalizedValue) ? normalizedValue : safeFallback;
 }
 export function profileMeta(country) { return META[normalizeProfileCountry(country)] || META.JP; }
 export function sharedIdentity(inputs) {
@@ -111,5 +113,10 @@ export function migrateCountryProfiles(defaultInputs, parsed) {
   return { profiles: {}, activeCountry: "JP", migratedLegacy: false };
 }
 export function targetCountryFromKakeibo(payload) {
-  return normalizeProfileCountry(payload && typeof payload === "object" ? payload.countryCode : "JP", "JP");
+  const raw = payload && typeof payload === "object" ? payload.countryCode : undefined;
+  // 旧家計簿データは countryCode を持たないためJPとして互換維持する。
+  // ただし明示された未知コードをJPへ黙って落とすと、別国データを日本へ混入させるため拒否する。
+  if (raw === undefined || raw === null || String(raw).trim() === "") return "JP";
+  const code = String(raw).trim().toUpperCase();
+  return PROFILE_COUNTRIES.includes(code) ? code : null;
 }
