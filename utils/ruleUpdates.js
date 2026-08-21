@@ -39,7 +39,9 @@ function hasOwnTrue(map, id) {
 
 function normalizeDecisionMap(value) {
   const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
-  const out = {};
+  // IDs are external keys. A null-prototype map prevents magic names such as
+  // __proto__ from invoking Object.prototype setters during normalization.
+  const out = Object.create(null);
   for (const [rawId, rawDecision] of Object.entries(source)) {
     const id = normalizeRuleUpdateId(rawId);
     if (!id || typeof rawDecision !== "boolean") continue;
@@ -184,6 +186,14 @@ function setByPath(root, path, value) {
   return true;
 }
 
+function normalizeRuleCheckedAt(value) {
+  if (typeof value !== "string") return "";
+  const text = value.trim();
+  if (!text || text.length > 40) return "";
+  const ms = Date.parse(text);
+  return Number.isFinite(ms) ? new Date(ms).toISOString() : "";
+}
+
 export function normalizeRuleUpdateState(raw) {
   const source = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
   const history = Array.isArray(source.history)
@@ -204,7 +214,7 @@ export function normalizeRuleUpdateState(raw) {
     approved: normalizeDecisionMap(source.approved),
     dismissed: normalizeDecisionMap(source.dismissed),
     history,
-    lastCheckedAt: typeof source.lastCheckedAt === "string" ? source.lastCheckedAt.trim() : "",
+    lastCheckedAt: normalizeRuleCheckedAt(source.lastCheckedAt),
   };
 }
 

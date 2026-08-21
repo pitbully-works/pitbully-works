@@ -60,9 +60,12 @@ export function normalizeProfileCountry(value, fallback = "JP") {
 export function profileMeta(country) { return META[normalizeProfileCountry(country)] || META.JP; }
 
 export function normalizeProfileCurrency(value, country = "JP") {
+  const expected = profileMeta(country).baseCurrency;
   const code = String(value || "").trim().toUpperCase();
-  const supported = new Set(Object.values(META).map((item) => item.baseCurrency));
-  return supported.has(code) ? code : profileMeta(country).baseCurrency;
+  // Each supported country has one canonical planning currency. A syntactically
+  // supported but cross-country value (e.g. US + JPY) is still inconsistent and
+  // must not reach money formatting or calculations.
+  return code === expected ? code : expected;
 }
 
 export function normalizeCountryKeyedRecord(value) {
