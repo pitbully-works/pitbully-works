@@ -13,7 +13,7 @@
 // 逆に JP/US 側からも参照されない。英国版の変更はこのオブジェクト内で完結する。
 export const GB_COUNTRY_RULES = {
   meta: {
-    verifiedAsOf: "2026-08-17",
+    verifiedAsOf: "2026-08-21",
     effectivePeriod: "2026/27 tax year",
     updateCycle: "毎年3〜4月（新税年度前後）＋Budget/Finance Act時",
     noteJa: "2026/27税年度の制度を2026年8月21日に再確認。England / Wales / Northern Irelandに加え、Scottish Income TaxとInheritance Taxの概算計算にも対応しています。",
