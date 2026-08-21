@@ -394,7 +394,6 @@ export const AU_COUNTRY_RULES = {
       "Bring-forwardはATO表示の今年度利用可能額を入力して初年度の一括拠出へ反映済み。既に開始済みの2年/3年bring-forward期間について、過年度の拠出履歴をアプリ内で自動再構成する機能は未実装",
       "Transfer Balance Capを超えた分の課税（超過分は積立フェーズに留まり15%課税）",
       "Downsizer contributionは55歳以上かつATOの適格要件を満たすことを本人確認した場合、今年度一括額として最大A$300,000を反映済み。自宅保有10年・主たる住居CGT要件・売却代金・90日以内拠出等の資格条件の完全自動判定は未実装",
-      "残高$3M超の運用益への追加課税（Division 296）",
     ],
   },
 
@@ -947,6 +946,7 @@ export const AU_COUNTRY_RULES = {
       withdrawalTaxAfter60: 0.00,           // 60歳以降の引き出しは非課税（課税済みファンドの場合）
       div293Threshold: 250000,              // 所得＋拠出額がこの額を超えると
       div293AdditionalRate: 0.15,           //   税引前拠出に追加15%（合計30%）
+      division296: { largeBalanceThreshold: 3000000, veryLargeBalanceThreshold: 10000000, largeAdditionalRate: 0.15, veryLargeAdditionalRate: 0.25 },
       lowRateCap: 260000,                   // 60歳未満の一時金の低税率枠（2026年7月1日から）
       // Low Income Super Tax Offset (LISTO)：低所得者の税引前拠出に対する政府のSuper上乗せ。
       // ATI <= A$37,000、15%相当、最大A$500。算定額が0超A$10未満ならA$10。
@@ -957,6 +957,19 @@ export const AU_COUNTRY_RULES = {
       // 年齢・ビザ・10% eligible income test・税申告・TSB・non-concessional cap等は
       // 呼出側で eligible=true を明示した場合だけ適用する。
       coContribution: { lowerIncomeThreshold: 49293, higherIncomeThreshold: 64293, matchRate: 0.50, maximum: 500, minimum: 20 },
+    },
+    // Division 296 (2026-27〜): realised earningsのうちTSBがA$3m超に対応する部分へ追加課税。
+    // A$3m〜A$10m部分は15%、A$10m超部分は合計25%の追加税率。損失年はこの簡易計算では0。
+    calculateDivision296Tax(totalSuperBalance, realisedEarnings) {
+      const balance = Math.max(0, Number(totalSuperBalance) || 0);
+      const earnings = Math.max(0, Number(realisedEarnings) || 0);
+      const d = this.superannuation.division296;
+      if (balance <= d.largeBalanceThreshold || earnings <= 0) return { tax: 0, tier1Tax: 0, tier2Tax: 0 };
+      const tier1Balance = Math.max(0, Math.min(balance, d.veryLargeBalanceThreshold) - d.largeBalanceThreshold);
+      const tier2Balance = Math.max(0, balance - d.veryLargeBalanceThreshold);
+      const tier1Tax = earnings * (tier1Balance / balance) * d.largeAdditionalRate;
+      const tier2Tax = earnings * (tier2Balance / balance) * d.veryLargeAdditionalRate;
+      return { tax: tier1Tax + tier2Tax, tier1Tax, tier2Tax };
     },
     // LISTO（Low Income Super Tax Offset）。eligibility は年齢・ビザ・10% income test等を含むため、
     // 呼出側で eligible=true を明示した場合だけ算定する。
