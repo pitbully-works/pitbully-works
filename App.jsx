@@ -1077,6 +1077,15 @@ function AUInvestmentAccountsPanel({
         <span>{div293Estimated ? t("auDiv293IncomeEstimatedNote") : t("auDiv293IncomeExplicitNote")}</span>
       </div>
 
+      <div className="subsection-title" style={{ marginTop: 14, marginBottom: 8 }}>{t("auDivision296Title")}</div>
+      <Field guide={t("auDivision296BalanceGuide")} label={t("auDivision296BalanceLabel")} unit="A$" step={10000} value={auInvestment.division296TotalSuperBalance || 0} onChange={(v) => onUpdate("division296TotalSuperBalance", Math.max(0, Number(v) || 0))} />
+      <Field guide={t("auDivision296EarningsGuide")} label={t("auDivision296EarningsLabel")} unit="A$" step={1000} value={auInvestment.division296RealisedEarnings || 0} onChange={(v) => onUpdate("division296RealisedEarnings", Math.max(0, Number(v) || 0))} />
+      {(() => {
+        const d296 = taxRules.calculateDivision296Tax(auInvestment.division296TotalSuperBalance, auInvestment.division296RealisedEarnings);
+        return <div className="stat-grid" style={{ marginBottom: 10 }}><StatCard label={t("auDivision296TaxLabel")} value={money(d296.tax)} sub={t("auDivision296TaxSub")} tone={d296.tax > 0 ? "danger" : "good"} /></div>;
+      })()}
+      <div className="note" style={{ marginBottom: 10 }}><Info size={13} /><span>{t("auDivision296Note")}</span></div>
+
 
       <div className="field-label" style={{ marginBottom: 6 }}>{t("auListoEligibilityLabel")}</div>
       <div className="chip-row" style={{ marginBottom: 6 }}>
@@ -1864,6 +1873,8 @@ const DEFAULT_INPUTS = {
       div293Income: 0,
       // Division 293 税の支払元："super"（Super残高から）／"outside"（口座外の現金から）
       div293PaidFrom: "super",
+      division296TotalSuperBalance: 0,
+      division296RealisedEarnings: 0,
       // LISTOは年齢・ビザ・10% eligible income test等があるため、利用者が対象条件を満たす場合のみ有効化。
       listoEligible: false,
       // 0なら「年収 − 給与犠牲」をATIの概算として使用。分かる場合は明示入力する。
