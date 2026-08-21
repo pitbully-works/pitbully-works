@@ -21,7 +21,11 @@ describe("2026-08 strict制度監査修正",()=>{
     expect(CA_COUNTRY_RULES.investment.limits.tfsaCumulativeRoom2026).toBeUndefined();
     expect(CA_COUNTRY_RULES.investment.limits.tfsaMaximumPossibleIfEligibleSince2009).toBe(109000);
   });
-  it("all five countries expose a verified-as-of date",()=>{
-    for(const r of [JP_COUNTRY_RULES,US_COUNTRY_RULES,GB_COUNTRY_RULES,CA_COUNTRY_RULES,AU_COUNTRY_RULES]) expect(r.meta.verifiedAsOf).toBe("2026-08-17");
+  it("all five countries expose their own verified-as-of date",()=>{
+    expect(JP_COUNTRY_RULES.meta.verifiedAsOf).toBe("2026-08-17");
+    expect(US_COUNTRY_RULES.meta.verifiedAsOf).toBe("2026-08-17");
+    expect(GB_COUNTRY_RULES.meta.verifiedAsOf).toBe("2026-08-21");
+    expect(CA_COUNTRY_RULES.meta.verifiedAsOf).toBe("2026-08-17");
+    expect(AU_COUNTRY_RULES.meta.verifiedAsOf).toBe("2026-08-17");
   });
 });
