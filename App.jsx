@@ -37,7 +37,7 @@ import {
   PROFILE_COUNTRIES, PROFILE_STORAGE_VERSION, applySharedIdentity, forceCountryMeta,
   makeCountryProfile, migrateCountryProfiles, normalizeProfileCountry, normalizeProfileCurrency, normalizeCountryKeyedRecord,
   normalizeSnapshotDate, snapshotStorageKey, legacyJpSnapshotStorageKey, snapshotDateFromStorageKey,
-  targetCountryFromKakeibo, targetCountryFromBackup, normalizeStockWatchlist, normalizeProfileStorageVersion, isPlainRecord, MAX_SNAPSHOT_HISTORY,
+  targetCountryFromKakeibo, targetCountryFromBackup, normalizeStockWatchlist, normalizeProfileStorageVersion, isPlainRecord, MAX_SNAPSHOT_HISTORY, MAX_PERSISTED_ARRAY_ITEMS, localCalendarDateKey,
 } from "./utils/countryProfiles.js";
 import { buildNisaBreakdown, breakdownPrincipalItems, breakdownReturnBars, breakdownTotals } from "./utils/nisaBreakdown.js";
 import { describeSchedulePace } from "./utils/schedulePace.js";
@@ -1614,7 +1614,7 @@ export function mergeSavedInputs(defaults, saved) {
     // banks:"bad" or ideco:[] must not replace an array/object that calculation
     // code later expects to iterate or dereference.
     if (Array.isArray(defaultValue)) {
-      if (Array.isArray(savedValue)) out[key] = savedValue;
+      if (Array.isArray(savedValue)) out[key] = savedValue.slice(0, MAX_PERSISTED_ARRAY_ITEMS);
       return;
     }
     if (isPlainRecord(defaultValue)) {
@@ -1631,7 +1631,7 @@ const STORAGE_KEY = "nisa-lifeplan-inputs-v1";
 // 読めなくても書けなくても、シミュレーションの計算・保存には一切影響しない。
 const GUIDE_SEEN_KEY = "nisa-lifeplan-guide-seen-v1";
 const SNAPSHOT_PREFIX = "snapshot:";
-const todayKey = () => new Date().toISOString().slice(0, 10);
+const todayKey = () => localCalendarDateKey(new Date());
 const formatDateLabel = (d) => {
   const dt = new Date(d + "T00:00:00");
   return `${dt.getFullYear()}/${dt.getMonth() + 1}/${dt.getDate()}`;

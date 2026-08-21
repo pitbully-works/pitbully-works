@@ -65,4 +65,18 @@ describe("browser storage compatibility shim", () => {
     await expect(storage.set("alpha", "1")).rejects.toThrow("quota");
     spy.mockRestore();
   });
+
+  it("rejects invalid storage keys instead of coercing them into the app namespace", async () => {
+    const storage = installShim();
+    await expect(storage.get(undefined)).rejects.toThrow("Invalid storage key");
+    await expect(storage.set("", "x")).rejects.toThrow("Invalid storage key");
+    await expect(storage.delete("bad\0key")).rejects.toThrow("Invalid storage key");
+  });
+
+  it("rejects non-string values instead of relying on localStorage coercion", async () => {
+    const storage = installShim();
+    await expect(storage.set("alpha", { bad: true })).rejects.toThrow("Storage value must be a string");
+    expect(window.localStorage.getItem("nisa-lifeplan:alpha")).toBeNull();
+  });
+
 });

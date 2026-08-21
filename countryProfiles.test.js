@@ -320,3 +320,25 @@ describe("batch hardening 9: backup active-bucket consistency", () => {
     expect(app).toContain('if (!isPlainRecord(parsed.inputs)) throw new Error(t("importInputsNotFoundError"))');
   });
 });
+
+describe("snapshot/local persistence boundary hardening", () => {
+  it("builds snapshot dates from the local calendar instead of UTC", async () => {
+    const { localCalendarDateKey } = await import("./utils/countryProfiles.js");
+    const d = new Date(2026, 7, 21, 0, 30, 0);
+    expect(localCalendarDateKey(d)).toBe("2026-08-21");
+  });
+
+  it("returns null for an invalid local calendar date input", async () => {
+    const { localCalendarDateKey } = await import("./utils/countryProfiles.js");
+    expect(localCalendarDateKey("not-a-date")).toBeNull();
+  });
+
+  it("accepts only plain watchlist records", async () => {
+    const { normalizeStockWatchlist } = await import("./utils/countryProfiles.js");
+    const inherited = Object.create({ name: "Inherited" });
+    inherited.shares = 1;
+    expect(normalizeStockWatchlist([inherited, { name: "Valid", shares: 2 }], "US")).toEqual([
+      { name: "Valid", sector: "", shares: 2, value: 0, currency: "USD" },
+    ]);
+  });
+});

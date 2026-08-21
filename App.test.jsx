@@ -901,3 +901,13 @@ describe("Australia stays independent of the other countries", () => {
   });
 });
 
+
+describe("persisted array bounds", () => {
+  it("caps restored arrays before they enter application state", () => {
+    const defaults = { rows: [] };
+    const saved = { rows: Array.from({ length: 6000 }, (_, i) => i) };
+    const result = mergeSavedInputs(defaults, saved);
+    expect(result.rows).toHaveLength(5000);
+    expect(result.rows[4999]).toBe(4999);
+  });
+});

@@ -4,20 +4,31 @@
 (function () {
   if (window.storage) return; // 既にある場合は上書きしない（Claude環境内で読み込まれた場合の保険）
   const NS = "nisa-lifeplan:";
+  const MAX_KEY_LENGTH = 2048;
+  const normalizeKey = (key) => {
+    if (typeof key !== "string" || key.length === 0 || key.length > MAX_KEY_LENGTH || key.includes("\0")) {
+      throw new TypeError("Invalid storage key");
+    }
+    return key;
+  };
 
   window.storage = {
     async get(key) {
-      const raw = window.localStorage.getItem(NS + key);
+      const safeKey = normalizeKey(key);
+      const raw = window.localStorage.getItem(NS + safeKey);
       if (raw === null) return null;
-      return { key, value: raw, shared: false };
+      return { key: safeKey, value: raw, shared: false };
     },
     async set(key, value) {
-      window.localStorage.setItem(NS + key, value);
-      return { key, value, shared: false };
+      const safeKey = normalizeKey(key);
+      if (typeof value !== "string") throw new TypeError("Storage value must be a string");
+      window.localStorage.setItem(NS + safeKey, value);
+      return { key: safeKey, value, shared: false };
     },
     async delete(key) {
-      window.localStorage.removeItem(NS + key);
-      return { key, deleted: true, shared: false };
+      const safeKey = normalizeKey(key);
+      window.localStorage.removeItem(NS + safeKey);
+      return { key: safeKey, deleted: true, shared: false };
     },
     async list(prefix) {
       const keys = [];
