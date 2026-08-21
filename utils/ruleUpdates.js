@@ -99,8 +99,20 @@ function clonePreservingFunctions(value) {
   return out;
 }
 
+const UNSAFE_RULE_PATH_SEGMENTS = new Set(["__proto__", "prototype", "constructor"]);
+
+function safeRulePathParts(path) {
+  const parts = String(path || "").split(".");
+  if (!parts.length || parts.some((part) => !part || UNSAFE_RULE_PATH_SEGMENTS.has(part))) return null;
+  return parts;
+}
+
 function setByPath(root, path, value) {
-  const parts = String(path).split(".");
+  // Rule-update paths may come from a remote manifest. Never traverse prototype
+  // keys: e.g. "__proto__.x" or "constructor.prototype.x" could otherwise
+  // mutate Object.prototype after the user approves an update.
+  const parts = safeRulePathParts(path);
+  if (!parts) return false;
   let cursor = root;
   for (let i = 0; i < parts.length - 1; i += 1) {
     const key = parts[i];
@@ -108,6 +120,7 @@ function setByPath(root, path, value) {
     cursor = cursor[key];
   }
   cursor[parts[parts.length - 1]] = value;
+  return true;
 }
 
 export function normalizeRuleUpdateState(raw) {
