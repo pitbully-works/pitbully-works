@@ -240,6 +240,7 @@ export function normalizeStockWatchlist(value, country = "JP") {
     return Number.isFinite(n) && n >= 0 ? n : 0;
   };
   return value
+    .slice(0, 500)
     .filter((item) => isPlainRecord(item))
     .map((item) => {
       const name = String(item.name ?? "").trim().slice(0, 200);
@@ -253,8 +254,7 @@ export function normalizeStockWatchlist(value, country = "JP") {
         currency,
       };
     })
-    .filter(Boolean)
-    .slice(0, 500);
+    .filter(Boolean);
 }
 
 export function snapshotDateFromStorageKey(country, key) {

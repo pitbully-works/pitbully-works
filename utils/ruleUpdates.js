@@ -8,6 +8,8 @@ export const MAX_RULE_SOURCE_URL_LENGTH = 2048;
 export const MAX_RULE_PATH_LENGTH = 512;
 export const MAX_RULE_PATH_SEGMENTS = 24;
 export const MAX_RULE_TEXT_LENGTH = 4000;
+export const MAX_RULE_DECISION_ENTRIES = 2000;
+export const MAX_RULE_HISTORY_INPUT_ROWS = 1000;
 
 export function normalizeRuleCountry(value) {
   if (typeof value !== "string") return null;
@@ -62,7 +64,7 @@ function normalizeDecisionMap(value) {
   // IDs are external keys. A null-prototype map prevents magic names such as
   // __proto__ from invoking Object.prototype setters during normalization.
   const out = Object.create(null);
-  for (const [rawId, rawDecision] of Object.entries(source)) {
+  for (const [rawId, rawDecision] of Object.entries(source).slice(0, MAX_RULE_DECISION_ENTRIES)) {
     const id = normalizeRuleUpdateId(rawId);
     if (!id || typeof rawDecision !== "boolean") continue;
     out[id] = rawDecision;
@@ -224,6 +226,7 @@ export function normalizeRuleUpdateState(raw) {
   const source = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
   const history = Array.isArray(source.history)
     ? source.history
+      .slice(-MAX_RULE_HISTORY_INPUT_ROWS)
       .filter((item) => item && typeof item === "object" && !Array.isArray(item))
       .map((item) => {
         const country = normalizeRuleCountry(item.country);
@@ -322,8 +325,8 @@ export function mergeRuleUpdateManifests(remoteUpdates) {
       if (byId.has(id)) continue;
       const changes = Array.isArray(item.changes)
         ? item.changes
-          .filter((change) => change && typeof change === "object" && !Array.isArray(change))
           .slice(0, MAX_RULE_CHANGES_PER_UPDATE)
+          .filter((change) => change && typeof change === "object" && !Array.isArray(change))
           .map((change) => ({
             path: typeof change.path === "string" && safeRulePathParts(change.path) ? change.path.trim() : "",
             labelJa: normalizeRuleText(change.labelJa, 500),
