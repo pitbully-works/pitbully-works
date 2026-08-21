@@ -31,7 +31,7 @@ const MAN = 10000;
 
 function useMoneyScale() {
   const { baseCurrency } = useContext(LocaleContext);
-  return (baseCurrency || "JPY") === "JPY" ? MAN : 1;
+  return String(baseCurrency || "JPY").trim().toUpperCase() === "JPY" ? MAN : 1;
 }
 
 // 円 <-> 万円 の相互変換を行う入力欄（行内の小さな入力用）
@@ -167,7 +167,7 @@ function MoneyField({ label, value, onChange, unitPer, guide, disabled, mono = t
   const inputId = useId();
   const guideId = useId();
   const [showGuide, setShowGuide] = useState(false);
-  const isYen = (baseCurrency || "JPY") === "JPY";
+  const isYen = String(baseCurrency || "JPY").trim().toUpperCase() === "JPY";
   const scale = isYen ? MAN : 1;
   // unitPer: undefined | "month" | "year"
   const base = isYen ? t("unitMan") : currencySymbol;
@@ -438,7 +438,7 @@ function AgeYMInput({ years, months, onYears, onMonths, placeholder }) {
 function LabeledMiniInput({ label, value, onChange, type = "number", money = false, onChangeValue }) {
   const { t, baseCurrency } = useContext(LocaleContext);
   const inputId = useId();
-  const isYen = (baseCurrency || "JPY") === "JPY";
+  const isYen = String(baseCurrency || "JPY").trim().toUpperCase() === "JPY";
   return (
     <div style={{ flex: 1 }}>
       <label htmlFor={inputId} style={{ display: "block", fontSize: 10, color: "#7C8A90", marginBottom: 2 }}>
