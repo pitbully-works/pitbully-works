@@ -28,6 +28,7 @@ describe("five-country final contamination guards", () => {
 
   it.each(PROFILE_COUNTRIES)("%s profile normalization accepts lowercase without changing country", (country) => {
     expect(normalizeProfileCountry(country.toLowerCase())).toBe(country);
+    expect(normalizeProfileCountry(`  ${country.toLowerCase()}  `)).toBe(country);
   });
 
   it("explicit unknown Kakeibo country is rejected instead of becoming JP", () => {
