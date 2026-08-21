@@ -137,4 +137,25 @@ describe("rule update center", () => {
     expect(state.history).toEqual([{ id: "h1", country: "CA", action: "approved" }]);
   });
 
+  it("承認済みremote制度更新でもprototype pollution用pathは適用しない", () => {
+    const updates = [{
+      id: "REMOTE-PROTOTYPE-PATH",
+      country: "JP",
+      effectiveDate: "2026-01-01",
+      changes: [
+        { path: "__proto__.pollutedByRuleUpdate", after: "yes" },
+        { path: "constructor.prototype.pollutedByRuleUpdate2", after: "yes" },
+        { path: "retirement.currentMonthlyLimits.firstInsured", after: 75002 },
+      ],
+    }];
+    const state = normalizeRuleUpdateState({ approved: { "REMOTE-PROTOTYPE-PATH": true } });
+    const rules = applyApprovedRuleUpdates(JP_COUNTRY_RULES, "JP", updates, state, new Date("2026-08-21T12:00:00"));
+
+    expect(rules.retirement.currentMonthlyLimits.firstInsured).toBe(75002);
+    expect(Object.prototype.pollutedByRuleUpdate).toBeUndefined();
+    expect(Object.prototype.pollutedByRuleUpdate2).toBeUndefined();
+    expect(({}).pollutedByRuleUpdate).toBeUndefined();
+    expect(({}).pollutedByRuleUpdate2).toBeUndefined();
+  });
+
 });
