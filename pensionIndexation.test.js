@@ -102,3 +102,12 @@ describe("public pension indexation", () => {
     expect(app).toContain('displayNetWorthChartData');
   });
 });
+
+
+describe("country normalization for pension indexation", () => {
+  it.each(["JP", "US", "GB", "CA", "AU"])("%s：小文字・前後空白でも改定率が一致する", (country) => {
+    const canonical = resolvePublicPensionIndexationPct(country, 3, { mode: "auto" });
+    const noisy = resolvePublicPensionIndexationPct(`  ${country.toLowerCase()}  `, 3, { mode: "auto" });
+    expect(noisy).toBeCloseTo(canonical, 10);
+  });
+});

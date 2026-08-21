@@ -481,3 +481,25 @@ describe("buildScaledNisaPlan：倍率は現在年齢以降にだけ掛かる", 
   });
 });
 
+
+
+describe("country normalization at plan-builder boundary", () => {
+  it.each(COUNTRIES)("%s：小文字・前後空白でも同じ生活費を読む", (country) => {
+    const inputs = makeInputs(country);
+    expect(readLivingCostMonthly(`  ${country.toLowerCase()}  `, inputs)).toBe(readLivingCostMonthly(country, inputs));
+  });
+
+  it.each(COUNTRIES)("%s：小文字・前後空白でも同じ国として計画を構築する", (country) => {
+    const canonical = ctxFor(country);
+    const noisy = { ...ctxFor(country), country: `  ${country.toLowerCase()}  ` };
+    const a = buildPlanInput(canonical);
+    const b = buildPlanInput(noisy);
+    expect(b).toEqual(a);
+  });
+
+  it("未知の国コードをJPの生活費として扱わない", () => {
+    const inputs = makeInputs("JP");
+    expect(readLivingCostMonthly("XX", inputs)).toBe(0);
+    expect(() => buildPlanInput({ ...ctxFor("JP"), country: "XX" })).toThrow(/Unsupported country/);
+  });
+});
