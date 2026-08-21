@@ -493,9 +493,14 @@ export function buildPlanInput(ctx, overrides = {}) {
       };
       if (isSuper) {
         const superEndAge = Number(a.contributionEndAge) || retireAge;
+        // 既存の画面・回帰テスト・外部参照との互換性のため、通常の継続拠出額は
+        // monthlyContribution にも保持する。lifePlanEngine 側では contributionFn が
+        // 存在する場合はこちらを優先するため、二重計上にはならない。
+        const recurringSuperAnnual = recurringNonConcessionalAnnual + concessionalNet + listoAnnual + coContributionAnnual;
+        pool.monthlyContribution = recurringSuperAnnual / 12;
         pool.contributionFn = (age, dt, stepIndex) => {
           const recurring = age <= superEndAge + 1e-9
-            ? (recurringNonConcessionalAnnual + concessionalNet + listoAnnual + coContributionAnnual) * dt
+            ? recurringSuperAnnual * dt
             : 0;
           return recurring + (stepIndex === 0 ? bringForwardOneOffApplied : 0);
         };
