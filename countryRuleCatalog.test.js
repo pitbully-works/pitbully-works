@@ -65,12 +65,13 @@ describe("5-country common rule catalog", () => {
   });
 
   it("does not pretend missing estate calculators exist", () => {
-    for (const country of ["JP", "US", "CA", "AU"]) {
+    for (const country of ["JP", "US", "CA"]) {
       const estate = buildCountryRuleCatalog(country).find((row) => row.key === "estate");
       expect(estate.hasCalculationSection).toBe(false);
       expect(estate.status).toBe("partial");
     }
     expect(buildCountryRuleCatalog("GB").find((row) => row.key === "estate").hasCalculationSection).toBe(true);
+    expect(buildCountryRuleCatalog("AU").find((row) => row.key === "estate").hasCalculationSection).toBe(true);
   });
 
   it("keeps each country's section-specific review dates instead of forcing one global date", () => {

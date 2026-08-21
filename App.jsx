@@ -1911,6 +1911,15 @@ const DEFAULT_INPUTS = {
         cshcIllnessSeparated: false,
         cshcDependentChildren: 0,
       },
+      // AU相続・Super death benefit（一括受取の簡易税額見込み）
+      estate: {
+        superDeathBenefitEnabled: false,
+        beneficiaryDependant: true,
+        taxFreeComponent: 0,
+        taxedElement: 0,
+        untaxedElement: 0,
+        includeMedicareLevy: true,
+      },
       // 医療費（Medicare前提の簡易モデル）
       healthcare: {
         gapAnnual: 0,
@@ -7796,6 +7805,53 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               <span>{t("inheritanceAutoNote")}</span>
             </div>
           )}
+
+          {country === "AU" && rules.estate?.implemented && (() => {
+            const e = inputs.auInvestment.estate || {};
+            const result = rules.estate.calculateSuperDeathBenefitLumpSum({
+              taxFreeComponent: e.taxFreeComponent,
+              taxedElement: e.taxedElement,
+              untaxedElement: e.untaxedElement,
+              isDeathBenefitsDependant: e.beneficiaryDependant !== false,
+              includeMedicareLevy: e.includeMedicareLevy !== false,
+            });
+            return (
+              <div className="summary-box" style={{ marginTop: 14 }}>
+                <div className="field-label" style={{ marginBottom: 8 }}>{t("auEstateSuperDeathTitle")}</div>
+                <div className="note" style={{ marginBottom: 10 }}>
+                  <Info size={13} />
+                  <span>{t("auEstateNoInheritanceTaxNote")}</span>
+                </div>
+                <label className="checkbox-row">
+                  <input type="checkbox" checked={!!e.superDeathBenefitEnabled} onChange={(ev) => updateAuInvestmentNested("estate", "superDeathBenefitEnabled", ev.target.checked)} />
+                  <span>{t("auEstateSuperDeathEnable")}</span>
+                </label>
+                {e.superDeathBenefitEnabled && <>
+                  <div className="field-label" style={{ marginBottom: 6 }}>{t("auEstateBeneficiaryType")}</div>
+                  <div className="chip-row" style={{ marginBottom: 10 }}>
+                    <button className={`chip ${e.beneficiaryDependant !== false ? "chip-active" : ""}`} onClick={() => updateAuInvestmentNested("estate", "beneficiaryDependant", true)}>{t("auEstateDependant")}</button>
+                    <button className={`chip ${e.beneficiaryDependant === false ? "chip-active" : ""}`} onClick={() => updateAuInvestmentNested("estate", "beneficiaryDependant", false)}>{t("auEstateNonDependant")}</button>
+                  </div>
+                  <Field guide={t("auEstateTaxFreeGuide")} label={t("auEstateTaxFreeLabel")} unit="A$" step={1000} value={e.taxFreeComponent || 0} onChange={(v) => updateAuInvestmentNested("estate", "taxFreeComponent", v)} />
+                  <Field guide={t("auEstateTaxedGuide")} label={t("auEstateTaxedLabel")} unit="A$" step={1000} value={e.taxedElement || 0} onChange={(v) => updateAuInvestmentNested("estate", "taxedElement", v)} />
+                  <Field guide={t("auEstateUntaxedGuide")} label={t("auEstateUntaxedLabel")} unit="A$" step={1000} value={e.untaxedElement || 0} onChange={(v) => updateAuInvestmentNested("estate", "untaxedElement", v)} />
+                  {e.beneficiaryDependant === false && <label className="checkbox-row">
+                    <input type="checkbox" checked={e.includeMedicareLevy !== false} onChange={(ev) => updateAuInvestmentNested("estate", "includeMedicareLevy", ev.target.checked)} />
+                    <span>{t("auEstateIncludeMedicareLevy")}</span>
+                  </label>}
+                  <div className="stat-grid" style={{ marginTop: 8 }}>
+                    <StatCard label={t("auEstateGrossLabel")} value={money(result.gross)} sub={t("auEstateGrossSub")} />
+                    <StatCard label={t("auEstateTaxLabel")} value={money(result.tax)} sub={e.beneficiaryDependant !== false ? t("auEstateDependantTaxFreeSub") : t("auEstateNonDependantTaxSub")} />
+                    <StatCard label={t("auEstateNetLabel")} value={money(result.net)} sub={t("auEstateNetSub")} />
+                  </div>
+                  <div className="note" style={{ marginTop: 10 }}>
+                    <Info size={13} />
+                    <span>{t("auEstateSuperDeathLimitNote")}</span>
+                  </div>
+                </>}
+              </div>
+            );
+          })()}
 
           </div>
           <div className="section-block" style={{ borderColor: "#6FA88A" }}>
