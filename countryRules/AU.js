@@ -653,7 +653,7 @@ export const AU_COUNTRY_RULES = {
     },
     notImplemented: [
       "Medicare Levy Surcharge（2026-27年度の所得閾値を公式公表値で確定後に自動化）",
-      "Medicare levyの低所得者減免（家族状況・SAPTO等の詳細条件を含む）",
+      "Medicare levyの家族所得による減免・日割り免除（単身者の低所得減免は実装済み）",
       "Medicare Safety Netの診療ごとの自動還付計算（MBS schedule feeと実請求額が必要）",
       "Aged care（高齢者介護）の資力調査に基づく自己負担額",
     ],
@@ -688,7 +688,19 @@ export const AU_COUNTRY_RULES = {
       ],
       scheduledSecondBandRateFrom2027: 0.14, // 2027年7月1日から。本年度は未適用。
     },
-    medicareLevy: { rate: 0.02 },
+    medicareLevy: {
+      rate: 0.02,
+      // 2026-27年度固有の低所得閾値はまだ公表されていないため、
+      // 2025-26から適用される最新の法定閾値を継続使用する。
+      // 単身者：通常 A$28,011 / SAPTO対象 A$44,268。
+      // phase-in は閾値超過額の10%と通常2%の小さい方。
+      lowIncomeThresholds: {
+        effectiveFrom: "2025-26",
+        ordinarySingle: { lower: 28011, upper: 35013 },
+        saptoSingle: { lower: 44268, upper: 55335 },
+      },
+      phaseInRate: 0.10,
+    },
     // Low Income Tax Offset (LITO)。非還付型で、所得税本体を0未満にはしない。
     lowIncomeTaxOffset: {
       maximum: 700,
@@ -760,9 +772,19 @@ export const AU_COUNTRY_RULES = {
       if (income >= cfg.cutOutThreshold) return 0;
       return Math.max(0, cfg.maximum - (income - cfg.shadeOutThreshold) * this.seniorsAndPensionersTaxOffset.shadeOutRate);
     },
-    // Medicare levy（2%）。低所得者の減免は未実装。
-    calculateMedicareLevy(taxableIncome) {
-      return Math.max(0, Number(taxableIncome) || 0) * this.medicareLevy.rate;
+    // Medicare levy（2%）。単身者の低所得者減免を反映する。
+    // saptoEligible=true の場合は、SAPTO対象者用の高い閾値を使う。
+    // 家族所得による追加減免・日割り免除等は別条件が必要なため、ここでは扱わない。
+    calculateMedicareLevy(taxableIncome, options = {}) {
+      const income = Math.max(0, Number(taxableIncome) || 0);
+      const thresholds = options.saptoEligible === true
+        ? this.medicareLevy.lowIncomeThresholds.saptoSingle
+        : this.medicareLevy.lowIncomeThresholds.ordinarySingle;
+      if (income <= thresholds.lower) return 0;
+      const fullLevy = income * this.medicareLevy.rate;
+      if (income >= thresholds.upper) return fullLevy;
+      const phasedLevy = (income - thresholds.lower) * this.medicareLevy.phaseInRate;
+      return Math.min(fullLevy, phasedLevy);
     },
     // 所得税＋Medicare levy の合計
     calculateTotalTax(taxableIncome, options = {}) {
@@ -777,7 +799,7 @@ export const AU_COUNTRY_RULES = {
       );
       const saptoApplied = Math.min(afterLito, saptoEntitlement);
       const incomeTax = Math.max(0, afterLito - saptoApplied);
-      const medicareLevy = this.calculateMedicareLevy(taxableIncome);
+      const medicareLevy = this.calculateMedicareLevy(taxableIncome, { saptoEligible: options.saptoEligible === true });
       return { incomeTaxBeforeOffsets, litoEntitlement, litoApplied, saptoEntitlement, saptoApplied, incomeTax, medicareLevy, total: incomeTax + medicareLevy };
     },
     getMarginalRate(taxableIncome) {
@@ -863,7 +885,7 @@ export const AU_COUNTRY_RULES = {
     },
     notImplemented: [
       "SAPTOの配偶者間の未使用税額控除移転（spouse transfer）と資格条件の完全自動判定",
-      "Medicare levyの低所得者減免",
+      "Medicare levyの家族所得による減免・日割り免除",
       "Medicare Levy Surcharge（民間医療保険未加入の高所得者）",
       "HECS-HELP（学生ローン）の返済",
       "非居住者（foreign resident）の税率",
