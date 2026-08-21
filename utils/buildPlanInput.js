@@ -473,6 +473,9 @@ export function buildPlanInput(ctx, overrides = {}) {
           acc.bringForwardAvailableCap, recurringNonConcessionalAnnual, acc.bringForwardOneOffContribution
         )
       : 0;
+    const downsizerOneOffApplied = typeof inv.getDownsizerContribution === "function"
+      ? inv.getDownsizerContribution(effectiveCurrentAge, acc.downsizerEligible === true, acc.downsizerContribution)
+      : 0;
     const concessionalNet = Math.max(
       0,
       concessionalGross * (1 - contribTax)
@@ -502,7 +505,7 @@ export function buildPlanInput(ctx, overrides = {}) {
           const recurring = age <= superEndAge + 1e-9
             ? recurringSuperAnnual * dt
             : 0;
-          return recurring + (stepIndex === 0 ? bringForwardOneOffApplied : 0);
+          return recurring + (stepIndex === 0 ? bringForwardOneOffApplied + downsizerOneOffApplied : 0);
         };
         pool.accessAge = inv.preservationAge; // preservation age まで取り崩せない
         // 60〜64歳は condition of release（退職等）が必要、65歳以降は無条件。
