@@ -22,7 +22,7 @@ export const AU_COUNTRY_RULES = {
     noteJa: "2026-27年度制度を2026年8月17日に確認。Age Pensionは2026年3月20日改定値で、次回は9月20日改定を確認します。",
     noteEn: "2026-27 rules verified on 17 Aug 2026. Age Pension uses the 20 Mar 2026 rates; the next scheduled indexation is 20 Sep 2026.",
     coverage: [
-      { key: "investment", labelJa: "投資制度", labelEn: "Investment", status: "partial", effective: "2026-27 financial year", lastUpdated: "2026-08-17", updateJa: "Super・投資口座・拠出上限を反映。carry-forward、bring-forward等の詳細判定は未実装。", updateEn: "Super, investment accounts and contribution caps are modelled; detailed carry-forward/bring-forward eligibility is not implemented." },
+      { key: "investment", labelJa: "投資制度", labelEn: "Investment", status: "partial", effective: "2026-27 financial year", lastUpdated: "2026-08-21", updateJa: "Super・投資口座・拠出上限に加え、ATO表示額を使うcarry-forward（繰越拠出）を反映。bring-forward等の詳細判定は未実装。", updateEn: "Super, investment accounts and contribution caps are modelled, including carry-forward using the available amount shown by the ATO; detailed bring-forward eligibility is not implemented." },
       { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "partial", effective: "2026-27 / Age Pension Mar 2026 rates", lastUpdated: "2026-08-17", updateJa: "Age Pensionの資産・所得テスト、Work Bonus年次近似、Super取崩しを反映。Work Bonusの隔週厳密計算等は未実装。", updateEn: "Age Pension means tests, annualised Work Bonus and Super drawdown are modelled; fortnightly Work Bonus detail and some edge cases are not implemented." },
       { key: "healthcare", labelJa: "医療", labelEn: "Healthcare", status: "partial", effective: "2026-27 / 2026 calendar-year Safety Nets", lastUpdated: "2026-08-21", updateJa: "Medicare前提の自己負担に加え、2026年PBS Safety Net概算とMedicare Safety Net閾値を反映。診療ごとのSafety Net還付・aged care資力調査は未自動化。", updateEn: "Adds a 2026 PBS Safety Net estimate and Medicare Safety Net thresholds to the Medicare out-of-pocket model; item-level Safety Net rebates and aged-care means testing remain manual." },
       { key: "tax", labelJa: "税金", labelEn: "Tax", status: "partial", effective: "2026-27 financial year", lastUpdated: "2026-08-21", updateJa: "居住者所得税・LITO・SAPTO・Medicare levy・MLS・CGTを反映。", updateEn: "Resident income tax, LITO, SAPTO, Medicare levy, MLS and CGT are modelled." },
@@ -32,11 +32,12 @@ export const AU_COUNTRY_RULES = {
   investment: {
     implemented: true,
     effectiveTaxYear: "2026-27",
-    lastUpdated: "2026-07-18",
+    lastUpdated: "2026-08-21",
     sourceName: "Australian Taxation Office (ATO) — Key superannuation rates and thresholds",
     sourceUrl: "https://www.ato.gov.au/tax-rates-and-codes/key-superannuation-rates-and-thresholds",
     sourceUrls: {
       contributionsCaps: "https://www.ato.gov.au/tax-rates-and-codes/key-superannuation-rates-and-thresholds/contributions-caps",
+      carryForward: "https://www.ato.gov.au/individuals-and-families/super-for-individuals-and-families/super/growing-and-keeping-track-of-your-super/caps-limits-and-tax-on-super-contributions/concessional-contributions-cap",
       paymentsFromSuper: "https://www.ato.gov.au/tax-rates-and-codes/key-superannuation-rates-and-thresholds/payments-from-super",
       superGuarantee: "https://www.ato.gov.au/businesses-and-organisations/super-for-employers/paying-super-contributions/how-much-super-to-pay",
       preservationAge: "https://www.ato.gov.au/individuals-and-families/super-for-individuals-and-families/super/withdrawing-and-using-your-super",
@@ -77,6 +78,20 @@ export const AU_COUNTRY_RULES = {
     // ---------- 計算関数（すべて純関数） ----------
     _num(v) { return Number(v) || 0; },
     getConcessionalCap() { return this.limits.concessionalCap; },
+    // Carry-forward unused concessional cap amounts:
+    // ATO上で現在利用可能と表示される未使用枠を入力してもらい、前年6/30時点の
+    // total super balance が $500,000 未満の場合だけ今年度上限へ加算する。
+    // 過去5年の各年度履歴・失効順はATO側で既に反映された「available amount」を使うため、
+    // アプリ側で履歴を推測しない。
+    getCarryForwardAvailable(priorYearTotalSuperBalance, availableUnusedCap) {
+      const balance = Math.max(0, this._num(priorYearTotalSuperBalance));
+      const available = Math.max(0, this._num(availableUnusedCap));
+      return balance < this.limits.carryForwardBalanceThreshold ? available : 0;
+    },
+    getEffectiveConcessionalCap(priorYearTotalSuperBalance, availableUnusedCap) {
+      return this.limits.concessionalCap
+        + this.getCarryForwardAvailable(priorYearTotalSuperBalance, availableUnusedCap);
+    },
     getNonConcessionalCap() { return this.limits.nonConcessionalCap; },
     getSuperGuaranteeRate() { return this.limits.superGuaranteeRate; },
     // 雇用主のSG拠出額。SG算定の対象収入には上限（maximum contribution base）がある。
@@ -97,14 +112,15 @@ export const AU_COUNTRY_RULES = {
     // という複雑な処理になる。本アプリはこれらを実装していないため、
     // 投影では「通常の税引前拠出として扱う額」を cap までに制限する（安全側＝残高を過大にしない）。
     // 超過分は投影に一切入らない。notImplemented と画面注記に明記すること。
-    getCappedConcessional(annualSalary, voluntaryConcessional) {
+    getCappedConcessional(annualSalary, voluntaryConcessional, priorYearTotalSuperBalance = 0, availableUnusedCap = 0) {
       return Math.min(
         this.getTotalConcessional(annualSalary, voluntaryConcessional),
-        this.limits.concessionalCap
+        this.getEffectiveConcessionalCap(priorYearTotalSuperBalance, availableUnusedCap)
       );
     },
-    getConcessionalRemaining(annualSalary, voluntaryConcessional) {
-      return this.limits.concessionalCap - this.getTotalConcessional(annualSalary, voluntaryConcessional);
+    getConcessionalRemaining(annualSalary, voluntaryConcessional, priorYearTotalSuperBalance = 0, availableUnusedCap = 0) {
+      return this.getEffectiveConcessionalCap(priorYearTotalSuperBalance, availableUnusedCap)
+        - this.getTotalConcessional(annualSalary, voluntaryConcessional);
     },
     getNonConcessionalRemaining(nonConcessionalContribution) {
       return this.limits.nonConcessionalCap - this._num(nonConcessionalContribution);
@@ -163,6 +179,7 @@ export const AU_COUNTRY_RULES = {
       currentAge, retireAge, deathAge, accounts, annualWithdrawalNeeded,
       annualSalary, voluntaryConcessional, contributionsTaxRate, earningsTaxAccumulation,
       div293TaxAnnual, div293PaidFrom, listoAnnual,
+      carryForwardPriorYearBalance, carryForwardAvailableUnusedCap,
     }) {
       const keys = this.accountTypes;
       const contribTax = (contributionsTaxRate === undefined || contributionsTaxRate === null) ? 0.15 : Number(contributionsTaxRate);
@@ -188,7 +205,10 @@ export const AU_COUNTRY_RULES = {
       // 残高を過大に見せない安全側の扱いにしている。
       // 【concessional cap】超過分の課税・払戻し／残留の選択は未実装のため、
       // 通常の税引前拠出として投影する額を cap までに制限する（安全側）。
-      const concessionalGross = this.getCappedConcessional(annualSalary, voluntaryConcessional);
+      const concessionalGross = this.getCappedConcessional(
+        annualSalary, voluntaryConcessional,
+        carryForwardPriorYearBalance, carryForwardAvailableUnusedCap
+      );
       // Division 293 を Super から払う場合、口座へ入る額がその分だけ減る（0で下げ止まる）。
       const concessionalNet = Math.max(
         0,
@@ -316,7 +336,7 @@ export const AU_COUNTRY_RULES = {
         + "すでに引かれた15%が税額控除される。さらに超過分をSuperに残すか85%まで払い戻すかを"
         + "選択できるが、いずれも未実装。投影では安全側として、通常の税引前拠出として扱う額を"
         + "concessional cap までに制限し、超過分は投影に入れていない",
-      "繰越拠出（carry-forward）：総残高$500,000未満なら過去5年分の未使用枠を繰り越せる",
+      "繰越拠出（carry-forward）はATOオンラインサービスに表示される現在利用可能額を入力して反映済み。過去5年の各年度履歴をアプリ内で自動再構成する機能は未実装",
       "3年分の前倒し拠出（bring-forward）の可否判定",
       "Transfer Balance Capを超えた分の課税（超過分は積立フェーズに留まり15%課税）",
       "Downsizer contribution（自宅売却時の最大$300,000拠出）",
