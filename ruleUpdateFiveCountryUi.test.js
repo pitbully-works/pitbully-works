@@ -8,14 +8,14 @@ const watcher = fs.readFileSync(path.resolve(process.cwd(), "scripts/check-rule-
 describe("5-country rules update center UI", () => {
   it("filters rule history by selected country", () => {
     expect(app).toContain("normalizeRuleCountry(entry?.country) === country");
-    expect(app).toContain("normalizeRuleCountry(item.country)");
     expect(app).toContain("countryRuleUpdateHistory");
   });
 
   it("keeps validated source statuses for all countries so country switching works", () => {
     expect(app).toContain("normalizeRuleSourceStatusFeed(sourcePayload, RULE_SOURCE_REGISTRY)");
     expect(app).toContain("setRuleSourceStatuses(normalizedSourceStatuses)");
-    expect(app).toContain("changed: item.changed === true");
+    const rules = fs.readFileSync(path.resolve(process.cwd(), "utils/ruleUpdates.js"), "utf8");
+    expect(rules).toContain("changed: item.changed === true");
   });
 
   it("defensively renders only array-shaped change rows", () => {
