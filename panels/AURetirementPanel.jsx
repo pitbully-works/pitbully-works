@@ -34,6 +34,17 @@ function AURetirementPanel({
     status, homeowner, eligible: rentAssistanceEligible, rentFortnightly, sharer: rentAssistanceSharer,
   });
   const rentAssistancePerPersonAnnual = recipients > 0 ? rentAssistanceHouseholdAnnual / recipients : 0;
+  const cshcStatus = retirementRules.getCshcEligibility({
+    age: qualifyingAge,
+    status,
+    illnessSeparated: !!auInvestment.agePension.cshcIllnessSeparated,
+    dependentChildren: Number(auInvestment.agePension.cshcDependentChildren) || 0,
+    adjustedTaxableIncome: Number(auInvestment.agePension.cshcAdjustedTaxableIncome) || 0,
+    deemedAccountBasedIncome: Number(auInvestment.agePension.cshcDeemedAccountBasedIncome) || 0,
+    residenceEligible: !!auInvestment.agePension.cshcResidenceEligible,
+    noOtherIncomeSupport: !!auInvestment.agePension.cshcNoOtherIncomeSupport,
+    agePensionAnnual,
+  });
 
   return (
     <div>
@@ -195,6 +206,70 @@ function AURetirementPanel({
         <div className="note" style={{ borderLeftColor: "#C2694F", marginBottom: 10 }}>
           <Info size={13} style={{ color: "#C2694F" }} />
           <span>{t("auAgePensionZeroNote")}</span>
+        </div>
+      )}
+
+      <div className="subsection-title" style={{ marginTop: 16, marginBottom: 8 }}>{t("auCshcTitle")}</div>
+      <div className="note" style={{ marginBottom: 10 }}>
+        <Info size={13} />
+        <span>{t("auCshcGuide", { age: qualifyingAge })}</span>
+      </div>
+      <label className="checkbox-row">
+        <input
+          type="checkbox"
+          checked={!!auInvestment.agePension.cshcResidenceEligible}
+          onChange={(e) => onUpdateAgePension("cshcResidenceEligible", e.target.checked)}
+        />
+        <span>{t("auCshcResidenceLabel")}</span>
+      </label>
+      <label className="checkbox-row">
+        <input
+          type="checkbox"
+          checked={!!auInvestment.agePension.cshcNoOtherIncomeSupport}
+          onChange={(e) => onUpdateAgePension("cshcNoOtherIncomeSupport", e.target.checked)}
+        />
+        <span>{t("auCshcNoIncomeSupportLabel")}</span>
+      </label>
+      {status === "couple" && (
+        <label className="checkbox-row">
+          <input
+            type="checkbox"
+            checked={!!auInvestment.agePension.cshcIllnessSeparated}
+            onChange={(e) => onUpdateAgePension("cshcIllnessSeparated", e.target.checked)}
+          />
+          <span>{t("auCshcSeparatedLabel")}</span>
+        </label>
+      )}
+      <Field
+        guide={t("auCshcAtiGuide")}
+        label={t("auCshcAtiLabel")} unit="A$" step={500}
+        value={auInvestment.agePension.cshcAdjustedTaxableIncome || 0}
+        onChange={(v) => onUpdateAgePension("cshcAdjustedTaxableIncome", Math.max(0, Number(v) || 0))}
+      />
+      <Field
+        guide={t("auCshcDeemedIncomeGuide")}
+        label={t("auCshcDeemedIncomeLabel")} unit="A$" step={100}
+        value={auInvestment.agePension.cshcDeemedAccountBasedIncome || 0}
+        onChange={(v) => onUpdateAgePension("cshcDeemedAccountBasedIncome", Math.max(0, Number(v) || 0))}
+      />
+      <Field
+        guide={t("auCshcDependantsGuide")}
+        label={t("auCshcDependantsLabel")} unit={t("auPeopleUnit")} step={1}
+        value={auInvestment.agePension.cshcDependentChildren || 0}
+        onChange={(v) => onUpdateAgePension("cshcDependentChildren", Math.max(0, Math.floor(Number(v) || 0)))}
+      />
+      <div className="stat-grid" style={{ marginTop: 10, marginBottom: 14 }}>
+        <StatCard
+          label={t("auCshcResultLabel")}
+          value={cshcStatus.eligible ? t("auCshcEligible") : t("auCshcNotEligible")}
+          sub={t("auCshcResultSub", { income: money(cshcStatus.income), limit: money(cshcStatus.limit) })}
+          tone={cshcStatus.eligible ? "good" : undefined}
+        />
+      </div>
+      {agePensionAnnual > 0 && (
+        <div className="note" style={{ marginBottom: 10 }}>
+          <Info size={13} />
+          <span>{t("auCshcAgePensionConflictNote")}</span>
         </div>
       )}
 
