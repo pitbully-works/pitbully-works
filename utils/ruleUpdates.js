@@ -106,8 +106,10 @@ export function isUpdateEffective(update, now = new Date()) {
 
 export function applyApprovedRuleUpdates(baseRules, country, updates, state, now = new Date()) {
   const result = clonePreservingFunctions(baseRules);
+  const code = String(country || '').trim().toUpperCase();
   for (const update of updates || []) {
-    if (update.country !== country) continue;
+    const updateCountry = String(update?.country || '').trim().toUpperCase();
+    if (updateCountry !== code) continue;
     if (!state?.approved?.[update.id]) continue;
     if (!isUpdateEffective(update, now)) continue;
     for (const change of update.changes || []) {

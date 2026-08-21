@@ -21,5 +21,6 @@ export const INFLATION_REFERENCE_BASIS = Object.freeze({
 export function resolveInflationPct(country, setting) {
   if (setting?.mode === 'off') return 0;
   if (setting?.mode === 'manual') return Math.max(0, Math.min(20, n(setting.manualPct)));
-  return INFLATION_REFERENCE_PCT[country] ?? 2.0;
+  const code = String(country || '').trim().toUpperCase();
+  return INFLATION_REFERENCE_PCT[code] ?? 2.0;
 }
