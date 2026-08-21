@@ -1010,7 +1010,7 @@ function AUAccountFields({ accountKey, title, account, onUpdateAccount, borderCo
 function AUInvestmentAccountsPanel({
   auInvestment, onUpdate, onUpdateAccount, age, investmentRules, taxRules,
   sgContribution, totalConcessional, concessionalRemaining, effectiveConcessionalCap, carryForwardApplied, nonConcessionalRemaining,
-  superContributionTax, salarySacrificeSaving, listoAnnual, listoIncome, taxResult, capitalGainsTax, totalTax, marginalRate,
+  superContributionTax, salarySacrificeSaving, listoAnnual, listoIncome, coContributionAnnual, coContributionIncome, taxResult, capitalGainsTax, totalTax, marginalRate,
 }) {
   const { t, money } = useContext(LocaleContext);
   // 画面に出す数値・年度・税率はすべて AU_COUNTRY_RULES から取り出す。
@@ -1057,6 +1057,17 @@ function AUInvestmentAccountsPanel({
       <div className="note" style={{ marginBottom: 10 }}>
         <Info size={13} />
         <span>{t(auInvestment.listoAdjustedTaxableIncome > 0 ? "auListoIncomeExplicitNote" : "auListoIncomeEstimatedNote", { income: money(listoIncome) })}</span>
+      </div>
+
+      <div className="field-label" style={{ marginBottom: 6 }}>{t("auCoContributionEligibilityLabel")}</div>
+      <div className="chip-row" style={{ marginBottom: 6 }}>
+        <button className={`chip ${auInvestment.coContributionEligible ? "chip-active" : ""}`} onClick={() => onUpdate("coContributionEligible", true)}>{t("auYes")}</button>
+        <button className={`chip ${!auInvestment.coContributionEligible ? "chip-active" : ""}`} onClick={() => onUpdate("coContributionEligible", false)}>{t("auNo")}</button>
+      </div>
+      <Field guide={t("auCoContributionIncomeGuide")} label={t("auCoContributionIncomeLabel")} unit="A$" step={1000} value={auInvestment.coContributionTotalIncome} onChange={(v) => onUpdate("coContributionTotalIncome", v)} />
+      <div className="note" style={{ marginBottom: 10 }}>
+        <Info size={13} />
+        <span>{t(auInvestment.coContributionTotalIncome > 0 ? "auCoContributionIncomeExplicitNote" : "auCoContributionIncomeEstimatedNote", { income: money(coContributionIncome) })}</span>
       </div>
 
       <div className="field-label" style={{ marginBottom: 6 }}>{t("auDiv293PaidFromLabel")}</div>
@@ -1140,6 +1151,12 @@ function AUInvestmentAccountsPanel({
           value={money(listoAnnual)}
           sub={auInvestment.listoEligible ? t("auListoAppliedSub") : t("auListoNotAppliedSub")}
           tone={listoAnnual > 0 ? "good" : undefined}
+        />
+        <StatCard
+          label={t("auCoContributionLabel")}
+          value={money(coContributionAnnual)}
+          sub={auInvestment.coContributionEligible ? t("auCoContributionAppliedSub") : t("auCoContributionNotAppliedSub")}
+          tone={coContributionAnnual > 0 ? "good" : undefined}
         />
       </div>
       <div className="note" style={{ marginTop: 10 }}>
@@ -1792,6 +1809,9 @@ const DEFAULT_INPUTS = {
       listoEligible: false,
       // 0なら「年収 − 給与犠牲」をATIの概算として使用。分かる場合は明示入力する。
       listoAdjustedTaxableIncome: 0,
+      // Government super co-contribution：資格条件は本人確認。0なら年収をtotal incomeの概算として使用。
+      coContributionEligible: false,
+      coContributionTotalIncome: 0,
       // Medicare Levy Surcharge (MLS) 2026-27
       mlsHospitalCover: false,
       mlsFamily: false,
@@ -2485,6 +2505,14 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const auListoIncome = Math.max(0, Number(auInvestment.listoAdjustedTaxableIncome) || auTaxableIncome);
   const auListoAnnual = (auIsAU && rules.tax.implemented && typeof rules.tax.calculateLowIncomeSuperTaxOffset === "function")
     ? rules.tax.calculateLowIncomeSuperTaxOffset(auListoIncome, auCappedConcessional, auInvestment.listoEligible === true)
+    : 0;
+  const auCoContributionIncome = Math.max(0, Number(auInvestment.coContributionTotalIncome) || auSalary);
+  const auCoContributionAnnual = (auIsAU && rules.tax.implemented && typeof rules.tax.calculateGovernmentSuperCoContribution === "function")
+    ? rules.tax.calculateGovernmentSuperCoContribution(
+        auCoContributionIncome,
+        auInvestment.superannuation.annualContribution,
+        auInvestment.coContributionEligible === true
+      )
     : 0;
   const auCapitalGainsTax = (auIsAU && rules.tax.implemented)
     ? rules.tax.calculateCapitalGainsTax(
@@ -3589,10 +3617,11 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       div293TaxAnnual: auDiv293Tax,
       div293PaidFrom: auDiv293PaidFrom,
       listoAnnual: auListoAnnual,
+      coContributionAnnual: auCoContributionAnnual,
       carryForwardPriorYearBalance: inputs.auInvestment.carryForwardPriorYearBalance,
       carryForwardAvailableUnusedCap: inputs.auInvestment.carryForwardAvailableUnusedCap,
     });
-  }, [simulationReady, country, rules, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, inputs.auInvestment, auWithdrawalNeeded, auDiv293Tax, auDiv293PaidFrom, auListoAnnual]);
+  }, [simulationReady, country, rules, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, inputs.auInvestment, auWithdrawalNeeded, auDiv293Tax, auDiv293PaidFrom, auListoAnnual, auCoContributionAnnual]);
 
 
   // チャート用データ。行の age は「その時点で実際に到達している年齢」（整数）で、
@@ -7116,6 +7145,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               salarySacrificeSaving={auSalarySacrificeSaving}
               listoAnnual={auListoAnnual}
               listoIncome={auListoIncome}
+              coContributionAnnual={auCoContributionAnnual}
+              coContributionIncome={auCoContributionIncome}
               taxResult={auTaxResult}
               capitalGainsTax={auCapitalGainsTax}
               totalTax={auTotalTax}
