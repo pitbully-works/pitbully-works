@@ -22,9 +22,10 @@ describe("persisted JSON trust-boundary caps", () => {
     expect(app).toContain("res.value.length > MAX_PERSISTED_JSON_CHARS");
   });
 
-  it("preserves malformed main persistence under a recovery key before safe fallback autosave", () => {
+  it("preserves malformed or semantically invalid main persistence before safe fallback autosave", () => {
     expect(app).toContain("recovery:inputs:${Date.now()}");
-    expect(app).toContain("Never destroy the only copy of malformed persisted data");
+    expect(app).toContain("rawPersistedValue = res.value");
+    expect(app).toContain("if (rawPersistedValue !== null)");
   });
 
   it("bounds storage values at the shim boundary as defense in depth", () => {

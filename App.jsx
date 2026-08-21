@@ -35,7 +35,7 @@ import { pickCurrentAnchor } from "./utils/currentSection.js";
 import { isKakeiboPayload, mergeKakeiboInputs, checkKakeiboAmountUnit } from "./utils/importFromKakeibo.js";
 import {
   PROFILE_COUNTRIES, PROFILE_STORAGE_VERSION, applySharedIdentity, forceCountryMeta,
-  makeCountryProfile, migrateCountryProfiles, normalizeProfileCountry, normalizeProfileCurrency, normalizeCountryKeyedRecord,
+  makeCountryProfile, migrateCountryProfiles, normalizeProfileCountry, normalizeProfileCurrency, normalizeCountryKeyedRecord, hasOnlySupportedCountryKeys,
   normalizeSnapshotDate, snapshotStorageKey, legacyJpSnapshotStorageKey, snapshotDateFromStorageKey,
   targetCountryFromKakeibo, targetCountryFromBackup, normalizeStockWatchlist, normalizeProfileStorageVersion, isPlainRecord, MAX_SNAPSHOT_HISTORY, MAX_PERSISTED_ARRAY_ITEMS, localCalendarDateKey,
 } from "./utils/countryProfiles.js";
@@ -2923,21 +2923,13 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         setLoaded(true);
         return;
       }
+      let rawPersistedValue = null;
       try {
         const res = await window.storage.get(STORAGE_KEY, false);
         if (res?.value) {
-          let parsed;
-          try {
-            if (res.value.length > MAX_PERSISTED_JSON_CHARS) throw new RangeError("Saved data is too large");
-            parsed = JSON.parse(res.value);
-          } catch (parseError) {
-            // Never destroy the only copy of malformed persisted data. Preserve the raw
-            // payload under a recovery key before the safe fallback profile is autosaved.
-            try {
-              await window.storage.set(`recovery:inputs:${Date.now()}`, res.value, false);
-            } catch { /* recovery is best-effort when storage itself is unavailable/full */ }
-            throw parseError;
-          }
+          rawPersistedValue = res.value;
+          if (res.value.length > MAX_PERSISTED_JSON_CHARS) throw new RangeError("Saved data is too large");
+          const parsed = JSON.parse(res.value);
           const migrated = migrateCountryProfiles(DEFAULT_INPUTS, parsed);
           const profiles = {};
           const sharedSource = migrated.profiles.JP || parsed.inputs || {};
@@ -2971,6 +2963,14 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           setWatchlist(defaultWatchlistFor(detectedCountry));
         }
       } catch (e) {
+        // A parseable payload can still be semantically invalid (future schema,
+        // malformed country buckets, etc.). Preserve the exact raw record before the
+        // safe fallback autosave can replace STORAGE_KEY.
+        if (rawPersistedValue !== null) {
+          try {
+            await window.storage.set(`recovery:inputs:${Date.now()}`, rawPersistedValue, false);
+          } catch { /* recovery is best-effort when storage itself is unavailable/full */ }
+        }
         // 保存キーが存在しない実装では get() が例外を返すことがあるため、ここも初回として自動判定する。
         const detectedCountry = launchCountry() || detectBrowserInitialCountry();
         const detectedInputs = makeCountryProfile(DEFAULT_INPUTS, detectedCountry, {});
@@ -3132,7 +3132,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         throw new Error(`Unsupported backup version: ${parsed.profileStorageVersion}`);
       }
       if (backupVersion === PROFILE_STORAGE_VERSION) {
-        if (!isPlainRecord(parsed.profiles)) throw new Error("Invalid country profiles in backup");
+        if (!isPlainRecord(parsed.profiles) || !hasOnlySupportedCountryKeys(parsed.profiles)) {
+          throw new Error("Invalid country profiles in backup");
+        }
         const restored = {};
         const normalizedProfiles = normalizeCountryKeyedRecord(parsed.profiles);
         const sharedSource = normalizedProfiles.JP || parsed.inputs || inputs;
@@ -3154,8 +3156,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           throw new Error(`Active country profile missing: ${active}`);
         }
         const activeInputs = restored[active];
-        countryProfilesRef.current = restored;
-        if (parsed.watchlists !== undefined && !isPlainRecord(parsed.watchlists)) {
+        if (parsed.watchlists !== undefined && (
+          !isPlainRecord(parsed.watchlists) || !hasOnlySupportedCountryKeys(parsed.watchlists)
+        )) {
           throw new Error("Invalid country watchlists in backup");
         }
         const rawRestoredWatchlists = isPlainRecord(parsed.watchlists) ? normalizeCountryKeyedRecord(parsed.watchlists) : {};
@@ -3163,6 +3166,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         PROFILE_COUNTRIES.forEach((code) => {
           if (Array.isArray(rawRestoredWatchlists[code])) restoredWatchlists[code] = normalizeStockWatchlist(rawRestoredWatchlists[code], code);
         });
+        // Commit only after the entire backup has passed validation. A malformed
+        // watchlist section must not leave imported profiles hidden in refs after
+        // the UI reports that restore failed.
+        countryProfilesRef.current = restored;
         countryWatchlistsRef.current = restoredWatchlists;
         setInputs(activeInputs);
         setWatchlist(Object.prototype.hasOwnProperty.call(restoredWatchlists, active) ? restoredWatchlists[active] : defaultWatchlistFor(active));
