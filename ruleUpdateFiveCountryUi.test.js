@@ -13,8 +13,9 @@ describe("5-country rules update center UI", () => {
   });
 
   it("keeps source statuses for all countries so country switching works", () => {
-    expect(app).toContain("setRuleSourceStatuses(Array.isArray(sourcePayload?.sources)");
-    expect(app).toContain("sourcePayload.sources.slice(0, 500).map((item) => {");
+    expect(app).toContain("if (sourcePayload?.schemaVersion === 1 && Array.isArray(sourcePayload?.sources)) {");
+    expect(app).toContain("setRuleSourceStatuses(sourcePayload.sources");
+    expect(app).toContain(".slice(0, 500).map((item) => {");
     expect(app).toContain("changed: item.changed === true");
     expect(app).toContain("if (!normalizedCountry || !id) return null;");
   });
