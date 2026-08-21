@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { JP_COUNTRY_RULES } from "./countryRules/JP.js";
-import { BUILTIN_RULE_UPDATES, applyApprovedRuleUpdates, mergeRuleUpdateManifests, normalizeRuleUpdateState, isRuleUpdateApproved, isRuleUpdateDismissed } from "./utils/ruleUpdates.js";
+import { BUILTIN_RULE_UPDATES, applyApprovedRuleUpdates, mergeRuleUpdateManifests, normalizeRuleUpdateState, isRuleUpdateApproved, isRuleUpdateDismissed, safeRuleSourceUrl } from "./utils/ruleUpdates.js";
 
 describe("rule update center", () => {
   it("does not change calculations before approval", () => {
@@ -186,4 +186,15 @@ describe("rule update center", () => {
       .toBe(JP_COUNTRY_RULES.retirement.currentMonthlyLimits.firstInsured);
   });
 
+});
+
+
+describe("rule update source URL safety", () => {
+  it("allows only absolute http/https official-source links", () => {
+    expect(safeRuleSourceUrl(" https://example.com/rules?q=1 ")).toBe("https://example.com/rules?q=1");
+    expect(safeRuleSourceUrl("http://example.com/rules")).toBe("http://example.com/rules");
+    expect(safeRuleSourceUrl("javascript:alert(1)")).toBe("");
+    expect(safeRuleSourceUrl("data:text/html,<script>alert(1)</script>")).toBe("");
+    expect(safeRuleSourceUrl("/relative/source")).toBe("");
+  });
 });

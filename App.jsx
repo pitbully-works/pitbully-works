@@ -43,7 +43,7 @@ import { newSci, sciPress, sciExpr, sciFormat, sciTokensFromExpr, normalizeSciHi
 import {
   RULE_UPDATE_STORAGE_KEY, BUILTIN_RULE_UPDATES, normalizeRuleUpdateState,
   applyApprovedRuleUpdates, mergeRuleUpdateManifests, isUpdateEffective, normalizeRuleCountry,
-  isRuleUpdateApproved, isRuleUpdateDismissed,
+  isRuleUpdateApproved, isRuleUpdateDismissed, safeRuleSourceUrl,
 } from "./utils/ruleUpdates.js";
 import { getRuleSourcesForCountry } from "./utils/ruleSourceRegistry.js";
 import { buildCountryRuleCatalog } from "./utils/countryRuleCatalog.js";
@@ -6534,8 +6534,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                           </button>
                         </>
                       ) : null}
-                      {update.sourceUrl && (
-                        <a href={update.sourceUrl} target="_blank" rel="noopener noreferrer" className="history-action" style={{ fontSize: 11, color: "#BEEAFF", borderColor: "#4EA3E3", background: "rgba(78,163,227,0.16)", textDecoration: "none", fontWeight: 800 }}>
+                      {safeRuleSourceUrl(update.sourceUrl) && (
+                        <a href={safeRuleSourceUrl(update.sourceUrl)} target="_blank" rel="noopener noreferrer" className="history-action" style={{ fontSize: 11, color: "#BEEAFF", borderColor: "#4EA3E3", background: "rgba(78,163,227,0.16)", textDecoration: "none", fontWeight: 800 }}>
                           {getOfficialSourceButtonLabel(update)}
                         </a>
                       )}
@@ -6587,8 +6587,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                             </div>
                           )}
                           <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginTop: 7 }}>
-                            {update?.sourceUrl && (
-                              <a href={update.sourceUrl} target="_blank" rel="noopener noreferrer" className="history-action" style={{ fontSize: 10, color: "#8ED8FF", borderColor: "#3E8FB8", textDecoration: "none" }}>
+                            {safeRuleSourceUrl(update?.sourceUrl) && (
+                              <a href={safeRuleSourceUrl(update?.sourceUrl)} target="_blank" rel="noopener noreferrer" className="history-action" style={{ fontSize: 10, color: "#8ED8FF", borderColor: "#3E8FB8", textDecoration: "none" }}>
                                 ↗ {language === "ja" ? "公式ソース" : "Official source"}
                               </a>
                             )}
