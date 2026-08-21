@@ -240,6 +240,47 @@ describe("rule update center", () => {
     expect(rules.retirement.currentMonthlyLimits.firstInsured).toBe(75003);
   });
 
+  it("承認済みremote制度更新のchangesが配列でなくても計算をクラッシュさせない", () => {
+    const updates = [{
+      id: "REMOTE-MALFORMED-CHANGES",
+      country: "JP",
+      effectiveDate: "2026-01-01",
+      changes: { path: "retirement.currentMonthlyLimits.firstInsured", after: 999999994 },
+    }];
+    const state = normalizeRuleUpdateState({ approved: { "REMOTE-MALFORMED-CHANGES": true } });
+
+    expect(() => applyApprovedRuleUpdates(
+      JP_COUNTRY_RULES,
+      "JP",
+      updates,
+      state,
+      new Date("2026-08-21T12:00:00"),
+    )).not.toThrow();
+
+    const rules = applyApprovedRuleUpdates(JP_COUNTRY_RULES, "JP", updates, state, new Date("2026-08-21T12:00:00"));
+    expect(rules.retirement.currentMonthlyLimits.firstInsured)
+      .toBe(JP_COUNTRY_RULES.retirement.currentMonthlyLimits.firstInsured);
+  });
+
+  it("changes配列内のnullや不正要素を無視し、有効な変更だけ適用する", () => {
+    const updates = [{
+      id: "REMOTE-MIXED-CHANGES",
+      country: "JP",
+      effectiveDate: "2026-01-01",
+      changes: [
+        null,
+        "bad-row",
+        {},
+        { path: "   ", after: 999999993 },
+        { path: "retirement.currentMonthlyLimits.firstInsured", after: 75004 },
+      ],
+    }];
+    const state = normalizeRuleUpdateState({ approved: { "REMOTE-MIXED-CHANGES": true } });
+    const rules = applyApprovedRuleUpdates(JP_COUNTRY_RULES, "JP", updates, state, new Date("2026-08-21T12:00:00"));
+
+    expect(rules.retirement.currentMonthlyLimits.firstInsured).toBe(75004);
+  });
+
 });
 
 
