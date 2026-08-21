@@ -726,7 +726,7 @@ export const AU_COUNTRY_RULES = {
         + n(h.otherOutOfPocketAnnual);
     },
     notImplemented: [
-      "Medicare levyの家族所得による減免・日割り免除（単身者の低所得減免は実装済み）",
+      "Medicare levyの家族所得による減免は税計算側で実装済み。年途中の婚姻・離婚・免除日数などの日割り計算は未実装",
       "Medicare Safety Netの診療ごとの自動還付計算（MBS schedule feeと実請求額が必要）",
       "Aged care（高齢者介護）の資力調査に基づく自己負担額",
     ],
@@ -774,6 +774,11 @@ export const AU_COUNTRY_RULES = {
         effectiveFrom: "2025-26",
         ordinarySingle: { lower: 28011, upper: 35013 },
         saptoSingle: { lower: 44268, upper: 55335 },
+        // 2025-26から適用される家族低所得閾値。2026-27の新しい閾値が未公表のため最新法定値を使用。
+        // Medicare Levy Act s8(2) により、家族の場合は「家族所得が閾値を超えた額の10%」が
+        // 個人の通常levy額の上限となる。扶養子・学生1人ごとに閾値を加算する。
+        ordinaryFamily: { lower: 47238, dependentIncrement: 4338 },
+        saptoFamily: { lower: 61623, dependentIncrement: 4338 },
       },
       phaseInRate: 0.10,
     },
@@ -911,19 +916,33 @@ export const AU_COUNTRY_RULES = {
       if (income >= cfg.cutOutThreshold) return 0;
       return Math.max(0, cfg.maximum - (income - cfg.shadeOutThreshold) * this.seniorsAndPensionersTaxOffset.shadeOutRate);
     },
-    // Medicare levy（2%）。単身者の低所得者減免を反映する。
-    // saptoEligible=true の場合は、SAPTO対象者用の高い閾値を使う。
-    // 家族所得による追加減免・日割り免除等は別条件が必要なため、ここでは扱わない。
+    // Medicare levy（2%）。個人の低所得減免に加え、夫婦・ひとり親等の家族所得減免を反映する。
+    // saptoEligible=true の場合はSAPTO対象者用の閾値を使う。
+    // family=true の場合、本人＋配偶者の課税所得と扶養子数から家族閾値を計算し、
+    // Medicare Levy Act s8(2) の上限（家族所得－閾値の10%）を適用する。
+    // 年途中の婚姻・免除日数などの日割りは未実装。
     calculateMedicareLevy(taxableIncome, options = {}) {
       const income = Math.max(0, Number(taxableIncome) || 0);
-      const thresholds = options.saptoEligible === true
+      const singleThresholds = options.saptoEligible === true
         ? this.medicareLevy.lowIncomeThresholds.saptoSingle
         : this.medicareLevy.lowIncomeThresholds.ordinarySingle;
-      if (income <= thresholds.lower) return 0;
+      if (income <= singleThresholds.lower) return 0;
       const fullLevy = income * this.medicareLevy.rate;
-      if (income >= thresholds.upper) return fullLevy;
-      const phasedLevy = (income - thresholds.lower) * this.medicareLevy.phaseInRate;
-      return Math.min(fullLevy, phasedLevy);
+      const individualLevy = income >= singleThresholds.upper
+        ? fullLevy
+        : Math.min(fullLevy, (income - singleThresholds.lower) * this.medicareLevy.phaseInRate);
+
+      if (options.family !== true) return individualLevy;
+
+      const familyCfg = options.saptoEligible === true
+        ? this.medicareLevy.lowIncomeThresholds.saptoFamily
+        : this.medicareLevy.lowIncomeThresholds.ordinaryFamily;
+      const spouseIncome = Math.max(0, Number(options.spouseTaxableIncome) || 0);
+      const dependentChildren = Math.max(0, Math.floor(Number(options.dependentChildren) || 0));
+      const familyIncome = income + spouseIncome;
+      const familyThreshold = familyCfg.lower + dependentChildren * familyCfg.dependentIncrement;
+      const familyBasedMaximum = Math.max(0, familyIncome - familyThreshold) * this.medicareLevy.phaseInRate;
+      return Math.min(individualLevy, familyBasedMaximum);
     },
     // 所得税＋Medicare levy の合計
     calculateTotalTax(taxableIncome, options = {}) {
@@ -938,7 +957,12 @@ export const AU_COUNTRY_RULES = {
       );
       const saptoApplied = Math.min(afterLito, saptoEntitlement);
       const incomeTax = Math.max(0, afterLito - saptoApplied);
-      const medicareLevy = this.calculateMedicareLevy(taxableIncome, { saptoEligible: options.saptoEligible === true });
+      const medicareLevy = this.calculateMedicareLevy(taxableIncome, {
+        saptoEligible: options.saptoEligible === true,
+        family: options.medicareFamily === true,
+        spouseTaxableIncome: options.medicareSpouseTaxableIncome || 0,
+        dependentChildren: options.medicareDependentChildren || 0,
+      });
       // MLSは民間病院保険の加入状況・家族構成等が必要なため、
       // mlsIncome が明示された場合だけ計算する。
       // これによりCGTや給与犠牲など、MLS条件を持たない内部計算へ
@@ -1041,7 +1065,7 @@ export const AU_COUNTRY_RULES = {
     notImplemented: [
       "SAPTOの配偶者間の未使用税額控除移転（spouse transfer）と資格条件の完全自動判定",
       "Government super co-contributionは本人確認入力で反映済み。年齢・ビザ・10% eligible income test・税申告・前年TSB等の完全自動判定は未実装",
-      "Medicare levyの家族所得による減免・日割り免除",
+      "Medicare levyの家族所得による減免は実装済み。年途中の婚姻・離婚・免除日数などの日割り計算は未実装",
       "HECS-HELP（学生ローン）の返済",
       "非居住者（foreign resident）の税率",
       "60歳未満のSuper引き出しへの課税（low rate capは保持）",
