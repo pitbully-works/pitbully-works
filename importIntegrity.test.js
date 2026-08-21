@@ -100,7 +100,7 @@ const GLOBALS = new Set([
   "console", "isNaN", "parseFloat", "parseInt", "undefined", "null", "true",
   "false", "NaN", "Infinity", "window", "document", "React", "Intl", "Promise",
   "Map", "Set", "Error", "RegExp", "Symbol", "localStorage", "setTimeout",
-  "clearTimeout", "navigator", "alert", "confirm", "Blob", "URL", "structuredClone",
+  "clearTimeout", "navigator", "alert", "confirm", "Blob", "URL", "URLSearchParams", "structuredClone",
 ]);
 
 const KEYWORDS = new Set([
