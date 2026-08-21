@@ -1922,7 +1922,6 @@ const DEFAULT_INPUTS = {
         paymentRoute: "direct",
         dependantSharePercent: 100,
         incomeStreamEnabled: false,
-        incomeStreamDependant: true,
         incomeStreamRecipientAge: 60,
         incomeStreamDeceasedAge: 60,
       },
@@ -7867,26 +7866,24 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                     <Info size={13} />
                     <span>{t("auEstateSuperDeathLimitNote")}</span>
                   </div>
-                </>}
-                <div style={{ borderTop: "1px solid var(--border)", marginTop: 14, paddingTop: 12 }}>
-                  <label className="checkbox-row">
+                  <label className="checkbox-row" style={{ marginTop: 12 }}>
                     <input type="checkbox" checked={!!e.incomeStreamEnabled} onChange={(ev) => updateAuInvestmentNested("estate", "incomeStreamEnabled", ev.target.checked)} />
                     <span>{t("auEstateIncomeStreamEnable")}</span>
                   </label>
                   {e.incomeStreamEnabled && (() => {
-                    const tr = rules.estate.getSuperDeathBenefitIncomeStreamTreatment({ recipientAge: e.incomeStreamRecipientAge, deceasedAge: e.incomeStreamDeceasedAge, isDeathBenefitsDependant: e.incomeStreamDependant !== false });
+                    const ir = rules.estate.calculateSuperDeathBenefitIncomeStream({ recipientAge: e.incomeStreamRecipientAge, deceasedAge: e.incomeStreamDeceasedAge, taxFreeComponent: e.taxFreeComponent, taxedElement: e.taxedElement, untaxedElement: e.untaxedElement, isDeathBenefitsDependant: e.beneficiaryDependant !== false });
                     return <>
-                      <div className="field-label" style={{ marginBottom: 6 }}>{t("auEstateBeneficiaryType")}</div>
-                      <div className="chip-row" style={{ marginBottom: 10 }}>
-                        <button className={`chip ${e.incomeStreamDependant !== false ? "chip-active" : ""}`} onClick={() => updateAuInvestmentNested("estate", "incomeStreamDependant", true)}>{t("auEstateDependant")}</button>
-                        <button className={`chip ${e.incomeStreamDependant === false ? "chip-active" : ""}`} onClick={() => updateAuInvestmentNested("estate", "incomeStreamDependant", false)}>{t("auEstateNonDependant")}</button>
-                      </div>
-                      <Field label={t("auEstateRecipientAge")} unit={t("auEstateAgeUnit")} step={1} min={0} max={120} value={e.incomeStreamRecipientAge ?? 60} onChange={(v) => updateAuInvestmentNested("estate", "incomeStreamRecipientAge", v)} />
-                      <Field label={t("auEstateDeceasedAge")} unit={t("auEstateAgeUnit")} step={1} min={0} max={120} value={e.incomeStreamDeceasedAge ?? 60} onChange={(v) => updateAuInvestmentNested("estate", "incomeStreamDeceasedAge", v)} />
-                      <div className="note"><Info size={13} /><span>{t(`auEstateIncomeStream_${tr.treatment}`)}</span></div>
+                      <Field label={t("auEstateIncomeStreamRecipientAge")} unit={t("yearsUnit")} step={1} min={0} value={e.incomeStreamRecipientAge ?? 60} onChange={(v) => updateAuInvestmentNested("estate", "incomeStreamRecipientAge", Math.max(0, Number(v) || 0))} />
+                      <Field label={t("auEstateIncomeStreamDeceasedAge")} unit={t("yearsUnit")} step={1} min={0} value={e.incomeStreamDeceasedAge ?? 60} onChange={(v) => updateAuInvestmentNested("estate", "incomeStreamDeceasedAge", Math.max(0, Number(v) || 0))} />
+                      {ir.eligible ? <div className="stat-grid" style={{ marginTop: 8 }}>
+                        <StatCard label={t("auEstateIncomeStreamTaxFree")} value={money(ir.taxFreeAmount)} sub={t("auEstateIncomeStreamTaxFreeSub")} />
+                        <StatCard label={t("auEstateIncomeStreamAssessable")} value={money(ir.assessableAmount)} sub={t("auEstateIncomeStreamAssessableSub")} />
+                        <StatCard label={t("auEstateIncomeStreamOffset")} value={money(ir.taxOffsetAmount)} sub={t("auEstateIncomeStreamOffsetSub")} />
+                      </div> : <div className="note"><Info size={13}/><span>{t("auEstateIncomeStreamNonDependantNote")}</span></div>}
+                      <div className="note" style={{ marginTop: 10 }}><Info size={13}/><span>{t("auEstateIncomeStreamLimitNote")}</span></div>
                     </>;
                   })()}
-                </div>
+                </>}
               </div>
             );
           })()}
