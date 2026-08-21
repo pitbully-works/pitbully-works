@@ -58,6 +58,23 @@ export function normalizeProfileCountry(value, fallback = "JP") {
   return PROFILE_COUNTRIES.includes(normalizedValue) ? normalizedValue : safeFallback;
 }
 export function profileMeta(country) { return META[normalizeProfileCountry(country)] || META.JP; }
+
+export function normalizeCountryKeyedRecord(value) {
+  const src = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  const out = {};
+  // First accept noisy-but-valid keys (" us ", "gb", ...).
+  // Then let an exact canonical key win if both forms exist, so corrupted/legacy
+  // duplicates cannot unexpectedly overwrite the normal saved bucket.
+  Object.entries(src).forEach(([rawKey, item]) => {
+    const code = String(rawKey || "").trim().toUpperCase();
+    if (!PROFILE_COUNTRIES.includes(code) || rawKey === code) return;
+    out[code] = item;
+  });
+  PROFILE_COUNTRIES.forEach((code) => {
+    if (Object.prototype.hasOwnProperty.call(src, code)) out[code] = src[code];
+  });
+  return out;
+}
 export function sharedIdentity(inputs) {
   const src = inputs && typeof inputs === "object" ? inputs : {};
   const out = {};
@@ -86,16 +103,17 @@ export function makeCountryProfile(defaultInputs, country, sharedSource = {}) {
 export function migrateCountryProfiles(defaultInputs, parsed) {
   const p = parsed && typeof parsed === "object" ? parsed : {};
   if (p.profileStorageVersion >= PROFILE_STORAGE_VERSION && p.profiles && typeof p.profiles === "object") {
-    return { profiles: p.profiles, activeCountry: normalizeProfileCountry(p.activeCountry || p.inputs?.country || "JP"), migratedLegacy: false };
+    return { profiles: normalizeCountryKeyedRecord(p.profiles), activeCountry: normalizeProfileCountry(p.activeCountry || p.inputs?.country || "JP"), migratedLegacy: false };
   }
   // v2 は名前・生年月日・現在年齢を国間で共有していた。v3 では完全分離する。
   // 移行時は現在開いていた国だけ本人情報を保持し、他国にコピーされていた本人情報を消す。
   if (p.profileStorageVersion === 2 && p.profiles && typeof p.profiles === "object") {
     const activeCountry = normalizeProfileCountry(p.activeCountry || p.inputs?.country || "JP");
+    const rawProfiles = normalizeCountryKeyedRecord(p.profiles);
     const profiles = {};
     PROFILE_COUNTRIES.forEach((code) => {
-      if (!p.profiles[code]) return;
-      const src = clone(p.profiles[code]);
+      if (!rawProfiles[code]) return;
+      const src = clone(rawProfiles[code]);
       if (code !== activeCountry) {
         src.userName = "";
         src.birthDate = "";
