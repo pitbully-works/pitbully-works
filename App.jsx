@@ -47,7 +47,7 @@ import {
   applyApprovedRuleUpdates, mergeRuleUpdateManifests, isUpdateEffective, normalizeRuleCountry,
   isRuleUpdateApproved, isRuleUpdateDismissed, safeRuleSourceUrl, normalizeRuleUpdateId, normalizeRuleDateString,
 } from "./utils/ruleUpdates.js";
-import { getRuleSourcesForCountry } from "./utils/ruleSourceRegistry.js";
+import { RULE_SOURCE_REGISTRY, getRuleSourcesForCountry } from "./utils/ruleSourceRegistry.js";
 import { buildCountryRuleCatalog } from "./utils/countryRuleCatalog.js";
 import { readBoundedJsonResponse, MAX_RULE_MANIFEST_RESPONSE_CHARS, MAX_RULE_SOURCE_STATUS_RESPONSE_CHARS } from "./utils/remoteJson.js";
 // 国に依存しない共通UI部品（入力欄・ガイド・内訳グラフ）と表示基盤（LocaleContext等）は ui/ 配下へ分離。
@@ -2287,7 +2287,11 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               if (!item || typeof item !== "object" || Array.isArray(item)) return null;
               const normalizedCountry = normalizeRuleCountry(item.country);
               const id = normalizeRuleUpdateId(item.id);
-              if (!normalizedCountry || !id) return null;
+              const registeredSource = RULE_SOURCE_REGISTRY.find((source) => source.id === id);
+              // The status file may report only a source already pinned in the bundled
+              // registry. Never let a deployed/compromised status JSON invent an
+              // "official" source, move an ID to another country, or replace its URL.
+              if (!normalizedCountry || !id || !registeredSource || registeredSource.country !== normalizedCountry) return null;
               // Source-monitor payloads are external data too. Keep only the fields the
               // UI actually consumes so arbitrary/huge metadata cannot be retained in state.
               const hash = typeof item.hash === "string" && /^[a-f0-9]{64}$/i.test(item.hash.trim())
@@ -2298,7 +2302,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 country: normalizedCountry,
                 changed: item.changed === true,
                 hash,
-                url: safeRuleSourceUrl(item.url),
+                url: safeRuleSourceUrl(registeredSource.url),
               };
             }).filter(Boolean));
       }
@@ -6652,7 +6656,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                     <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 4 }}>
                       {ruleSourceAlerts.map((alert) => {
                         const registered = monitoredRuleSources.find((source) => source.id === alert.id);
-                        const sourceHref = safeRuleSourceUrl(alert.url) || safeRuleSourceUrl(registered?.url);
+                        const sourceHref = safeRuleSourceUrl(registered?.url);
                         if (!sourceHref) return null;
                         return (
                           <div key={alert.id} style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>

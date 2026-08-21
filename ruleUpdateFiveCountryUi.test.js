@@ -17,7 +17,7 @@ describe("5-country rules update center UI", () => {
     expect(app).toContain("setRuleSourceStatuses(sourcePayload.sources");
     expect(app).toContain(".slice(0, 500).map((item) => {");
     expect(app).toContain("changed: item.changed === true");
-    expect(app).toContain("if (!normalizedCountry || !id) return null;");
+    expect(app).toContain("if (!normalizedCountry || !id || !registeredSource || registeredSource.country !== normalizedCountry) return null;");
   });
 
   it("defensively renders only array-shaped change rows", () => {
@@ -28,7 +28,7 @@ describe("5-country rules update center UI", () => {
     expect(watcher).toContain("!!old?.changed || (!!old?.hash && old.hash !== hash)");
   });
   it("sanitizes watcher-provided source URLs before rendering links", () => {
-    expect(app).toContain("const sourceHref = safeRuleSourceUrl(alert.url) || safeRuleSourceUrl(registered?.url)");
+    expect(app).toContain("const sourceHref = safeRuleSourceUrl(registered?.url)");
     expect(app).toContain("if (!sourceHref) return null");
     expect(app).toContain('href={sourceHref}');
     expect(app).not.toContain('href={alert.url || registered?.url}');
@@ -59,14 +59,17 @@ describe("5-country rules update center UI", () => {
 
   it("applies the same bounded ID normalization to official-source status rows", () => {
     expect(app).toContain("const id = normalizeRuleUpdateId(item.id)");
-    expect(app).toContain("if (!normalizedCountry || !id) return null;");
+    expect(app).toContain("if (!normalizedCountry || !id || !registeredSource || registeredSource.country !== normalizedCountry) return null;");
   });
 
 });
 
 describe("rule source status ingress hardening", () => {
-  it("whitelists source-monitor fields and sanitizes its URL at ingestion", () => {
-    expect(app).toContain("url: safeRuleSourceUrl(item.url)");
+  it("whitelists source-monitor fields and pins links to the bundled registry", () => {
+    expect(app).toContain("const registeredSource = RULE_SOURCE_REGISTRY.find((source) => source.id === id)");
+    expect(app).toContain("registeredSource.country !== normalizedCountry");
+    expect(app).toContain("url: safeRuleSourceUrl(registeredSource.url)");
+    expect(app).not.toContain("url: safeRuleSourceUrl(item.url)");
     expect(app).toContain("changed: item.changed === true");
     expect(app).not.toContain("? { ...item, id, country: normalizedCountry, changed: item.changed === true }");
   });
