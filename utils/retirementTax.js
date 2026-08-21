@@ -4,9 +4,10 @@ const n = (v) => Number.isFinite(Number(v)) ? Number(v) : 0;
 const max0 = (v) => Math.max(0, n(v));
 
 export function estimatePublicPensionTax(country, annualPension, age = 65) {
+  const code = String(country || '').trim().toUpperCase();
   const income = max0(annualPension);
   if (!income) return 0;
-  switch (country) {
+  switch (code) {
     case 'JP': { // public-pension deduction + rough national/local tax after basic deduction
       const pensionDeduction = age >= 65 ? 1100000 : 600000;
       const taxable = max0(income - pensionDeduction - 580000);
@@ -31,7 +32,8 @@ export function estimatePublicPensionTax(country, annualPension, age = 65) {
 }
 
 export function estimatePrivatePensionTax(country, plans = []) {
-  const rate = ({ JP: 0.15, US: 0.12, GB: 0.20, CA: 0.20, AU: 0.16 })[country] ?? 0.15;
+  const code = String(country || '').trim().toUpperCase();
+  const rate = ({ JP: 0.15, US: 0.12, GB: 0.20, CA: 0.20, AU: 0.16 })[code] ?? 0;
   return (plans || []).reduce((sum, pl) => {
     const contribYears = max0(n(pl.contribToAge) - n(pl.contribFromAge));
     const payoutYears = max0(n(pl.payoutToAge) - n(pl.payoutFromAge));
