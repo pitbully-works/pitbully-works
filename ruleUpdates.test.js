@@ -281,6 +281,33 @@ describe("rule update center", () => {
     expect(rules.retirement.currentMonthlyLimits.firstInsured).toBe(75004);
   });
 
+  it("remote制度更新の未知pathは新規プロパティを作らない", () => {
+    const updates = [{
+      id: "REMOTE-UNKNOWN-PATH",
+      country: "JP",
+      effectiveDate: "2026-01-01",
+      changes: [{ path: "retirement.currentMonthlyLimits.typoLimit", after: 999999992 }],
+    }];
+    const state = normalizeRuleUpdateState({ approved: { "REMOTE-UNKNOWN-PATH": true } });
+    const rules = applyApprovedRuleUpdates(JP_COUNTRY_RULES, "JP", updates, state, new Date("2026-08-21T12:00:00"));
+
+    expect(Object.prototype.hasOwnProperty.call(rules.retirement.currentMonthlyLimits, "typoLimit")).toBe(false);
+  });
+
+  it("remote制度更新のpathが既存primitiveを途中ノードとしても構造を壊さない", () => {
+    const updates = [{
+      id: "REMOTE-PRIMITIVE-PATH",
+      country: "JP",
+      effectiveDate: "2026-01-01",
+      changes: [{ path: "retirement.implemented.foo", after: 999999991 }],
+    }];
+    const state = normalizeRuleUpdateState({ approved: { "REMOTE-PRIMITIVE-PATH": true } });
+    const rules = applyApprovedRuleUpdates(JP_COUNTRY_RULES, "JP", updates, state, new Date("2026-08-21T12:00:00"));
+
+    expect(rules.retirement.implemented).toBe(JP_COUNTRY_RULES.retirement.implemented);
+    expect(typeof rules.retirement.implemented).toBe("boolean");
+  });
+
 });
 
 
