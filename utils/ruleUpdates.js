@@ -189,8 +189,11 @@ export function applyApprovedRuleUpdates(baseRules, country, updates, state, now
     if (!updateCountry || updateCountry !== code) continue;
     if (!isRuleUpdateApproved(state, update.id)) continue;
     if (!isUpdateEffective(update, now)) continue;
-    for (const change of update.changes || []) {
-      if (change.path) setByPath(result, change.path, change.after);
+    const changes = Array.isArray(update?.changes) ? update.changes : [];
+    for (const change of changes) {
+      if (!change || typeof change !== "object") continue;
+      if (typeof change.path !== "string" || !change.path.trim()) continue;
+      setByPath(result, change.path, change.after);
     }
   }
   return result;
