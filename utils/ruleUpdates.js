@@ -140,12 +140,12 @@ export function mergeRuleUpdateManifests(remoteUpdates) {
       if (!item || typeof item.id !== "string") continue;
       const country = normalizeRuleCountry(item.country);
       if (!country) continue;
-      // IDs are global approval keys. A remote manifest must never reuse an existing
-      // ID for a different country, otherwise it could replace a built-in JP rule
-      // with (for example) a US rule while retaining the same approved-state key.
-      const existing = byId.get(item.id);
-      const existingCountry = normalizeRuleCountry(existing?.country);
-      if (existing && existingCountry && existingCountry !== country) continue;
+      // IDs are global approval keys. Once an ID is present, a later remote row must
+      // never replace it — even within the same country. Otherwise an already-approved
+      // ID could silently acquire different paths/values without a fresh approval.
+      // Built-ins therefore always win, and the first valid remote row wins among
+      // duplicate remote IDs.
+      if (byId.has(item.id)) continue;
       byId.set(item.id, { ...item, country });
     }
   }
