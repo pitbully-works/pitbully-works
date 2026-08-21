@@ -434,3 +434,43 @@ describe("batch hardening 5: rule metadata normalization", () => {
     expect(row?.sourceUrl).toBe("");
   });
 });
+
+
+describe("batch hardening 13: remote metadata bounds", () => {
+  it("rejects locale-dependent persisted timestamps", () => {
+    expect(normalizeRuleTimestamp("08/21/2026 10:00:00")).toBe("");
+    expect(normalizeRuleTimestamp("2026-08-21T10:00:00+09:00")).toBe("2026-08-21T01:00:00.000Z");
+  });
+
+  it("rejects oversized source URLs before URL parsing", () => {
+    expect(safeRuleSourceUrl(`https://example.com/${"a".repeat(3000)}`)).toBe("");
+  });
+
+  it("drops oversized or excessively deep remote rule paths", () => {
+    const merged = mergeRuleUpdateManifests([{
+      id: "REMOTE-PATH-BOUNDS", country: "US", effectiveDate: "2026-01-01",
+      changes: [
+        { path: `tax.${"a".repeat(600)}`, after: 1 },
+        { path: Array.from({ length: 30 }, () => "a").join("."), after: 1 },
+      ],
+    }]);
+    expect(merged.find((x) => x.id === "REMOTE-PATH-BOUNDS")?.changes).toEqual([]);
+  });
+
+  it("bounds remote display metadata and trims change labels", () => {
+    const merged = mergeRuleUpdateManifests([{
+      id: "REMOTE-TEXT-BOUNDS", country: "CA", category: " x ",
+      titleJa: ` ${"あ".repeat(700)} `, summaryJa: "要約", effectiveDate: "2026-01-01",
+      changes: [{ path: "tax.implemented", labelJa: ` ${"ラ".repeat(700)} `, after: true }],
+    }]);
+    const row = merged.find((x) => x.id === "REMOTE-TEXT-BOUNDS");
+    expect(row?.category).toBe("x");
+    expect(row?.titleJa.length).toBe(500);
+    expect(row?.changes[0]?.labelJa.length).toBe(500);
+  });
+
+  it("requires country codes to arrive as strings", () => {
+    const merged = mergeRuleUpdateManifests([{ id: "OBJECT-COUNTRY", country: { toString: () => "JP" }, effectiveDate: "2026-01-01", changes: [] }]);
+    expect(merged.some((x) => x.id === "OBJECT-COUNTRY")).toBe(false);
+  });
+});

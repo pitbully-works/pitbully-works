@@ -2353,7 +2353,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     return { key: "new", color: "#E06B5A", ja: "🔴 新規・要確認", en: "🔴 New · review" };
   }, [ruleUpdateState.approved, ruleUpdateState.dismissed]);
   const getRuleCategoryAccent = useCallback((update) => {
-    if (update?.country === "JP") {
+    if (normalizeRuleCountry(update?.country) === "JP") {
       if (update.category === "nisa") return "#4EA3E3";
       if (update.category === "publicPension") return "#54B07A";
       if (update.category === "retirement") return "#A78BFA";
@@ -2361,7 +2361,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     return "#4EA3E3";
   }, []);
   const getRuleCategoryLabel = useCallback((update) => {
-    if (update?.country === "JP") {
+    if (normalizeRuleCountry(update?.country) === "JP") {
       if (update.category === "nisa") return language === "ja" ? "📈 投資制度" : "📈 Investment scheme";
       if (update.category === "publicPension") return language === "ja" ? "👴 公的年金" : "👴 Public pension";
       if (update.category === "retirement") return language === "ja" ? "🏦 私的年金" : "🏦 Private pension";
