@@ -198,7 +198,7 @@ describe("batch hardening 6: persisted watchlists and snapshot integrity", () =>
 
   it("rejects backup schemas from a newer app version instead of guessing their layout", () => {
     const app = readFileSync(join(process.cwd(), "App.jsx"), "utf8");
-    expect(app).toContain("Number(parsed.profileStorageVersion) > PROFILE_STORAGE_VERSION");
+    expect(app).toContain("backupVersion > PROFILE_STORAGE_VERSION");
     expect(app).toContain("Unsupported backup version");
   });
 
