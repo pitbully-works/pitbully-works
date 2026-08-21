@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { JP_COUNTRY_RULES } from "./countryRules/JP.js";
-import { BUILTIN_RULE_UPDATES, applyApprovedRuleUpdates, normalizeRuleUpdateState } from "./utils/ruleUpdates.js";
+import { BUILTIN_RULE_UPDATES, applyApprovedRuleUpdates, mergeRuleUpdateManifests, normalizeRuleUpdateState } from "./utils/ruleUpdates.js";
 
 describe("rule update center", () => {
   it("does not change calculations before approval", () => {
@@ -49,6 +49,25 @@ describe("rule update center", () => {
     const canonical = applyApprovedRuleUpdates(JP_COUNTRY_RULES, "JP", BUILTIN_RULE_UPDATES, state, new Date("2026-12-01T12:00:00"));
     const noisy = applyApprovedRuleUpdates(JP_COUNTRY_RULES, "  jp  ", BUILTIN_RULE_UPDATES, state, new Date("2026-12-01T12:00:00"));
     expect(noisy.retirement.currentMonthlyLimits).toEqual(canonical.retirement.currentMonthlyLimits);
+  });
+
+  it("remote制度更新の国コードを5か国へ正規化し、未知国は取り込まない", () => {
+    const merged = mergeRuleUpdateManifests([
+      { id: "REMOTE-US", country: "  us  ", effectiveDate: "2026-01-01", changes: [] },
+      { id: "REMOTE-XX", country: "XX", effectiveDate: "2026-01-01", changes: [] },
+    ]);
+    expect(merged.find((item) => item.id === "REMOTE-US")?.country).toBe("US");
+    expect(merged.some((item) => item.id === "REMOTE-XX")).toBe(false);
+  });
+
+  it("保存済み制度変更履歴も国コードを正規化し、未知国履歴は除外する", () => {
+    const state = normalizeRuleUpdateState({
+      history: [
+        { id: "h1", country: " ca ", action: "approved" },
+        { id: "h2", country: "XX", action: "approved" },
+      ],
+    });
+    expect(state.history).toEqual([{ id: "h1", country: "CA", action: "approved" }]);
   });
 
 });

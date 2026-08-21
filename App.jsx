@@ -42,7 +42,7 @@ import { describeSchedulePace } from "./utils/schedulePace.js";
 import { newSci, sciPress, sciExpr, sciFormat, sciTokensFromExpr, normalizeSciHistory, sciClearHistory } from "./utils/scientificCalculator.js";
 import {
   RULE_UPDATE_STORAGE_KEY, BUILTIN_RULE_UPDATES, normalizeRuleUpdateState,
-  applyApprovedRuleUpdates, mergeRuleUpdateManifests, isUpdateEffective,
+  applyApprovedRuleUpdates, mergeRuleUpdateManifests, isUpdateEffective, normalizeRuleCountry,
 } from "./utils/ruleUpdates.js";
 import { getRuleSourcesForCountry } from "./utils/ruleSourceRegistry.js";
 import { buildCountryRuleCatalog } from "./utils/countryRuleCatalog.js";
@@ -2219,7 +2219,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       const sourceResponse = await fetch(`/rules-source-status.json?ts=${Date.now()}`, { cache: "no-store" });
       if (sourceResponse.ok) {
         const sourcePayload = await sourceResponse.json();
-        setRuleSourceStatuses(Array.isArray(sourcePayload?.sources) ? sourcePayload.sources : []);
+        setRuleSourceStatuses(Array.isArray(sourcePayload?.sources)
+          ? sourcePayload.sources.map((item) => {
+              const normalizedCountry = normalizeRuleCountry(item?.country);
+              return normalizedCountry ? { ...item, country: normalizedCountry } : null;
+            }).filter(Boolean)
+          : []);
       }
     } catch { /* 監視状態を取得できなくても既存計算には影響させない */ }
     const next = { ...ruleUpdateState, lastCheckedAt: new Date().toISOString() };
