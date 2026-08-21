@@ -432,7 +432,8 @@ export function buildPlanInput(ctx, overrides = {}) {
     // 【concessional cap】超過分の課税・払戻し／残留の選択は未実装のため、
     //   通常の税引前拠出として投影する額を cap までに制限する（安全側）。
     const concessionalGross = inv.getCappedConcessional(
-      acc.annualSalary, scaledVoluntaryConcessional
+      acc.annualSalary, scaledVoluntaryConcessional,
+      acc.carryForwardPriorYearBalance, acc.carryForwardAvailableUnusedCap
     );
     // 【Division 293】所得＋拠出が閾値を超えると税引前拠出に追加15%がかかる。
     //   画面表示だけでなく本番投影にも反映する。支払元によって減る口座が変わる：
