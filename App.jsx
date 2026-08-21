@@ -1190,6 +1190,19 @@ function AUInvestmentAccountsPanel({
           <Info size={13} />
           <span>{t("auTaxSourceNote", { taxYear: taxRules.effectiveTaxYear })}</span>
         </div>
+        <div className="field-label" style={{ marginBottom: 6 }}>{t("auMlsHospitalCoverLabel")}</div>
+        <div className="chip-row" style={{ marginBottom: 8 }}>
+          <button className={`chip ${auInvestment.mlsHospitalCover ? "chip-active" : ""}`} onClick={() => onUpdate("mlsHospitalCover", true)}>{t("auYes")}</button>
+          <button className={`chip ${!auInvestment.mlsHospitalCover ? "chip-active" : ""}`} onClick={() => onUpdate("mlsHospitalCover", false)}>{t("auNo")}</button>
+        </div>
+        <div className="field-label" style={{ marginBottom: 6 }}>{t("auMlsFamilyLabel")}</div>
+        <div className="chip-row" style={{ marginBottom: 8 }}>
+          <button className={`chip ${auInvestment.mlsFamily ? "chip-active" : ""}`} onClick={() => onUpdate("mlsFamily", true)}>{t("auMlsFamily")}</button>
+          <button className={`chip ${!auInvestment.mlsFamily ? "chip-active" : ""}`} onClick={() => onUpdate("mlsFamily", false)}>{t("auMlsSingle")}</button>
+        </div>
+        {auInvestment.mlsFamily && <Field guide={t("auMlsChildrenGuide")} label={t("auMlsChildrenLabel")} unit="" step={1} value={auInvestment.mlsDependentChildren} onChange={(v) => onUpdate("mlsDependentChildren", v)} />}
+        <Field guide={t("auMlsIncomeGuide")} label={t("auMlsIncomeLabel")} unit="A$" step={1000} value={auInvestment.mlsIncome} onChange={(v) => onUpdate("mlsIncome", v)} />
+        <Field guide={t("auMlsUncoveredDaysGuide")} label={t("auMlsUncoveredDaysLabel")} unit={t("daysUnit")} step={1} value={auInvestment.mlsUncoveredDays} onChange={(v) => onUpdate("mlsUncoveredDays", v)} />
         <Field guide={t("auCapitalGainGuide")} label={t("auCapitalGainLabel")} unit="A$" step={500} value={auInvestment.estimatedCapitalGainAnnual} onChange={(v) => onUpdate("estimatedCapitalGainAnnual", v)} />
         <label className="checkbox-row">
           <input
@@ -1209,6 +1222,11 @@ function AUInvestmentAccountsPanel({
             label={t("auMedicareLevyLabel", { pct: pct(taxRules.medicareLevy.rate) })}
             value={money(taxResult.medicareLevy)}
             sub={t("auMedicareLevySub")}
+          />
+          <StatCard
+            label={t("auMlsLabel")}
+            value={money(taxResult.medicareLevySurcharge || 0)}
+            sub={t("auMlsSub")}
           />
           <StatCard
             label={t("auCgtLabel")}
@@ -1621,6 +1639,12 @@ const DEFAULT_INPUTS = {
       },
       // ④ Tax（簡易版）
       stateTaxRatePct: 0, // 州税は州により大きく異なるため、概算の実効税率をユーザーが入力する
+      // Medicare Levy Surcharge (MLS) 2026-27
+      mlsHospitalCover: false,
+      mlsFamily: false,
+      mlsDependentChildren: 0,
+      mlsIncome: 0, // 0なら課税所得を概算利用
+      mlsUncoveredDays: 365,
       estimatedCapitalGainAnnual: 0, // 年間のキャピタルゲイン実現見込み額（Brokerage口座想定）
       // ⑤ 退職後の生活費（Expenses）。JPのlivingCostMonthlyとは別データ
       expensesMonthly: 0,
@@ -1633,6 +1657,12 @@ const DEFAULT_INPUTS = {
       adjustedIncome: 0, // 年金拠出上限のテーパリング判定用（0なら annualIncome を使用）
       thresholdIncome: 0, // テーパー適用の第1条件。0なら annualIncome を使用
       dividendIncomeAnnual: 0,
+      // Medicare Levy Surcharge (MLS) 2026-27
+      mlsHospitalCover: false,
+      mlsFamily: false,
+      mlsDependentChildren: 0,
+      mlsIncome: 0, // 0なら課税所得を概算利用
+      mlsUncoveredDays: 365,
       estimatedCapitalGainAnnual: 0,
       // withdrawalTaxPct：ISAは非課税(0%)。SIPP・職域年金は25%が非課税で残り75%が所得課税
       // されるため、基本税率20%なら実効15%（初期値）。GIAはCGT（初期値10%）。
@@ -1688,6 +1718,12 @@ const DEFAULT_INPUTS = {
       pensionAdjustment: 0,
       pensionAdjustmentReversal: 0,
       netPastServicePensionAdjustment: 0,
+      // Medicare Levy Surcharge (MLS) 2026-27
+      mlsHospitalCover: false,
+      mlsFamily: false,
+      mlsDependentChildren: 0,
+      mlsIncome: 0, // 0なら課税所得を概算利用
+      mlsUncoveredDays: 365,
       estimatedCapitalGainAnnual: 0,
       // withdrawalTaxPct：TFSAは非課税(0%)。RRSP/RRIFからの引出は全額が課税所得（初期値25%）。
       // 非登録口座はキャピタルゲインの50%課税（初期値12%）。
@@ -1746,6 +1782,12 @@ const DEFAULT_INPUTS = {
       listoEligible: false,
       // 0なら「年収 − 給与犠牲」をATIの概算として使用。分かる場合は明示入力する。
       listoAdjustedTaxableIncome: 0,
+      // Medicare Levy Surcharge (MLS) 2026-27
+      mlsHospitalCover: false,
+      mlsFamily: false,
+      mlsDependentChildren: 0,
+      mlsIncome: 0, // 0なら課税所得を概算利用
+      mlsUncoveredDays: 365,
       estimatedCapitalGainAnnual: 0,
       capitalGainHeldOver12Months: true,
       // withdrawalTaxPct：60歳以降のSuperからの引出は非課税(0%)。
@@ -2384,7 +2426,13 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   // 課税所得＝給与 − 給与犠牲（税引前拠出は課税所得から控除される）
   const auTaxableIncome = Math.max(0, auSalary - auVoluntaryConcessional);
   const auTaxResult = (auIsAU && rules.tax.implemented)
-    ? rules.tax.calculateTotalTax(auTaxableIncome)
+    ? rules.tax.calculateTotalTax(auTaxableIncome, {
+        mlsIncome: Math.max(0, Number(auInvestment.mlsIncome) || auTaxableIncome),
+        hasAppropriateHospitalCover: auInvestment.mlsHospitalCover === true,
+        mlsFamily: auInvestment.mlsFamily === true,
+        mlsDependentChildren: auInvestment.mlsDependentChildren || 0,
+        mlsUncoveredDays: auInvestment.mlsUncoveredDays ?? 365,
+      })
     : { incomeTax: 0, medicareLevy: 0, total: 0 };
   const auMarginalRate = (auIsAU && rules.tax.implemented)
     ? rules.tax.getMarginalRateWithLevy(auTaxableIncome) : 0;
