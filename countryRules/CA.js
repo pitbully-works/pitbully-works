@@ -21,7 +21,7 @@ export const CA_COUNTRY_RULES = {
     noteJa: "2026年制度を2026年8月17日に確認。OASは2026年7〜9月四半期の公表値を基準にしています。",
     noteEn: "2026 rules verified on 17 Aug 2026. OAS uses the July-September 2026 quarterly figures.",
     coverage: [
-      { key: "investment", labelJa: "投資制度", labelEn: "Investment", status: "implemented", effective: "2026 calendar year", lastUpdated: "2026-08-17", updateJa: "TFSA・RRSP・非登録口座・RRIF最低取崩しを反映。FHSA等は未実装。", updateEn: "TFSA, RRSP, non-registered accounts and RRIF minimum withdrawals are modelled; FHSA and related plans are not implemented." },
+      { key: "investment", labelJa: "投資制度", labelEn: "Investment", status: "implemented", effective: "2026 calendar year", lastUpdated: "2026-08-17", updateJa: "TFSA・RRSP・非登録口座・RRIF最低取崩しに加え、FHSAの年間枠・繰越・生涯上限を反映。RESP・RDSPは未実装。", updateEn: "TFSA, RRSP, non-registered accounts and RRIF minimum withdrawals are modelled, plus FHSA annual room, carryforward and lifetime limit; RESP and RDSP remain unimplemented." },
       { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "partial", effective: "2026 / OAS & GIS Jul-Sep", lastUpdated: "2026-08-20", updateJa: "CPP・OAS・OAS回収税・GIS/Allowanceの公表上限・CPP Post-Retirement Benefitを反映。GISの正確な支給額、QPP、CPP履歴からの自動算定は未実装。", updateEn: "CPP, OAS, OAS recovery tax, published GIS/Allowance maxima and CPP Post-Retirement Benefit are modelled; exact GIS entitlement, QPP and automatic CPP entitlement from history are not implemented." },
       { key: "healthcare", labelJa: "医療", labelEn: "Healthcare", status: "partial", effective: "2026", lastUpdated: "2026-08-21", updateJa: "州・準州の公的医療保険を前提に自己負担を計算し、CDCPの所得別自己負担率とオンタリオ州の2026年長期介護ホーム最大自己負担額を自動計算。その他の州・準州の薬剤・視力・介護費は手入力。", updateEn: "Models out-of-pocket costs under provincial/territorial coverage, the income-based CDCP co-payment and Ontario 2026 long-term-care home maximum co-payments; drug, vision and long-term-care charges outside Ontario remain manual." },
       { key: "tax", labelJa: "税金", labelEn: "Tax", status: "partial", effective: "2026 tax year", lastUpdated: "2026-08-21", updateJa: "連邦所得税に加え、オンタリオ州の所得税・サータックス・Ontario Health Premiumを反映。その他12地域、QPP、配当税額控除等は未実装。", updateEn: "Federal income tax plus Ontario income tax, surtax and Ontario Health Premium are modelled; the other 12 regions, QPP and dividend credits remain unimplemented." },
@@ -39,6 +39,7 @@ export const CA_COUNTRY_RULES = {
       rrsp: "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/rrsps-related-plans.html",
       limitsTable: "https://www.canada.ca/en/revenue-agency/services/tax/registered-plans-administrators/pspa/mp-rrsp-dpsp-tfsa-limits-ympe.html",
       rrif: "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/rrsps-related-plans/registered-retirement-income-fund-rrif.html",
+      fhsa: "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/first-home-savings-account/contributing-your-fhsa.html",
     },
     // カナダ版で別々に管理・計算する口座
     accountTypes: ["tfsa", "rrsp", "nonRegistered", "cashSavings"],
@@ -52,6 +53,10 @@ export const CA_COUNTRY_RULES = {
       // RRSP：前年の稼得所得の18% と 年間上限額 の低い方
       rrspAnnualDollarLimit: 33810,
       rrspIncomePercent: 0.18,
+      // FHSA：初年度のparticipation room C$8,000、未使用枠の繰越は最大C$8,000、生涯上限C$40,000。
+      fhsaAnnualLimit: 8000,
+      fhsaCarryforwardMax: 8000,
+      fhsaLifetimeLimit: 40000,
     },
     // RRSPは71歳の年末までにRRIF（またはアニュイティ）へ強制転換される（rrifConversionAge）。
     // 最低取崩しが義務づけられるのは転換の「翌年」＝72歳の年からで、その年の1月1日時点の
@@ -90,6 +95,20 @@ export const CA_COUNTRY_RULES = {
     },
     getRrspRemaining(accounts, priorEarnedIncome) {
       return this.getRrspRoom(priorEarnedIncome, accounts) - this._num((accounts.rrsp || {}).annualContribution);
+    },
+    // FHSA participation room の簡易計算。CRAの個別通知値があればそれを最優先し、
+    // 未入力時は「C$8,000 + 前年未使用枠（最大C$8,000）」と生涯残枠の小さい方で概算する。
+    // re-participation room / excess FHSA amount がある複雑なケースは officialParticipationRoom を入力する。
+    getFhsaParticipationRoom({ officialParticipationRoom = 0, priorUnusedRoom = 0, lifetimeContributionsAndTransfers = 0 } = {}) {
+      const official = this._num(officialParticipationRoom);
+      if (official > 0) return official;
+      const carry = Math.min(this.limits.fhsaCarryforwardMax, Math.max(0, this._num(priorUnusedRoom)));
+      const annualRoom = this.limits.fhsaAnnualLimit + carry;
+      const lifetimeRemaining = Math.max(0, this.limits.fhsaLifetimeLimit - Math.max(0, this._num(lifetimeContributionsAndTransfers)));
+      return Math.min(annualRoom, lifetimeRemaining);
+    },
+    getFhsaRemaining({ annualContributionsAndTransfers = 0, ...roomInputs } = {}) {
+      return this.getFhsaParticipationRoom(roomInputs) - Math.max(0, this._num(annualContributionsAndTransfers));
     },
     // RRIFの年齢別最低取崩し率。95歳以上は一律20%。
     getRrifMinimumFactor(age) {
@@ -191,7 +210,7 @@ export const CA_COUNTRY_RULES = {
     },
     notImplemented: [
       "RRSP・TFSAの未使用枠の繰越（キャリーフォワード）",
-      "FHSA（First Home Savings Account）／RESP／RDSP",
+      "FHSAのre-participation room・excess amount等の複雑な個別調整（基本の年間枠・繰越・生涯上限は実装済み）／RESP／RDSP",
       "RRSPからの引出し時の源泉徴収税（withholding tax）。引出時課税は口座ごとの withdrawalTaxPct（単一税率）で近似しており、実際の限界税率や源泉徴収率とは一致しない",
       "RRIF最低取崩し率に配偶者（通常は年下の配偶者）の年齢を使う選択（spousal age election）。RRIF開設時に一度だけ選べ、以後は変更できない",
       "ケベック州のQPP（CPPと拠出率・給付が異なる）",
