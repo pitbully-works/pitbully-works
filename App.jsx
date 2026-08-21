@@ -2279,10 +2279,14 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               if (!normalizedCountry || !id) return null;
               // Source-monitor payloads are external data too. Keep only the fields the
               // UI actually consumes so arbitrary/huge metadata cannot be retained in state.
+              const hash = typeof item.hash === "string" && /^[a-f0-9]{64}$/i.test(item.hash.trim())
+                ? item.hash.trim().toLowerCase()
+                : "";
               return {
                 id,
                 country: normalizedCountry,
                 changed: item.changed === true,
+                hash,
                 url: safeRuleSourceUrl(item.url),
               };
             }).filter(Boolean)
@@ -2323,9 +2327,29 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     [ruleUpdateState.history, country]
   );
   const ruleSourceAlerts = useMemo(
-    () => ruleSourceStatuses.filter((item) => normalizeRuleCountry(item?.country) === country && item.changed === true),
-    [ruleSourceStatuses, country]
+    () => ruleSourceStatuses.filter((item) => {
+      if (normalizeRuleCountry(item?.country) !== country || item.changed !== true) return false;
+      const acknowledgedHash = ruleUpdateState.sourceAcknowledgedHashes?.[item.id] || "";
+      // Hashが取れない異常状態は fail-closed で警告を残す。
+      // 正常なSHA-256がある場合だけ、その版を利用者が確認済みなら非表示にする。
+      return !item.hash || acknowledgedHash !== item.hash;
+    }),
+    [ruleSourceStatuses, country, ruleUpdateState.sourceAcknowledgedHashes]
   );
+  const acknowledgeRuleSourceAlert = useCallback((alert) => {
+    const id = normalizeRuleUpdateId(alert?.id);
+    const hash = typeof alert?.hash === "string" && /^[a-f0-9]{64}$/i.test(alert.hash.trim())
+      ? alert.hash.trim().toLowerCase()
+      : "";
+    if (!id || !hash) return;
+    persistRuleUpdateState({
+      ...ruleUpdateState,
+      sourceAcknowledgedHashes: {
+        ...(ruleUpdateState.sourceAcknowledgedHashes || {}),
+        [id]: hash,
+      },
+    });
+  }, [ruleUpdateState, persistRuleUpdateState]);
   const ruleAttentionCount = pendingRuleUpdates.length + ruleSourceAlerts.length;
   const scheduledRuleUpdates = useMemo(
     () => countryRuleUpdates.filter((item) => isRuleUpdateApproved(ruleUpdateState, item.id) && !isUpdateEffective(item)),
@@ -6610,9 +6634,16 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                         const sourceHref = safeRuleSourceUrl(alert.url) || safeRuleSourceUrl(registered?.url);
                         if (!sourceHref) return null;
                         return (
-                          <a key={alert.id} href={sourceHref} target="_blank" rel="noopener noreferrer" className="history-action" style={{ fontSize: 11, color: "#8ED8FF", borderColor: "#3E8FB8", background: "rgba(62,143,184,0.14)", textDecoration: "none", width: "fit-content" }}>
-                            {language === "ja" ? `📄 ${registered ? registered.labelJa.split("「")[0] : "公式ソース"}` : "Open official source"}
-                          </a>
+                          <div key={alert.id} style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                            <a href={sourceHref} target="_blank" rel="noopener noreferrer" className="history-action" style={{ fontSize: 11, color: "#8ED8FF", borderColor: "#3E8FB8", background: "rgba(62,143,184,0.14)", textDecoration: "none", width: "fit-content" }}>
+                              {language === "ja" ? `📄 ${registered ? registered.labelJa.split("「")[0] : "公式ソース"}` : "Open official source"}
+                            </a>
+                            {alert.hash && (
+                              <button type="button" className="history-action" onClick={() => acknowledgeRuleSourceAlert(alert)} style={{ fontSize: 11 }}>
+                                {language === "ja" ? "確認済みにする" : "Mark reviewed"}
+                              </button>
+                            )}
+                          </div>
                         );
                       })}
                     </div>
