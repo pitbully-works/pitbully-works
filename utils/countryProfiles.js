@@ -82,6 +82,17 @@ export function normalizeProfileCurrency(value, country = "JP") {
   return code === expected ? code : expected;
 }
 
+export function hasOnlySupportedCountryKeys(value) {
+  if (!isPlainRecord(value)) return false;
+  const seen = new Set();
+  for (const rawKey of Object.keys(value)) {
+    const code = String(rawKey || "").trim().toUpperCase();
+    if (!PROFILE_COUNTRIES.includes(code) || seen.has(code)) return false;
+    seen.add(code);
+  }
+  return true;
+}
+
 export function normalizeCountryKeyedRecord(value) {
   const src = isPlainRecord(value) ? value : {};
   const out = {};
