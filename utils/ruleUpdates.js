@@ -379,6 +379,35 @@ export function applyApprovedRuleUpdates(baseRules, country, updates, state, now
   return result;
 }
 
+
+export function normalizeRuleUpdateManifestFeed(payload) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
+  if (payload.schemaVersion !== 1 || !Array.isArray(payload.updates) || payload.updates.length > MAX_REMOTE_RULE_UPDATES) return null;
+
+  const seen = new Set();
+  const normalized = [];
+  for (const item of payload.updates) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return null;
+    const id = normalizeRuleUpdateId(item.id);
+    const country = normalizeRuleCountry(item.country);
+    if (!id || !country || seen.has(id)) return null;
+    seen.add(id);
+
+    if (!Array.isArray(item.changes) || item.changes.length > MAX_RULE_CHANGES_PER_UPDATE) return null;
+    for (const change of item.changes) {
+      if (!change || typeof change !== "object" || Array.isArray(change)) return null;
+      if (typeof change.path !== "string" || !safeRulePathParts(change.path)) return null;
+      if (normalizeRuleDisplayScalar(change.after) === null && change.after !== null) return null;
+    }
+
+    if (item.effectiveDate != null && !normalizeRuleDateString(item.effectiveDate)) return null;
+    if (item.detectedAt != null && !normalizeRuleDateString(item.detectedAt)) return null;
+    if (item.sourceUrl != null && item.sourceUrl !== "" && !safeRuleSourceUrl(item.sourceUrl)) return null;
+    normalized.push(item);
+  }
+  return normalized;
+}
+
 export function mergeRuleUpdateManifests(remoteUpdates) {
   const byId = new Map(BUILTIN_RULE_UPDATES.map((item) => [item.id, item]));
   if (Array.isArray(remoteUpdates)) {
