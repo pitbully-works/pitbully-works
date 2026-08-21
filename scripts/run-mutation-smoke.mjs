@@ -29,6 +29,7 @@ const mutants = [
   ["Rule source acknowledgement is version-specific", "App.jsx", "return !item.hash || acknowledgedHash !== item.hash;", "return !item.hash || !!acknowledgedHash;", "ruleSourceAcknowledgement.test.js"],
   ["Rule update persistence uses latest state", "App.jsx", 'typeof nextOrUpdater === "function" ? nextOrUpdater(current) : nextOrUpdater', 'typeof nextOrUpdater === "function" ? nextOrUpdater : nextOrUpdater', "ruleUpdateStateConcurrency.test.js"],
   ["Rule check timestamp requires both feeds", "App.jsx", "if (manifestChecked && sourceStatusChecked) {", "if (manifestChecked || sourceStatusChecked) {", "ruleUpdateCheckIntegrity.test.js"],
+  ["Rule manifest requires documented schema", "App.jsx", "if (payload?.schemaVersion === 1 && Array.isArray(payload?.updates)) {", "if (Array.isArray(payload?.updates)) {", "ruleUpdateFeedValidation.test.js"],
 ];
 
 if (!fs.existsSync(vitestBin)) {
