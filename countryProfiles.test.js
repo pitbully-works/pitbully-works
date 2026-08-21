@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { PROFILE_COUNTRIES, PROFILE_STORAGE_VERSION, applySharedIdentity, forceCountryMeta, makeCountryProfile, migrateCountryProfiles, normalizeProfileCurrency, normalizeCountryKeyedRecord, targetCountryFromKakeibo, targetCountryFromBackup } from "./utils/countryProfiles.js";
+import { PROFILE_COUNTRIES, PROFILE_STORAGE_VERSION, applySharedIdentity, forceCountryMeta, makeCountryProfile, migrateCountryProfiles, normalizeProfileCurrency, normalizeCountryKeyedRecord, resolvePersistedActiveCountry, targetCountryFromKakeibo, targetCountryFromBackup } from "./utils/countryProfiles.js";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 const defaults={country:"JP",baseCurrency:"JPY",language:"ja",userName:"",birthDate:"",currentAge:35,currentAssets:0,banks:[],pensionMonthly:0,livingCostMonthly:0};
@@ -58,5 +58,40 @@ describe("profile render-boundary currency normalization", () => {
   it("unsupported currency falls back to the selected country's canonical currency", () => {
     expect(normalizeProfileCurrency("XYZ", "US")).toBe("USD");
     expect(normalizeProfileCurrency("", "AU")).toBe("AUD");
+  });
+});
+
+
+describe("persisted active-country recovery", () => {
+  it("keeps valid lowercase/spaced active country", () => {
+    expect(resolvePersistedActiveCountry("  au  ", { AU: {} })).toBe("AU");
+  });
+  it("does not silently reinterpret an unsupported active code as JP when another valid bucket exists", () => {
+    expect(resolvePersistedActiveCountry("XX", { US: { currentAssets: 9 } })).toBe("US");
+  });
+  it("falls back safely when an unsupported active code has no valid saved bucket", () => {
+    expect(resolvePersistedActiveCountry("XX", { XX: {} }, "CA")).toBe("CA");
+  });
+  it("migration recovers an existing valid bucket from corrupted activeCountry", () => {
+    const m = migrateCountryProfiles(defaults, {
+      profileStorageVersion: PROFILE_STORAGE_VERSION,
+      activeCountry: "XX",
+      profiles: { US: { currentAssets: 9876 } },
+    });
+    expect(m.activeCountry).toBe("US");
+    expect(m.profiles.US.currentAssets).toBe(9876);
+  });
+});
+
+
+describe("App defensive boundary helpers", () => {
+  const app = readFileSync(join(process.cwd(), "App.jsx"), "utf8");
+  it("normalizes currency inside the formatter itself", () => {
+    expect(app).toContain('const currencyCode = String(baseCurrency || "JPY").trim().toUpperCase()');
+    expect(app).toContain('CURRENCY_BY_CODE[currencyCode]');
+  });
+  it("normalizes country inside the default-watchlist selector", () => {
+    expect(app).toContain('const code = normalizeProfileCountry(country)');
+    expect(app).toContain('if (code === "US") return DEFAULT_WATCHLIST_US');
   });
 });

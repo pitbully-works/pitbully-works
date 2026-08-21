@@ -43,7 +43,7 @@ import { newSci, sciPress, sciExpr, sciFormat, sciTokensFromExpr, normalizeSciHi
 import {
   RULE_UPDATE_STORAGE_KEY, BUILTIN_RULE_UPDATES, normalizeRuleUpdateState,
   applyApprovedRuleUpdates, mergeRuleUpdateManifests, isUpdateEffective, normalizeRuleCountry,
-  isRuleUpdateApproved, isRuleUpdateDismissed, safeRuleSourceUrl,
+  isRuleUpdateApproved, isRuleUpdateDismissed, safeRuleSourceUrl, normalizeRuleUpdateId,
 } from "./utils/ruleUpdates.js";
 import { getRuleSourcesForCountry } from "./utils/ruleSourceRegistry.js";
 import { buildCountryRuleCatalog } from "./utils/countryRuleCatalog.js";
@@ -246,9 +246,10 @@ function consumeLaunchCountryParam() {
 // baseCurrencyがJPY（＝未設定を含む）の場合は、既存のyen()と完全に同一の出力を維持する
 // （＝国・通貨を選択しない/日本のままなら、見た目は1文字も変わらない）。
 function formatMoneyFor(baseCurrency, n) {
-  if (!baseCurrency || baseCurrency === "JPY") return yen(n);
+  const currencyCode = String(baseCurrency || "JPY").trim().toUpperCase();
+  if (currencyCode === "JPY") return yen(n);
   if (n === null || n === undefined || isNaN(n)) n = 0;
-  const cfg = CURRENCY_BY_CODE[baseCurrency] || CURRENCY_BY_CODE.JPY;
+  const cfg = CURRENCY_BY_CODE[currencyCode] || CURRENCY_BY_CODE.JPY;
   const sign = n < 0 ? "-" : "";
   const abs = Math.abs(Math.round(n));
   return `${sign}${cfg.symbol}${abs.toLocaleString(cfg.locale)}`;
@@ -346,10 +347,11 @@ const DEFAULT_WATCHLIST_AU = [];
 const DEFAULT_WATCHLIST = DEFAULT_WATCHLIST_JP;
 
 function defaultWatchlistFor(country) {
-  if (country === "US") return DEFAULT_WATCHLIST_US;
-  if (country === "GB") return DEFAULT_WATCHLIST_GB;
-  if (country === "CA") return DEFAULT_WATCHLIST_CA;
-  if (country === "AU") return DEFAULT_WATCHLIST_AU;
+  const code = normalizeProfileCountry(country);
+  if (code === "US") return DEFAULT_WATCHLIST_US;
+  if (code === "GB") return DEFAULT_WATCHLIST_GB;
+  if (code === "CA") return DEFAULT_WATCHLIST_CA;
+  if (code === "AU") return DEFAULT_WATCHLIST_AU;
   return DEFAULT_WATCHLIST_JP;
 }
 
@@ -2166,27 +2168,31 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   }, []);
 
   const recordRuleUpdateDecision = useCallback((update, action) => {
+    const updateId = normalizeRuleUpdateId(update?.id);
+    const updateCountry = normalizeRuleCountry(update?.country);
+    const safeAction = action === "approved" || action === "deferred" ? action : null;
+    if (!updateId || !updateCountry || !safeAction) return;
     const nowIso = new Date().toISOString();
     const historyEntry = {
-      id: `${update.id}-${action}-${nowIso}`,
-      updateId: update.id,
-      country: update.country,
-      category: update.category || "",
-      titleJa: update.titleJa || update.id,
-      titleEn: update.titleEn || update.titleJa || update.id,
-      action,
+      id: `${updateId}-${safeAction}-${nowIso}`,
+      updateId,
+      country: updateCountry,
+      category: typeof update?.category === "string" ? update.category : "",
+      titleJa: update?.titleJa || updateId,
+      titleEn: update?.titleEn || update?.titleJa || updateId,
+      action: safeAction,
       decidedAt: nowIso,
-      effectiveDate: update.effectiveDate || "",
+      effectiveDate: typeof update?.effectiveDate === "string" ? update.effectiveDate : "",
     };
     const next = {
       ...ruleUpdateState,
       approved: {
         ...ruleUpdateState.approved,
-        [update.id]: action === "approved",
+        [updateId]: safeAction === "approved",
       },
       dismissed: {
         ...ruleUpdateState.dismissed,
-        [update.id]: action === "deferred",
+        [updateId]: safeAction === "deferred",
       },
       history: [...(ruleUpdateState.history || []), historyEntry].slice(-100),
     };
@@ -2230,7 +2236,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           ? sourcePayload.sources.slice(0, 500).map((item) => {
               if (!item || typeof item !== "object" || Array.isArray(item)) return null;
               const normalizedCountry = normalizeRuleCountry(item.country);
-              const id = typeof item.id === "string" ? item.id.trim() : "";
+              const id = normalizeRuleUpdateId(item.id);
               return normalizedCountry && id
                 ? { ...item, id, country: normalizedCountry, changed: item.changed === true }
                 : null;

@@ -49,4 +49,16 @@ describe("5-country rules update center UI", () => {
     expect(app).toContain('Change history (');
   });
 
+  it("normalizes and validates rule-update decisions before persisting them", () => {
+    expect(app).toContain("const updateId = normalizeRuleUpdateId(update?.id)");
+    expect(app).toContain("const updateCountry = normalizeRuleCountry(update?.country)");
+    expect(app).toContain('const safeAction = action === "approved" || action === "deferred" ? action : null');
+    expect(app).toContain("if (!updateId || !updateCountry || !safeAction) return");
+  });
+
+  it("applies the same bounded ID normalization to official-source status rows", () => {
+    expect(app).toContain("const id = normalizeRuleUpdateId(item.id)");
+    expect(app).toContain("normalizedCountry && id");
+  });
+
 });
