@@ -23,7 +23,7 @@ export const AU_COUNTRY_RULES = {
     noteEn: "2026-27 rules verified on 17 Aug 2026. Age Pension uses the 20 Mar 2026 rates; the next scheduled indexation is 20 Sep 2026.",
     coverage: [
       { key: "investment", labelJa: "投資制度", labelEn: "Investment", status: "partial", effective: "2026-27 financial year", lastUpdated: "2026-08-21", updateJa: "Super・投資口座・拠出上限、carry-forward、bring-forwardに加え、適格確認式のDownsizer contribution（最大A$300,000）を今年度一括拠出として反映。", updateEn: "Super, investment accounts and contribution caps are modelled, including concessional carry-forward, non-concessional bring-forward, and an eligibility-confirmed one-off downsizer contribution of up to A$300,000." },
-      { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "partial", effective: "2026-27 / Age Pension Mar 2026 rates / Rent Assistance Jul 2026 rates", lastUpdated: "2026-08-21", updateJa: "Age Pensionの資産・所得テスト、Work Bonus年次近似、Super取崩しに加え、子なし世帯のRent Assistanceを資力調査前の最大給付額へ組み込み。", updateEn: "Age Pension means tests, annualised Work Bonus, Super drawdown and Rent Assistance for households without dependent children are modelled, with Rent Assistance included in the maximum rate before means testing." },
+      { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "partial", effective: "2026-27 / Age Pension Mar 2026 rates / Rent Assistance & CSHC Jul 2026 rates", lastUpdated: "2026-08-21", updateJa: "Age Pensionの資産・所得テスト、Work Bonus年次近似、Super取崩し、子なし世帯のRent Assistanceに加え、Commonwealth Seniors Health Cardの所得上限による見込み判定を実装。", updateEn: "Age Pension means tests, annualised Work Bonus, Super drawdown and Rent Assistance for households without dependent children are modelled, plus an income-limit estimator for the Commonwealth Seniors Health Card." },
       { key: "healthcare", labelJa: "医療", labelEn: "Healthcare", status: "partial", effective: "2026-27 / 2026 calendar-year Safety Nets", lastUpdated: "2026-08-21", updateJa: "Medicare前提の自己負担に加え、2026年PBS Safety Net概算とMedicare Safety Net閾値を反映。診療ごとのSafety Net還付・aged care資力調査は未自動化。", updateEn: "Adds a 2026 PBS Safety Net estimate and Medicare Safety Net thresholds to the Medicare out-of-pocket model; item-level Safety Net rebates and aged-care means testing remain manual." },
       { key: "tax", labelJa: "税金", labelEn: "Tax", status: "partial", effective: "2026-27 financial year", lastUpdated: "2026-08-21", updateJa: "居住者所得税・LITO・SAPTO・Medicare levy・MLS・CGTを反映。", updateEn: "Resident income tax, LITO, SAPTO, Medicare levy, MLS and CGT are modelled." },
       { key: "estate", labelJa: "相続", labelEn: "Estate", status: "partial", effective: "2026-27", lastUpdated: "2026-08-17", updateJa: "相続目標は資産計画に反映。Super death benefit等の税務自動計算は未実装。", updateEn: "Estate targets feed the plan; tax treatment of Super death benefits is not automated." },
@@ -401,7 +401,7 @@ export const AU_COUNTRY_RULES = {
   retirement: {
     implemented: true,
     effectiveTaxYear: "2026-27",
-    lastUpdated: "2026-07-18",
+    lastUpdated: "2026-08-21",
     sourceName: "Services Australia — Age Pension（給付額は2026年3月20日改定値、資産・所得基準は2026年7月1日改定値）",
     sourceUrl: "https://www.servicesaustralia.gov.au/age-pension",
     sourceUrls: {
@@ -410,6 +410,7 @@ export const AU_COUNTRY_RULES = {
       assetsTest: "https://www.servicesaustralia.gov.au/assets-test-for-age-pension",
       eligibility: "https://www.servicesaustralia.gov.au/who-can-get-age-pension",
       rentAssistance: "https://www.servicesaustralia.gov.au/rent-assistance",
+      seniorsHealthCard: "https://www.servicesaustralia.gov.au/commonwealth-seniors-health-card",
     },
     accountTypes: ["agePension"],
     agePension: {
@@ -446,6 +447,15 @@ export const AU_COUNTRY_RULES = {
         single: { thresholdFortnightly: 154.80, maxFortnightly: 219.40 },
         singleSharer: { thresholdFortnightly: 154.80, maxFortnightly: 146.27 },
         coupleCombined: { thresholdFortnightly: 250.80, maxFortnightly: 206.80 },
+      },
+      // Commonwealth Seniors Health Card (1 July 2026 income limits).
+      // Income test uses annual adjusted taxable income plus deemed income from account-based income streams.
+      // There is no assets test. Residence / identity / TFN / income-support conditions are not inferred.
+      commonwealthSeniorsHealthCard: {
+        singleAnnualLimit: 101105,
+        coupleCombinedAnnualLimit: 161768,
+        separatedCoupleCombinedAnnualLimit: 202210,
+        dependentChildAnnualAdd: 639.60,
       },
     },
     // Deeming（みなし収入）：金融資産は実際の運用益ではなく、みなし利率で所得を算定する。
@@ -489,6 +499,39 @@ export const AU_COUNTRY_RULES = {
     },
     getRentAssistanceHouseholdAnnual(args = {}) {
       return this.getRentAssistanceFortnightly(args) * this.agePension.fortnightsPerYear;
+    },
+    // Commonwealth Seniors Health Card (CSHC) income-test helper.
+    // Services Australia tests ATI plus deemed income from account-based income streams.
+    // The card has no assets test. Other qualification conditions are explicit user confirmations.
+    getCshcIncomeLimit(status = "single", illnessSeparated = false, dependentChildren = 0) {
+      const c = this.agePension.commonwealthSeniorsHealthCard;
+      const children = Math.max(0, Math.floor(Number(dependentChildren) || 0));
+      let base = c.singleAnnualLimit;
+      if (status === "couple") {
+        base = illnessSeparated ? c.separatedCoupleCombinedAnnualLimit : c.coupleCombinedAnnualLimit;
+      }
+      return base + children * c.dependentChildAnnualAdd;
+    },
+    getCshcAssessableIncome(adjustedTaxableIncome = 0, deemedAccountBasedIncome = 0) {
+      return Math.max(0, Number(adjustedTaxableIncome) || 0)
+        + Math.max(0, Number(deemedAccountBasedIncome) || 0);
+    },
+    isCshcIncomeEligible({ status = "single", illnessSeparated = false, dependentChildren = 0, adjustedTaxableIncome = 0, deemedAccountBasedIncome = 0 } = {}) {
+      const income = this.getCshcAssessableIncome(adjustedTaxableIncome, deemedAccountBasedIncome);
+      const limit = this.getCshcIncomeLimit(status, illnessSeparated, dependentChildren);
+      return income < limit;
+    },
+    getCshcEligibility({
+      age, status = "single", illnessSeparated = false, dependentChildren = 0,
+      adjustedTaxableIncome = 0, deemedAccountBasedIncome = 0,
+      residenceEligible = false, noOtherIncomeSupport = false, agePensionAnnual = 0,
+    } = {}) {
+      const income = this.getCshcAssessableIncome(adjustedTaxableIncome, deemedAccountBasedIncome);
+      const limit = this.getCshcIncomeLimit(status, illnessSeparated, dependentChildren);
+      const ageEligible = (Number(age) || 0) >= this.agePension.qualifyingAge;
+      const notReceivingIncomeSupport = noOtherIncomeSupport === true && (Number(agePensionAnnual) || 0) <= 0;
+      const eligible = ageEligible && residenceEligible === true && notReceivingIncomeSupport && income < limit;
+      return { eligible, ageEligible, residenceEligible: residenceEligible === true, notReceivingIncomeSupport, income, limit };
     },
 
     // 最大給付額（年額）。カップルは「1人あたり」の額を返す（世帯合計はこの2倍）。
@@ -692,7 +735,7 @@ export const AU_COUNTRY_RULES = {
       "カップルで片方だけが受給資格年齢の場合、受給資格年齢未満の配偶者の積立フェーズSuperを資産テストから除外する扱い",
       "投資用不動産の実収入（Deemingの対象外だが所得テストには算入される）",
       "カップルで片方だけが受給資格年齢に達している場合の取り扱い（資産・所得は世帯合算のまま）",
-      "Commonwealth Seniors Health Card",
+      "Commonwealth Seniors Health Cardは2026年7月の所得上限で見込み判定を実装済み。居住・TFN・本人確認・特例カード等の完全自動判定は未実装",
     ],
   },
 
