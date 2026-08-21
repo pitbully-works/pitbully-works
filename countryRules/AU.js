@@ -1208,6 +1208,7 @@ export const AU_COUNTRY_RULES = {
       isDeathBenefitsDependant = true,
       includeMedicareLevy = true,
       paymentRoute = "direct",
+      dependantSharePercent = null,
     } = {}) {
       const clean = (v) => Math.max(0, Number(v) || 0);
       const taxFree = clean(taxFreeComponent);
@@ -1215,15 +1216,22 @@ export const AU_COUNTRY_RULES = {
       const untaxed = clean(untaxedElement);
       const gross = taxFree + taxed + untaxed;
       const route = paymentRoute === "estate" ? "estate" : "direct";
-      if (isDeathBenefitsDependant) {
-        return { gross, taxFreeComponent: taxFree, taxedElement: taxed, untaxedElement: untaxed, tax: 0, net: gross, effectiveTaxRate: 0, paymentRoute: route, medicareLevyApplied: false };
+      // A deceased estate can ultimately benefit both tax dependants and non-dependants.
+      // Section 302-10 applies the death-benefit tax treatment to each beneficiary portion.
+      const hasEstateSplit = route === "estate" && dependantSharePercent !== null && dependantSharePercent !== undefined && dependantSharePercent !== "";
+      const dependantShare = hasEstateSplit
+        ? Math.min(1, Math.max(0, (Number(dependantSharePercent) || 0) / 100))
+        : (isDeathBenefitsDependant ? 1 : 0);
+      const nonDependantShare = 1 - dependantShare;
+      if (nonDependantShare <= 0) {
+        return { gross, taxFreeComponent: taxFree, taxedElement: taxed, untaxedElement: untaxed, tax: 0, net: gross, effectiveTaxRate: 0, paymentRoute: route, medicareLevyApplied: false, dependantSharePercent: dependantShare * 100, nonDependantSharePercent: 0 };
       }
       // For this estimator, Medicare levy is only applied to a direct payment.
       // A deceased-estate trustee is modelled at the statutory 15% / 30% maximum rates.
       const medicareLevyApplied = route === "direct" && includeMedicareLevy;
       const levy = medicareLevyApplied ? this.medicareLevyRate : 0;
-      const tax = taxed * (this.nonDependantTaxedElementRate + levy)
-        + untaxed * (this.nonDependantUntaxedElementRate + levy);
+      const tax = nonDependantShare * (taxed * (this.nonDependantTaxedElementRate + levy)
+        + untaxed * (this.nonDependantUntaxedElementRate + levy));
       return {
         gross,
         taxFreeComponent: taxFree,
@@ -1234,11 +1242,13 @@ export const AU_COUNTRY_RULES = {
         effectiveTaxRate: gross > 0 ? tax / gross : 0,
         paymentRoute: route,
         medicareLevyApplied,
+        dependantSharePercent: dependantShare * 100,
+        nonDependantSharePercent: nonDependantShare * 100,
       };
     },
     notImplemented: [
       "Super death benefit income streams（受取人・死亡者の年齢、taxed/untaxed elementによる課税）",
-      "複数受益者が混在するdeceased estateでの受益者別按分・特殊なdependant判定",
+      "複数受益者のdependant/non-dependant比率による比例按分は実装済み。各受益者ごとにcomponent構成が異なるケース・特殊なdependant判定は未実装",
       "CGT・deceased estate trust return・非居住者受益者など死亡後の資産税務の完全自動計算",
     ],
   },
