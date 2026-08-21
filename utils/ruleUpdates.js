@@ -124,15 +124,25 @@ function setByPath(root, path, value) {
   // Rule-update paths may come from a remote manifest. Never traverse prototype
   // keys: e.g. "__proto__.x" or "constructor.prototype.x" could otherwise
   // mutate Object.prototype after the user approves an update.
+  //
+  // Also fail closed when the path does not already exist in the verified base
+  // rules. A typo such as "tax.implementedd" must not create a hidden property,
+  // and a path such as "tax.implemented.foo" must not replace the boolean
+  // `implemented` flag with an object. New rule fields require an app release
+  // (and tests) before a remote manifest is allowed to update them.
   const parts = safeRulePathParts(path);
-  if (!parts) return false;
+  if (!parts || !root || typeof root !== "object") return false;
   let cursor = root;
   for (let i = 0; i < parts.length - 1; i += 1) {
     const key = parts[i];
-    if (!cursor[key] || typeof cursor[key] !== "object") cursor[key] = {};
-    cursor = cursor[key];
+    if (!Object.prototype.hasOwnProperty.call(cursor, key)) return false;
+    const next = cursor[key];
+    if (!next || typeof next !== "object" || Array.isArray(next)) return false;
+    cursor = next;
   }
-  cursor[parts[parts.length - 1]] = value;
+  const leaf = parts[parts.length - 1];
+  if (!Object.prototype.hasOwnProperty.call(cursor, leaf)) return false;
+  cursor[leaf] = value;
   return true;
 }
 
