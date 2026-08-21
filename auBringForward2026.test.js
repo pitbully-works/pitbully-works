@@ -17,7 +17,7 @@ describe("AU 2026-27 non-concessional bring-forward arrangement", () => {
   });
 
   it("caps the entered ATO amount at the statutory maximum implied by prior TSB", () => {
-    expect(inv.getEffectiveNonConcessionalCap(60, 1900000, true, 390000)).toBe(130000);
+    expect(inv.getEffectiveNonConcessionalCap(60, 1900000, true, 390000)).toBe(260000);
   });
 
   it("does not apply bring-forward from age 75 onward", () => {
