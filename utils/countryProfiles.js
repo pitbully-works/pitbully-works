@@ -124,15 +124,23 @@ export function makeCountryProfile(defaultInputs, country, sharedSource = {}) {
 }
 export function resolvePersistedActiveCountry(value, profiles, fallback = "JP") {
   const normalizedProfiles = normalizeCountryKeyedRecord(profiles);
+  const existing = PROFILE_COUNTRIES.find((candidate) =>
+    Object.prototype.hasOwnProperty.call(normalizedProfiles, candidate) && isPlainRecord(normalizedProfiles[candidate])
+  );
   const raw = value === undefined || value === null ? "" : String(value).trim();
-  if (!raw) return normalizeProfileCountry(fallback);
+  // Missing active-country metadata should recover an actually saved bucket before
+  // inventing a fresh JP profile. This matters for profiles-only backups and partially
+  // migrated storage where the active marker was lost but the country data survived.
+  if (!raw) return existing || normalizeProfileCountry(fallback);
   const code = raw.toUpperCase();
-  if (PROFILE_COUNTRIES.includes(code)) return code;
+  if (PROFILE_COUNTRIES.includes(code)) {
+    // If the marker names a supported country but that bucket is missing while another
+    // valid bucket exists, prefer preserved user data over a silent empty profile.
+    return isPlainRecord(normalizedProfiles[code]) ? code : (existing || code);
+  }
   // An explicit unsupported persisted code must not be silently reinterpreted as JP.
   // Recover by opening an actually existing valid bucket; if none exists, use the safe fallback.
-  return PROFILE_COUNTRIES.find((candidate) =>
-    Object.prototype.hasOwnProperty.call(normalizedProfiles, candidate) && isPlainRecord(normalizedProfiles[candidate])
-  ) || normalizeProfileCountry(fallback);
+  return existing || normalizeProfileCountry(fallback);
 }
 
 export function migrateCountryProfiles(defaultInputs, parsed) {
