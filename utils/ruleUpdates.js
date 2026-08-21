@@ -10,6 +10,7 @@ export const MAX_RULE_PATH_SEGMENTS = 24;
 export const MAX_RULE_TEXT_LENGTH = 4000;
 export const MAX_RULE_DECISION_ENTRIES = 2000;
 export const MAX_RULE_HISTORY_INPUT_ROWS = 1000;
+export const MAX_RULE_SOURCE_ACK_ENTRIES = 1000;
 
 export function normalizeRuleCountry(value) {
   if (typeof value !== "string") return null;
@@ -68,6 +69,18 @@ function normalizeDecisionMap(value) {
     const id = normalizeRuleUpdateId(rawId);
     if (!id || typeof rawDecision !== "boolean") continue;
     out[id] = rawDecision;
+  }
+  return out;
+}
+
+function normalizeSourceAcknowledgedHashes(value) {
+  const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  const out = Object.create(null);
+  for (const [rawId, rawHash] of Object.entries(source).slice(0, MAX_RULE_SOURCE_ACK_ENTRIES)) {
+    const id = normalizeRuleUpdateId(rawId);
+    const hash = typeof rawHash === "string" ? rawHash.trim().toLowerCase() : "";
+    if (!id || !/^[a-f0-9]{64}$/.test(hash)) continue;
+    out[id] = hash;
   }
   return out;
 }
@@ -254,6 +267,7 @@ export function normalizeRuleUpdateState(raw) {
   return {
     approved: normalizeDecisionMap(source.approved),
     dismissed: normalizeDecisionMap(source.dismissed),
+    sourceAcknowledgedHashes: normalizeSourceAcknowledgedHashes(source.sourceAcknowledgedHashes),
     history,
     lastCheckedAt: normalizeRuleTimestamp(source.lastCheckedAt),
   };
