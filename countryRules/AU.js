@@ -1207,16 +1207,21 @@ export const AU_COUNTRY_RULES = {
       untaxedElement = 0,
       isDeathBenefitsDependant = true,
       includeMedicareLevy = true,
+      paymentRoute = "direct",
     } = {}) {
       const clean = (v) => Math.max(0, Number(v) || 0);
       const taxFree = clean(taxFreeComponent);
       const taxed = clean(taxedElement);
       const untaxed = clean(untaxedElement);
       const gross = taxFree + taxed + untaxed;
+      const route = paymentRoute === "estate" ? "estate" : "direct";
       if (isDeathBenefitsDependant) {
-        return { gross, taxFreeComponent: taxFree, taxedElement: taxed, untaxedElement: untaxed, tax: 0, net: gross, effectiveTaxRate: 0 };
+        return { gross, taxFreeComponent: taxFree, taxedElement: taxed, untaxedElement: untaxed, tax: 0, net: gross, effectiveTaxRate: 0, paymentRoute: route, medicareLevyApplied: false };
       }
-      const levy = includeMedicareLevy ? this.medicareLevyRate : 0;
+      // For this estimator, Medicare levy is only applied to a direct payment.
+      // A deceased-estate trustee is modelled at the statutory 15% / 30% maximum rates.
+      const medicareLevyApplied = route === "direct" && includeMedicareLevy;
+      const levy = medicareLevyApplied ? this.medicareLevyRate : 0;
       const tax = taxed * (this.nonDependantTaxedElementRate + levy)
         + untaxed * (this.nonDependantUntaxedElementRate + levy);
       return {
@@ -1227,11 +1232,13 @@ export const AU_COUNTRY_RULES = {
         tax,
         net: Math.max(0, gross - tax),
         effectiveTaxRate: gross > 0 ? tax / gross : 0,
+        paymentRoute: route,
+        medicareLevyApplied,
       };
     },
     notImplemented: [
       "Super death benefit income streams（受取人・死亡者の年齢、taxed/untaxed elementによる課税）",
-      "遺産管理人・deceased estateを経由するSuper death benefitの税務とMedicare levyの個別判定",
+      "複数受益者が混在するdeceased estateでの受益者別按分・特殊なdependant判定",
       "CGT・deceased estate trust return・非居住者受益者など死亡後の資産税務の完全自動計算",
     ],
   },
