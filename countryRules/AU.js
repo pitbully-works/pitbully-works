@@ -22,7 +22,7 @@ export const AU_COUNTRY_RULES = {
     noteJa: "2026-27年度制度を2026年8月17日に確認。Age Pensionは2026年3月20日改定値で、次回は9月20日改定を確認します。",
     noteEn: "2026-27 rules verified on 17 Aug 2026. Age Pension uses the 20 Mar 2026 rates; the next scheduled indexation is 20 Sep 2026.",
     coverage: [
-      { key: "investment", labelJa: "投資制度", labelEn: "Investment", status: "partial", effective: "2026-27 financial year", lastUpdated: "2026-08-21", updateJa: "Super・投資口座・拠出上限、carry-forwardに加え、ATO/MyGov表示額を使うbring-forwardの今年度一括拠出を反映。既存bring-forward期間の履歴自動再構成は未実装。", updateEn: "Super, investment accounts and contribution caps are modelled, including concessional carry-forward and a one-off current-year non-concessional bring-forward amount using the ATO/MyGov figure; reconstruction of an existing bring-forward period is not automated." },
+      { key: "investment", labelJa: "投資制度", labelEn: "Investment", status: "partial", effective: "2026-27 financial year", lastUpdated: "2026-08-21", updateJa: "Super・投資口座・拠出上限、carry-forward、bring-forwardに加え、適格確認式のDownsizer contribution（最大A$300,000）を今年度一括拠出として反映。", updateEn: "Super, investment accounts and contribution caps are modelled, including concessional carry-forward, non-concessional bring-forward, and an eligibility-confirmed one-off downsizer contribution of up to A$300,000." },
       { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "partial", effective: "2026-27 / Age Pension Mar 2026 rates", lastUpdated: "2026-08-17", updateJa: "Age Pensionの資産・所得テスト、Work Bonus年次近似、Super取崩しを反映。Work Bonusの隔週厳密計算等は未実装。", updateEn: "Age Pension means tests, annualised Work Bonus and Super drawdown are modelled; fortnightly Work Bonus detail and some edge cases are not implemented." },
       { key: "healthcare", labelJa: "医療", labelEn: "Healthcare", status: "partial", effective: "2026-27 / 2026 calendar-year Safety Nets", lastUpdated: "2026-08-21", updateJa: "Medicare前提の自己負担に加え、2026年PBS Safety Net概算とMedicare Safety Net閾値を反映。診療ごとのSafety Net還付・aged care資力調査は未自動化。", updateEn: "Adds a 2026 PBS Safety Net estimate and Medicare Safety Net thresholds to the Medicare out-of-pocket model; item-level Safety Net rebates and aged-care means testing remain manual." },
       { key: "tax", labelJa: "税金", labelEn: "Tax", status: "partial", effective: "2026-27 financial year", lastUpdated: "2026-08-21", updateJa: "居住者所得税・LITO・SAPTO・Medicare levy・MLS・CGTを反映。", updateEn: "Resident income tax, LITO, SAPTO, Medicare levy, MLS and CGT are modelled." },
@@ -52,6 +52,7 @@ export const AU_COUNTRY_RULES = {
       nonConcessionalCap: 130000,    // 税引後拠出
       // 3年分の前倒し拠出（bring-forward）。総残高により利用可否が変わる。
       bringForwardMax: 390000,
+      downsizerContributionMax: 300000,
       // Superannuation Guarantee（雇用主の義務拠出率）。2025年7月1日に12%へ到達し、以降据置。
       superGuaranteeRate: 0.12,
       // SG算定の対象となる四半期あたり収入の上限（年額換算・2026-27）
@@ -121,6 +122,14 @@ export const AU_COUNTRY_RULES = {
       const recurring = Math.min(Math.max(0, this._num(recurringNonConcessional)), this.limits.nonConcessionalCap);
       const room = Math.max(0, effective - recurring);
       return Math.min(Math.max(0, this._num(requestedOneOff)), room);
+    },
+    // Downsizer contribution: from age 55, up to A$300,000 per person from eligible home-sale proceeds.
+    // It does not count toward the non-concessional contribution cap. Eligibility includes the home/proceeds/
+    // ownership-period and timing rules, so the app requires the user to confirm eligibility rather than infer it.
+    getDownsizerContribution(age, eligible, requestedAmount) {
+      const a = Number(age) || 0;
+      if (a < 55 || eligible !== true) return 0;
+      return Math.min(Math.max(0, this._num(requestedAmount)), this.limits.downsizerContributionMax);
     },
     getSuperGuaranteeRate() { return this.limits.superGuaranteeRate; },
     // 雇用主のSG拠出額。SG算定の対象収入には上限（maximum contribution base）がある。
@@ -213,6 +222,7 @@ export const AU_COUNTRY_RULES = {
       div293TaxAnnual, div293PaidFrom, listoAnnual, coContributionAnnual,
       carryForwardPriorYearBalance, carryForwardAvailableUnusedCap,
       bringForwardUseAtoCap, bringForwardAvailableCap, bringForwardOneOffContribution,
+      downsizerEligible, downsizerContribution,
     }) {
       const keys = this.accountTypes;
       const contribTax = (contributionsTaxRate === undefined || contributionsTaxRate === null) ? 0.15 : Number(contributionsTaxRate);
@@ -229,6 +239,7 @@ export const AU_COUNTRY_RULES = {
         currentAge, carryForwardPriorYearBalance, bringForwardUseAtoCap === true,
         bringForwardAvailableCap, recurringNcc, bringForwardOneOffContribution
       );
+      const downsizerOneOff = this.getDownsizerContribution(currentAge, downsizerEligible === true, downsizerContribution);
 
       const balances = {}, contributions = {}, rates = {}, endAges = {}, withdrawalTax = {};
       keys.forEach((k) => {
@@ -289,7 +300,7 @@ export const AU_COUNTRY_RULES = {
           if (age > endAges[k]) return;
           if (k === "superannuation") {
             balances[k] += concessionalNet + (k === "superannuation" ? recurringNcc : contributions[k]) + listo + coContribution
-              + (age === startAge + 1 ? bringForwardOneOff : 0); // bring-forward追加分は初年度だけ反映
+              + (age === startAge + 1 ? bringForwardOneOff + downsizerOneOff : 0); // 一括拠出は初年度だけ反映
           } else {
             balances[k] += contributions[k];
           }
@@ -382,7 +393,7 @@ export const AU_COUNTRY_RULES = {
       "繰越拠出（carry-forward）はATOオンラインサービスに表示される現在利用可能額を入力して反映済み。過去5年の各年度履歴をアプリ内で自動再構成する機能は未実装",
       "Bring-forwardはATO表示の今年度利用可能額を入力して初年度の一括拠出へ反映済み。既に開始済みの2年/3年bring-forward期間について、過年度の拠出履歴をアプリ内で自動再構成する機能は未実装",
       "Transfer Balance Capを超えた分の課税（超過分は積立フェーズに留まり15%課税）",
-      "Downsizer contribution（自宅売却時の最大$300,000拠出）",
+      "Downsizer contributionは55歳以上かつATOの適格要件を満たすことを本人確認した場合、今年度一括額として最大A$300,000を反映済み。自宅保有10年・主たる住居CGT要件・売却代金・90日以内拠出等の資格条件の完全自動判定は未実装",
       "残高$3M超の運用益への追加課税（Division 296）",
     ],
   },
