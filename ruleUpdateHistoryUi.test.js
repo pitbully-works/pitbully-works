@@ -13,7 +13,7 @@ describe("制度更新履歴とモーダル視認性", () => {
   });
 
   it("履歴は最大100件まで保持する", () => {
-    const history = Array.from({ length: 130 }, (_, i) => ({ id: String(i), country: "JP" }));
+    const history = Array.from({ length: 130 }, (_, i) => ({ id: String(i), country: "JP", action: "approved" }));
     const state = normalizeRuleUpdateState({ history });
     expect(state.history).toHaveLength(100);
     expect(state.history[0].id).toBe("30");
