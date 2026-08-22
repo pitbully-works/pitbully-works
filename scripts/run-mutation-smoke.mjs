@@ -113,6 +113,10 @@ const mutants = [
   ["CA Nova Scotia basic personal amount is protected", "countryRules/CA.js", "basicPersonalAmount: 11932,", "basicPersonalAmount: 10932,", "overseasHundredPhase17.test.js"],
   ["CA Nova Scotia top bracket rate is protected", "countryRules/CA.js", "{ upTo: Infinity, rate: 0.21 },", "{ upTo: Infinity, rate: 0.20 },", "overseasHundredPhase16.test.js"],
 
+  ["CA New Brunswick first bracket rate is protected", "countryRules/CA.js", "{ upTo: 52333, rate: 0.094 },", "{ upTo: 52333, rate: 0.084 },", "overseasHundredPhase18.test.js"],
+  ["CA New Brunswick basic personal amount is protected", "countryRules/CA.js", "basicPersonalAmount: 13664,", "basicPersonalAmount: 12664,", "overseasHundredPhase18.test.js"],
+  ["CA New Brunswick top bracket rate is protected", "countryRules/CA.js", "{ upTo: Infinity, rate: 0.195 },", "{ upTo: Infinity, rate: 0.185 },", "overseasHundredPhase18.test.js"],
+
 ];
 
 if (!fs.existsSync(vitestBin)) {
