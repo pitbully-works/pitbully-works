@@ -676,7 +676,7 @@ export const CA_COUNTRY_RULES = {
           { upTo: 157124, rate: 0.175 },
           { upTo: Infinity, rate: 0.21 },
         ],
-        basicPersonalAmount: 11744,
+        basicPersonalAmount: 11932,
         basicCreditRate: 0.0879,
       },
     },
