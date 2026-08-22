@@ -25,7 +25,7 @@ export const AU_COUNTRY_RULES = {
       { key: "investment", labelJa: "投資制度", labelEn: "Investment", status: "partial", effective: "2026-27 financial year", lastUpdated: "2026-08-23", updateJa: "Super・投資口座・拠出上限、carry-forward、bring-forwardに加え、適格確認式のDownsizer contribution（最大A$300,000）を今年度一括拠出として反映。", updateEn: "Super, investment accounts and contribution caps are modelled, including concessional carry-forward, non-concessional bring-forward, and an eligibility-confirmed one-off downsizer contribution of up to A$300,000." },
       { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "partial", effective: "2026-27 / Age Pension Mar 2026 rates / Rent Assistance & CSHC Jul 2026 rates", lastUpdated: "2026-08-22", updateJa: "Age Pensionの資産・所得テスト、Work Bonus、Rent Assistance、CSHCに加え、カップルで片方だけ67歳以上の場合の配偶者Super除外を年齢進行に合わせて投影へ統合。", updateEn: "Age Pension means tests, Work Bonus, Rent Assistance and CSHC are modelled, with dynamic partner-Super exclusion integrated when only one member of a couple has reached Age Pension age." },
       { key: "healthcare", labelJa: "医療", labelEn: "Healthcare", status: "partial", effective: "2026-27 / 2026 calendar-year Safety Nets", lastUpdated: "2026-08-21", updateJa: "Medicare前提の自己負担に加え、2026年PBS Safety Net概算とMedicare Safety Net閾値を反映。診療ごとのSafety Net還付・aged care資力調査は未自動化。", updateEn: "Adds a 2026 PBS Safety Net estimate and Medicare Safety Net thresholds to the Medicare out-of-pocket model; item-level Safety Net rebates and aged-care means testing remain manual." },
-      { key: "tax", labelJa: "税金", labelEn: "Tax", status: "partial", effective: "2026-27 financial year", lastUpdated: "2026-08-21", updateJa: "居住者所得税・LITO・SAPTO・Medicare levy・MLS・CGTを反映。", updateEn: "Resident income tax, LITO, SAPTO, Medicare levy, MLS and CGT are modelled." },
+      { key: "tax", labelJa: "税金", labelEn: "Tax", status: "partial", effective: "2026-27 financial year", lastUpdated: "2026-08-23", updateJa: "居住者所得税・LITO・SAPTO・Medicare levy・MLS・CGTに加え、非居住者所得税率を反映。", updateEn: "Resident income tax, LITO, SAPTO, Medicare levy, MLS and CGT are modelled, together with foreign-resident income-tax rates." },
       { key: "estate", labelJa: "相続", labelEn: "Estate", status: "partial", effective: "2026-27", lastUpdated: "2026-08-21", updateJa: "オーストラリアには相続税はありません。Super death benefitの一括受取について、death benefits dependant / non-dependant別の税額概算を実装。所得ストリーム・遺産管理人経由などの詳細税務は未自動化。", updateEn: "Australia has no inheritance tax. A lump-sum Super death-benefit estimator now models tax for death-benefits dependants versus non-dependants; income streams and detailed deceased-estate treatment remain manual." },
     ],
   },
@@ -945,11 +945,12 @@ export const AU_COUNTRY_RULES = {
     implemented: true,
     model: "australiaIncomeTaxPlusMedicareLevy",
     effectiveTaxYear: "2026-27",
-    lastUpdated: "2026-08-21",
-    sourceName: "Australian Taxation Office (ATO) — Tax rates for Australian residents / LITO / SAPTO",
+    lastUpdated: "2026-08-23",
+    sourceName: "Australian Taxation Office (ATO) — Tax rates for Australian and foreign residents / LITO / SAPTO",
     sourceUrl: "https://www.ato.gov.au/tax-rates-and-codes/tax-rates-australian-residents",
     sourceUrls: {
       incomeTax: "https://www.ato.gov.au/tax-rates-and-codes/tax-rates-australian-residents",
+      foreignResidentTax: "https://www.ato.gov.au/tax-rates-and-codes/tax-rates-foreign-residents",
       medicareLevy: "https://www.ato.gov.au/individuals-and-families/medicare-and-private-health-insurance/medicare-levy",
       capitalGains: "https://www.ato.gov.au/individuals-and-families/investments-and-assets/capital-gains-tax",
       lito: "https://www.ato.gov.au/individuals-and-families/income-deductions-offsets-and-records/tax-offsets/low-income-tax-offset",
@@ -960,7 +961,7 @@ export const AU_COUNTRY_RULES = {
       medicareLevySurcharge: "https://www.privatehealth.gov.au/health_insurance/surcharges_incentives/medicare_levy.htm",
       studyLoan: "https://www.studyassist.gov.au/managing-and-repaying-your-loan/loan-repayments",
     },
-    region: "Australian residents (foreign residents not implemented)",
+    region: "Australian and foreign residents (working holiday makers are separate and not modelled here)",
     // 2026-27年度の税率。第2バンドは2026年7月1日に16%→15%へ引下げ済み。
     // （さらに2027年7月1日から14%へ引下げが法制化されているが、本年度は未適用）
     incomeTax: {
@@ -973,6 +974,15 @@ export const AU_COUNTRY_RULES = {
         { upTo: Infinity, rate: 0.45 },
       ],
       scheduledSecondBandRateFrom2027: 0.14, // 2027年7月1日から。本年度は未適用。
+    },
+    // Foreign resident rates for 2026-27. No tax-free threshold applies.
+    // The first rate follows the second resident personal tax rate for 2024-25 and later.
+    foreignResidentIncomeTax: {
+      bands: [
+        { upTo: 135000, rate: 0.30 },
+        { upTo: 190000, rate: 0.37 },
+        { upTo: Infinity, rate: 0.45 },
+      ],
     },
     medicareLevy: {
       rate: 0.02,
@@ -1132,6 +1142,20 @@ export const AU_COUNTRY_RULES = {
       let tax = 0;
       let lower = 0;
       for (const b of this.incomeTax.bands) {
+        if (income > lower) {
+          tax += (Math.min(income, b.upTo) - lower) * b.rate;
+          lower = b.upTo;
+        } else break;
+      }
+      return tax;
+    },
+    // Foreign residents have no tax-free threshold and generally do not pay the Medicare levy.
+    // This function therefore returns income tax only; offsets and levy are intentionally excluded.
+    calculateForeignResidentIncomeTax(taxableIncome) {
+      const income = Math.max(0, Number(taxableIncome) || 0);
+      let tax = 0;
+      let lower = 0;
+      for (const b of this.foreignResidentIncomeTax.bands) {
         if (income > lower) {
           tax += (Math.min(income, b.upTo) - lower) * b.rate;
           lower = b.upTo;
@@ -1314,7 +1338,6 @@ export const AU_COUNTRY_RULES = {
       "Government super co-contributionは本人確認入力で反映済み。年齢・ビザ・10% eligible income test・税申告・前年TSB等の完全自動判定は未実装",
       "Medicare levyの家族所得による減免は実装済み。年途中の婚姻・離婚・免除日数などの日割り計算は未実装",
       "HELP等の学生ローンは2026-27の当年強制返済額を実装済み。将来の債務残高・年次indexation・任意返済の自動投影は未実装",
-      "非居住者（foreign resident）の税率",
       "60歳未満のSuper引き出しへの課税（low rate capは保持）",
     ],
   },
