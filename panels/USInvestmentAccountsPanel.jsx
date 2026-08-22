@@ -21,6 +21,7 @@ function USInvestmentAccountsPanel({ usInvestment, onUpdate, onUpdateAccount, ag
   const k401Combined = investmentRules.get401kCombinedLimit(age);
   const k401Contribution = Number(usInvestment.k401.annualContribution) || 0;
   const k401Remaining = k401Limit - k401Contribution;
+  const rothCatchUpRequired = investmentRules.requiresRothCatchUp(usInvestment.priorYearPlanSponsorWages, age);
 
   const iraLimit = investmentRules.getIraContributionLimit(age);
   const traditionalContribution = Number(usInvestment.traditionalIra.annualContribution) || 0;
@@ -57,6 +58,13 @@ function USInvestmentAccountsPanel({ usInvestment, onUpdate, onUpdateAccount, ag
         <span>{t("usInvestmentSourceNote")}</span>
       </div>
 
+      <Field guide={t("usPriorYearPlanWagesGuide")} label={t("usPriorYearPlanWagesLabel")} unit="$" step={1000} value={usInvestment.priorYearPlanSponsorWages || 0} onChange={(v) => onUpdate("priorYearPlanSponsorWages", v)} />
+      {rothCatchUpRequired && (
+        <div className="note" style={{ borderLeftColor: "#D9A54F", marginBottom: 12 }}>
+          <Info size={13} style={{ color: "#D9A54F" }} />
+          <span>{t("usRothCatchUpRequiredNote", { threshold: money(investmentRules.limits2026.k401.rothCatchUpPriorYearWageThreshold) })}</span>
+        </div>
+      )}
       <div className="field-label" style={{ marginBottom: 6 }}>{t("usFilingStatusLabel")}</div>
       <div className="add-row" style={{ marginBottom: 10, flexWrap: "wrap" }}>
         {[
