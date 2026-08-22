@@ -69,11 +69,13 @@ describe("overseas 100 phase 27 — GB Pension Credit Savings Credit", () => {
     expect(r.savingsCreditWeekly).toBe(14.31);
   });
 
-  it("supports the preserved transitional-couple entitlement flag", () => {
+  it("supports preserved mixed-age couple entitlement only when one partner was pre-2016", () => {
     const r = ret.calculatePensionCreditSavingsCredit({
       status: "couple",
       qualifyingIncomeWeekly: 350,
       totalIncomeWeekly: 350,
+      reachedStatePensionAgeBefore20160406: true,
+      partnerReachedStatePensionAgeBefore20160406: false,
       transitionalCoupleContinuousEntitlement: true,
     });
     expect(r.eligible).toBe(true);
