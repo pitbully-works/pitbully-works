@@ -595,7 +595,7 @@ export const CA_COUNTRY_RULES = {
       yukonTax: "https://www.canada.ca/en/revenue-agency/services/forms-publications/payroll/t4032-payroll-deductions-tables/t4032yt-jan/t4032yt-january-general-information.html",
     },
     // 2026-08-22時点：Ontario / Quebec / British Columbia / Alberta / Manitoba / Saskatchewan / Nova Scotia / New Brunswick / Prince Edward Island / Newfoundland and Labrador / Northwest Territories / Nunavut / Yukon を自動計算。
-    region: "Federal + all 10 provinces + Northwest Territories + Nunavut + Yukon",
+    region: "Federal + Ontario + Quebec + British Columbia + Alberta + Manitoba + Saskatchewan + Nova Scotia + New Brunswick + Prince Edward Island + Newfoundland and Labrador + Northwest Territories + Nunavut + Yukon",
     province: {
       implemented: true,
       implementedRegions: ["ON", "QC", "BC", "AB", "MB", "SK", "NS", "NB", "PE", "NL", "NT", "NU", "YT"],
@@ -1218,7 +1218,7 @@ export const CA_COUNTRY_RULES = {
       return Math.max(0, base - reduced);
     },
     notImplemented: [
-      "オンタリオ州・ケベック州・ブリティッシュコロンビア州・アルバータ州・マニトバ州・州・準州所得税の追加地域はなし（10州・3準州を実装済み）",
+      "州・準州所得税の追加地域はなし（カナダ10州・3準州を実装済み）",
       "オンタリオ州の扶養家族等を含むTax Reductionの完全計算（基本本人分のみ反映）",
       "配当税額控除（eligible / non-eligible dividend tax credit）",
       "CPP/QPP拠出金・EI保険料・Quebec Parental Insurance Plan（QPIP）は2026年の従業員本人分を実装済み。自営業者向け拠出は未実装",
