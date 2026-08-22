@@ -74,6 +74,9 @@ const mutants = [
   ["US 2026 New York estate exemption is protected", "countryRules/US.js", "NY: { estate: true, inheritance: false, exemption: 7350000", "NY: { estate: true, inheritance: false, exemption: 7000000", "overseasHundredPhase6.test.js"],
   ["US Maryland keeps both death-tax types", "countryRules/US.js", "MD: { estate: true, inheritance: true, exemption: 5000000", "MD: { estate: true, inheritance: false, exemption: 5000000", "overseasHundredPhase6.test.js"],
   ["US Pennsylvania remains inheritance-tax only", "countryRules/US.js", "PA: { estate: false, inheritance: true, exemption: null, rateMin: 0, rateMax: 0.15 }", "PA: { estate: false, inheritance: false, exemption: null, rateMin: 0, rateMax: 0.15 }", "overseasHundredPhase6.test.js"],
+  ["GB employee NI main rate is protected", "countryRules/GB.js", "mainRate: 0.08,", "mainRate: 0.07,", "overseasHundredPhase7.test.js"],
+  ["GB employee NI upper rate is protected", "countryRules/GB.js", "additionalRate: 0.02,", "additionalRate: 0.03,", "overseasHundredPhase7.test.js"],
+  ["GB employee NI upper earnings limit is protected", "countryRules/GB.js", "upperEarningsLimitAnnual: 50270,", "upperEarningsLimitAnnual: 49270,", "overseasHundredPhase7.test.js"],
 ];
 
 if (!fs.existsSync(vitestBin)) {
