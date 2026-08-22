@@ -143,6 +143,13 @@ const mutants = [
   ["GB 2027 non-Cash ISA cash-interest charge is protected", "countryRules/GB.js", "nonCashIsaCashInterestChargeRateFrom2027: 0.22,", "nonCashIsaCashInterestChargeRateFrom2027: 0.20,", "overseasHundredPhase24.test.js"],
   ["GB carry-forward oldest-first allocation is protected", "countryRules/GB.js", "for (const row of history) {", "for (const row of history.slice().reverse()) {", "overseasHundredPhase24.test.js"],
 
+  ["GB State Pension minimum qualifying years is protected", "countryRules/GB.js", "minimumQualifyingYears: 10,\n      fullRateQualifyingYears: 35,", "minimumQualifyingYears: 9,\n      fullRateQualifyingYears: 35,", "overseasHundredPhase25.test.js"],
+  ["GB State Pension full-rate qualifying years is protected", "countryRules/GB.js", "minimumQualifyingYears: 10,\n      fullRateQualifyingYears: 35,", "minimumQualifyingYears: 10,\n      fullRateQualifyingYears: 34,", "overseasHundredPhase25.test.js"],
+  ["GB Pension Credit single guarantee is protected", "countryRules/GB.js", "single: 238.00,\n        couple: 363.25,", "single: 237.00,\n        couple: 363.25,", "overseasHundredPhase25.test.js"],
+  ["GB Pension Credit couple guarantee is protected", "countryRules/GB.js", "single: 238.00,\n        couple: 363.25,", "single: 238.00,\n        couple: 362.25,", "overseasHundredPhase25.test.js"],
+  ["GB Pension Credit severe-disability addition is protected", "countryRules/GB.js", "single: 86.05,\n        coupleOneQualifies: 86.05,", "single: 85.05,\n        coupleOneQualifies: 86.05,", "overseasHundredPhase25.test.js"],
+  ["GB Pension Credit carer addition is protected", "countryRules/GB.js", "carerAdditionalWeekly: 48.15,", "carerAdditionalWeekly: 47.15,", "overseasHundredPhase25.test.js"],
+
 ];
 
 if (!fs.existsSync(vitestBin)) {
