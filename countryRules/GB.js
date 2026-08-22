@@ -787,14 +787,23 @@ export const GB_COUNTRY_RULES = {
         };
       }
 
-      const amountA = Math.min(
-        maximum,
-        Math.max(0, qualifyingIncome - threshold) * rules.amountARate,
-      );
+      // State Pension Credit Regulations: when a calculation produces a fraction
+      // of a penny, round in the claimant's favour. For Amount A a larger figure
+      // helps the claimant (round up); for Amount B a larger figure reduces the
+      // award (discard the fraction / round down). This matches DWP's 2026 examples:
+      // £7.776 -> Amount A £7.78, and £5.796 -> Amount B £5.79.
+      const ceilPence = (value) => Math.ceil((value - Number.EPSILON) * 100) / 100;
+      const floorPence = (value) => Math.floor((value + Number.EPSILON) * 100) / 100;
+      const uncappedAmountA =
+        qualifyingIncome >= standardAmount
+          ? maximum
+          : Math.max(0, qualifyingIncome - threshold) * rules.amountARate;
+      const amountA = Math.min(maximum, ceilPence(uncappedAmountA));
       const amountB =
         totalIncome > appropriateAmount
-          ? (totalIncome - appropriateAmount) * rules.amountBRate
+          ? floorPence((totalIncome - appropriateAmount) * rules.amountBRate)
           : 0;
+      const savingsCredit = Math.max(0, Math.round((amountA - amountB) * 100) / 100);
 
       return {
         eligible: true,
@@ -802,7 +811,7 @@ export const GB_COUNTRY_RULES = {
         maximumWeekly: maximum,
         amountAWeekly: amountA,
         amountBWeekly: amountB,
-        savingsCreditWeekly: Math.max(0, amountA - amountB),
+        savingsCreditWeekly: savingsCredit,
       };
     },
 
