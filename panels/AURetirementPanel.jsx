@@ -14,7 +14,7 @@ function AURetirementPanel({
   auInvestment, onUpdateAgePension, onUpdate, retirementRules,
   qualifyingAge, maxAnnual, agePensionAnnual, agePensionPerPersonAnnual, recipients,
   deemedIncomeAnnual, retirementIncomeAnnual,
-  assessableAssets, expensesAnnual, healthcareAnnual, withdrawalNeeded, incomeSurplus, retireAge,
+  assessableAssets, currentAge, expensesAnnual, healthcareAnnual, withdrawalNeeded, incomeSurplus, retireAge,
 }) {
   const { t, money } = useContext(LocaleContext);
   const status = auInvestment.agePension.status;
@@ -93,11 +93,51 @@ function AURetirementPanel({
           <span>{t("auBothQualifiedLabel", { age: qualifyingAge })}</span>
         </label>
       )}
-      {status === "couple" && !bothQualified && (
-        <div className="note" style={{ borderLeftColor: "#D9A54F", marginBottom: 10 }}>
-          <Info size={13} style={{ color: "#D9A54F" }} />
-          <span>{t("auPartnerUnderAgeSuperLimitationNote", { age: qualifyingAge })}</span>
-        </div>
+      {status === "couple" && (
+        <>
+          <Field
+            guide={t("auPartnerCurrentAgeGuide", { age: qualifyingAge })}
+            label={t("auPartnerCurrentAgeLabel")} unit={t("ageYearsUnit")} step={1}
+            value={auInvestment.agePension.partnerCurrentAge || 0}
+            onChange={(v) => onUpdateAgePension("partnerCurrentAge", Math.max(0, Math.round(Number(v) || 0)))}
+          />
+          <Field
+            guide={t("auPartnerSuperGuide")}
+            label={t("auPartnerSuperLabel")} unit="A$" step={1000}
+            value={auInvestment.agePension.partnerSuperCurrentValue || 0}
+            onChange={(v) => onUpdateAgePension("partnerSuperCurrentValue", Math.max(0, Number(v) || 0))}
+          />
+          <Field
+            guide={t("auPartnerSuperContributionGuide")}
+            label={t("auPartnerSuperContributionLabel")} unit="A$/year" step={500}
+            value={auInvestment.agePension.partnerSuperAnnualContribution || 0}
+            onChange={(v) => onUpdateAgePension("partnerSuperAnnualContribution", Math.max(0, Number(v) || 0))}
+          />
+          <Field
+            guide={t("auPartnerSuperReturnGuide")}
+            label={t("auPartnerSuperReturnLabel")} unit="%" step={0.1}
+            value={auInvestment.agePension.partnerSuperExpectedReturnPct ?? 5}
+            onChange={(v) => onUpdateAgePension("partnerSuperExpectedReturnPct", Number(v) || 0)}
+          />
+          <Field
+            guide={t("auPartnerSuperEndAgeGuide")}
+            label={t("auPartnerSuperEndAgeLabel")} unit={t("ageYearsUnit")} step={1}
+            value={auInvestment.agePension.partnerSuperContributionEndAge || qualifyingAge}
+            onChange={(v) => onUpdateAgePension("partnerSuperContributionEndAge", Math.max(0, Math.round(Number(v) || 0)))}
+          />
+          <label className="checkbox-row">
+            <input
+              type="checkbox"
+              checked={!!auInvestment.agePension.partnerReceivingSuperPension}
+              onChange={(e) => onUpdateAgePension("partnerReceivingSuperPension", e.target.checked)}
+            />
+            <span>{t("auPartnerReceivingSuperPensionLabel")}</span>
+          </label>
+          <div className="note" style={{ borderLeftColor: "#6A9D62", marginBottom: 10 }}>
+            <Info size={13} style={{ color: "#6A9D62" }} />
+            <span>{t("auPartnerSuperProjectionNote", { age: qualifyingAge, currentAge: currentAge || 0 })}</span>
+          </div>
+        </>
       )}
 
       <Field
