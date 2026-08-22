@@ -99,7 +99,7 @@ const mutants = [
 
   ["CA Alberta 2026 first bracket rate is protected", "countryRules/CA.js", "{ upTo: 61200, rate: 0.08 },", "{ upTo: 61200, rate: 0.07 },", "overseasHundredPhase13.test.js"],
   ["CA Alberta 2026 basic personal amount is protected", "countryRules/CA.js", "basicPersonalAmount: 22769,", "basicPersonalAmount: 21769,", "overseasHundredPhase13.test.js"],
-  ["CA Alberta 2026 top bracket is protected", "countryRules/CA.js", "{ upTo: Infinity, rate: 0.15 },", "{ upTo: Infinity, rate: 0.14 },", "overseasHundredPhase13.test.js"],
+  ["CA Alberta 2026 top bracket is protected", "countryRules/CA.js", "{ upTo: 370220, rate: 0.14 },\n          { upTo: Infinity, rate: 0.15 },", "{ upTo: 370220, rate: 0.14 },\n          { upTo: Infinity, rate: 0.14 },", "overseasHundredPhase13.test.js"],
 
   ["CA Manitoba first bracket rate is protected", "countryRules/CA.js", "{ upTo: 47564, rate: 0.108 },", "{ upTo: 47564, rate: 0.10 },", "overseasHundredPhase14.test.js"],
   ["CA Manitoba basic personal amount is protected", "countryRules/CA.js", "basicPersonalAmount: 15780,", "basicPersonalAmount: 14780,", "overseasHundredPhase14.test.js"],
