@@ -769,6 +769,31 @@ export const US_COUNTRY_RULES = {
     sourceUrl: "https://www.irs.gov/businesses/small-businesses-self-employed/frequently-asked-questions-on-estate-taxes",
     basicExclusionAmount: 15000000,
     topRate: 0.40,
+    stateDeathTaxes2026: {
+      CT: { estate: true, inheritance: false, exemption: 15000000, rateMin: 0.12, rateMax: 0.12 },
+      HI: { estate: true, inheritance: false, exemption: 5490000, rateMin: 0.10, rateMax: 0.20 },
+      IL: { estate: true, inheritance: false, exemption: 4000000, rateMin: 0.008, rateMax: 0.16 },
+      ME: { estate: true, inheritance: false, exemption: 7000000, rateMin: 0.08, rateMax: 0.12 },
+      MD: { estate: true, inheritance: true, exemption: 5000000, rateMin: 0.008, rateMax: 0.16 },
+      MA: { estate: true, inheritance: false, exemption: 2000000, rateMin: 0.008, rateMax: 0.16 },
+      MN: { estate: true, inheritance: false, exemption: 3000000, rateMin: 0.13, rateMax: 0.16 },
+      NY: { estate: true, inheritance: false, exemption: 7350000, rateMin: 0.0306, rateMax: 0.16, cliffPct: 1.05 },
+      OR: { estate: true, inheritance: false, exemption: 1000000, rateMin: 0.10, rateMax: 0.16 },
+      RI: { estate: true, inheritance: false, exemption: 1838056, rateMin: 0.008, rateMax: 0.16 },
+      VT: { estate: true, inheritance: false, exemption: 5000000, rateMin: 0.16, rateMax: 0.16 },
+      WA: { estate: true, inheritance: false, exemption: 3076000, rateMin: 0.10, rateMax: 0.35 },
+      DC: { estate: true, inheritance: false, exemption: 4988400, rateMin: 0.112, rateMax: 0.16 },
+      KY: { estate: false, inheritance: true, exemption: null, rateMin: 0, rateMax: 0.16 },
+      NE: { estate: false, inheritance: true, exemption: null, rateMin: 0, rateMax: 0.15 },
+      NJ: { estate: false, inheritance: true, exemption: null, rateMin: 0, rateMax: 0.16 },
+      PA: { estate: false, inheritance: true, exemption: null, rateMin: 0, rateMax: 0.15 },
+    },
+    getStateDeathTaxProfile(stateCode) {
+      const code = String(stateCode || "").trim().toUpperCase();
+      const row = this.stateDeathTaxes2026[code] || null;
+      if (!row) return { stateCode: code, estate: false, inheritance: false, hasStateDeathTax: false, exemption: null, rateMin: 0, rateMax: 0 };
+      return { stateCode: code, ...row, hasStateDeathTax: !!(row.estate || row.inheritance) };
+    },
     calculateFederalEstateTaxEstimate({
       grossEstate = 0,
       deductibleDebtsAndExpenses = 0,
@@ -795,7 +820,7 @@ export const US_COUNTRY_RULES = {
       };
     },
     notImplemented: [
-      "州estate/inheritance tax",
+      "州estate/inheritance taxの厳密な税額（2026年の州別課税有無・estate tax基礎控除・税率範囲は表示済み）",
       "生前贈与履歴・gift tax returnを使ったunified creditの完全再構成",
       "DSUE portabilityの自動判定（入力値でのみ反映）",
       "special-use valuation・QTIP・GST tax等の詳細税務",
