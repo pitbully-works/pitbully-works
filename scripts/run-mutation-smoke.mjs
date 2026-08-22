@@ -150,6 +150,11 @@ const mutants = [
   ["GB Pension Credit severe-disability addition is protected", "countryRules/GB.js", "single: 86.05,\n        coupleOneQualifies: 86.05,", "single: 85.05,\n        coupleOneQualifies: 86.05,", "overseasHundredPhase25.test.js"],
   ["GB Pension Credit carer addition is protected", "countryRules/GB.js", "carerAdditionalWeekly: 48.15,", "carerAdditionalWeekly: 47.15,", "overseasHundredPhase25.test.js"],
 
+  ["GB Pension Credit capital disregard is protected", "countryRules/GB.js", "disregard: 10000,\n        tariffUnit: 500,", "disregard: 9999,\n        tariffUnit: 500,", "overseasHundredPhase26.test.js"],
+  ["GB Pension Credit capital tariff unit is protected", "countryRules/GB.js", "disregard: 10000,\n        tariffUnit: 500,", "disregard: 10000,\n        tariffUnit: 499,", "overseasHundredPhase26.test.js"],
+  ["GB Pension Credit tariff income rate is protected", "countryRules/GB.js", "tariffIncomePerUnitWeekly: 1,\n        upperLimit: null,", "tariffIncomePerUnitWeekly: 2,\n        upperLimit: null,", "overseasHundredPhase26.test.js"],
+  ["GB Pension Credit partial tariff unit is protected", "countryRules/GB.js", "Math.ceil(excess / rules.tariffUnit)", "Math.floor(excess / rules.tariffUnit)", "overseasHundredPhase26.test.js"],
+
 ];
 
 if (!fs.existsSync(vitestBin)) {
