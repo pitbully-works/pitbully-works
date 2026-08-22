@@ -97,6 +97,10 @@ const mutants = [
   ["CA BC 2026 basic personal amount is protected", "countryRules/CA.js", "basicPersonalAmount: 13216,", "basicPersonalAmount: 12216,", "overseasHundredPhase12.test.js"],
   ["CA BC 2026 tax reduction max is protected", "countryRules/CA.js", "taxReductionMax: 690,", "taxReductionMax: 575,", "overseasHundredPhase12.test.js"],
 
+  ["CA Alberta 2026 first bracket rate is protected", "countryRules/CA.js", "{ upTo: 61200, rate: 0.08 },", "{ upTo: 61200, rate: 0.07 },", "overseasHundredPhase13.test.js"],
+  ["CA Alberta 2026 basic personal amount is protected", "countryRules/CA.js", "basicPersonalAmount: 22769,", "basicPersonalAmount: 21769,", "overseasHundredPhase13.test.js"],
+  ["CA Alberta 2026 top bracket is protected", "countryRules/CA.js", "{ upTo: Infinity, rate: 0.15 },", "{ upTo: Infinity, rate: 0.14 },", "overseasHundredPhase13.test.js"],
+
 ];
 
 if (!fs.existsSync(vitestBin)) {
