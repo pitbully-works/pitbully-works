@@ -18,8 +18,8 @@ export const CA_COUNTRY_RULES = {
     verifiedAsOf: "2026-08-22",
     effectivePeriod: "2026 calendar year / OAS Jul-Sep 2026",
     updateCycle: "毎年1月＋OASは1/4/7/10月",
-    noteJa: "2026年制度を2026年8月17日に確認。OASは2026年7〜9月四半期の公表値を基準にしています。",
-    noteEn: "2026 rules verified on 17 Aug 2026. OAS uses the July-September 2026 quarterly figures.",
+    noteJa: "2026年制度を2026年8月22日に確認。OASは2026年7〜9月四半期の公表値を基準にしています。",
+    noteEn: "2026 rules verified on 22 Aug 2026. OAS uses the July-September 2026 quarterly figures.",
     coverage: [
       { key: "investment", labelJa: "投資制度", labelEn: "Investment", status: "implemented", effective: "2026 calendar year", lastUpdated: "2026-08-17", updateJa: "TFSAの年間枠・未使用枠繰越・前年引出しの翌年復活、RRSP、非登録口座、RRIF最低取崩し、FHSAの年間枠・繰越・生涯上限を反映。RESP・RDSPは未実装。", updateEn: "TFSA annual room, unused-room carryforward and prior-year withdrawal restoration, RRSP, non-registered accounts, RRIF minimum withdrawals, plus FHSA annual room, carryforward and lifetime limit are modelled; RESP and RDSP remain unimplemented." },
       { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "partial", effective: "2026 / OAS & GIS Jul-Sep", lastUpdated: "2026-08-22", updateJa: "CPPに加え、ケベック州QPPの受給開始年齢60〜72歳・65歳満額・65歳後0.7%/月増額・早期0.5〜0.6%/月減額の選択計算を実装。OAS・回収税・GIS/Allowance上限・CPP PRBも反映。", updateEn: "Adds QPP claim-age modelling (60–72, full at 65, +0.7%/month after 65 and configurable 0.5–0.6%/month early reduction) alongside CPP, OAS recovery tax, GIS/Allowance maxima and CPP PRB." },
