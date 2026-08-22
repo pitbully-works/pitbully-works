@@ -474,6 +474,7 @@ export const AU_COUNTRY_RULES = {
       eligibility: "https://www.servicesaustralia.gov.au/who-can-get-age-pension",
       residence: "https://www.servicesaustralia.gov.au/who-can-get-age-pension",
       overseas: "https://www.servicesaustralia.gov.au/when-you-leave-australia-if-you-get-age-pension",
+      realEstateIncome: "https://www.servicesaustralia.gov.au/real-estate-income",
       rentAssistance: "https://www.servicesaustralia.gov.au/rent-assistance",
       seniorsHealthCard: "https://www.servicesaustralia.gov.au/commonwealth-seniors-health-card",
     },
@@ -799,19 +800,59 @@ export const AU_COUNTRY_RULES = {
     },
     // 所得テストに算入する所得＝利用者が入力したその他の年収 ＋ 金融資産のみなし収入。
     // financialAssets を渡さなければみなし収入は0として扱う（従来の呼び出しと互換）。
-    getAssessableIncomeAnnual(annualIncome, financialAssets, status, employmentIncomeAnnual = 0, workBonusBalance = 0) {
+    // Real-estate income for the Age Pension income test.
+    // Services Australia counts gross rent/lease income less its allowed deductions.
+    // Rental losses are floored at zero and cannot offset another property or other income.
+    getRealEstateAssessableIncomeAnnual({
+      grossRentAnnual = 0,
+      loanInterestAnnual = 0,
+      ratesAnnual = 0,
+      maintenanceAnnual = 0,
+      otherAllowedDeductionsAnnual = 0,
+    } = {}) {
+      const gross = Math.max(0, Number(grossRentAnnual) || 0);
+      const deductions = Math.max(0, Number(loanInterestAnnual) || 0)
+        + Math.max(0, Number(ratesAnnual) || 0)
+        + Math.max(0, Number(maintenanceAnnual) || 0)
+        + Math.max(0, Number(otherAllowedDeductionsAnnual) || 0);
+      return Math.max(0, gross - deductions);
+    },
+    getRealEstatePortfolioAssessableIncomeAnnual(properties = []) {
+      if (!Array.isArray(properties)) return 0;
+      return properties.reduce(
+        (sum, property) => sum + this.getRealEstateAssessableIncomeAnnual(property),
+        0
+      );
+    },
+    getAssessableIncomeAnnual(
+      annualIncome,
+      financialAssets,
+      status,
+      employmentIncomeAnnual = 0,
+      workBonusBalance = 0,
+      realEstateIncomeAnnual = 0
+    ) {
       return (Number(annualIncome) || 0)
         + this.getAssessableEmploymentIncomeAnnual(employmentIncomeAnnual, workBonusBalance)
-        + this.getDeemedIncomeAnnual(financialAssets, status);
+        + this.getDeemedIncomeAnnual(financialAssets, status)
+        + Math.max(0, Number(realEstateIncomeAnnual) || 0);
     },
     // 実際の給付額（1人あたり年額）＝ 所得テストと資産テストの「低い方」。
     // 受給資格年齢未満はゼロ。
     getAgePension({
       age, annualIncome, employmentIncomeAnnual, workBonusBalance, assessableAssets, financialAssets,
+      realEstateIncomeAnnual = 0,
       status, homeowner, bothQualified, rentAssistanceEligible = false, rentFortnightly = 0, rentAssistanceSharer = false,
     }) {
       if ((Number(age) || 0) < this.agePension.qualifyingAge) return 0;
-      const income = this.getAssessableIncomeAnnual(annualIncome, financialAssets, status, employmentIncomeAnnual, workBonusBalance);
+      const income = this.getAssessableIncomeAnnual(
+        annualIncome,
+        financialAssets,
+        status,
+        employmentIncomeAnnual,
+        workBonusBalance,
+        realEstateIncomeAnnual
+      );
       const recipients = this.getHouseholdRecipients(status, bothQualified);
       const rentAssistanceHouseholdAnnual = this.getRentAssistanceHouseholdAnnual({
         status, homeowner, eligible: rentAssistanceEligible, rentFortnightly, sharer: rentAssistanceSharer,
@@ -923,7 +964,7 @@ export const AU_COUNTRY_RULES = {
       //   投影値そのものではない。
       "Work Bonus残高は年次近似で反映済み。Centrelinkの隔週単位での残高増減・雇用収入発生日ごとの厳密計算は未実装",
       "カップルのSuperは、Age Pension年齢未満かつincome stream未開始なら資産・所得テストから除外する基本判定を実装済み。特殊なincome stream商品や免除判定は未実装",
-      "投資用不動産の実収入（Deemingの対象外だが所得テストには算入される）",
+      "投資用不動産の実収入は、総家賃－Services Australiaで認められる控除を物件ごとに0未満へ落とさず所得テストへ算入する基本計算を実装済み。税務上の減価償却・建物償却・借入費用等はCentrelink控除として自動算入しない",
       "カップルで片方だけが受給資格年齢に達している場合、配偶者の積立フェーズSuper除外は投影へ統合済み。特殊なincome stream商品・免除判定は未実装",
       "Age Pensionの通常居住要件（10年合計・うち5年連続）と26週超海外滞在時の35年AWLR按分は判定ヘルパーを実装済み。難民等の個別免除・国際社会保障協定・2014年経過措置の最終判定は利用者確認が必要 / Commonwealth Seniors Health Cardは2026年7月の所得上限で見込み判定を実装済み。居住・TFN・本人確認・特例カード等の完全自動判定は未実装",
     ],
