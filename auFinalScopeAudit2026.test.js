@@ -42,7 +42,8 @@ describe("AU final scope audit 2026-08-23", () => {
     expect(text).not.toMatch(/SAPTO.*spouse transfer.*未実装/i);
     expect(typeof ret.getRealEstateAssessableIncomeAnnual).toBe("function");
     expect(text).not.toMatch(/投資用不動産の実収入そのもの.*未実装/);
-    expect(text).not.toMatch(/Support at Home.*拠出率.*未実装/);
+    expect(typeof health.getSupportAtHomeAnnualContribution).toBe("function");
+    expect(text).not.toMatch(/Support at Homeそのもの.*未実装/);
   });
 
   it("leaves only explicit individual-assessment or exceptional-case boundaries for manual handling", () => {
