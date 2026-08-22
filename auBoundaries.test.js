@@ -469,8 +469,9 @@ describe("AU境界：2026-27の所得税バンド", () => {
     expect(near(tax.getMarginalRateWithLevy(100000), 0.32)).toBe(true);
   });
 
-  it("非居住者は未実装であることが宣言されている", () => {
+  it("非居住者所得税は実装済みであることが宣言されている", () => {
     expect(tax.region).toMatch(/Australian and foreign residents/);
+    expect(typeof tax.calculateForeignResidentIncomeTax).toBe("function");
   });
 });
 
@@ -650,10 +651,11 @@ describe("AU境界：未実装項目が明示されている", () => {
     });
   });
 
-  it("繰越拠出・非居住者税率が未実装として列挙されている", () => {
+  it("繰越拠出は未実装境界を保ち、非居住者税率は実装済みである", () => {
     const all = [...inv.notImplemented, ...ret.notImplemented, ...tax.notImplemented].join(" / ");
     expect(all).toMatch(/carry-forward/);
-    expect(all).toMatch(/非居住者/);
+    expect(all).not.toMatch(/非居住者税率/);
+    expect(typeof tax.calculateForeignResidentIncomeTax).toBe("function");
   });
 
   it("Deemingは実装済みなので未実装リストから外れている", () => {
