@@ -637,7 +637,7 @@ export const AU_COUNTRY_RULES = {
         residenceExemption,
         internationalAgreementEligible,
       });
-      return { eligible: ageEligible && residence.eligible, ageEligible, ...residence };
+      return { ...residence, ageEligible, eligible: ageEligible && residence.eligible };
     },
     // After more than 26 weeks overseas, the basic means-tested Age Pension rate
     // is generally proportional to Australian Working Life Residence (AWLR),
