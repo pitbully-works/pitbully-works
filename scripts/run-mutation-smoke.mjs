@@ -48,6 +48,8 @@ const mutants = [
   ["Engine always splits at retirement boundary", "lifePlanEngine.js", "const steps = buildAgeSteps(currentAge, deathAge, [...(p.boundaries || []), retireAge]);", "const steps = buildAgeSteps(currentAge, deathAge, p.boundaries);", "fiveCountryCalculationBoundaryFinal.test.js"],
   ["Scenario uses exact retirement-boundary net worth", "utils/scenarioComparison.js", "Number.isFinite(result.netWorthAtRetire)", "false", "fiveCountryCalculationBoundaryFinal.test.js"],
   ["Negative retirement living cost cannot enter the plan", "utils/buildPlanInput.js", "Math.max(0, Number(overrides.livingCostMonthly))", "Number(overrides.livingCostMonthly)", "fiveCountryCalculationBoundaryFinal.test.js"],
+  ["Current persisted profiles reject unknown country buckets", "utils/countryProfiles.js", "!isPlainRecord(p.profiles) || !hasOnlySupportedCountryKeys(p.profiles)", "!isPlainRecord(p.profiles)", "finalPersistenceSchemaBoundary.test.js"],
+  ["Current persisted watchlists validate before load", "App.jsx", "const parsedStorageVersion = normalizeProfileStorageVersion(parsed.profileStorageVersion);\n          if (parsedStorageVersion === PROFILE_STORAGE_VERSION && parsed.watchlists !== undefined && (", "const parsedStorageVersion = normalizeProfileStorageVersion(parsed.profileStorageVersion);\n          if (false && parsed.watchlists !== undefined && (", "finalPersistenceSchemaBoundary.test.js"],
 ];
 
 if (!fs.existsSync(vitestBin)) {
