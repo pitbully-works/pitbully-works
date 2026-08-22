@@ -40,7 +40,8 @@ describe("AU final scope audit 2026-08-23", () => {
     expect(text).not.toMatch(/非居住者税率.*未実装/);
     expect(text).not.toMatch(/Work Bonus.*隔週単位.*未実装/);
     expect(text).not.toMatch(/SAPTO.*spouse transfer.*未実装/i);
-    expect(text).not.toMatch(/投資用不動産の実収入.*未実装/);
+    expect(typeof ret.getRealEstateAssessableIncomeAnnual).toBe("function");
+    expect(text).not.toMatch(/投資用不動産の実収入そのもの.*未実装/);
     expect(text).not.toMatch(/Support at Home.*拠出率.*未実装/);
   });
 
