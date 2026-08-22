@@ -356,6 +356,7 @@ export const CA_COUNTRY_RULES = {
       oasRecoveryTax: "https://www.canada.ca/en/services/benefits/publicpensions/cpp/old-age-security/recovery-tax.html",
       gisAmounts: "https://www.canada.ca/en/employment-social-development/programs/pensions/pension/statistics/2026-quarterly-july-september.html",
       cppPostRetirementBenefit: "https://www.canada.ca/en/services/benefits/publicpensions/cpp/cpp-post-retirement/benefit-amount.html",
+      cppPensionSharing: "https://www.canada.ca/en/services/benefits/publicpensions/cpp/share-cpp.html",
     },
     accountTypes: ["cpp", "oas"],
     cpp: {
@@ -580,7 +581,7 @@ export const CA_COUNTRY_RULES = {
       "GIS/Allowanceの正確な支給額（基本資格ゲート・公表上限額・所得基準までは対応。所得構成別の公式支給額表による完全算定は未実装）",
       "QPPは受給開始年齢による増減計算まで実装済み。実際の拠出履歴から65歳時点見込額を自動算定する機能は未実装（Retraite Québecの見込額を入力）",
       "CPP拠出履歴からの受給見込額の自動算出（利用者が見込額を入力する方式）",
-      "配偶者との年金分割（pension income splitting / CPP sharing）",
+      "CPP pension sharing（CRAのpension income splittingとは別制度。共同拠出期間等で分割割合が変わるため完全自動算定は未実装）",
       // 【B-3／将来対応】OAS回収税の判定所得は、本来はその年の純世界所得（OAS本体・CPP・
       //   RRIF強制取崩し・非登録口座の課税所得を含み、TFSA引出しは含まない）で毎年
       //   再計算すべきもの。現行は利用者が入力した年間総所得（annualIncome）を全期間
@@ -1545,7 +1546,7 @@ export const CA_COUNTRY_RULES = {
   },
 
   labels: {
-    // カナダ版は投資・年金・医療費・税制のすべてを実装済みのため、未実装の注記は使用しない。
+    // カナダ版の主要計算は実装済み。州・準州差や個別事情で一律自動化できない項目は、各セクションの notImplemented に明示する。
     // ただしiDeCoセクション（JP専用）内の税制表示だけはカナダ向けの案内文へ差し替える。
     investmentNote: null,
     retirementNote: null,
