@@ -126,6 +126,13 @@ const mutants = [
   ["CA RDSP lifetime contribution limit is protected", "countryRules/CA.js", "lifetimeContributionLimit: 200000,\n      contributionLastAge: 59,", "lifetimeContributionLimit: 190000,\n      contributionLastAge: 59,", "overseasHundredPhase21.test.js"],
   ["CA RDSP grant annual max is protected", "countryRules/CA.js", "grantAnnualMax: 3500,", "grantAnnualMax: 3000,", "overseasHundredPhase21.test.js"],
 
+  ["GB Junior ISA annual limit is protected", "countryRules/GB.js", "annualContributionLimit: 9000,", "annualContributionLimit: 8000,", "overseasHundredPhase22.test.js"],
+  ["GB Junior ISA access age is protected", "countryRules/GB.js", "accessAge: 18,\n      unusedAllowanceCarryForward: false,", "accessAge: 17,\n      unusedAllowanceCarryForward: false,", "overseasHundredPhase22.test.js"],
+  ["GB child pension gross no-earnings floor is protected", "countryRules/GB.js", "grossReliefFloorWithoutEarnings: 3600,", "grossReliefFloorWithoutEarnings: 3500,", "overseasHundredPhase22.test.js"],
+  ["GB child pension net no-earnings floor is protected", "countryRules/GB.js", "netReliefFloorWithoutEarnings: 2880,", "netReliefFloorWithoutEarnings: 2800,", "overseasHundredPhase22.test.js"],
+  ["GB child pension relief-at-source rate is protected", "countryRules/GB.js", "reliefAtSourceRate: 0.20,", "reliefAtSourceRate: 0.19,", "overseasHundredPhase22.test.js"],
+  ["GB child pension future access age is protected", "countryRules/GB.js", "normalMinimumPensionAge: 57,", "normalMinimumPensionAge: 56,", "overseasHundredPhase22.test.js"],
+
 ];
 
 if (!fs.existsSync(vitestBin)) {
