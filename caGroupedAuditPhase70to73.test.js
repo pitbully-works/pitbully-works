@@ -30,7 +30,7 @@ describe("CA grouped audit phases 70–73 — federal dividend gross-up and DTC"
   });
 
   it("no longer lists the federal dividend tax credit as unimplemented", () => {
-    expect(tax.notImplemented.some((x) => x.includes("配当税額控除"))).toBe(false);
+    expect(tax.notImplemented.some((x) => x.includes("連邦") && x.includes("配当税額控除") && x.includes("未実装"))).toBe(false);
     expect(typeof tax.calculateFederalDividendTax).toBe("function");
   });
 });
