@@ -93,6 +93,12 @@ function AURetirementPanel({
           <span>{t("auBothQualifiedLabel", { age: qualifyingAge })}</span>
         </label>
       )}
+      {status === "couple" && !bothQualified && (
+        <div className="note" style={{ borderLeftColor: "#D9A54F", marginBottom: 10 }}>
+          <Info size={13} style={{ color: "#D9A54F" }} />
+          <span>{t("auPartnerUnderAgeSuperLimitationNote", { age: qualifyingAge })}</span>
+        </div>
+      )}
       {status === "couple" && (
         <>
           <Field
