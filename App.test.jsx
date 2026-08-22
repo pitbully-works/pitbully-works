@@ -518,7 +518,7 @@ describe("Canada (CA) core calculations", () => {
 
     // セクションごとに公式確認日が異なるため、全ルールを同一日付には固定しない。
     expect(inv.lastUpdated).toBe("2026-07-18");
-    expect(ret.lastUpdated).toBe("2026-08-20");
+    expect(ret.lastUpdated).toBe("2026-08-22");
     expect(CA_COUNTRY_RULES.healthcare.lastUpdated).toBe("2026-08-21");
     expect(tax.lastUpdated).toBe("2026-08-22");
   });
