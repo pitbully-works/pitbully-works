@@ -707,7 +707,7 @@ describe("Australia (AU) core calculations", () => {
     expect(inv.lastUpdated).toBe("2026-08-23");
     expect(ret.lastUpdated).toBe("2026-08-21");
     expect(tax.lastUpdated).toBe("2026-08-23");
-    expect(AU_COUNTRY_RULES.healthcare.lastUpdated).toBe("2026-08-21");
+    expect(AU_COUNTRY_RULES.healthcare.lastUpdated).toBe("2026-08-23");
   });
 
   it("contribution caps from 1 July 2026", () => {
