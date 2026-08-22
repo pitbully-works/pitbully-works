@@ -783,10 +783,15 @@ export const GB_COUNTRY_RULES = {
         : claimantPre2016;
 
       const qualifyingIncome = Math.max(0, Number(qualifyingIncomeWeekly) || 0);
-      const totalIncome = Math.max(
+      const suppliedTotalIncome = Math.max(
         0,
         totalIncomeWeekly == null ? qualifyingIncome : Number(totalIncomeWeekly) || 0,
       );
+      // Total income includes qualifying income plus any non-qualifying income,
+      // so it cannot coherently be lower than qualifying income. Clamp impossible
+      // caller/saved-data combinations upward to avoid overstating Savings Credit
+      // by suppressing Amount B.
+      const totalIncome = Math.max(qualifyingIncome, suppliedTotalIncome);
       const appropriateAmount = Math.max(
         0,
         appropriateAmountWeekly == null ? standardAmount : Number(appropriateAmountWeekly) || 0,
