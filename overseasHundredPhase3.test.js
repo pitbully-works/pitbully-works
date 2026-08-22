@@ -35,6 +35,11 @@ describe("overseas 100 phase 3 — GB Lifetime ISA projection integration", () =
   it("creates an integrated LISA pool with bonus, age-50 contribution stop and age-60 access", () => {
     const inputs = {
       retireAge: 65, deathAge: 90,
+      gold: { accumulateUntilAge: 65 },
+      ideco: { startAge: 40, endAge: 65, payoutStartAge: 65 },
+      tsumitateSchedule: [],
+      growthSchedule: [],
+      lumpSums: [],
       gbInvestment: {
         expensesMonthly: 0,
         cashSavings: {}, gia: {}, cashIsa: {}, stocksSharesIsa: {},

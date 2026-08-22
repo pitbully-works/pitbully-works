@@ -375,9 +375,9 @@ describe("GB境界：ISAは非課税", () => {
     expect(tax.isaTaxFree).toBe(true);
   });
 
-  it("税制優遇口座にISAと年金が含まれている", () => {
-    expect(inv.taxAdvantagedAccounts).toEqual(["stocksSharesIsa", "cashIsa", "sipp", "workplacePension"]);
-    expect(inv.isaAccounts).toEqual(["stocksSharesIsa", "cashIsa"]);
+  it("税制優遇口座にISA・LISAと年金が含まれている", () => {
+    expect(inv.taxAdvantagedAccounts).toEqual(["stocksSharesIsa", "cashIsa", "lifetimeIsa", "sipp", "workplacePension"]);
+    expect(inv.isaAccounts).toEqual(["stocksSharesIsa", "cashIsa", "lifetimeIsa"]);
     expect(inv.pensionAccounts).toEqual(["sipp", "workplacePension"]);
   });
 });
