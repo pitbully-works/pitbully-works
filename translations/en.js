@@ -176,6 +176,8 @@ export const EN_TRANSLATIONS = {
     "caCgtSub": "{pct}% of the gain is included in taxable income and taxed at your marginal rate",
     "caContributionEndAgeLabel": "Contributions End at Age",
     "caPensionPlanLabel": "Contributory public pension",
+    "caCppPlanOption": "CPP — Canada Pension Plan",
+    "caQppPlanOption": "QPP — Québec Pension Plan",
     "caQppAnnualLabel": "Estimated annual QPP",
     "caQppStartAgeLabel": "QPP claim age ({min}–{max})",
     "caQppEarlyRateLabel": "Monthly reduction before age 65",

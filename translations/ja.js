@@ -176,6 +176,8 @@ export const JA_TRANSLATIONS = {
     "caCgtSub": "利益の{pct}%が課税所得に算入され、限界税率で課税されます",
     "caContributionEndAgeLabel": "積立終了年齢",
     "caPensionPlanLabel": "拠出型公的年金",
+    "caCppPlanOption": "CPP — Canada Pension Plan",
+    "caQppPlanOption": "QPP — Québec Pension Plan",
     "caQppAnnualLabel": "QPP 年間受給見込",
     "caQppStartAgeLabel": "QPP 受給開始年齢（{min}〜{max}歳）",
     "caQppEarlyRateLabel": "65歳前の月次減額率",
