@@ -162,6 +162,11 @@ const mutants = [
   ["GB Savings Credit Amount A 60 percent rate is protected", "countryRules/GB.js", "amountARate: 0.60,\n        amountBRate: 0.40,", "amountARate: 0.50,\n        amountBRate: 0.40,", "overseasHundredPhase27.test.js"],
   ["GB Savings Credit Amount B 40 percent rate is protected", "countryRules/GB.js", "amountARate: 0.60,\n        amountBRate: 0.40,", "amountARate: 0.60,\n        amountBRate: 0.30,", "overseasHundredPhase27.test.js"],
 
+  ["GB Pension Credit mixed-age rule date is protected", "countryRules/GB.js", "newClaimRuleFrom: \"2019-05-15\",\n        bothPartnersNormallyMustReachQualifyingAge: true,", "newClaimRuleFrom: \"2019-05-16\",\n        bothPartnersNormallyMustReachQualifyingAge: true,", "overseasHundredPhase28.test.js"],
+  ["GB Pension Credit mixed-age continuity cutoff is protected", "countryRules/GB.js", "protectedContinuityCutoff: \"2019-05-14\",\n        pensionAgeHousingBenefitCanPreserveEligibility: true,", "protectedContinuityCutoff: \"2019-05-13\",\n        pensionAgeHousingBenefitCanPreserveEligibility: true,", "overseasHundredPhase28.test.js"],
+  ["GB Pension Credit normally requires both partners at age", "countryRules/GB.js", "claimantAtAge && partnerAtAge", "claimantAtAge || partnerAtAge", "overseasHundredPhase28.test.js"],
+  ["GB Pension Credit protected mixed-age continuity is protected", "countryRules/GB.js", "protectedMixedAgeContinuity === true ||\n        pensionAgeHousingBenefitContinuity === true", "protectedMixedAgeContinuity === false ||\n        pensionAgeHousingBenefitContinuity === true", "overseasHundredPhase28.test.js"],
+
 ];
 
 if (!fs.existsSync(vitestBin)) {
