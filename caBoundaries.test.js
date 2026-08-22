@@ -339,7 +339,7 @@ describe("CA境界：2026年の連邦税バンド", () => {
 
   it("オンタリオ州・ケベック州・BC州・アルバータ州・マニトバ州・サスカチュワン州税が実装され、他地域は未対応として残る", () => {
     expect(tax.province.implemented).toBe(true);
-    expect(tax.province.implementedRegions).toEqual(["ON", "QC", "BC", "AB", "MB", "SK", "NS", "NB", "PE"]);
+    expect(tax.province.implementedRegions).toEqual(["ON", "QC", "BC", "AB", "MB", "SK", "NS", "NB", "PE", "NL", "NT", "NU", "YT"]);
     expect(tax.region).toMatch(/Prince Edward Island/);
   });
 

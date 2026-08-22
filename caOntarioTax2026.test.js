@@ -24,7 +24,7 @@ describe("CA 2026 Ontario provincial income tax", () => {
     expect(r.healthPremium).toBeGreaterThan(0);
   });
   it("does not invent provincial tax for unsupported provinces", () => {
-    const r = tax.calculateProvincialTax(80000, "NL");
+    const r = tax.calculateProvincialTax(80000, "XX");
     expect(r.tax).toBe(0);
     expect(r.unsupported).toBe(true);
   });
