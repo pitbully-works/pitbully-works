@@ -15,7 +15,7 @@
 // 【重要】このオブジェクトは JP / US / GB のルールを一切参照せず、逆に参照もされない。
 export const CA_COUNTRY_RULES = {
   meta: {
-    verifiedAsOf: "2026-08-17",
+    verifiedAsOf: "2026-08-22",
     effectivePeriod: "2026 calendar year / OAS Jul-Sep 2026",
     updateCycle: "毎年1月＋OASは1/4/7/10月",
     noteJa: "2026年制度を2026年8月17日に確認。OASは2026年7〜9月四半期の公表値を基準にしています。",
@@ -24,8 +24,8 @@ export const CA_COUNTRY_RULES = {
       { key: "investment", labelJa: "投資制度", labelEn: "Investment", status: "implemented", effective: "2026 calendar year", lastUpdated: "2026-08-17", updateJa: "TFSAの年間枠・未使用枠繰越・前年引出しの翌年復活、RRSP、非登録口座、RRIF最低取崩し、FHSAの年間枠・繰越・生涯上限を反映。RESP・RDSPは未実装。", updateEn: "TFSA annual room, unused-room carryforward and prior-year withdrawal restoration, RRSP, non-registered accounts, RRIF minimum withdrawals, plus FHSA annual room, carryforward and lifetime limit are modelled; RESP and RDSP remain unimplemented." },
       { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "partial", effective: "2026 / OAS & GIS Jul-Sep", lastUpdated: "2026-08-22", updateJa: "CPPに加え、ケベック州QPPの受給開始年齢60〜72歳・65歳満額・65歳後0.7%/月増額・早期0.5〜0.6%/月減額の選択計算を実装。OAS・回収税・GIS/Allowance上限・CPP PRBも反映。", updateEn: "Adds QPP claim-age modelling (60–72, full at 65, +0.7%/month after 65 and configurable 0.5–0.6%/month early reduction) alongside CPP, OAS recovery tax, GIS/Allowance maxima and CPP PRB." },
       { key: "healthcare", labelJa: "医療", labelEn: "Healthcare", status: "partial", effective: "2026", lastUpdated: "2026-08-21", updateJa: "州・準州の公的医療保険を前提に自己負担を計算し、CDCPの所得別自己負担率とオンタリオ州の2026年長期介護ホーム最大自己負担額を自動計算。その他の州・準州の薬剤・視力・介護費は手入力。", updateEn: "Models out-of-pocket costs under provincial/territorial coverage, the income-based CDCP co-payment and Ontario 2026 long-term-care home maximum co-payments; drug, vision and long-term-care charges outside Ontario remain manual." },
-      { key: "tax", labelJa: "税金", labelEn: "Tax", status: "partial", effective: "2026 tax year", lastUpdated: "2026-08-21", updateJa: "連邦所得税に加え、オンタリオ州の所得税・サータックス・Ontario Health Premiumを反映。その他12地域、QPP、配当税額控除等は未実装。", updateEn: "Federal income tax plus Ontario income tax, surtax and Ontario Health Premium are modelled; the other 12 regions, QPP and dividend credits remain unimplemented." },
-      { key: "estate", labelJa: "相続", labelEn: "Estate", status: "partial", effective: "2026", lastUpdated: "2026-08-17", updateJa: "相続目標は資産計画に反映。死亡時のみなし譲渡等の自動計算は未実装。", updateEn: "Estate targets feed the plan; deemed disposition and related death-tax calculations are not automated." },
+      { key: "tax", labelJa: "税金", labelEn: "Tax", status: "partial", effective: "2026 tax year", lastUpdated: "2026-08-22", updateJa: "連邦所得税に加え、オンタリオ州とケベック州の所得税、Quebec abatement、CPP/QPP・EI・QPIPを反映。その他11地域、配当税額控除・AMT等は未実装。", updateEn: "Federal income tax plus Ontario and Quebec income tax, the Quebec abatement, CPP/QPP, EI and QPIP are modelled; the other 11 regions, dividend credits and AMT remain unimplemented." },
+      { key: "estate", labelJa: "相続", labelEn: "Estate", status: "implemented", effective: "2026", lastUpdated: "2026-08-22", updateJa: "死亡直前の時価によるみなし譲渡、配偶者・コモンローへの税繰延ロールオーバー、主たる住居の除外を使った概算を実装。", updateEn: "Adds an estimate for deemed disposition at fair market value immediately before death, spouse/common-law rollover, and principal-residence exclusion." },
     ],
   },
   investment: {
@@ -248,7 +248,6 @@ export const CA_COUNTRY_RULES = {
     notImplemented: [
       "FHSAのre-participation room・excess amount等の複雑な個別調整（基本の年間枠・繰越・生涯上限は実装済み）／RESP／RDSP",
       "RRSP/RRIFの一括・超過引出し源泉徴収率（10/20/30%、Quebec連邦分5/10/15%、非居住者25%既定）はルール計算を実装済み。実際の最終所得税・租税条約・Quebec州税は別途",
-      "ケベック州のQPP（CPPと拠出率・給付が異なる）",
     ],
   },
 
@@ -886,6 +885,87 @@ export const CA_COUNTRY_RULES = {
       "CPP/QPP拠出金・EI保険料・Quebec Parental Insurance Plan（QPIP）は2026年の従業員本人分を実装済み。自営業者向け拠出は未実装",
       "Alternative Minimum Tax（AMT）",
       "年金所得の分割（pension income splitting）",
+    ],
+  },
+
+  estate: {
+    implemented: true,
+    model: "canadaDeemedDispositionEstimate",
+    effectiveTaxYear: "2026",
+    lastUpdated: "2026-08-22",
+    sourceName: "Canada Revenue Agency (CRA) — Taxable capital gains for someone who died",
+    sourceUrl: "https://www.canada.ca/en/revenue-agency/services/tax/individuals/life-events/doing-taxes-someone-died/prepare-returns/report-income/capital-gains.html",
+    sourceUrls: {
+      deemedDisposition: "https://www.canada.ca/en/revenue-agency/services/tax/individuals/life-events/doing-taxes-someone-died/prepare-returns/report-income/capital-gains.html",
+      spouseRollover: "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/personal-income/line-12700-capital-gains/transfers-capital-property.html",
+    },
+    capitalGainsInclusionRate: 0.50,
+    // Planning estimate for ordinary capital property. It deliberately does not attempt
+    // CCA recapture, farm/fishing property, private-company shares, trust elections,
+    // or detailed principal-residence year-by-year designation.
+    calculateDeemedDisposition({
+      fairMarketValue = 0,
+      adjustedCostBase = 0,
+      transferToSpouseOrCommonLaw = false,
+      spouseResidentInCanada = true,
+      principalResidenceExempt = false,
+      otherTaxableIncome = 0,
+      provinceCode = "ON",
+    } = {}) {
+      const fmv = Math.max(0, Number(fairMarketValue) || 0);
+      const acb = Math.max(0, Number(adjustedCostBase) || 0);
+      const rollover = !!transferToSpouseOrCommonLaw && !!spouseResidentInCanada;
+      const principalResidence = !!principalResidenceExempt;
+
+      if (rollover || principalResidence) {
+        return {
+          fairMarketValue: fmv,
+          adjustedCostBase: acb,
+          capitalGain: 0,
+          taxableCapitalGain: 0,
+          federalTaxEstimate: 0,
+          provincialTaxEstimate: 0,
+          totalTaxEstimate: 0,
+          spouseRolloverApplied: rollover,
+          principalResidenceExemptionApplied: principalResidence,
+        };
+      }
+
+      const capitalGain = Math.max(0, fmv - acb);
+      const taxableCapitalGain = capitalGain * this.capitalGainsInclusionRate;
+      const otherIncome = Math.max(0, Number(otherTaxableIncome) || 0);
+      const code = String(provinceCode || "ON").toUpperCase();
+
+      const federalBefore = CA_COUNTRY_RULES.tax
+        .calculateFederalTaxForProvince(otherIncome, code).taxAfterAbatement;
+      const federalAfter = CA_COUNTRY_RULES.tax
+        .calculateFederalTaxForProvince(otherIncome + taxableCapitalGain, code).taxAfterAbatement;
+      const federalTaxEstimate = Math.max(0, federalAfter - federalBefore);
+
+      const provincialBefore = CA_COUNTRY_RULES.tax
+        .calculateProvincialTax(otherIncome, code).tax;
+      const provincialAfter = CA_COUNTRY_RULES.tax
+        .calculateProvincialTax(otherIncome + taxableCapitalGain, code).tax;
+      const provincialTaxEstimate = Math.max(0, provincialAfter - provincialBefore);
+
+      return {
+        fairMarketValue: fmv,
+        adjustedCostBase: acb,
+        capitalGain,
+        taxableCapitalGain,
+        federalTaxEstimate,
+        provincialTaxEstimate,
+        totalTaxEstimate: federalTaxEstimate + provincialTaxEstimate,
+        spouseRolloverApplied: false,
+        principalResidenceExemptionApplied: false,
+      };
+    },
+    notImplemented: [
+      "CCA recapture・terminal lossの自動計算",
+      "qualified farm/fishing property・QSBC shares等の特例",
+      "主たる住居の年別designation・1+ルールの完全自動判定",
+      "RRSP/RRIF/FHSA等の死亡時課税と受益者別ロールオーバーの完全統合",
+      "遺産管理中のT3申告・GRE・国外資産・信託の詳細税務",
     ],
   },
 
