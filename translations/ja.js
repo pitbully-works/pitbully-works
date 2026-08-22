@@ -946,7 +946,7 @@ export const JA_TRANSLATIONS = {
     "loanNamePlaceholder": "名称（例：住宅ローン）",
     "loanPrincipalCol": "残元本",
     "usCountryNote": "米国版：401(k)・IRAの拠出上限、Social Security、Medicare Part B（IRMAA）、連邦所得税・長期キャピタルゲイン・NIIT、RMD（必須最低引出）は2026年の公式数値（IRS・CMS・SSA）で計算しています。州税はご入力の概算税率を使用します。税額はいずれも概算であり、確定申告の計算ではありません。",
-    "gbCountryNote": "英国版：ISA・年金の拠出上限、State Pension、Income Tax、Class 1 employee National Insurance、Dividend Tax、Capital Gains Tax、Inheritance Taxの主要ルールを2026/27年度の公表値で計算しています。Scottish Income Taxにも対応しています。試算用のツールであり、金融助言ではありません。",
+    "gbCountryNote": "英国版：ISA・年金の拠出上限、State Pension、Income Tax、Class 1 employee National Insurance、Dividend Tax、Capital Gains Tax、Inheritance Taxの主要ルールを2026/27年度の公表値で計算しています。スコットランド所得税（Scottish Income Tax）にも対応しています。試算用のツールであり、金融助言ではありません。",
     "caCountryNote": "カナダ版：TFSA・RRSPの拠出上限、CPP・OAS、連邦所得税、譲渡益課税で計算しています。州・準州ごとの所得税は実装していません。試算用のツールであり、税務・投資助言ではありません。",
     "auCountryNote": "オーストラリア版：Superannuation（Concessional／Non-concessional拠出上限）、Age Pension、所得税とMedicare levy、譲渡益課税で計算しています。試算用のツールであり、税務・投資助言ではありません。",
     "lumpAllocationLabel": "一括投資の銘柄別内訳（金額を入れると割合を自動計算）",
