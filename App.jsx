@@ -1901,9 +1901,11 @@ const DEFAULT_INPUTS = {
       rrsp:          { currentValue: 0, annualContribution: 0, expectedReturnPct: 5, contributionEndAge: 65, withdrawalTaxPct: 25 },
       nonRegistered: { currentValue: 0, annualContribution: 0, expectedReturnPct: 5, contributionEndAge: 65, withdrawalTaxPct: 12 },
       cashSavings:   { currentValue: 0, annualContribution: 0, expectedReturnPct: 2, contributionEndAge: 65, withdrawalTaxPct: 0 },
-      // CPP（拠出型の公的年金）
+      // CPP / QPP（拠出型の公的年金）。Quebec在住はQPPを選択できる。
       cpp: {
-        startAge: 65,           // 60〜70歳で選択可
+        plan: "CPP",
+        startAge: 65,
+        qppEarlyReductionPerMonth: CA_COUNTRY_RULES.retirement.qpp.earlyReductionPerMonthDefault,
         // 初期値は2026年の満額（参考値）。実際の受給額は拠出履歴により大きく異なるため、
         // My Service Canada Account で確認した見込額で必ず上書きできる。
         estimatedAnnualAt65: Math.round(CA_COUNTRY_RULES.retirement.getCppMaxAnnualAt65()),
@@ -2667,12 +2669,25 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     ? rules.healthcare.getAnnualTotal(caInvestment.healthcare)
     : 0;
 
+  const caPensionPlan = String(caInvestment.cpp.plan || "CPP").toUpperCase() === "QPP" ? "QPP" : "CPP";
+  const caPensionRules = caPensionPlan === "QPP" ? rules.retirement.qpp : rules.retirement.cpp;
   const caCppStartAge = Number(caInvestment.cpp.startAge) || 65;
-  const caCppFactor = (caIsCA && rules.retirement.implemented) ? rules.retirement.getCppFactor(caCppStartAge) : 1;
+  const caCppFactor = (caIsCA && rules.retirement.implemented)
+    ? (caPensionPlan === "QPP"
+        ? rules.retirement.getQppFactor(caCppStartAge, caInvestment.cpp.qppEarlyReductionPerMonth)
+        : rules.retirement.getCppFactor(caCppStartAge))
+    : 1;
   const caCppAnnual = (caIsCA && rules.retirement.implemented)
-    ? rules.retirement.getCppAnnualBenefit(caInvestment.cpp.estimatedAnnualAt65, caCppStartAge)
+    ? rules.retirement.getPublicContributoryPensionAnnual({
+        plan: caPensionPlan,
+        estimatedAnnualAt65: caInvestment.cpp.estimatedAnnualAt65,
+        startAge: caCppStartAge,
+        qppEarlyReductionPerMonth: caInvestment.cpp.qppEarlyReductionPerMonth,
+      })
     : 0;
-  const caCppMaxAnnual = (caIsCA && rules.retirement.implemented) ? rules.retirement.getCppMaxAnnualAt65() : 0;
+  const caCppMaxAnnual = (caIsCA && rules.retirement.implemented)
+    ? (caPensionPlan === "QPP" ? rules.retirement.getQppMaxAnnualAt65() : rules.retirement.getCppMaxAnnualAt65())
+    : 0;
 
   const caOasStartAge = Number(caInvestment.oas.startAge) || 65;
   const caOasEffectiveStartAge = (caIsCA && rules.retirement.implemented)
@@ -7919,6 +7934,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               onUpdateOas={(field, val) => updateCaInvestmentNested("oas", field, val)}
               onUpdate={updateCaInvestment}
               retirementRules={rules.retirement}
+              pensionPlan={caPensionPlan}
+              pensionRules={caPensionRules}
               cppStartAge={caCppStartAge}
               cppFactor={caCppFactor}
               cppAnnual={caCppAnnual}
