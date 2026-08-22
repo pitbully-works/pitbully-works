@@ -930,6 +930,10 @@ export const CA_COUNTRY_RULES = {
       cppSelfEmployedSecondAdditionalRate: 0.0800,
       cppSelfEmployedFirstMax: 8460.90,
       cppSelfEmployedSecondMax: 832.00,
+      qppSelfEmployedRate: 0.1260,
+      qppSelfEmployedSecondAdditionalRate: 0.0800,
+      qppSelfEmployedFirstMax: 8961.30,
+      qppSelfEmployedSecondMax: 832.00,
       eiMaxInsurableEarnings: 68900,
       eiRate: 0.0163,
       eiQuebecRate: 0.0130,
@@ -969,6 +973,19 @@ export const CA_COUNTRY_RULES = {
       const first = Math.min(cfg.cppSelfEmployedFirstMax, firstBand * cfg.cppSelfEmployedRate);
       const second = Math.min(cfg.cppSelfEmployedSecondMax, secondBand * cfg.cppSelfEmployedSecondAdditionalRate);
       return { plan: "CPP", supported: true, first, second, total: first + second };
+    },
+
+    // Self-employed QPP, 2026. Quebec self-employed workers pay both the
+    // employee and employer shares: 12.60% between the YBE and YMPE, plus 8.00%
+    // on earnings between YMPE and YAMPE.
+    calculateSelfEmployedQppContribution(netBusinessIncome) {
+      const cfg = this.payrollDeductions;
+      const income = Math.max(0, Number(netBusinessIncome) || 0);
+      const firstBand = Math.max(0, Math.min(income, cfg.ympe) - cfg.ybe);
+      const secondBand = Math.max(0, Math.min(income, cfg.yampe) - cfg.ympe);
+      const first = Math.min(cfg.qppSelfEmployedFirstMax, firstBand * cfg.qppSelfEmployedRate);
+      const second = Math.min(cfg.qppSelfEmployedSecondMax, secondBand * cfg.qppSelfEmployedSecondAdditionalRate);
+      return { plan: "QPP", supported: true, first, second, total: first + second };
     },
 
     // Planning helper for CRA pension-income splitting. The election may allocate
@@ -1399,7 +1416,7 @@ export const CA_COUNTRY_RULES = {
       "州・準州所得税の追加地域はなし（カナダ10州・3準州を実装済み）",
       "オンタリオ州の扶養家族等を含むTax Reductionの完全計算（基本本人分のみ反映）",
       "配当税額控除（eligible / non-eligible dividend tax credit）",
-      "CPP/QPP拠出金・EI保険料・Quebec Parental Insurance Plan（QPIP）は2026年の従業員本人分を実装済み。CPPの自営業者拠出（Quebec以外）は実装済みで、自営業QPPは未実装",
+      "CPP/QPP拠出金・EI保険料・Quebec Parental Insurance Plan（QPIP）は2026年の従業員本人分を実装済み。CPPの自営業者拠出（Quebec以外）と自営業QPPは2026年基準で実装済み",
       "Alternative Minimum Tax（AMT）",
       "年金所得分割は最大50%の移転上限を計画用に実装済み。所得種類・年齢ごとのeligible pension income判定と双方の最終申告税額の完全自動最適化は未実装",
     ],
