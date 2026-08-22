@@ -25,7 +25,7 @@ export const AU_COUNTRY_RULES = {
       { key: "investment", labelJa: "投資制度", labelEn: "Investment", status: "partial", effective: "2026-27 financial year", lastUpdated: "2026-08-23", updateJa: "Super・投資口座・拠出上限、carry-forward、bring-forwardに加え、適格確認式のDownsizer contribution（最大A$300,000）を今年度一括拠出として反映。", updateEn: "Super, investment accounts and contribution caps are modelled, including concessional carry-forward, non-concessional bring-forward, and an eligibility-confirmed one-off downsizer contribution of up to A$300,000." },
       { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "partial", effective: "2026-27 / Age Pension Mar 2026 rates / Rent Assistance & CSHC Jul 2026 rates", lastUpdated: "2026-08-22", updateJa: "Age Pensionの資産・所得テスト、Work Bonus、Rent Assistance、CSHCに加え、カップルで片方だけ67歳以上の場合の配偶者Super除外を年齢進行に合わせて投影へ統合。", updateEn: "Age Pension means tests, Work Bonus, Rent Assistance and CSHC are modelled, with dynamic partner-Super exclusion integrated when only one member of a couple has reached Age Pension age." },
       { key: "healthcare", labelJa: "医療", labelEn: "Healthcare", status: "partial", effective: "2026-27 / 2026 calendar-year Safety Nets", lastUpdated: "2026-08-21", updateJa: "Medicare前提の自己負担に加え、2026年PBS Safety Net概算とMedicare Safety Net閾値を反映。診療ごとのSafety Net還付・aged care資力調査は未自動化。", updateEn: "Adds a 2026 PBS Safety Net estimate and Medicare Safety Net thresholds to the Medicare out-of-pocket model; item-level Safety Net rebates and aged-care means testing remain manual." },
-      { key: "tax", labelJa: "税金", labelEn: "Tax", status: "partial", effective: "2026-27 financial year", lastUpdated: "2026-08-23", updateJa: "居住者所得税・LITO・SAPTO・Medicare levy・MLS・CGTに加え、非居住者所得税率を反映。", updateEn: "Resident income tax, LITO, SAPTO, Medicare levy, MLS and CGT are modelled, together with foreign-resident income-tax rates." },
+      { key: "tax", labelJa: "税金", labelEn: "Tax", status: "partial", effective: "2026-27 financial year", lastUpdated: "2026-08-23", updateJa: "居住者所得税・LITO・SAPTO・Medicare levy・MLS・CGT・非居住者所得税に加え、Super一時金のtaxed elementについて60歳未満の基本税率を反映。", updateEn: "Resident income tax, LITO, SAPTO, Medicare levy, MLS, CGT and foreign-resident income tax are modelled, together with the core under-60 tax treatment for the taxed element of Super lump sums." },
       { key: "estate", labelJa: "相続", labelEn: "Estate", status: "partial", effective: "2026-27", lastUpdated: "2026-08-21", updateJa: "オーストラリアには相続税はありません。Super death benefitの一括受取について、death benefits dependant / non-dependant別の税額概算を実装。所得ストリーム・遺産管理人経由などの詳細税務は未自動化。", updateEn: "Australia has no inheritance tax. A lump-sum Super death-benefit estimator now models tax for death-benefits dependants versus non-dependants; income streams and detailed deceased-estate treatment remain manual." },
     ],
   },
@@ -1163,6 +1163,82 @@ export const AU_COUNTRY_RULES = {
       }
       return tax;
     },
+    // Super member lump-sum tax — taxable component, taxed element only.
+    // Tax-free component is always tax free. For a taxed fund:
+    // - age 60+: taxable taxed element is tax free;
+    // - below preservation age: maximum income-tax rate is 20% + Medicare levy (22% withholding);
+    // - preservation age to 59: amount within the remaining low-rate cap is nil,
+    //   excess is capped at 15% + Medicare levy (17% withholding).
+    // The low-rate cap is A$260,000 for 2026-27 and is a lifetime cap.
+    // Actual final income tax can be lower than these maximum rates because statutory tax offsets apply.
+    calculateSuperLumpSumTaxedElement({
+      age = 0,
+      taxedElement = 0,
+      taxFreeComponent = 0,
+      preservationAge = 60,
+      lowRateCapRemaining = null,
+    } = {}) {
+      const a = Math.max(0, Number(age) || 0);
+      const taxed = Math.max(0, Number(taxedElement) || 0);
+      const taxFree = Math.max(0, Number(taxFreeComponent) || 0);
+      const pAge = Math.max(0, Number(preservationAge) || this.superannuation?.preservationAge || 60);
+      const configuredLowRateCap = Math.max(0, Number(this.superannuation?.lowRateCap) || 0);
+      const remaining = lowRateCapRemaining === null || lowRateCapRemaining === undefined || lowRateCapRemaining === ""
+        ? configuredLowRateCap
+        : Math.min(configuredLowRateCap, Math.max(0, Number(lowRateCapRemaining) || 0));
+
+      if (taxed <= 0 || a >= 60) {
+        return {
+          age: a,
+          preservationAge: pAge,
+          taxFreeComponent: taxFree,
+          taxedElement: taxed,
+          lowRateCapRemaining: remaining,
+          lowRateCapApplied: 0,
+          taxableAtMaximumRate: 0,
+          maximumRateIncludingMedicare: 0,
+          estimatedMaximumTax: 0,
+          netAfterEstimatedMaximumTax: taxFree + taxed,
+          basis: a >= 60 ? "taxed-element-age-60-plus-tax-free" : "no-taxed-element",
+        };
+      }
+
+      if (a < pAge) {
+        const rate = 0.22;
+        const tax = taxed * rate;
+        return {
+          age: a,
+          preservationAge: pAge,
+          taxFreeComponent: taxFree,
+          taxedElement: taxed,
+          lowRateCapRemaining: remaining,
+          lowRateCapApplied: 0,
+          taxableAtMaximumRate: taxed,
+          maximumRateIncludingMedicare: rate,
+          estimatedMaximumTax: tax,
+          netAfterEstimatedMaximumTax: taxFree + taxed - tax,
+          basis: "under-preservation-age-taxed-element",
+        };
+      }
+
+      const lowRateCapApplied = Math.min(taxed, remaining);
+      const excess = Math.max(0, taxed - lowRateCapApplied);
+      const rate = 0.17;
+      const tax = excess * rate;
+      return {
+        age: a,
+        preservationAge: pAge,
+        taxFreeComponent: taxFree,
+        taxedElement: taxed,
+        lowRateCapRemaining: remaining,
+        lowRateCapApplied,
+        taxableAtMaximumRate: excess,
+        maximumRateIncludingMedicare: excess > 0 ? rate : 0,
+        estimatedMaximumTax: tax,
+        netAfterEstimatedMaximumTax: taxFree + taxed - tax,
+        basis: "preservation-age-to-59-taxed-element",
+      };
+    },
     // LITO（Low Income Tax Offset）。ATOの所得帯別計算をそのまま実装する。
     calculateLowIncomeTaxOffset(taxableIncome) {
       const income = Math.max(0, Number(taxableIncome) || 0);
@@ -1338,7 +1414,7 @@ export const AU_COUNTRY_RULES = {
       "Government super co-contributionは本人確認入力で反映済み。年齢・ビザ・10% eligible income test・税申告・前年TSB等の完全自動判定は未実装",
       "Medicare levyの家族所得による減免は実装済み。年途中の婚姻・離婚・免除日数などの日割り計算は未実装",
       "HELP等の学生ローンは2026-27の当年強制返済額を実装済み。将来の債務残高・年次indexation・任意返済の自動投影は未実装",
-      "60歳未満のSuper引き出しへの課税（low rate capは保持）",
+      "Super一時金のtaxed elementは60歳未満の基本税率（保存年齢未満22%、保存年齢到達後60歳未満はlow rate cap内0%・超過17%）を実装済み。untaxed element、income stream、障害給付、DASP、個別の最終限界税率・税額控除は未自動化",
     ],
   },
 
