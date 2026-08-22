@@ -543,6 +543,14 @@ export const AU_COUNTRY_RULES = {
       assetsFreeAreaCoupleNonHomeowner: 766000,
       assetsTaperPerThousandFortnightlySingle: 3,
       assetsTaperPerThousandFortnightlyCouplePerPerson: 1.5,
+      // 2026年7月1日からの公表カットオフ（Rent Assistance等による上乗せなしの標準ケース）。
+      // 連続式から逆算すると端数処理等で公表値と数百ドルずれるため、表示・境界判定は公表値を優先する。
+      assetsCutOffSingleHomeowner: 733500,
+      assetsCutOffSingleNonHomeowner: 1000500,
+      assetsCutOffCoupleHomeowner: 1102500,
+      assetsCutOffCoupleNonHomeowner: 1369500,
+      incomeCutOffFortnightlySingle: 2627.80,
+      incomeCutOffFortnightlyCoupleCombined: 4016.80,
       // Work Bonus：就労収入のうち、所得テストから除外される年額
       workBonusFortnightly: 300,
       workBonusMaxBalance: 11800,
@@ -707,13 +715,19 @@ export const AU_COUNTRY_RULES = {
     // 給付が完全に打ち切られる資産額（カットオフ）。テストと画面表示で共有する。
     getAssetsCutOff(status, homeowner) {
       const p = this.agePension;
-      const perThousand = this.getAssetsTaperPerThousandFortnightly(status) * p.fortnightsPerYear;
-      return this.getAssetsFreeArea(status, homeowner) + (this.getMaxAnnual(status) / perThousand) * 1000;
+      if (status === "couple") {
+        return homeowner ? p.assetsCutOffCoupleHomeowner : p.assetsCutOffCoupleNonHomeowner;
+      }
+      return homeowner ? p.assetsCutOffSingleHomeowner : p.assetsCutOffSingleNonHomeowner;
     },
     // 給付が完全に打ち切られる年間所得（カットオフ）。
+    // Services Australiaが公表する隔週カットオフを年額化して返す。
     getIncomeCutOffAnnual(status) {
-      return this.getIncomeFreeAreaAnnual(status)
-        + this.getMaxAnnual(status) / this.getIncomeTaperPerDollar(status);
+      const p = this.agePension;
+      const fortnightly = status === "couple"
+        ? p.incomeCutOffFortnightlyCoupleCombined
+        : p.incomeCutOffFortnightlySingle;
+      return fortnightly * p.fortnightsPerYear;
     },
     // 所得テストに算入する所得＝利用者が入力したその他の年収 ＋ 金融資産のみなし収入。
     // financialAssets を渡さなければみなし収入は0として扱う（従来の呼び出しと互換）。
