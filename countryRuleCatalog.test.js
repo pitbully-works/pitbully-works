@@ -93,7 +93,7 @@ describe("5-country common rule catalog", () => {
   it("keeps each country's section-specific review dates instead of forcing one global date", () => {
     const au = buildCountryRuleCatalog("AU");
     expect(au.find((row) => row.key === "healthcare").lastUpdated).toBe("2026-08-21");
-    expect(au.find((row) => row.key === "investment").lastUpdated).toBe("2026-08-21");
+    expect(au.find((row) => row.key === "investment").lastUpdated).toBe("2026-08-23");
     const ca = buildCountryRuleCatalog("CA");
     expect(ca.find((row) => row.key === "retirement").lastUpdated).toBe("2026-08-22");
     expect(ca.find((row) => row.key === "healthcare").lastUpdated).toBe("2026-08-21");

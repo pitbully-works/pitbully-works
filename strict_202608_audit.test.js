@@ -26,6 +26,6 @@ describe("2026-08 strict制度監査修正",()=>{
     expect(US_COUNTRY_RULES.meta.verifiedAsOf).toBe("2026-08-17");
     expect(GB_COUNTRY_RULES.meta.verifiedAsOf).toBe("2026-08-22");
     expect(CA_COUNTRY_RULES.meta.verifiedAsOf).toBe("2026-08-22");
-    expect(AU_COUNTRY_RULES.meta.verifiedAsOf).toBe("2026-08-17");
+    expect(AU_COUNTRY_RULES.meta.verifiedAsOf).toBe("2026-08-23");
   });
 });
