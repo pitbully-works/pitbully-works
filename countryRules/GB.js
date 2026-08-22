@@ -19,7 +19,7 @@ export const GB_COUNTRY_RULES = {
     noteJa: "2026/27税年度の制度を2026年8月21日に再確認。England / Wales / Northern Irelandに加え、Scottish Income TaxとInheritance Taxの概算計算にも対応しています。",
     noteEn: "2026/27 rules re-verified on 21 Aug 2026. Income tax now covers England, Wales, Northern Ireland and Scottish Income Tax, with an Inheritance Tax estimate model.",
     coverage: [
-      { key: "investment", labelJa: "投資制度", labelEn: "Investment", status: "implemented", effective: "2026/27 tax year", lastUpdated: "2026-08-17", updateJa: "ISA・SIPP・職域年金・GIAを反映。予定されるCash ISA変更は将来制度として保持。", updateEn: "ISA, SIPP, workplace pension and GIA are modelled; the scheduled Cash ISA change is kept as a future rule." },
+      { key: "investment", labelJa: "投資制度", labelEn: "Investment", status: "implemented", effective: "2026/27 tax year", lastUpdated: "2026-08-17", updateJa: "ISA・LISA・SIPP・職域年金・GIAに加え、Junior ISAと子ども向けSIPPの2026/27拠出・税控除・年齢制約を反映。予定されるCash ISA変更は将来制度として保持。", updateEn: "ISA, LISA, SIPP, workplace pension and GIA are modelled, together with 2026/27 Junior ISA and child-pension contribution/tax-relief/age rules; the scheduled Cash ISA change is kept as a future rule." },
       { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "implemented", effective: "2026/27 tax year", lastUpdated: "2026-08-17", updateJa: "State Pensionと私的年金の受給・繰下げを反映。NI記録からの自動見込額算定は未実装。", updateEn: "State Pension and private-pension access/deferral are modelled; automatic entitlement from NI history is not implemented." },
       { key: "healthcare", labelJa: "医療", labelEn: "Healthcare", status: "partial", effective: "2026/27", lastUpdated: "2026-08-21", updateJa: "地域別処方箋、EnglandのNHS歯科料金、Englandの介護資産判定を追加。その他地域の歯科・介護は利用者入力。", updateEn: "Adds regional prescription rules, NHS dental charges for England and England social-care capital assessment; dental/social-care costs in other nations remain user-entered." },
       { key: "tax", labelJa: "税金", labelEn: "Tax", status: "implemented", effective: "2026/27 tax year", lastUpdated: "2026-08-21", updateJa: "England/Wales/NIの所得税・配当・CGTに加え、2026/27 Scottish Income Taxを反映。", updateEn: "Models England/Wales/NI income tax, dividends and CGT, plus 2026/27 Scottish Income Tax." },
@@ -29,7 +29,7 @@ export const GB_COUNTRY_RULES = {
   investment: {
     implemented: true,
     effectiveTaxYear: "2026/27",
-    lastUpdated: "2026-07-13",
+    lastUpdated: "2026-08-22",
     sourceName: "GOV.UK — Individual Savings Accounts (ISAs) / Tax on your private pension contributions",
     sourceUrl: "https://www.gov.uk/individual-savings-accounts",
     sourceUrls: {
@@ -37,6 +37,8 @@ export const GB_COUNTRY_RULES = {
       pensionAnnualAllowance: "https://www.gov.uk/tax-on-your-private-pension/annual-allowance",
       pensionAccessAge: "https://www.gov.uk/personal-pensions-your-rights",
       taxFreeLumpSum: "https://www.gov.uk/tax-on-pension",
+      juniorIsa: "https://www.gov.uk/junior-individual-savings-accounts/add-money-to-an-account",
+      pensionContributionRelief: "https://www.gov.uk/government/publications/rates-and-allowances-pension-schemes/pension-schemes-rates",
     },
     // 英国版で別々に管理・計算する口座
     accountTypes: ["stocksSharesIsa", "cashIsa", "lifetimeIsa", "sipp", "workplacePension", "gia", "cashSavings"],
@@ -65,6 +67,27 @@ export const GB_COUNTRY_RULES = {
       firstHomeMaxPrice: 450000,
       firstHomeMinimumHoldingMonths: 12,
       unauthorisedWithdrawalChargeRate: 0.25,
+    },
+    juniorIsa: {
+      annualContributionLimit: 9000,
+      minimumAge: 0,
+      maximumAgeExclusive: 18,
+      accessAge: 18,
+      unusedAllowanceCarryForward: false,
+      taxFreeGrowth: true,
+      taxFreeWithdrawals: true,
+    },
+    juniorSipp: {
+      // 「Junior SIPP」は子ども名義の登録年金。税制上は通常の登録年金ルールを使う。
+      minimumAge: 0,
+      maximumAgeExclusive: 18,
+      grossReliefFloorWithoutEarnings: 3600,
+      netReliefFloorWithoutEarnings: 2880,
+      reliefAtSourceRate: 0.20,
+      annualAllowance: 60000,
+      // 子どもが到達する時点では、既に法定最低年金受給年齢57歳（2028-04-06以降）が適用される前提。
+      normalMinimumPensionAge: 57,
+      unusedTaxReliefFloorCarryForward: false,
     },
     // 予定されている制度変更（2026/27時点では未適用。計算には反映していない）
     scheduled: {
@@ -101,6 +124,62 @@ export const GB_COUNTRY_RULES = {
     getLifetimeIsaUnauthorisedWithdrawalCharge(withdrawalAmount) {
       return Math.max(0, Number(withdrawalAmount) || 0) * this.lifetimeIsa.unauthorisedWithdrawalChargeRate;
     },
+    getJuniorIsaEligibleContribution(contribution, age) {
+      const j = this.juniorIsa;
+      const a = Number(age);
+      if (!Number.isFinite(a) || a < j.minimumAge || a >= j.maximumAgeExclusive) return 0;
+      return Math.min(j.annualContributionLimit, Math.max(0, this._num(contribution)));
+    },
+    getJuniorIsaRemaining(contribution, age) {
+      const j = this.juniorIsa;
+      const a = Number(age);
+      if (!Number.isFinite(a) || a < j.minimumAge || a >= j.maximumAgeExclusive) return 0;
+      return Math.max(0, j.annualContributionLimit - Math.max(0, this._num(contribution)));
+    },
+    projectJuniorIsaTo18({ currentAge = 0, currentValue = 0, annualContribution = 0, expectedReturnPct = 0 } = {}) {
+      const startAge = Math.max(0, Math.floor(this._num(currentAge)));
+      let balance = Math.max(0, this._num(currentValue));
+      const rate = this._num(expectedReturnPct) / 100;
+      for (let age = startAge; age < this.juniorIsa.accessAge; age += 1) {
+        const contribution = this.getJuniorIsaEligibleContribution(annualContribution, age);
+        balance = (balance + contribution) * (1 + rate);
+      }
+      return balance;
+    },
+    getJuniorSippTaxRelievedGrossLimit(relevantUkEarnings = 0) {
+      const j = this.juniorSipp;
+      const earnings = Math.max(0, this._num(relevantUkEarnings));
+      return Math.min(j.annualAllowance, Math.max(j.grossReliefFloorWithoutEarnings, earnings));
+    },
+    getJuniorSippEligibleGrossContribution(grossContribution = 0, relevantUkEarnings = 0, age = 0) {
+      const j = this.juniorSipp;
+      const a = Number(age);
+      if (!Number.isFinite(a) || a < j.minimumAge || a >= j.maximumAgeExclusive) return 0;
+      return Math.min(
+        Math.max(0, this._num(grossContribution)),
+        this.getJuniorSippTaxRelievedGrossLimit(relevantUkEarnings)
+      );
+    },
+    getJuniorSippReliefAtSource(grossContribution = 0, relevantUkEarnings = 0, age = 0) {
+      const eligibleGross = this.getJuniorSippEligibleGrossContribution(grossContribution, relevantUkEarnings, age);
+      return eligibleGross * this.juniorSipp.reliefAtSourceRate;
+    },
+    getJuniorSippNetPaymentForGross(grossContribution = 0, relevantUkEarnings = 0, age = 0) {
+      const eligibleGross = this.getJuniorSippEligibleGrossContribution(grossContribution, relevantUkEarnings, age);
+      return eligibleGross * (1 - this.juniorSipp.reliefAtSourceRate);
+    },
+    projectJuniorSipp({ currentAge = 0, currentValue = 0, annualGrossContribution = 0, relevantUkEarnings = 0, expectedReturnPct = 0, projectToAge = 18 } = {}) {
+      const startAge = Math.max(0, Math.floor(this._num(currentAge)));
+      const endAge = Math.max(startAge, Math.floor(this._num(projectToAge)));
+      let balance = Math.max(0, this._num(currentValue));
+      const rate = this._num(expectedReturnPct) / 100;
+      for (let age = startAge; age < endAge; age += 1) {
+        const gross = this.getJuniorSippEligibleGrossContribution(annualGrossContribution, relevantUkEarnings, age);
+        balance = (balance + gross) * (1 + rate);
+      }
+      return balance;
+    },
+
     // ISA年間拠出額（Stocks and Shares ISA + Cash ISA の合算）
     getIsaContributed(accounts) {
       return this._num((accounts.stocksSharesIsa || {}).annualContribution)
@@ -220,7 +299,7 @@ export const GB_COUNTRY_RULES = {
     },
     notImplemented: [
       "Lifetime ISA（LISA）は独立口座・年間£4,000上限・25%政府ボーナス・50歳までの拠出・60歳からの退職目的アクセスを資産推移へ統合済み。初回住宅購入による途中引出しをライフプラン資産推移へ自動反映する機能は未実装",
-      "Junior ISA / Junior SIPP",
+      "Junior ISAは年間£9,000上限・18歳までロック・未使用枠繰越なし・18歳時点投影を実装済み。子ども向けSIPPは無収入時£3,600 gross（£2,880 net＋20% relief at source）・所得連動上限・57歳最低受給年齢・残高投影まで実装済み。死亡・重篤疾患等の例外引出し、provider固有条件は未実装",
       "年金拠出のcarry forwardは過去3年分の利用可能額を入力して当年枠へ加算済み。各年度の加入実績・使用順をアプリ内で自動再構成する機能は未実装",
       "2027年4月からのCash ISA年間上限£12,000（65歳未満）— 上限額のみ scheduled に保持",
     ],
