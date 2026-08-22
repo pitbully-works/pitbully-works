@@ -68,6 +68,9 @@ const mutants = [
   ["CA QPP late-claim increase is 0.7 percent monthly", "countryRules/CA.js", "earlyReductionPerMonthDefault: 0.006,\n      lateIncreasePerMonth: 0.007,", "earlyReductionPerMonthDefault: 0.006,\n      lateIncreasePerMonth: 0.006,", "overseasHundredPhase4.test.js"],
   ["CA QPP age-72 access is protected", "countryRules/CA.js", "latestAge: 72,", "latestAge: 70,", "overseasHundredPhase4.test.js"],
   ["CA QPP early reduction lower bound is protected", "countryRules/CA.js", "earlyReductionPerMonthMin: 0.005,", "earlyReductionPerMonthMin: 0.004,", "overseasHundredPhase4.test.js"],
+  ["AU partner age advances with claimant age", "countryRules/AU.js", "return Math.max(0, (Number(currentPartnerAge) || 0) + ((Number(claimantTargetAge) || 0) - (Number(claimantCurrentAge) || 0)));", "return Math.max(0, Number(currentPartnerAge) || 0);", "overseasHundredPhase5.test.js"],
+  ["AU younger partner Super becomes assessable at 67", "countryRules/AU.js", "return age >= this.agePension.qualifyingAge || !!isReceivingSuperPension;", "return !!isReceivingSuperPension;", "overseasHundredPhase5.test.js"],
+  ["AU partner Super projection respects contribution end age", "countryRules/AU.js", "if (age < endAge) balance += annual;", "if (age <= endAge) balance += annual;", "overseasHundredPhase5.test.js"],
 ];
 
 if (!fs.existsSync(vitestBin)) {
