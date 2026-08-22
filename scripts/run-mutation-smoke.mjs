@@ -52,6 +52,8 @@ const mutants = [
   ["Current persisted watchlists validate before load", "App.jsx", "const parsedStorageVersion = normalizeProfileStorageVersion(parsed.profileStorageVersion);\n          if (parsedStorageVersion === PROFILE_STORAGE_VERSION && parsed.watchlists !== undefined && (", "const parsedStorageVersion = normalizeProfileStorageVersion(parsed.profileStorageVersion);\n          if (false && parsed.watchlists !== undefined && (", "finalPersistenceSchemaBoundary.test.js"],
   ["Bank retirement value is captured before the next birthday", "utils/simulations.js", "if (totalAtRetire === null && age >= retireAge) {", "if (false) {", "bankRetirementBoundaryFinal.test.js"],
   ["Regression workflow verifies production build", ".github/workflows/test.yml", "run: npm run build", "run: echo skip-build", "finalWorkflowIntegrity.test.js"],
+  ["Engine preserves full retirement snapshot", "lifePlanEngine.js", "retireSnapshot = snapshot(age);", "retireSnapshot = null;", "retirementSnapshotUiBoundary.test.js"],
+  ["UI retirement breakdown uses exact retirement snapshot", "App.jsx", "return integrated.retireSnapshot;", "return rows[rows.length - 1];", "retirementSnapshotUiBoundary.test.js"],
 ];
 
 if (!fs.existsSync(vitestBin)) {
