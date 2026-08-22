@@ -88,6 +88,12 @@ export const GB_COUNTRY_RULES = {
       // 子どもが到達する時点では、既に法定最低年金受給年齢57歳（2028-04-06以降）が適用される前提。
       normalMinimumPensionAge: 57,
       unusedTaxReliefFloorCarryForward: false,
+      exceptionalAccess: {
+        deathBeforeAccessAge: true,
+        seriousIllHealthBeforeAccessAge: true,
+        ordinaryEarlyWithdrawal: false,
+      },
+      providerSpecificTermsModelled: false,
     },
     // 予定されている制度変更（2026/27時点では未適用。計算には反映していない）
     scheduled: {
@@ -167,6 +173,18 @@ export const GB_COUNTRY_RULES = {
     getJuniorSippNetPaymentForGross(grossContribution = 0, relevantUkEarnings = 0, age = 0) {
       const eligibleGross = this.getJuniorSippEligibleGrossContribution(grossContribution, relevantUkEarnings, age);
       return eligibleGross * (1 - this.juniorSipp.reliefAtSourceRate);
+    },
+    canAccessJuniorSippBeforeMinimumAge({ age = 0, deceased = false, seriousIllHealth = false } = {}) {
+      const a = Math.max(0, this._num(age));
+      if (a >= this.juniorSipp.normalMinimumPensionAge) return true;
+      return Boolean(deceased || seriousIllHealth);
+    },
+    getJuniorSippAccessReason({ age = 0, deceased = false, seriousIllHealth = false } = {}) {
+      const a = Math.max(0, this._num(age));
+      if (a >= this.juniorSipp.normalMinimumPensionAge) return "normal-minimum-age";
+      if (deceased) return "death";
+      if (seriousIllHealth) return "serious-ill-health";
+      return "locked";
     },
     projectJuniorSipp({ currentAge = 0, currentValue = 0, annualGrossContribution = 0, relevantUkEarnings = 0, expectedReturnPct = 0, projectToAge = 18 } = {}) {
       const startAge = Math.max(0, Math.floor(this._num(currentAge)));
@@ -299,7 +317,7 @@ export const GB_COUNTRY_RULES = {
     },
     notImplemented: [
       "Lifetime ISA（LISA）は独立口座・年間£4,000上限・25%政府ボーナス・50歳までの拠出・60歳からの退職目的アクセスを資産推移へ統合済み。初回住宅購入による途中引出しをライフプラン資産推移へ自動反映する機能は未実装",
-      "Junior ISAは年間£9,000上限・18歳までロック・未使用枠繰越なし・18歳時点投影を実装済み。子ども向けSIPPは無収入時£3,600 gross（£2,880 net＋20% relief at source）・所得連動上限・57歳最低受給年齢・残高投影まで実装済み。死亡・重篤疾患等の例外引出し、provider固有条件は未実装",
+      "Junior ISAは年間£9,000上限・18歳までロック・未使用枠繰越なし・18歳時点投影を実装済み。子ども向けSIPPは無収入時£3,600 gross（£2,880 net＋20% relief at source）・所得連動上限・57歳最低受給年齢・残高投影・死亡/重篤疾患の例外アクセス判定まで実装済み。provider固有の手数料・最低拠出額・商品制限等は未実装",
       "年金拠出のcarry forwardは過去3年分の利用可能額を入力して当年枠へ加算済み。各年度の加入実績・使用順をアプリ内で自動再構成する機能は未実装",
       "2027年4月からのCash ISA年間上限£12,000（65歳未満）— 上限額のみ scheduled に保持",
     ],
