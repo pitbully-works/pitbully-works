@@ -121,9 +121,9 @@ const mutants = [
   ["CA PEI basic personal amount is protected", "countryRules/CA.js", "basicPersonalAmount: 15000,", "basicPersonalAmount: 14000,", "overseasHundredPhase19.test.js"],
   ["CA PEI new top bracket is protected", "countryRules/CA.js", "{ upTo: Infinity, rate: 0.20 },", "{ upTo: Infinity, rate: 0.19 },", "overseasHundredPhase19.test.js"],
 
-  ["CA RESP lifetime contribution limit is protected", "countryRules/CA.js", "lifetimeContributionLimit: 50000,\\n      cesgBasicRate: 0.20,", "lifetimeContributionLimit: 49000,\\n      cesgBasicRate: 0.20,", "overseasHundredPhase21.test.js"],
+  ["CA RESP lifetime contribution limit is protected", "countryRules/CA.js", "lifetimeContributionLimit: 50000,\n      cesgBasicRate: 0.20,", "lifetimeContributionLimit: 49000,\n      cesgBasicRate: 0.20,", "overseasHundredPhase21.test.js"],
   ["CA RESP CESG lifetime max is protected", "countryRules/CA.js", "cesgLifetimeMax: 7200,", "cesgLifetimeMax: 7000,", "overseasHundredPhase21.test.js"],
-  ["CA RDSP lifetime contribution limit is protected", "countryRules/CA.js", "lifetimeContributionLimit: 200000,\\n      contributionLastAge: 59,", "lifetimeContributionLimit: 190000,\\n      contributionLastAge: 59,", "overseasHundredPhase21.test.js"],
+  ["CA RDSP lifetime contribution limit is protected", "countryRules/CA.js", "lifetimeContributionLimit: 200000,\n      contributionLastAge: 59,", "lifetimeContributionLimit: 190000,\n      contributionLastAge: 59,", "overseasHundredPhase21.test.js"],
   ["CA RDSP grant annual max is protected", "countryRules/CA.js", "grantAnnualMax: 3500,", "grantAnnualMax: 3000,", "overseasHundredPhase21.test.js"],
 
 ];
