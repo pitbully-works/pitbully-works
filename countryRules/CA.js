@@ -24,7 +24,7 @@ export const CA_COUNTRY_RULES = {
       { key: "investment", labelJa: "投資制度", labelEn: "Investment", status: "implemented", effective: "2026 calendar year", lastUpdated: "2026-08-17", updateJa: "TFSA、RRSP、非登録口座、RRIF、FHSAに加え、RESPの2026 CESG・生涯拠出上限・CLB基準、RDSPの生涯拠出上限・2026 Grant/Bond基準を反映。", updateEn: "TFSA, RRSP, non-registered accounts, RRIF and FHSA are modelled, together with 2026 RESP CESG/lifetime limits/CLB thresholds and RDSP lifetime contribution/grant/bond rules." },
       { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "partial", effective: "2026 / OAS & GIS Jul-Sep", lastUpdated: "2026-08-22", updateJa: "CPPに加え、ケベック州QPPの受給開始年齢60〜72歳・65歳満額・65歳後0.7%/月増額・早期0.5〜0.6%/月減額の選択計算を実装。OAS・回収税・GIS/Allowance上限・CPP PRBも反映。", updateEn: "Adds QPP claim-age modelling (60–72, full at 65, +0.7%/month after 65 and configurable 0.5–0.6%/month early reduction) alongside CPP, OAS recovery tax, GIS/Allowance maxima and CPP PRB." },
       { key: "healthcare", labelJa: "医療", labelEn: "Healthcare", status: "partial", effective: "2026", lastUpdated: "2026-08-21", updateJa: "州・準州の公的医療保険を前提に自己負担を計算し、CDCPの所得別自己負担率とオンタリオ州の2026年長期介護ホーム最大自己負担額を自動計算。その他の州・準州の薬剤・視力・介護費は手入力。", updateEn: "Models out-of-pocket costs under provincial/territorial coverage, the income-based CDCP co-payment and Ontario 2026 long-term-care home maximum co-payments; drug, vision and long-term-care charges outside Ontario remain manual." },
-      { key: "tax", labelJa: "税金", labelEn: "Tax", status: "partial", effective: "2026 tax year", lastUpdated: "2026-08-22", updateJa: "連邦所得税に加え、オンタリオ州・ケベック州・ブリティッシュコロンビア州・アルバータ州・マニトバ州・全10州・3準州の所得税、Quebec abatement、CPP/QPP・EI・QPIPを反映。配当税額控除・AMT等は未実装。", updateEn: "Federal income tax plus Ontario, Quebec, British Columbia, Alberta, Manitoba, all 10 provinces and 3 territories income tax, the Quebec abatement, CPP/QPP, EI and QPIP are modelled; dividend credits and AMT remain unimplemented." },
+      { key: "tax", labelJa: "税金", labelEn: "Tax", status: "partial", effective: "2026 tax year", lastUpdated: "2026-08-22", updateJa: "連邦所得税に加え、全10州・3準州の所得税、Quebec abatement、CPP/QPP・EI・QPIPを反映。2026年のCPP自営業者拠出と、適格年金所得の最大50%分割の計画用上限判定も実装。配当税額控除・AMT等は未実装。", updateEn: "Federal income tax plus all 10 provinces and 3 territories, the Quebec abatement, CPP/QPP, EI and QPIP are modelled. Also includes 2026 self-employed CPP contributions and a planning cap for splitting up to 50% of eligible pension income; dividend credits and AMT remain unimplemented." },
       { key: "estate", labelJa: "相続", labelEn: "Estate", status: "implemented", effective: "2026", lastUpdated: "2026-08-22", updateJa: "死亡直前の時価によるみなし譲渡、配偶者・コモンローへの税繰延ロールオーバー、主たる住居の除外を使った概算を実装。", updateEn: "Adds an estimate for deemed disposition at fair market value immediately before death, spouse/common-law rollover, and principal-residence exclusion." },
     ],
   },
@@ -709,6 +709,8 @@ export const CA_COUNTRY_RULES = {
       bpa: "https://www.canada.ca/en/revenue-agency/services/tax/individuals/frequently-asked-questions-individuals/basic-personal-amount.html",
       capitalGains: "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/personal-income/line-12700-capital-gains.html",
       payroll: "https://www.canada.ca/en/revenue-agency/services/forms-publications/payroll/t4127-payroll-deductions-formulas/t4127-jan/t4127-jan-payroll-deductions-formulas-computer-programs.html",
+      cppSelfEmployed: "https://www.canada.ca/en/employment-social-development/programs/pensions/pension/statistics/2026-quarterly-july-september.html",
+      pensionIncomeSplitting: "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/pension-income-splitting.html",
       ei: "https://www.canada.ca/en/employment-social-development/programs/ei/ei-list/ei-employers/premium-reduction-program/2026-maximum-insurable-earnings.html",
       qpip: "https://www.revenuquebec.ca/en/businesses/source-deductions-and-employer-contributions/calculating-source-deductions-and-contributions/qpip-premiums/maximum-insurable-earnings-and-premium-rate/",
       quebecIncomeTax: "https://www.revenuquebec.ca/en/citizens/income-tax-return/completing-your-income-tax-return/income-tax-rates/",
@@ -924,6 +926,10 @@ export const CA_COUNTRY_RULES = {
       cppRate: 0.0595,
       qppRate: 0.0630,
       secondAdditionalRate: 0.0400,
+      cppSelfEmployedRate: 0.1190,
+      cppSelfEmployedSecondAdditionalRate: 0.0800,
+      cppSelfEmployedFirstMax: 8460.90,
+      cppSelfEmployedSecondMax: 832.00,
       eiMaxInsurableEarnings: 68900,
       eiRate: 0.0163,
       eiQuebecRate: 0.0130,
@@ -947,6 +953,43 @@ export const CA_COUNTRY_RULES = {
         total: first + second,
       };
     },
+    // Self-employed CPP (outside Quebec), 2026. Self-employed people pay both the
+    // employee and employer shares: 11.90% between the YBE and YMPE, plus 8.00%
+    // on earnings between YMPE and YAMPE. Quebec uses QPP rules and is deliberately
+    // not approximated by this CPP helper.
+    calculateSelfEmployedCppContribution(netBusinessIncome, provinceCode = "ON") {
+      const cfg = this.payrollDeductions;
+      const income = Math.max(0, Number(netBusinessIncome) || 0);
+      const code = String(provinceCode || "ON").toUpperCase();
+      if (code === "QC") {
+        return { plan: "QPP", supported: false, first: 0, second: 0, total: 0 };
+      }
+      const firstBand = Math.max(0, Math.min(income, cfg.ympe) - cfg.ybe);
+      const secondBand = Math.max(0, Math.min(income, cfg.yampe) - cfg.ympe);
+      const first = Math.min(cfg.cppSelfEmployedFirstMax, firstBand * cfg.cppSelfEmployedRate);
+      const second = Math.min(cfg.cppSelfEmployedSecondMax, secondBand * cfg.cppSelfEmployedSecondAdditionalRate);
+      return { plan: "CPP", supported: true, first, second, total: first + second };
+    },
+
+    // Planning helper for CRA pension-income splitting. The election may allocate
+    // up to 50% of eligible pension income to a spouse/common-law partner. This
+    // helper only enforces the transfer ceiling; eligibility of the income itself
+    // must be established by the caller because it depends on income type and age.
+    getPensionIncomeSplit({ eligiblePensionIncome = 0, requestedSplit = null } = {}) {
+      const eligible = Math.max(0, Number(eligiblePensionIncome) || 0);
+      const maximumTransfer = eligible * 0.50;
+      const requested = requestedSplit === null || requestedSplit === undefined
+        ? maximumTransfer
+        : Math.max(0, Number(requestedSplit) || 0);
+      const transferred = Math.min(maximumTransfer, requested);
+      return {
+        eligiblePensionIncome: eligible,
+        maximumTransfer,
+        transferred,
+        pensionerRetains: Math.max(0, eligible - transferred),
+      };
+    },
+
     calculateEmployeeEiPremium(employmentIncome, provinceCode = "ON") {
       const cfg = this.payrollDeductions;
       const income = Math.max(0, Number(employmentIncome) || 0);
@@ -1356,9 +1399,9 @@ export const CA_COUNTRY_RULES = {
       "州・準州所得税の追加地域はなし（カナダ10州・3準州を実装済み）",
       "オンタリオ州の扶養家族等を含むTax Reductionの完全計算（基本本人分のみ反映）",
       "配当税額控除（eligible / non-eligible dividend tax credit）",
-      "CPP/QPP拠出金・EI保険料・Quebec Parental Insurance Plan（QPIP）は2026年の従業員本人分を実装済み。自営業者向け拠出は未実装",
+      "CPP/QPP拠出金・EI保険料・Quebec Parental Insurance Plan（QPIP）は2026年の従業員本人分を実装済み。CPPの自営業者拠出（Quebec以外）は実装済みで、自営業QPPは未実装",
       "Alternative Minimum Tax（AMT）",
-      "年金所得の分割（pension income splitting）",
+      "年金所得分割は最大50%の移転上限を計画用に実装済み。所得種類・年齢ごとのeligible pension income判定と双方の最終申告税額の完全自動最適化は未実装",
     ],
   },
 
