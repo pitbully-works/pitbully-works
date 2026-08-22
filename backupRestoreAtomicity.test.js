@@ -29,6 +29,6 @@ describe("backup/persistence restore atomicity", () => {
   });
 
   it("uses strict supported-country validation for both current-schema maps", () => {
-    expect((app.match(/hasOnlySupportedCountryKeys\(parsed\.(profiles|watchlists)\)/g) || []).length).toBe(2);
+    expect((app.match(/hasOnlySupportedCountryKeys\(parsed\.(profiles|watchlists)\)/g) || []).length).toBe(3);
   });
 });
