@@ -24,14 +24,14 @@ describe("CA 2026 Ontario provincial income tax", () => {
     expect(r.healthPremium).toBeGreaterThan(0);
   });
   it("does not invent provincial tax for unsupported provinces", () => {
-    const r = tax.calculateProvincialTax(80000, "AB");
+    const r = tax.calculateProvincialTax(80000, "MB");
     expect(r.tax).toBe(0);
     expect(r.unsupported).toBe(true);
   });
   it("includes provincial tax on taxable capital gains for supported provinces", () => {
     expect(tax.calculateProvincialCapitalGainsTax(20000, 60000, "ON")).toBeGreaterThan(0);
     expect(tax.calculateProvincialCapitalGainsTax(20000, 60000, "BC")).toBeGreaterThan(0);
-    expect(tax.calculateProvincialCapitalGainsTax(20000, 60000, "AB")).toBe(0);
+    expect(tax.calculateProvincialCapitalGainsTax(20000, 60000, "MB")).toBe(0);
   });
   it("RRSP contributions also reduce Ontario tax when Ontario is selected", () => {
     expect(tax.calculateProvincialRrspTaxSaving(10000, 100000, 20000, "ON")).toBeGreaterThan(0);
