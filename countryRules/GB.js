@@ -13,15 +13,15 @@
 // 逆に JP/US 側からも参照されない。英国版の変更はこのオブジェクト内で完結する。
 export const GB_COUNTRY_RULES = {
   meta: {
-    verifiedAsOf: "2026-08-21",
+    verifiedAsOf: "2026-08-22",
     effectivePeriod: "2026/27 tax year",
     updateCycle: "毎年3〜4月（新税年度前後）＋Budget/Finance Act時",
-    noteJa: "2026/27税年度の制度を2026年8月21日に再確認。England / Wales / Northern Irelandに加え、Scottish Income TaxとInheritance Taxの概算計算にも対応しています。",
-    noteEn: "2026/27 rules re-verified on 21 Aug 2026. Income tax now covers England, Wales, Northern Ireland and Scottish Income Tax, with an Inheritance Tax estimate model.",
+    noteJa: "2026/27税年度の制度を2026年8月22日に最終再確認。England / Wales / Northern Irelandに加え、Scottish Income Tax、地域別NHS費用、Inheritance Taxの概算計算に対応しています。自動化できない地域・個別判定は利用者入力として明示しています。",
+    noteEn: "2026/27 rules were final-audited on 22 Aug 2026. The model covers England, Wales, Northern Ireland and Scottish Income Tax, regional NHS costs and an Inheritance Tax estimate; locality- or case-specific items that cannot be safely automated are explicitly user-entered.",
     coverage: [
       { key: "investment", labelJa: "投資制度", labelEn: "Investment", status: "implemented", effective: "2026/27 tax year", lastUpdated: "2026-08-17", updateJa: "ISA・LISA・SIPP・職域年金・GIAに加え、Junior ISAと子ども向けSIPPの2026/27拠出・税控除・年齢制約を反映。予定されるCash ISA変更は将来制度として保持。", updateEn: "ISA, LISA, SIPP, workplace pension and GIA are modelled, together with 2026/27 Junior ISA and child-pension contribution/tax-relief/age rules; the scheduled Cash ISA change is kept as a future rule." },
       { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "implemented", effective: "2026/27 tax year", lastUpdated: "2026-08-17", updateJa: "State Pension・私的年金の受給/繰下げに加え、NI qualifying yearsによる簡易見込額と2026/27 Pension Credit Guarantee Credit概算を反映。公式NI記録を使う完全forecastは未実装。", updateEn: "Models State Pension and private-pension access/deferral, a qualifying-years State Pension estimate and a 2026/27 Pension Credit Guarantee Credit estimate; a full forecast from official NI history is not implemented." },
-      { key: "healthcare", labelJa: "医療", labelEn: "Healthcare", status: "partial", effective: "2026/27", lastUpdated: "2026-08-21", updateJa: "地域別処方箋、EnglandのNHS歯科料金、Englandの介護資産判定を追加。その他地域の歯科・介護は利用者入力。", updateEn: "Adds regional prescription rules, NHS dental charges for England and England social-care capital assessment; dental/social-care costs in other nations remain user-entered." },
+      { key: "healthcare", labelJa: "医療", labelEn: "Healthcare", status: "partial", effective: "2026/27", lastUpdated: "2026-08-22", updateJa: "地域別処方箋、England/Scotland/WalesのNHS歯科、Englandの介護資産判定を実装。Northern Irelandの歯科はitem-of-service料金のため実額入力、England以外の介護負担額も利用者入力として明示。", updateEn: "Models regional prescriptions, NHS dental costs for England/Scotland/Wales and England social-care capital assessment. Northern Ireland dental costs remain item-of-service user input, and non-England social-care charges remain explicitly user-entered." },
       { key: "tax", labelJa: "税金", labelEn: "Tax", status: "implemented", effective: "2026/27 tax year", lastUpdated: "2026-08-21", updateJa: "England/Wales/NIの所得税・配当・CGTに加え、2026/27 Scottish Income Tax、貯蓄利子課税、Marriage Allowance / Married Couple's Allowanceを反映。", updateEn: "Models England/Wales/NI income tax, dividends and CGT, plus 2026/27 Scottish Income Tax, savings-interest tax and Marriage/Married Couple allowances." },
       { key: "estate", labelJa: "相続", labelEn: "Estate", status: "implemented", effective: "2026/27", lastUpdated: "2026-08-21", updateJa: "Inheritance TaxのNRB・RNRB・£2m超のテーパー・配偶者等の未使用枠移転を概算。", updateEn: "Estimates Inheritance Tax using the NRB, RNRB, the £2m taper and transferable unused spouse/civil-partner bands." },
     ],
@@ -1012,6 +1012,7 @@ export const GB_COUNTRY_RULES = {
       dentalEngland: "https://www.nhsbsa.nhs.uk/help-nhs-dental-costs",
       dentalScotland: "https://www.nhsinform.scot/care-support-and-rights/nhs-services/dental/receiving-nhs-dental-treatment-in-scotland/",
       dentalWales: "https://faq.nhsbsa.nhs.uk/knowledgebase/article/KA-02003/en-us",
+      dentalNorthernIreland: "https://www.nidirect.gov.uk/articles/seeing-dentist",
       socialCareEngland: "https://www.gov.uk/government/publications/social-care-charging-for-local-authorities-2026-to-2027",
     },
     regions: ["england", "scotland", "wales", "northernIreland"],
