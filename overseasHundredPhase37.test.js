@@ -9,6 +9,15 @@ describe("overseas 100 phase 37 — GB Pension Credit Savings Credit couple clos
     totalIncomeWeekly: 350,
   };
 
+  it("preserves legacy couple calls when the separate partner-age flag is absent", () => {
+    const r = ret.calculatePensionCreditSavingsCredit({
+      ...base,
+      reachedStatePensionAgeBefore20160406: true,
+    });
+    expect(r.eligible).toBe(true);
+    expect(r.savingsCreditWeekly).toBeGreaterThan(0);
+  });
+
   it("allows a couple where both partners reached State Pension age before 6 April 2016", () => {
     const r = ret.calculatePensionCreditSavingsCredit({
       ...base,
