@@ -50,6 +50,7 @@ const mutants = [
   ["Negative retirement living cost cannot enter the plan", "utils/buildPlanInput.js", "Math.max(0, Number(overrides.livingCostMonthly))", "Number(overrides.livingCostMonthly)", "fiveCountryCalculationBoundaryFinal.test.js"],
   ["Current persisted profiles reject unknown country buckets", "utils/countryProfiles.js", "!isPlainRecord(p.profiles) || !hasOnlySupportedCountryKeys(p.profiles)", "!isPlainRecord(p.profiles)", "finalPersistenceSchemaBoundary.test.js"],
   ["Current persisted watchlists validate before load", "App.jsx", "const parsedStorageVersion = normalizeProfileStorageVersion(parsed.profileStorageVersion);\n          if (parsedStorageVersion === PROFILE_STORAGE_VERSION && parsed.watchlists !== undefined && (", "const parsedStorageVersion = normalizeProfileStorageVersion(parsed.profileStorageVersion);\n          if (false && parsed.watchlists !== undefined && (", "finalPersistenceSchemaBoundary.test.js"],
+  ["Bank retirement value is captured before the next birthday", "utils/simulations.js", "if (totalAtRetire === null && age >= retireAge) {", "if (false) {", "bankRetirementBoundaryFinal.test.js"],
 ];
 
 if (!fs.existsSync(vitestBin)) {
