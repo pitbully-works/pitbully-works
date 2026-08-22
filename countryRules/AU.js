@@ -1263,6 +1263,57 @@ export const AU_COUNTRY_RULES = {
       if (income >= cfg.cutOutThreshold) return 0;
       return Math.max(0, cfg.maximum - (income - cfg.shadeOutThreshold) * this.seniorsAndPensionersTaxOffset.shadeOutRate);
     },
+    // SAPTOの配偶者間移転。双方がSAPTO対象である場合に限り、
+    // ATOの「unused spouse SAPTO」式で移転可能額を計算する。
+    // spouse taxable income がA$6,000以下なら未使用SAPTO全額、
+    // 超える場合は A - ((B - 6,000) × 15%)。Bにはexempt pension incomeも含む。
+    // これは移転可能なoffset entitlementの概算であり、最終税額への適用は非還付型offsetとして扱う。
+    calculateUnusedSaptoTransferFromSpouse({
+      spouseSaptoAmount = 0,
+      spouseTaxableIncome = 0,
+      spouseExemptPensionIncome = 0,
+      bothEligible = false,
+    } = {}) {
+      if (bothEligible !== true) return 0;
+      const amount = Math.max(0, Number(spouseSaptoAmount) || 0);
+      const taxable = Math.max(0, Number(spouseTaxableIncome) || 0);
+      const exemptPension = Math.max(0, Number(spouseExemptPensionIncome) || 0);
+      const incomeForUnusedTest = taxable + exemptPension;
+      if (incomeForUnusedTest <= 6000) return amount;
+      return Math.max(0, amount - (incomeForUnusedTest - 6000) * 0.15);
+    },
+    calculateSaptoIncludingSpouseTransfer({
+      rebateIncome = 0,
+      status = "couple",
+      eligible = false,
+      spouseEligible = false,
+      spouseRebateIncome = 0,
+      spouseStatus = "couple",
+      spouseTaxableIncome = 0,
+      spouseExemptPensionIncome = 0,
+    } = {}) {
+      const ownSapto = this.calculateSeniorsAndPensionersTaxOffset(rebateIncome, status, eligible);
+      if (!eligible || !spouseEligible) {
+        return { ownSapto, spouseSapto: 0, transferableFromSpouse: 0, totalEntitlement: ownSapto };
+      }
+      const spouseSapto = this.calculateSeniorsAndPensionersTaxOffset(
+        spouseRebateIncome,
+        spouseStatus,
+        true
+      );
+      const transferableFromSpouse = this.calculateUnusedSaptoTransferFromSpouse({
+        spouseSaptoAmount: spouseSapto,
+        spouseTaxableIncome,
+        spouseExemptPensionIncome,
+        bothEligible: true,
+      });
+      return {
+        ownSapto,
+        spouseSapto,
+        transferableFromSpouse,
+        totalEntitlement: ownSapto + transferableFromSpouse,
+      };
+    },
     // Medicare levy（2%）。個人の低所得減免に加え、夫婦・ひとり親等の家族所得減免を反映する。
     // saptoEligible=true の場合はSAPTO対象者用の閾値を使う。
     // family=true の場合、本人＋配偶者の課税所得と扶養子数から家族閾値を計算し、
@@ -1410,7 +1461,7 @@ export const AU_COUNTRY_RULES = {
       return Math.max(0, withGain - base);
     },
     notImplemented: [
-      "SAPTOの配偶者間の未使用税額控除移転（spouse transfer）と資格条件の完全自動判定",
+      "SAPTOの配偶者間の未使用税額控除移転は実装済み。年齢・政府年金等の資格条件、年途中の配偶者関係、最終ATO判定の完全自動化は未実装",
       "Government super co-contributionは本人確認入力で反映済み。年齢・ビザ・10% eligible income test・税申告・前年TSB等の完全自動判定は未実装",
       "Medicare levyの家族所得による減免は実装済み。年途中の婚姻・離婚・免除日数などの日割り計算は未実装",
       "HELP等の学生ローンは2026-27の当年強制返済額を実装済み。将来の債務残高・年次indexation・任意返済の自動投影は未実装",
