@@ -44,7 +44,11 @@ function netWorthAt(result, age) {
  * 1プラン分の主要指標を取り出す。新しい計算は一切していない。
  */
 function summarize(result, { retireAge, deathAge, inheritanceTarget }) {
-  const netWorthAtRetire = netWorthAt(result, retireAge);
+  // runIntegratedPlan が退職境界ちょうどの値を返す場合はそれを最優先する。
+  // 小数年齢（例: 60歳6ヶ月）を Math.round して次の誕生日の残高で代用しない。
+  const netWorthAtRetire = Number.isFinite(result.netWorthAtRetire)
+    ? result.netWorthAtRetire
+    : netWorthAt(result, retireAge);
   const netWorthFinal = result.finalNetWorth;
   return {
     retireAge,

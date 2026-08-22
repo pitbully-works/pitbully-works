@@ -89,8 +89,10 @@ export function readLivingCostMonthly(country, inputs) {
   const code = String(country || "").trim().toUpperCase();
   if (!Object.prototype.hasOwnProperty.call(LIVING_COST_PATH, code)) return 0;
   const key = LIVING_COST_PATH[code];
-  if (key === null) return Number(inputs.livingCostMonthly) || 0;
-  return Number((inputs[key] || {}).expensesMonthly) || 0;
+  const raw = key === null ? Number(inputs.livingCostMonthly) : Number((inputs[key] || {}).expensesMonthly);
+  // 金額入力は本来0以上だが、古い保存データ・手編集・外部連携から負数が来ても
+  // 「負の生活費＝資産が増える/支出が消える」計算には絶対にしない。
+  return Number.isFinite(raw) ? Math.max(0, raw) : 0;
 }
 
 const scale = (v, m) => (Number(v) || 0) * m;
@@ -201,11 +203,11 @@ export function buildPlanInput(ctx, overrides = {}) {
   //   明示的に 0 を渡した場合（積立を止めるシナリオ）は 0 のまま尊重する。
   const isUnset = (v) => v === undefined || v === null || v === "";
   const m = isUnset(overrides.contributionMultiplier) || !Number.isFinite(Number(overrides.contributionMultiplier))
-    ? 1 : Number(overrides.contributionMultiplier);
+    ? 1 : Math.max(0, Number(overrides.contributionMultiplier));
   const retireAge = isUnset(overrides.retireAge) || !Number.isFinite(Number(overrides.retireAge))
     ? Number(inputs.retireAge) : Number(overrides.retireAge);
   const livingCostMonthly = isUnset(overrides.livingCostMonthly) || !Number.isFinite(Number(overrides.livingCostMonthly))
-    ? readLivingCostMonthly(country, inputs) : Number(overrides.livingCostMonthly);
+    ? readLivingCostMonthly(country, inputs) : Math.max(0, Number(overrides.livingCostMonthly));
 
   const D = countryDerived;
   const pools = [];
