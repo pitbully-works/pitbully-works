@@ -176,6 +176,10 @@ const mutants = [
   ["GB Pension Credit 2026 first-child addition is protected", "countryRules/GB.js", "childFirstBornBefore2017Weekly: 81.07,", "childFirstBornBefore2017Weekly: 81.08,", "overseasHundredPhase30.test.js"],
   ["GB Pension Credit both severe disability qualifiers are protected", "countryRules/GB.js", "status === \"couple\" && severeCount >= 2", "status === \"couple\" && severeCount >= 3", "overseasHundredPhase30.test.js"],
 
+  ["GB Guarantee Credit final award floors at zero", "countryRules/GB.js", "age.eligible ? Math.max(0, Math.round(rawWeekly * 100) / 100) : 0", "age.eligible ? Math.max(-1, Math.round(rawWeekly * 100) / 100) : 0", "overseasHundredPhase31.test.js"],
+  ["GB Guarantee Credit mixed-age gate is protected", "countryRules/GB.js", "age.eligible ? Math.max(0, Math.round(rawWeekly * 100) / 100) : 0", "true ? Math.max(0, Math.round(rawWeekly * 100) / 100) : 0", "overseasHundredPhase31.test.js"],
+  ["GB Guarantee Credit annualises at 52 weeks", "countryRules/GB.js", "guaranteeCreditWeekly * 52 * 100", "guaranteeCreditWeekly * 51 * 100", "overseasHundredPhase31.test.js"],
+
 ];
 
 if (!fs.existsSync(vitestBin)) {
