@@ -496,8 +496,8 @@ export const GB_COUNTRY_RULES = {
     implemented: true,
     model: "ukIncomeTaxPlusDividendPlusCgt",
     effectiveTaxYear: "2026/27",
-    lastUpdated: "2026-07-13",
-    sourceName: "GOV.UK / HMRC — Income Tax rates and Personal Allowances, Tax on dividends, Capital Gains Tax",
+    lastUpdated: "2026-08-22",
+    sourceName: "GOV.UK / HMRC — Income Tax, National Insurance, dividends and Capital Gains Tax",
     sourceUrl: "https://www.gov.uk/income-tax-rates",
     sourceUrls: {
       incomeTax: "https://www.gov.uk/income-tax-rates",
@@ -507,6 +507,7 @@ export const GB_COUNTRY_RULES = {
       savings: "https://www.gov.uk/apply-tax-free-interest-on-savings",
       pensionTaxRelief: "https://www.gov.uk/tax-on-your-private-pension/pension-tax-relief",
       scotland: "https://www.gov.uk/scottish-income-tax",
+      nationalInsurance: "https://www.gov.uk/guidance/rates-and-thresholds-for-employers-2026-to-2027",
     },
     region: "United Kingdom",
     regionsImplemented: ["england", "wales", "northernIreland", "scotland"],
@@ -546,6 +547,21 @@ export const GB_COUNTRY_RULES = {
       basicRate: 0.18,
       higherRate: 0.24,
     },
+    nationalInsurance: {
+      primaryThresholdAnnual: 12570,
+      upperEarningsLimitAnnual: 50270,
+      mainRate: 0.08,
+      additionalRate: 0.02,
+    },
+    calculateEmployeeNationalInsurance(employmentIncome) {
+      const income = Math.max(0, Number(employmentIncome) || 0);
+      const ni = this.nationalInsurance;
+      if (income <= ni.primaryThresholdAnnual) return 0;
+      const mainBand = Math.max(0, Math.min(income, ni.upperEarningsLimitAnnual) - ni.primaryThresholdAnnual);
+      const above = Math.max(0, income - ni.upperEarningsLimitAnnual);
+      return mainBand * ni.mainRate + above * ni.additionalRate;
+    },
+
     savings: {
       personalSavingsAllowanceBasic: 1000,
       personalSavingsAllowanceHigher: 500,
@@ -659,7 +675,6 @@ export const GB_COUNTRY_RULES = {
       return Math.min(contribution, cap) * this.getMarginalRate(grossIncome);
     },
     notImplemented: [
-      "National Insurance拠出額（NICs）",
       "貯蓄利子への課税額計算（Personal Savings Allowanceは保持。2027年4月からの22/42/47%への引上げも未適用）",
       "2027年4月からの不動産所得税率（22/42/47%）",
       "Marriage Allowance / Married Couple's Allowance",
