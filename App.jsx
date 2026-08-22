@@ -2144,6 +2144,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   // an older slow write can never finish after a newer one and overwrite fresh data.
   const saveQueueRef = useRef(Promise.resolve());
   const saveGenerationRef = useRef(0);
+  // History reads are asynchronous too. If the user switches country while an older
+  // read is still in flight, that older result must never repaint the new country's UI.
+  const historyRequestGenerationRef = useRef(0);
 
 
   // ---------- 国際化（i18n）：国が"JP"のままなら、moneyはyenと完全に同じ結果を返す ----------
@@ -3102,7 +3105,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         }
         const currentCode = normalizeProfileCountry(inputs.country);
         countryProfilesRef.current = { ...countryProfilesRef.current, [currentCode]: inputs };
-        countryWatchlistsRef.current = { ...countryWatchlistsRef.current, [currentCode]: watchlist };
+        countryWatchlistsRef.current = {
+          ...countryWatchlistsRef.current,
+          [currentCode]: normalizeStockWatchlist(watchlist, currentCode),
+        };
         const rawTarget = countryProfilesRef.current[target];
         const blank = makeCountryProfile(DEFAULT_INPUTS, target, inputs);
         const targetBase = rawTarget
@@ -3111,7 +3117,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         const merged = mergeKakeiboInputs(targetBase, parsed);
         const targetInputs = forceCountryMeta(applySharedIdentity(merged.inputs, inputs), target);
         const targetWatchlist = Array.isArray(countryWatchlistsRef.current[target])
-          ? countryWatchlistsRef.current[target]
+          ? normalizeStockWatchlist(countryWatchlistsRef.current[target], target)
           : defaultWatchlistFor(target);
         countryProfilesRef.current = { ...countryProfilesRef.current, [target]: targetInputs };
         countryWatchlistsRef.current = { ...countryWatchlistsRef.current, [target]: targetWatchlist };
@@ -3191,14 +3197,18 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   };
 
   const refreshHistory = useCallback(async () => {
+    const requestGeneration = ++historyRequestGenerationRef.current;
     if (!window.storage) {
-      setHistoryDebug(t("storageUnavailableDebug"));
+      if (requestGeneration === historyRequestGenerationRef.current) {
+        setHistoryDebug(t("storageUnavailableDebug"));
+      }
       return;
     }
     try {
-      const list = await window.storage.list(SNAPSHOT_PREFIX, false);
-      const keys = Array.isArray(list?.keys) ? list.keys : [];
       const currentCountry = normalizeProfileCountry(inputs.country);
+      const list = await window.storage.list(SNAPSHOT_PREFIX, false);
+      if (requestGeneration !== historyRequestGenerationRef.current) return;
+      const keys = Array.isArray(list?.keys) ? list.keys : [];
       // Read only the active country's snapshots. This avoids cross-country data
       // touching the current history path and prevents an unbounded Promise.all
       // over every country's stored history. Legacy `snapshot:YYYY-MM-DD` keys are
@@ -3225,6 +3235,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           } catch (e) { return { key: k, entry: null }; }
         })
       );
+      if (requestGeneration !== historyRequestGenerationRef.current) return;
       const clean = entries.map(({ key, entry }) => {
         if (!isPlainRecord(entry)) return null;
         const entryDate = normalizeSnapshotDate(entry.date);
@@ -3245,7 +3256,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         return [...map.values()].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, MAX_SNAPSHOT_HISTORY);
       });
     } catch (e) {
-      setHistoryDebug(t("historyFetchErrorDebug", { message: e?.message || t("unknownShort") }));
+      if (requestGeneration === historyRequestGenerationRef.current) {
+        setHistoryDebug(t("historyFetchErrorDebug", { message: e?.message || t("unknownShort") }));
+      }
     }
   }, [t, inputs.country]);
 
@@ -6261,14 +6274,17 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 if (!meta || !meta.enabled) return; // Coming Soon の国は選択不可
                 const currentCountry = normalizeProfileCountry(inputs.country);
                 countryProfilesRef.current = { ...countryProfilesRef.current, [currentCountry]: inputs };
-                countryWatchlistsRef.current = { ...countryWatchlistsRef.current, [currentCountry]: watchlist };
+                countryWatchlistsRef.current = {
+                  ...countryWatchlistsRef.current,
+                  [currentCountry]: normalizeStockWatchlist(watchlist, currentCountry),
+                };
                 const rawTarget = countryProfilesRef.current[nextCountry];
                 const blank = makeCountryProfile(DEFAULT_INPUTS, nextCountry, inputs);
                 const nextInputs = rawTarget
                   ? forceCountryMeta(applySharedIdentity(mergeSavedInputs(blank, rawTarget), inputs), nextCountry)
                   : blank;
                 const nextWatchlist = Array.isArray(countryWatchlistsRef.current[nextCountry])
-                  ? countryWatchlistsRef.current[nextCountry]
+                  ? normalizeStockWatchlist(countryWatchlistsRef.current[nextCountry], nextCountry)
                   : defaultWatchlistFor(nextCountry);
                 countryProfilesRef.current = { ...countryProfilesRef.current, [nextCountry]: nextInputs };
                 countryWatchlistsRef.current = { ...countryWatchlistsRef.current, [nextCountry]: nextWatchlist };
