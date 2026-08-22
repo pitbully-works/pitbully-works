@@ -2946,7 +2946,13 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           const activeCountry = launchCountry() || normalizeProfileCountry(migrated.activeCountry);
           const activeInputs = profiles[activeCountry] || makeCountryProfile(DEFAULT_INPUTS, activeCountry, sharedSource);
           countryProfilesRef.current = { ...profiles, [activeCountry]: activeInputs };
-          const savedWatchlists = parsed.watchlists && typeof parsed.watchlists === "object" ? normalizeCountryKeyedRecord(parsed.watchlists) : {};
+          const parsedStorageVersion = normalizeProfileStorageVersion(parsed.profileStorageVersion);
+          if (parsedStorageVersion === PROFILE_STORAGE_VERSION && parsed.watchlists !== undefined && (
+            !isPlainRecord(parsed.watchlists) || !hasOnlySupportedCountryKeys(parsed.watchlists)
+          )) {
+            throw new Error("Invalid persisted country watchlists");
+          }
+          const savedWatchlists = isPlainRecord(parsed.watchlists) ? normalizeCountryKeyedRecord(parsed.watchlists) : {};
           if (!parsed.watchlists && Array.isArray(parsed.watchlist)) savedWatchlists.JP = parsed.watchlist;
           const safeSavedWatchlists = {};
           PROFILE_COUNTRIES.forEach((code) => {
