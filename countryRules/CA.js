@@ -1458,6 +1458,7 @@ export const CA_COUNTRY_RULES = {
       "オンタリオ州の扶養家族等を含むTax Reductionの完全計算（基本本人分のみ反映）",
       "CPP/QPP拠出金・EI保険料・Quebec Parental Insurance Plan（QPIP）は2026年の従業員本人分を実装済み。CPPの自営業者拠出（Quebec以外）と自営業QPPは2026年基準で実装済み",
       "Alternative Minimum Tax（AMT）",
+      "州・準州の配当税額控除（provincial/territorial dividend tax credit）は未実装。現在の配当計算は連邦gross-up / federal DTCのみ",
       "年金所得分割は最大50%の移転上限を計画用に実装済み。所得種類・年齢ごとのeligible pension income判定と双方の最終申告税額の完全自動最適化は未実装",
     ],
   },
