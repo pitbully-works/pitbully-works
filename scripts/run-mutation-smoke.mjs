@@ -58,6 +58,10 @@ const mutants = [
   ["GB pension carry forward expands effective allowance", "countryRules/GB.js", "+ this.getPensionCarryForwardAvailable(availableFromPrior3Years);", "+ 0;", "overseas100Phase1.test.js"],
   ["CA RRIF spouse-age election changes minimum factor", "countryRules/CA.js", "useSpouseAge && spouse > 0 ? spouse : owner", "false ? spouse : owner", "overseas100Phase1.test.js"],
   ["AU transfer balance cap detects excess", "countryRules/AU.js", "excess: Math.max(0, balance - cap)", "excess: 0", "overseas100Phase1.test.js"],
+  ["US 2026 estate exclusion is protected", "countryRules/US.js", "basicExclusionAmount: 15000000", "basicExclusionAmount: 14000000", "overseasHundredPhase2.test.js"],
+  ["GB Lifetime ISA bonus rate is protected", "countryRules/GB.js", "governmentBonusRate: 0.25", "governmentBonusRate: 0.20", "overseasHundredPhase2.test.js"],
+  ["CA RRSP withdrawal top withholding rate is protected", "countryRules/CA.js", "{ upTo: Infinity, rate: 0.30, quebecFederalRate: 0.15 }", "{ upTo: Infinity, rate: 0.20, quebecFederalRate: 0.15 }", "overseasHundredPhase2.test.js"],
+  ["AU younger-partner super exclusion is protected", "countryRules/AU.js", "return age >= this.agePension.qualifyingAge || !!isReceivingSuperPension;", "return true;", "overseasHundredPhase2.test.js"],
 ];
 
 if (!fs.existsSync(vitestBin)) {
@@ -66,11 +70,7 @@ if (!fs.existsSync(vitestBin)) {
 }
 
 let killed = 0;
-const survivors = [  ["US 2026 estate exclusion is protected", "countryRules/US.js", "basicExclusionAmount: 15000000", "basicExclusionAmount: 14000000", "overseasHundredPhase2.test.js"],
-  ["GB Lifetime ISA bonus rate is protected", "countryRules/GB.js", "governmentBonusRate: 0.25", "governmentBonusRate: 0.20", "overseasHundredPhase2.test.js"],
-  ["CA RRSP withdrawal top withholding rate is protected", "countryRules/CA.js", "{ upTo: Infinity, rate: 0.30, quebecFederalRate: 0.15 }", "{ upTo: Infinity, rate: 0.20, quebecFederalRate: 0.15 }", "overseasHundredPhase2.test.js"],
-  ["AU younger-partner super exclusion is protected", "countryRules/AU.js", "return age >= this.agePension.qualifyingAge || !!isReceivingSuperPension;", "return true;", "overseasHundredPhase2.test.js"],
-];
+const survivors = [];
 for (const [name, rel, from, to, testFile] of mutants) {
   const file = path.join(ROOT, rel);
   const original = fs.readFileSync(file, "utf8");
