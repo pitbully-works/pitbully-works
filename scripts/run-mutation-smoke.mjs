@@ -89,6 +89,10 @@ const mutants = [
   ["CA Quebec 2026 basic personal amount is protected", "countryRules/CA.js", "basicPersonalAmount: 18952,", "basicPersonalAmount: 17952,", "overseasHundredPhase10.test.js"],
   ["CA Quebec federal abatement 16.5 percent is protected", "countryRules/CA.js", "federalAbatementRate: 0.165,", "federalAbatementRate: 0.155,", "overseasHundredPhase10.test.js"],
 
+  ["CA death deemed-disposition inclusion rate is protected", "countryRules/CA.js", "capitalGainsInclusionRate: 0.50,", "capitalGainsInclusionRate: 0.40,", "overseasHundredPhase11.test.js"],
+  ["CA death spouse rollover is protected", "countryRules/CA.js", "const rollover = !!transferToSpouseOrCommonLaw && !!spouseResidentInCanada;", "const rollover = !!transferToSpouseOrCommonLaw;", "overseasHundredPhase11.test.js"],
+  ["CA principal-residence death exclusion is protected", "countryRules/CA.js", "if (rollover || principalResidence) {", "if (rollover) {", "overseasHundredPhase11.test.js"],
+
 ];
 
 if (!fs.existsSync(vitestBin)) {
