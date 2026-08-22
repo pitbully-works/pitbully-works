@@ -29,9 +29,11 @@ describe("AU 2026-27 SAPTO", () => {
     expect(r.incomeTax).toBeGreaterThanOrEqual(0);
   });
 
-  it("SAPTOは実装済みだが資格完全自動判定とspouse transferは未実装として残す", () => {
+  it("SAPTO本体とspouse transferは実装済みで、資格条件の完全自動判定だけを未実装境界として残す", () => {
     const text = tax.notImplemented.join(" / ");
     expect(text).not.toMatch(/SAPTO・最大\$2,230/);
-    expect(text).toMatch(/spouse transfer/);
+    expect(typeof tax.calculateUnusedSaptoTransferFromSpouse).toBe("function");
+    expect(typeof tax.calculateSaptoIncludingSpouseTransfer).toBe("function");
+    expect(text).toMatch(/資格条件/);
   });
 });
