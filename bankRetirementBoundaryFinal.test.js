@@ -11,16 +11,25 @@ describe("bank retirement boundary", () => {
         name: "bank",
         balance: 100000,
         monthlyDeposit: 10000,
-        interestPct: 0,
+        interestPct: 12,
       }],
     });
 
     // Deposits happen at months 1..5. At month 6 age === 60.5, contribution has stopped.
-    expect(r.totalAtRetire).toBe(150000);
+    // Use a non-zero return so a fallback to the final balance can never masquerade
+    // as the true retirement-boundary balance.
+    const monthlyRate = Math.pow(1.12, 1 / 12) - 1;
+    let expectedAtRetire = 100000;
+    for (let m = 1; m <= 6; m += 1) {
+      expectedAtRetire *= (1 + monthlyRate);
+      if (m < 6) expectedAtRetire += 10000;
+    }
+    expect(r.totalAtRetire).toBeCloseTo(expectedAtRetire, 6);
 
     const age61 = r.yearly.find((row) => row.age === 61);
     expect(age61).toBeTruthy();
-    expect(r.totalAtRetire).toBeLessThanOrEqual(age61.total);
+    expect(r.totalAtRetire).toBeLessThan(age61.total);
+    expect(r.totalAtRetire).toBeLessThan(r.totalFinal);
   });
 
   it("uses the current balance immediately when the user is already retired", () => {
