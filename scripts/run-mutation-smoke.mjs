@@ -85,6 +85,10 @@ const mutants = [
   ["CA 2026 QPIP employee rate is protected", "countryRules/CA.js", "qpipEmployeeRate: 0.00430,", "qpipEmployeeRate: 0.00420,", "overseasHundredPhase9.test.js"],
   ["CA QPIP applies only in Quebec", "countryRules/CA.js", "if (!isQuebec) return 0;", "if (isQuebec) return 0;", "overseasHundredPhase9.test.js"],
 
+  ["CA Quebec 2026 first tax threshold is protected", "countryRules/CA.js", "{ upTo: 54345, rate: 0.14 },", "{ upTo: 53345, rate: 0.14 },", "overseasHundredPhase10.test.js"],
+  ["CA Quebec 2026 basic personal amount is protected", "countryRules/CA.js", "basicPersonalAmount: 18952,", "basicPersonalAmount: 17952,", "overseasHundredPhase10.test.js"],
+  ["CA Quebec federal abatement 16.5 percent is protected", "countryRules/CA.js", "federalAbatementRate: 0.165,", "federalAbatementRate: 0.155,", "overseasHundredPhase10.test.js"],
+
 ];
 
 if (!fs.existsSync(vitestBin)) {
