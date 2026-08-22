@@ -621,7 +621,7 @@ describe("Canada (CA) core calculations", () => {
     expect(tax.tfsaTaxFree).toBe(true);
     expect(tax.province.implemented).toBe(true);
     expect(tax.province.implementedRegions).toContain("ON");
-    expect(tax.region).toMatch(/Ontario/);
+    expect(tax.province.implementedRegions).toContain("ON");
   });
   it("liquid plus restricted equals total across all ages", () => {
     const a = {

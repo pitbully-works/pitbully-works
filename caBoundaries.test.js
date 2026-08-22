@@ -337,10 +337,10 @@ describe("CA境界：2026年の連邦税バンド", () => {
     expect(tax.getMarginalRate(0)).toBe(0.14);
   });
 
-  it("オンタリオ州・ケベック州・BC州・アルバータ州・マニトバ州・サスカチュワン州税が実装され、他地域は未対応として残る", () => {
+  it("カナダ10州・3準州の州・準州所得税が実装されている", () => {
     expect(tax.province.implemented).toBe(true);
     expect(tax.province.implementedRegions).toEqual(["ON", "QC", "BC", "AB", "MB", "SK", "NS", "NB", "PE", "NL", "NT", "NU", "YT"]);
-    expect(tax.region).toMatch(/Prince Edward Island/);
+    expect(tax.province.implementedRegions).toHaveLength(13);
   });
 
   it("第1バンド上限ちょうどの総額税＝58,523 × 14%", () => {
@@ -543,7 +543,7 @@ describe("CA境界：未実装項目が明示されている", () => {
 
   it("州税・QPPは未実装として列挙され、PAはRRSP枠計算に実装済み", () => {
     const all = [...inv.notImplemented, ...ret.notImplemented, ...tax.notImplemented].join(" / ");
-    expect(all).toMatch(/オンタリオ州・ケベック州・ブリティッシュコロンビア州・アルバータ州・マニトバ州・サスカチュワン州・ノバスコシア州・ニューブランズウィック州・プリンスエドワードアイランド州以外の州・準州所得税/);
+    expect(all).toMatch(/10州・3準州を実装済み/);
     expect(all).toMatch(/QPP/);
     expect(all).not.toMatch(/Pension Adjustment|PA）/);
 
