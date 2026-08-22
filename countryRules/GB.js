@@ -867,7 +867,10 @@ export const GB_COUNTRY_RULES = {
         capital: Math.max(0, Number(capital) || 0),
         tariffIncomeWeekly,
         assessedIncomeWeekly,
-        guaranteeCreditWeekly: Math.max(0, guarantee - assessedIncomeWeekly),
+        guaranteeCreditWeekly: Math.max(
+          0,
+          Math.ceil(((guarantee - assessedIncomeWeekly) - Number.EPSILON) * 100) / 100,
+        ),
       };
     },
 
