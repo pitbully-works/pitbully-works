@@ -21,7 +21,7 @@ export const CA_COUNTRY_RULES = {
     noteJa: "2026年制度を2026年8月22日に確認。OASは2026年7〜9月四半期の公表値を基準にしています。",
     noteEn: "2026 rules verified on 22 Aug 2026. OAS uses the July-September 2026 quarterly figures.",
     coverage: [
-      { key: "investment", labelJa: "投資制度", labelEn: "Investment", status: "implemented", effective: "2026 calendar year", lastUpdated: "2026-08-17", updateJa: "TFSAの年間枠・未使用枠繰越・前年引出しの翌年復活、RRSP、非登録口座、RRIF最低取崩し、FHSAの年間枠・繰越・生涯上限を反映。RESP・RDSPは未実装。", updateEn: "TFSA annual room, unused-room carryforward and prior-year withdrawal restoration, RRSP, non-registered accounts, RRIF minimum withdrawals, plus FHSA annual room, carryforward and lifetime limit are modelled; RESP and RDSP remain unimplemented." },
+      { key: "investment", labelJa: "投資制度", labelEn: "Investment", status: "implemented", effective: "2026 calendar year", lastUpdated: "2026-08-17", updateJa: "TFSA、RRSP、非登録口座、RRIF、FHSAに加え、RESPの2026 CESG・生涯拠出上限・CLB基準、RDSPの生涯拠出上限・2026 Grant/Bond基準を反映。", updateEn: "TFSA, RRSP, non-registered accounts, RRIF and FHSA are modelled, together with 2026 RESP CESG/lifetime limits/CLB thresholds and RDSP lifetime contribution/grant/bond rules." },
       { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "partial", effective: "2026 / OAS & GIS Jul-Sep", lastUpdated: "2026-08-22", updateJa: "CPPに加え、ケベック州QPPの受給開始年齢60〜72歳・65歳満額・65歳後0.7%/月増額・早期0.5〜0.6%/月減額の選択計算を実装。OAS・回収税・GIS/Allowance上限・CPP PRBも反映。", updateEn: "Adds QPP claim-age modelling (60–72, full at 65, +0.7%/month after 65 and configurable 0.5–0.6%/month early reduction) alongside CPP, OAS recovery tax, GIS/Allowance maxima and CPP PRB." },
       { key: "healthcare", labelJa: "医療", labelEn: "Healthcare", status: "partial", effective: "2026", lastUpdated: "2026-08-21", updateJa: "州・準州の公的医療保険を前提に自己負担を計算し、CDCPの所得別自己負担率とオンタリオ州の2026年長期介護ホーム最大自己負担額を自動計算。その他の州・準州の薬剤・視力・介護費は手入力。", updateEn: "Models out-of-pocket costs under provincial/territorial coverage, the income-based CDCP co-payment and Ontario 2026 long-term-care home maximum co-payments; drug, vision and long-term-care charges outside Ontario remain manual." },
       { key: "tax", labelJa: "税金", labelEn: "Tax", status: "partial", effective: "2026 tax year", lastUpdated: "2026-08-22", updateJa: "連邦所得税に加え、オンタリオ州・ケベック州・ブリティッシュコロンビア州・アルバータ州・マニトバ州・全10州・3準州の所得税、Quebec abatement、CPP/QPP・EI・QPIPを反映。配当税額控除・AMT等は未実装。", updateEn: "Federal income tax plus Ontario, Quebec, British Columbia, Alberta, Manitoba, all 10 provinces and 3 territories income tax, the Quebec abatement, CPP/QPP, EI and QPIP are modelled; dividend credits and AMT remain unimplemented." },
@@ -40,6 +40,10 @@ export const CA_COUNTRY_RULES = {
       limitsTable: "https://www.canada.ca/en/revenue-agency/services/tax/registered-plans-administrators/pspa/mp-rrsp-dpsp-tfsa-limits-ympe.html",
       rrif: "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/rrsps-related-plans/registered-retirement-income-fund-rrif.html",
       fhsa: "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/first-home-savings-account/contributing-your-fhsa.html",
+      resp: "https://www.canada.ca/en/services/benefits/education/education-savings/estimating-amounts.html",
+      respContributions: "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/registered-education-savings-plans-resps/resp-contributions.html",
+      rdsp: "https://www.canada.ca/en/employment-social-development/programs/disability/savings/how-much.html",
+      rdspLimits: "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/registered-disability-savings-plan-rdsp/rdsp-limits-transfers-rollovers.html",
     },
     // カナダ版で別々に管理・計算する口座
     accountTypes: ["tfsa", "rrsp", "nonRegistered", "cashSavings"],
@@ -57,6 +61,39 @@ export const CA_COUNTRY_RULES = {
       fhsaAnnualLimit: 8000,
       fhsaCarryforwardMax: 8000,
       fhsaLifetimeLimit: 40000,
+    },
+    resp: {
+      lifetimeContributionLimit: 50000,
+      cesgBasicRate: 0.20,
+      cesgBasicContributionCap: 2500,
+      cesgAnnualBasicMax: 500,
+      cesgAnnualCarryForwardMax: 1000,
+      cesgLifetimeMax: 7200,
+      cesgAdditionalFirstContribution: 500,
+      cesgAdditionalLowIncomeRate: 0.20,
+      cesgAdditionalMiddleIncomeRate: 0.10,
+      cesg2026LowIncomeMax: 58523,
+      cesg2026MiddleIncomeMax: 117045,
+      cesgLastEligibleAge: 17,
+      clb2026BenefitYearIncomeMax1To3Children: 58523,
+    },
+    rdsp: {
+      lifetimeContributionLimit: 200000,
+      contributionLastAge: 59,
+      grantLastAge: 49,
+      grant2026EnhancedIncomeMax: 117045,
+      grantEnhancedFirstContribution: 500,
+      grantEnhancedFirstRate: 3,
+      grantEnhancedNextContribution: 1000,
+      grantEnhancedNextRate: 2,
+      grantStandardContributionCap: 1000,
+      grantStandardRate: 1,
+      grantAnnualMax: 3500,
+      grantLifetimeMax: 70000,
+      bond2026FullIncomeMax: 38237,
+      bond2026PhaseOutIncomeMax: 58523,
+      bondAnnualMax: 1000,
+      bondLifetimeMax: 20000,
     },
     rrspWithdrawalWithholding: {
       residentRates: [
@@ -141,6 +178,61 @@ export const CA_COUNTRY_RULES = {
     getFhsaRemaining({ annualContributionsAndTransfers = 0, ...roomInputs } = {}) {
       return this.getFhsaParticipationRoom(roomInputs) - Math.max(0, this._num(annualContributionsAndTransfers));
     },
+    getRespLifetimeRemaining(lifetimeContributions = 0) {
+      return Math.max(0, this.resp.lifetimeContributionLimit - Math.max(0, this._num(lifetimeContributions)));
+    },
+    estimateRespCesg({ annualContribution = 0, adjustedFamilyNetIncome = 0, beneficiaryAge = 0, unusedCesgRoomAvailable = false, lifetimeCesgReceived = 0 } = {}) {
+      const r = this.resp;
+      const contribution = Math.max(0, this._num(annualContribution));
+      const age = Math.floor(this._num(beneficiaryAge));
+      if (age > r.cesgLastEligibleAge) return 0;
+      const basicCap = unusedCesgRoomAvailable ? 5000 : r.cesgBasicContributionCap;
+      const basic = Math.min(contribution, basicCap) * r.cesgBasicRate;
+      const income = Math.max(0, this._num(adjustedFamilyNetIncome));
+      const first = Math.min(contribution, r.cesgAdditionalFirstContribution);
+      const additionalRate = income <= r.cesg2026LowIncomeMax
+        ? r.cesgAdditionalLowIncomeRate
+        : income <= r.cesg2026MiddleIncomeMax ? r.cesgAdditionalMiddleIncomeRate : 0;
+      const additional = first * additionalRate;
+      const annualMax = (unusedCesgRoomAvailable ? r.cesgAnnualCarryForwardMax : r.cesgAnnualBasicMax) + additional;
+      const lifetimeRemaining = Math.max(0, r.cesgLifetimeMax - Math.max(0, this._num(lifetimeCesgReceived)));
+      return Math.min(lifetimeRemaining, annualMax, basic + additional);
+    },
+    isRespClbIncomeEligible2026(adjustedFamilyIncome = 0, qualifiedChildren = 1) {
+      const income = Math.max(0, this._num(adjustedFamilyIncome));
+      const children = Math.max(1, Math.floor(this._num(qualifiedChildren)));
+      const thresholds = { 1:58523, 2:58523, 3:58523, 4:66036, 5:73577, 6:81117, 7:88658, 8:96198, 9:103739, 10:111279, 11:118820, 12:126360, 13:133901, 14:141442, 15:148982, 16:156523 };
+      return income <= thresholds[Math.min(children, 16)];
+    },
+    getRdspLifetimeRemaining(lifetimeContributions = 0) {
+      return Math.max(0, this.rdsp.lifetimeContributionLimit - Math.max(0, this._num(lifetimeContributions)));
+    },
+    estimateRdspGrant2026({ contribution = 0, adjustedFamilyNetIncome = 0, beneficiaryAge = 0, lifetimeGrantReceived = 0 } = {}) {
+      const r = this.rdsp;
+      if (Math.floor(this._num(beneficiaryAge)) > r.grantLastAge) return 0;
+      const c = Math.max(0, this._num(contribution));
+      const income = Math.max(0, this._num(adjustedFamilyNetIncome));
+      let grant = 0;
+      if (income <= r.grant2026EnhancedIncomeMax) {
+        grant += Math.min(c, r.grantEnhancedFirstContribution) * r.grantEnhancedFirstRate;
+        grant += Math.min(Math.max(0, c - r.grantEnhancedFirstContribution), r.grantEnhancedNextContribution) * r.grantEnhancedNextRate;
+      } else {
+        grant = Math.min(c, r.grantStandardContributionCap) * r.grantStandardRate;
+      }
+      return Math.min(r.grantAnnualMax, Math.max(0, r.grantLifetimeMax - Math.max(0, this._num(lifetimeGrantReceived))), grant);
+    },
+    estimateRdspBond2026({ adjustedFamilyNetIncome = 0, beneficiaryAge = 0, lifetimeBondReceived = 0 } = {}) {
+      const r = this.rdsp;
+      if (Math.floor(this._num(beneficiaryAge)) > r.grantLastAge) return 0;
+      const income = Math.max(0, this._num(adjustedFamilyNetIncome));
+      let bond = 0;
+      if (income <= r.bond2026FullIncomeMax) bond = r.bondAnnualMax;
+      else if (income < r.bond2026PhaseOutIncomeMax) {
+        bond = r.bondAnnualMax * (r.bond2026PhaseOutIncomeMax - income) / (r.bond2026PhaseOutIncomeMax - r.bond2026FullIncomeMax);
+      }
+      return Math.min(Math.max(0, r.bondLifetimeMax - Math.max(0, this._num(lifetimeBondReceived))), Math.max(0, bond));
+    },
+
     // RRIFの年齢別最低取崩し率。95歳以上は一律20%。
     getRrifMinimumFactor(age) {
       const a = Math.floor(Number(age) || 0);
@@ -246,7 +338,7 @@ export const CA_COUNTRY_RULES = {
       };
     },
     notImplemented: [
-      "FHSAのre-participation room・excess amount等の複雑な個別調整（基本の年間枠・繰越・生涯上限は実装済み）／RESP／RDSP",
+      "FHSAのre-participation room・excess amount等の複雑な個別調整。RESP/RDSPは基本枠・2026年連邦Grant/Bond基準まで実装済みで、州独自助成・過年度carry-forwardの完全再構成・返還ルール等は未実装",
       "RRSP/RRIFの一括・超過引出し源泉徴収率（10/20/30%、Quebec連邦分5/10/15%、非居住者25%既定）はルール計算を実装済み。実際の最終所得税・租税条約・Quebec州税は別途",
     ],
   },
