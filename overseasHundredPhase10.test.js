@@ -37,7 +37,8 @@ describe("overseas 100 phase 10 — Quebec 2026 tax", () => {
     const app = readFileSync(join(process.cwd(), "App.jsx"), "utf8");
     expect(app).toContain("calculateFederalTaxForProvince");
     expect(app).toContain("caFederalTaxResult.taxAfterAbatement");
-    expect(app).toContain("caQuebecAbatementLabel");
+    expect(app).toContain('label={t("caQuebecAbatementLabel")}');
+    expect(app).toContain("taxResult.federalAbatement > 0");
     expect(app).toContain("calculateCapitalGainsTaxForProvince");
   });
 });

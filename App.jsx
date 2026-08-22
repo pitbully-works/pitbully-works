@@ -936,6 +936,14 @@ function CAInvestmentAccountsPanel({ caInvestment, onUpdate, onUpdateAccount, ag
             value={money(taxResult.federalTax)}
             sub={t("caFederalTaxSub", { amount: money(taxResult.basicPersonalAmount) })}
           />
+          {taxResult.federalAbatement > 0 && (
+            <StatCard
+              label={t("caQuebecAbatementLabel")}
+              value={money(taxResult.federalAbatement)}
+              sub={t("caQuebecAbatementSub", { pct: pct(taxResult.federalAbatementRate) })}
+              tone="good"
+            />
+          )}
           <StatCard
             label={t("caProvincialTaxLabel", { province: taxResult.provinceCode || "ON" })}
             value={taxResult.provincialTaxUnsupported ? t("caProvincialTaxUnsupportedValue") : money(taxResult.provincialTax)}
