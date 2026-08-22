@@ -234,7 +234,7 @@ describe("batch hardening: backup version and history bounds", () => {
     const app = readFileSync(join(process.cwd(), "App.jsx"), "utf8");
     expect(app).toContain("const backupVersion = normalizeProfileStorageVersion(parsed.profileStorageVersion)");
     expect(app).toContain("if (backupVersion === PROFILE_STORAGE_VERSION)");
-    expect(app).toContain('if (!isPlainRecord(parsed.profiles)) throw new Error("Invalid country profiles in backup")');
+    expect(app).toContain("!isPlainRecord(parsed.profiles) || !hasOnlySupportedCountryKeys(parsed.profiles)");
   });
 
   it("bounds snapshot reads and in-memory history", () => {
@@ -311,7 +311,7 @@ describe("batch hardening 9: backup active-bucket consistency", () => {
 
   it("rejects malformed current-schema watchlist containers instead of silently discarding them", () => {
     const app = readFileSync(join(process.cwd(), "App.jsx"), "utf8");
-    expect(app).toContain('if (parsed.watchlists !== undefined && !isPlainRecord(parsed.watchlists))');
+    expect(app).toContain("!isPlainRecord(parsed.watchlists) || !hasOnlySupportedCountryKeys(parsed.watchlists)");
     expect(app).toContain('throw new Error("Invalid country watchlists in backup")');
   });
 
