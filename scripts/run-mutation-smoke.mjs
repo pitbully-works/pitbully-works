@@ -43,6 +43,8 @@ const mutants = [
   ["Stale autosave completion cannot claim saved", "App.jsx", "if (generation !== saveGenerationRef.current) return;\n        setHistory((prev) => {", "if (false) return;\n        setHistory((prev) => {", "persistenceSaveOrdering.test.js"],
   ["Semantic persisted data is recovered before fallback", "App.jsx", "if (rawPersistedValue !== null) {", "if (false) {", "backupRestoreAtomicity.test.js"],
   ["Current backup country maps reject unknown buckets", "utils/countryProfiles.js", "if (!PROFILE_COUNTRIES.includes(code) || seen.has(code)) return false;", "if (seen.has(code)) return false;", "backupRestoreAtomicity.test.js"],
+  ["Stale history reads cannot repaint another country", "App.jsx", "      if (requestGeneration !== historyRequestGenerationRef.current) return;\n      const clean = entries.map", "      if (false) return;\n      const clean = entries.map", "countryHistoryAsyncBoundary.test.js"],
+  ["Country switch normalizes stored watchlists", "App.jsx", "[currentCountry]: normalizeStockWatchlist(watchlist, currentCountry)", "[currentCountry]: watchlist", "countryHistoryAsyncBoundary.test.js"],
 ];
 
 if (!fs.existsSync(vitestBin)) {
