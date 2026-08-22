@@ -11,14 +11,14 @@ describe("overseas 100 phase 16 — Nova Scotia provincial tax", () => {
   });
 
   it("protects Nova Scotia basic personal amount", () => {
-    expect(ns.basicPersonalAmount).toBe(11744);
+    expect(ns.basicPersonalAmount).toBe(11932);
     expect(ns.basicCreditRate).toBe(0.0879);
   });
 
   it("calculates Nova Scotia income tax progressively", () => {
     const income = 80000;
     const gross = 30995 * 0.0879 + (61991 - 30995) * 0.1495 + (income - 61991) * 0.1667;
-    const credit = 11744 * 0.0879;
+    const credit = 11932 * 0.0879;
     const r = tax.calculateNovaScotiaTax(income);
     expect(r.grossTax).toBeCloseTo(gross, 6);
     expect(r.tax).toBeCloseTo(gross - credit, 6);
