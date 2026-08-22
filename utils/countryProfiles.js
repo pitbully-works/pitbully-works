@@ -170,7 +170,9 @@ export function migrateCountryProfiles(defaultInputs, parsed) {
     throw new Error(`Unsupported profile storage version: ${storageVersion}`);
   }
   if (storageVersion === PROFILE_STORAGE_VERSION) {
-    if (!isPlainRecord(p.profiles)) throw new Error("Invalid persisted country profiles");
+    if (!isPlainRecord(p.profiles) || !hasOnlySupportedCountryKeys(p.profiles)) {
+      throw new Error("Invalid persisted country profiles");
+    }
     const profiles = normalizeCountryKeyedRecord(p.profiles);
     return { profiles, activeCountry: resolvePersistedActiveCountry(p.activeCountry ?? p.inputs?.country, profiles), migratedLegacy: false };
   }
