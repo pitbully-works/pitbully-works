@@ -583,7 +583,8 @@ export const GB_COUNTRY_RULES = {
         Math.min(status === "couple" ? 2 : 1, whole(carerQualifiers)) *
         extras.carerWeeklyPerQualifyingPartner;
       const childExtra =
-        whole(firstChildrenBornBefore2017) * extras.childFirstBornBefore2017Weekly +
+        (whole(firstChildrenBornBefore2017) > 0 ? extras.childFirstBornBefore2017Weekly : 0) +
+        Math.max(0, whole(firstChildrenBornBefore2017) - 1) * extras.childOtherWeekly +
         whole(otherChildren) * extras.childOtherWeekly +
         whole(disabledChildrenLower) * extras.disabledChildLowerWeekly +
         whole(disabledChildrenHigher) * extras.disabledChildHigherWeekly;
@@ -944,7 +945,7 @@ export const GB_COUNTRY_RULES = {
     notImplemented: [
       "National Insuranceのqualifying years入力から10年最低・35年満額の単純近似は実装済み。2016年開始額、contracting-out、海外期間、credits、Protected Payment等を含む正確なState Pension forecastはGOV.UK公式記録が必要",
       "Additional State Pension（SERPS / S2P）・Protected Payment",
-      "Pension Creditの2026/27 Guarantee Credit・Savings Credit基本計算に加え、単身の年齢要件、夫婦双方がqualifying ageに達する通常ルール、2019-05-14以前からのprotected mixed-age continuity / pension-age Housing Benefit継続例外を判定可能。実際の給付履歴の自動確認、住宅費・子・障害・介護等の追加額を含む完全なmeans testは未実装。収入側はState Pension・私的年金・その他算入収入・資本tariff income・通常£5/夫婦£10/高額£20のearnings disregardを合算可能",
+      "Pension Creditの2026/27 Guarantee Credit・Savings Credit基本計算に加え、単身の年齢要件、夫婦双方がqualifying ageに達する通常ルール、2019-05-14以前からのprotected mixed-age continuity / pension-age Housing Benefit継続例外を判定可能。実際の給付履歴の自動確認などを含む完全なmeans testは未実装。Guarantee Creditの住宅費・子・障害・介護・経過措置の追加額は計算可能。収入側はState Pension・私的年金・その他算入収入・資本tariff income・通常£5/夫婦£10/高額£20のearnings disregardを合算可能",
     ],
   },
 
