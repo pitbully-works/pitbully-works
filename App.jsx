@@ -921,6 +921,14 @@ function CAInvestmentAccountsPanel({ caInvestment, onUpdate, onUpdateAccount, ag
           <Info size={13} />
           <span>{t("caTaxSourceNote", { taxYear: taxRules.effectiveTaxYear })}</span>
         </div>
+        <Field
+          guide={t("caEmploymentIncomeGuide")}
+          label={t("caEmploymentIncomeLabel")}
+          unit="C$"
+          step={1000}
+          value={caInvestment.employmentIncomeAnnual || 0}
+          onChange={(v) => onUpdate("employmentIncomeAnnual", Math.max(0, Number(v) || 0))}
+        />
         <Field guide={t("caCapitalGainGuide")} label={t("caCapitalGainLabel")} unit="C$" step={500} value={caInvestment.estimatedCapitalGainAnnual} onChange={(v) => onUpdate("estimatedCapitalGainAnnual", v)} />
         <div className="stat-grid" style={{ marginTop: 10 }}>
           <StatCard
@@ -945,6 +953,15 @@ function CAInvestmentAccountsPanel({ caInvestment, onUpdate, onUpdateAccount, ag
             value={money(taxResult.rrspTaxSaving)}
             sub={t("caRrspTaxSavingSub", { pct: pct(taxResult.marginalRate) })}
             tone="good"
+          />
+          <StatCard
+            label={t("caCppEiLabel", { plan: taxResult.pensionPlan || "CPP" })}
+            value={money(taxResult.payrollDeductionsTotal || 0)}
+            sub={t("caCppEiSub", {
+              plan: taxResult.pensionPlan || "CPP",
+              pension: money(taxResult.pensionContribution || 0),
+              ei: money(taxResult.eiPremium || 0),
+            })}
           />
         </div>
         <div className="stat-grid" style={{ marginTop: 10 }}>
@@ -1889,6 +1906,7 @@ const DEFAULT_INPUTS = {
     // 4口座それぞれが「現在額・年間積立額・想定利回り・積立終了年齢」を個別に持つ。
     caInvestment: {
       annualIncome: 0,        // 年間総所得（連邦所得税・RRSP税軽減・OASクローバックの判定に使用）
+      employmentIncomeAnnual: 0, // CPP/QPP・EI計算用。0なら後方互換のためannualIncomeを使用
       priorEarnedIncome: 0,   // 前年の稼得所得
       officialTfsaRoom: 0,    // 自分の記録で算出した当年1/1時点のTFSA利用可能枠（入力時は最優先）
       priorUnusedTfsaRoom: 0, // 前年末までの未使用TFSA枠
@@ -2664,6 +2682,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     ? rules.tax.calculateFederalTax(caGrossIncome)
     : { taxableIncome: 0, grossTax: 0, basicPersonalAmount: 0, bpaCredit: 0, tax: 0 };
   const caProvinceCode = caInvestment.healthcare?.province || "ON";
+  const caEmploymentIncome = Math.max(0, Number(caInvestment.employmentIncomeAnnual) || caGrossIncome);
+  const caPayrollDeductions = (caIsCA && rules.tax.implemented && typeof rules.tax.calculateEmployeePayrollDeductions === "function")
+    ? rules.tax.calculateEmployeePayrollDeductions(caEmploymentIncome, caProvinceCode)
+    : { pensionPlan: "CPP", pensionContribution: 0, pensionFirstContribution: 0, pensionSecondContribution: 0, eiPremium: 0, total: 0 };
   const caProvincialTaxResult = (caIsCA && rules.tax.implemented && typeof rules.tax.calculateProvincialTax === "function")
     ? rules.tax.calculateProvincialTax(caGrossIncome, caProvinceCode)
     : { tax: 0, unsupported: true, provinceCode: caProvinceCode };
@@ -2684,8 +2706,13 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     ? rules.tax.calculateProvincialRrspTaxSaving(caInvestment.rrsp.annualContribution, caGrossIncome, caRrspRoom, caProvinceCode)
     : 0;
   const caRrspTaxSaving = caFederalRrspTaxSaving + caProvincialRrspTaxSaving;
-  // 税額合計（連邦＋対応州、CGT、RRSP拠出による軽減後）。未対応州では州税を0として明示表示する。
-  const caTotalTax = Math.max(0, caFederalTaxResult.tax + caProvincialTaxResult.tax + caCapitalGainsTax + caProvincialCapitalGainsTax - caRrspTaxSaving);
+  // 税・給与天引き合計（連邦＋対応州＋CGT＋CPP/QPP＋EI－RRSP軽減）。
+  // 未対応州では州税を0として明示表示する。
+  const caTotalTax = Math.max(0,
+    caFederalTaxResult.tax + caProvincialTaxResult.tax
+    + caCapitalGainsTax + caProvincialCapitalGainsTax
+    + caPayrollDeductions.total - caRrspTaxSaving
+  );
 
   const caHealthcareAnnual = (caIsCA && rules.healthcare.implemented)
     ? rules.healthcare.getAnnualTotal(caInvestment.healthcare)
@@ -7627,6 +7654,12 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 capitalGainsTax: caCapitalGainsTax + caProvincialCapitalGainsTax,
                 rrspTaxSaving: caRrspTaxSaving,
                 marginalRate: caMarginalRate,
+                pensionPlan: caPayrollDeductions.pensionPlan,
+                pensionContribution: caPayrollDeductions.pensionContribution,
+                pensionFirstContribution: caPayrollDeductions.pensionFirstContribution,
+                pensionSecondContribution: caPayrollDeductions.pensionSecondContribution,
+                eiPremium: caPayrollDeductions.eiPremium,
+                payrollDeductionsTotal: caPayrollDeductions.total,
                 totalTax: caTotalTax,
               }}
             />
