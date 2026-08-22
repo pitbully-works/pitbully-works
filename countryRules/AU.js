@@ -23,7 +23,7 @@ export const AU_COUNTRY_RULES = {
     noteEn: "2026-27 rules verified on 23 Aug 2026. Age Pension uses the 20 Mar 2026 rates; the next scheduled indexation is 20 Sep 2026.",
     coverage: [
       { key: "investment", labelJa: "投資制度", labelEn: "Investment", status: "partial", effective: "2026-27 financial year", lastUpdated: "2026-08-23", updateJa: "Super・投資口座・拠出上限、carry-forward、bring-forwardに加え、適格確認式のDownsizer contribution（最大A$300,000）を今年度一括拠出として反映。", updateEn: "Super, investment accounts and contribution caps are modelled, including concessional carry-forward, non-concessional bring-forward, and an eligibility-confirmed one-off downsizer contribution of up to A$300,000." },
-      { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "partial", effective: "2026-27 / Age Pension Mar 2026 rates / Rent Assistance & CSHC Jul 2026 rates", lastUpdated: "2026-08-22", updateJa: "Age Pensionの資産・所得テスト、Work Bonus、Rent Assistance、CSHCに加え、カップルで片方だけ67歳以上の場合の配偶者Super除外を年齢進行に合わせて投影へ統合。", updateEn: "Age Pension means tests, Work Bonus, Rent Assistance and CSHC are modelled, with dynamic partner-Super exclusion integrated when only one member of a couple has reached Age Pension age." },
+      { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "partial", effective: "2026-27 / Age Pension Mar 2026 rates / Rent Assistance & CSHC Jul 2026 rates", lastUpdated: "2026-08-23", updateJa: "Age Pensionの資産・所得テスト、Work Bonus、Rent Assistance、CSHCに加え、カップルで片方だけ67歳以上の場合の配偶者Super除外を年齢進行に合わせて投影へ統合。", updateEn: "Age Pension means tests, Work Bonus, Rent Assistance and CSHC are modelled, with dynamic partner-Super exclusion integrated when only one member of a couple has reached Age Pension age." },
       { key: "healthcare", labelJa: "医療", labelEn: "Healthcare", status: "partial", effective: "2026-27 / 2026 calendar-year Safety Nets / Support at Home Jul 2026", lastUpdated: "2026-08-23", updateJa: "Medicare・2026年PBS/Medicare Safety Netに加え、Support at Homeの2026年7月拠出率・閾値・lifetime capを反映。複雑なServices Australia資力判定は手動入力を併用。", updateEn: "Adds the July 2026 Support at Home contribution schedule, thresholds and lifetime caps to the Medicare/PBS model. Complex Services Australia means-assessment outcomes remain manual inputs." },
       { key: "tax", labelJa: "税金", labelEn: "Tax", status: "partial", effective: "2026-27 financial year", lastUpdated: "2026-08-23", updateJa: "居住者所得税・LITO・SAPTO・Medicare levy・MLS・CGT・非居住者所得税に加え、Super一時金のtaxed elementについて60歳未満の基本税率を反映。", updateEn: "Resident income tax, LITO, SAPTO, Medicare levy, MLS, CGT and foreign-resident income tax are modelled, together with the core under-60 tax treatment for the taxed element of Super lump sums." },
       { key: "estate", labelJa: "相続", labelEn: "Estate", status: "partial", effective: "2026-27", lastUpdated: "2026-08-21", updateJa: "オーストラリアには相続税はありません。Super death benefitの一括受取について、death benefits dependant / non-dependant別の税額概算を実装。所得ストリーム・遺産管理人経由などの詳細税務は未自動化。", updateEn: "Australia has no inheritance tax. A lump-sum Super death-benefit estimator now models tax for death-benefits dependants versus non-dependants; income streams and detailed deceased-estate treatment remain manual." },
@@ -464,7 +464,7 @@ export const AU_COUNTRY_RULES = {
   retirement: {
     implemented: true,
     effectiveTaxYear: "2026-27",
-    lastUpdated: "2026-08-21",
+    lastUpdated: "2026-08-23",
     sourceName: "Services Australia — Age Pension（給付額は2026年3月20日改定値、資産・所得基準は2026年7月1日改定値）",
     sourceUrl: "https://www.servicesaustralia.gov.au/age-pension",
     sourceUrls: {
@@ -472,6 +472,8 @@ export const AU_COUNTRY_RULES = {
       incomeTest: "https://www.servicesaustralia.gov.au/income-test-for-age-pension",
       assetsTest: "https://www.servicesaustralia.gov.au/assets-test-for-age-pension",
       eligibility: "https://www.servicesaustralia.gov.au/who-can-get-age-pension",
+      residence: "https://www.servicesaustralia.gov.au/who-can-get-age-pension",
+      overseas: "https://www.servicesaustralia.gov.au/when-you-leave-australia-if-you-get-age-pension",
       rentAssistance: "https://www.servicesaustralia.gov.au/rent-assistance",
       seniorsHealthCard: "https://www.servicesaustralia.gov.au/commonwealth-seniors-health-card",
     },
@@ -585,6 +587,72 @@ export const AU_COUNTRY_RULES = {
       thresholdCoupleCombined: 110600,
     },
 
+    // Age Pension residence eligibility helper.
+    // Normal rule: resident and in Australia on claim day, with 10 years total
+    // Australian residence and at least 5 years continuous. Exemptions and
+    // international social-security agreements can satisfy the residence gateway.
+    getAgePensionResidenceEligibility({
+      australianResident = false,
+      inAustraliaOnClaimDay = false,
+      residenceYearsTotal = 0,
+      longestContinuousResidenceYears = 0,
+      residenceExemption = false,
+      internationalAgreementEligible = false,
+    } = {}) {
+      const total = Math.max(0, Number(residenceYearsTotal) || 0);
+      const continuous = Math.max(0, Number(longestContinuousResidenceYears) || 0);
+      const normalResidence = australianResident === true
+        && inAustraliaOnClaimDay === true
+        && total >= 10
+        && continuous >= 5;
+      const eligible = normalResidence
+        || residenceExemption === true
+        || internationalAgreementEligible === true;
+      return {
+        eligible,
+        normalResidence,
+        australianResident: australianResident === true,
+        inAustraliaOnClaimDay: inAustraliaOnClaimDay === true,
+        residenceYearsTotal: total,
+        longestContinuousResidenceYears: continuous,
+        residenceExemption: residenceExemption === true,
+        internationalAgreementEligible: internationalAgreementEligible === true,
+      };
+    },
+    getAgePensionEligibility({
+      age = 0,
+      australianResident = false,
+      inAustraliaOnClaimDay = false,
+      residenceYearsTotal = 0,
+      longestContinuousResidenceYears = 0,
+      residenceExemption = false,
+      internationalAgreementEligible = false,
+    } = {}) {
+      const ageEligible = (Number(age) || 0) >= this.agePension.qualifyingAge;
+      const residence = this.getAgePensionResidenceEligibility({
+        australianResident,
+        inAustraliaOnClaimDay,
+        residenceYearsTotal,
+        longestContinuousResidenceYears,
+        residenceExemption,
+        internationalAgreementEligible,
+      });
+      return { eligible: ageEligible && residence.eligible, ageEligible, ...residence };
+    },
+    // After more than 26 weeks overseas, the basic means-tested Age Pension rate
+    // is generally proportional to Australian Working Life Residence (AWLR),
+    // capped at 35 years. Grandfathering / agreement cases can bypass the reduction.
+    getOverseasAgePensionPortabilityFactor({
+      weeksOutsideAustralia = 0,
+      australianWorkingLifeResidenceYears = 35,
+      grandfatheredFullRate = false,
+      internationalAgreementOverride = false,
+    } = {}) {
+      const weeks = Math.max(0, Number(weeksOutsideAustralia) || 0);
+      if (weeks <= 26 || grandfatheredFullRate === true || internationalAgreementOverride === true) return 1;
+      const years = Math.max(0, Number(australianWorkingLifeResidenceYears) || 0);
+      return Math.min(1, years / 35);
+    },
     getQualifyingAge() { return this.agePension.qualifyingAge; },
     // Deemingのしきい値（カップルは世帯合算）
     getDeemingThreshold(status) {
@@ -857,7 +925,7 @@ export const AU_COUNTRY_RULES = {
       "カップルのSuperは、Age Pension年齢未満かつincome stream未開始なら資産・所得テストから除外する基本判定を実装済み。特殊なincome stream商品や免除判定は未実装",
       "投資用不動産の実収入（Deemingの対象外だが所得テストには算入される）",
       "カップルで片方だけが受給資格年齢に達している場合、配偶者の積立フェーズSuper除外は投影へ統合済み。特殊なincome stream商品・免除判定は未実装",
-      "Commonwealth Seniors Health Cardは2026年7月の所得上限で見込み判定を実装済み。居住・TFN・本人確認・特例カード等の完全自動判定は未実装",
+      "Age Pensionの通常居住要件（10年合計・うち5年連続）と26週超海外滞在時の35年AWLR按分は判定ヘルパーを実装済み。難民等の個別免除・国際社会保障協定・2014年経過措置の最終判定は利用者確認が必要 / Commonwealth Seniors Health Cardは2026年7月の所得上限で見込み判定を実装済み。居住・TFN・本人確認・特例カード等の完全自動判定は未実装",
     ],
   },
 
