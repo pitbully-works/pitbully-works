@@ -54,6 +54,10 @@ const mutants = [
   ["Regression workflow verifies production build", ".github/workflows/test.yml", "run: npm run build", "run: echo skip-build", "finalWorkflowIntegrity.test.js"],
   ["Engine preserves full retirement snapshot", "lifePlanEngine.js", "retireSnapshot = snapshot(age);", "retireSnapshot = null;", "retirementSnapshotUiBoundary.test.js"],
   ["UI retirement breakdown uses exact retirement snapshot", "App.jsx", "return integrated.retireSnapshot;", "return rows[rows.length - 1];", "retirementSnapshotUiBoundary.test.js"],
+  ["US 2026 Roth catch-up threshold is enforced", "countryRules/US.js", "wages > this.limits2026.k401.rothCatchUpPriorYearWageThreshold", "wages >= 999999999", "overseas100Phase1.test.js"],
+  ["GB pension carry forward expands effective allowance", "countryRules/GB.js", "+ this.getPensionCarryForwardAvailable(availableFromPrior3Years);", "+ 0;", "overseas100Phase1.test.js"],
+  ["CA RRIF spouse-age election changes minimum factor", "countryRules/CA.js", "useSpouseAge && spouse > 0 ? spouse : owner", "false ? spouse : owner", "overseas100Phase1.test.js"],
+  ["AU transfer balance cap detects excess", "countryRules/AU.js", "excess: Math.max(0, balance - cap)", "excess: 0", "overseas100Phase1.test.js"],
 ];
 
 if (!fs.existsSync(vitestBin)) {
