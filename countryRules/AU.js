@@ -23,7 +23,7 @@ export const AU_COUNTRY_RULES = {
     noteEn: "2026-27 rules verified on 17 Aug 2026. Age Pension uses the 20 Mar 2026 rates; the next scheduled indexation is 20 Sep 2026.",
     coverage: [
       { key: "investment", labelJa: "投資制度", labelEn: "Investment", status: "partial", effective: "2026-27 financial year", lastUpdated: "2026-08-21", updateJa: "Super・投資口座・拠出上限、carry-forward、bring-forwardに加え、適格確認式のDownsizer contribution（最大A$300,000）を今年度一括拠出として反映。", updateEn: "Super, investment accounts and contribution caps are modelled, including concessional carry-forward, non-concessional bring-forward, and an eligibility-confirmed one-off downsizer contribution of up to A$300,000." },
-      { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "partial", effective: "2026-27 / Age Pension Mar 2026 rates / Rent Assistance & CSHC Jul 2026 rates", lastUpdated: "2026-08-21", updateJa: "Age Pensionの資産・所得テスト、Work Bonus年次近似、Super取崩し、子なし世帯のRent Assistanceに加え、Commonwealth Seniors Health Cardの所得上限による見込み判定を実装。", updateEn: "Age Pension means tests, annualised Work Bonus, Super drawdown and Rent Assistance for households without dependent children are modelled, plus an income-limit estimator for the Commonwealth Seniors Health Card." },
+      { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "partial", effective: "2026-27 / Age Pension Mar 2026 rates / Rent Assistance & CSHC Jul 2026 rates", lastUpdated: "2026-08-22", updateJa: "Age Pensionの資産・所得テスト、Work Bonus、Rent Assistance、CSHCに加え、カップルで片方だけ67歳以上の場合の配偶者Super除外を年齢進行に合わせて投影へ統合。", updateEn: "Age Pension means tests, Work Bonus, Rent Assistance and CSHC are modelled, with dynamic partner-Super exclusion integrated when only one member of a couple has reached Age Pension age." },
       { key: "healthcare", labelJa: "医療", labelEn: "Healthcare", status: "partial", effective: "2026-27 / 2026 calendar-year Safety Nets", lastUpdated: "2026-08-21", updateJa: "Medicare前提の自己負担に加え、2026年PBS Safety Net概算とMedicare Safety Net閾値を反映。診療ごとのSafety Net還付・aged care資力調査は未自動化。", updateEn: "Adds a 2026 PBS Safety Net estimate and Medicare Safety Net thresholds to the Medicare out-of-pocket model; item-level Safety Net rebates and aged-care means testing remain manual." },
       { key: "tax", labelJa: "税金", labelEn: "Tax", status: "partial", effective: "2026-27 financial year", lastUpdated: "2026-08-21", updateJa: "居住者所得税・LITO・SAPTO・Medicare levy・MLS・CGTを反映。", updateEn: "Resident income tax, LITO, SAPTO, Medicare levy, MLS and CGT are modelled." },
       { key: "estate", labelJa: "相続", labelEn: "Estate", status: "partial", effective: "2026-27", lastUpdated: "2026-08-21", updateJa: "オーストラリアには相続税はありません。Super death benefitの一括受取について、death benefits dependant / non-dependant別の税額概算を実装。所得ストリーム・遺産管理人経由などの詳細税務は未自動化。", updateEn: "Australia has no inheritance tax. A lump-sum Super death-benefit estimator now models tax for death-benefits dependants versus non-dependants; income streams and detailed deceased-estate treatment remain manual." },
@@ -423,6 +423,31 @@ export const AU_COUNTRY_RULES = {
       const age = Math.max(0, Number(personAge) || 0);
       return age >= this.agePension.qualifyingAge || !!isReceivingSuperPension;
     },
+    projectPartnerSuperBalance({
+      currentAge = 0,
+      targetAge = 0,
+      currentBalance = 0,
+      annualContribution = 0,
+      expectedReturnPct = 0,
+      contributionEndAge = 67,
+    } = {}) {
+      let balance = Math.max(0, Number(currentBalance) || 0);
+      const start = Math.max(0, Number(currentAge) || 0);
+      const target = Math.max(start, Number(targetAge) || start);
+      const annual = Math.max(0, Number(annualContribution) || 0);
+      const endAge = Math.max(start, Number(contributionEndAge) || start);
+      const r = Math.max(-0.99, (Number(expectedReturnPct) || 0) / 100);
+      const years = Math.max(0, Math.floor(target - start));
+      for (let i = 0; i < years; i += 1) {
+        const age = start + i;
+        if (age < endAge) balance += annual;
+        balance *= (1 + r);
+      }
+      return Math.max(0, balance);
+    },
+    getProjectedPartnerAge(currentPartnerAge, claimantCurrentAge, claimantTargetAge) {
+      return Math.max(0, (Number(currentPartnerAge) || 0) + ((Number(claimantTargetAge) || 0) - (Number(claimantCurrentAge) || 0)));
+    },
     getAssessableCoupleSuper({
       claimantAge = 0,
       claimantSuper = 0,
@@ -661,8 +686,9 @@ export const AU_COUNTRY_RULES = {
     // 世帯合計に揃える。カップルで双方が受給資格年齢に達している場合だけ2人分になる。
     //   status !== "couple" → 1人分
     //   status === "couple" かつ bothQualified === false → 1人分（片方だけが受給）
-    // ※ 片方が受給資格年齢未満の場合、その人の積立フェーズのSuperは資産テストの対象外に
-    //   なるが、本アプリは世帯の資産をまとめて扱うため、その除外は未実装。
+    // ※ カップルで片方が受給資格年齢未満の場合、その人の積立フェーズSuperは
+    //   資産・Deeming対象から除外する。buildPlanInput側で配偶者年齢を毎年進め、
+    //   67歳到達またはSuper income stream開始時に自動で対象へ切り替える。
     getAgePensionHousehold({
       age, annualIncome, employmentIncomeAnnual, workBonusBalance, assessableAssets, financialAssets, status, homeowner, bothQualified,
       rentAssistanceEligible = false, rentFortnightly = 0, rentAssistanceSharer = false,
@@ -759,7 +785,7 @@ export const AU_COUNTRY_RULES = {
       "Work Bonus残高は年次近似で反映済み。Centrelinkの隔週単位での残高増減・雇用収入発生日ごとの厳密計算は未実装",
       "カップルのSuperは、Age Pension年齢未満かつincome stream未開始なら資産・所得テストから除外する基本判定を実装済み。特殊なincome stream商品や免除判定は未実装",
       "投資用不動産の実収入（Deemingの対象外だが所得テストには算入される）",
-      "カップルで片方だけが受給資格年齢に達している場合の取り扱い（資産・所得は世帯合算のまま）",
+      "カップルで片方だけが受給資格年齢に達している場合、配偶者の積立フェーズSuper除外は投影へ統合済み。特殊なincome stream商品・免除判定は未実装",
       "Commonwealth Seniors Health Cardは2026年7月の所得上限で見込み判定を実装済み。居住・TFN・本人確認・特例カード等の完全自動判定は未実装",
     ],
   },
