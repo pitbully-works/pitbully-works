@@ -138,6 +138,11 @@ const mutants = [
   ["GB child pension ordinary early withdrawal lock is protected", "countryRules/GB.js", "ordinaryEarlyWithdrawal: false,", "ordinaryEarlyWithdrawal: true,", "overseasHundredPhase23.test.js"],
   ["GB child pension provider boundary is protected", "countryRules/GB.js", "providerSpecificTermsModelled: false,", "providerSpecificTermsModelled: true,", "overseasHundredPhase23.test.js"],
 
+  ["GB 2027 under-65 Cash ISA limit is protected", "countryRules/GB.js", "cashIsaLimitUnder65From2027: 12000,", "cashIsaLimitUnder65From2027: 13000,", "overseasHundredPhase24.test.js"],
+  ["GB 2027 age-65-plus Cash ISA limit is protected", "countryRules/GB.js", "cashIsaLimitAge65PlusFrom2027: 20000,", "cashIsaLimitAge65PlusFrom2027: 19000,", "overseasHundredPhase24.test.js"],
+  ["GB 2027 non-Cash ISA cash-interest charge is protected", "countryRules/GB.js", "nonCashIsaCashInterestChargeRateFrom2027: 0.22,", "nonCashIsaCashInterestChargeRateFrom2027: 0.20,", "overseasHundredPhase24.test.js"],
+  ["GB carry-forward oldest-first allocation is protected", "countryRules/GB.js", "for (const row of history) {", "for (const row of history.slice().reverse()) {", "overseasHundredPhase24.test.js"],
+
 ];
 
 if (!fs.existsSync(vitestBin)) {
