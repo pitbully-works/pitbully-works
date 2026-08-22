@@ -933,7 +933,7 @@ export const CA_COUNTRY_RULES = {
       cppSelfEmployedSecondMax: 832.00,
       qppSelfEmployedRate: 0.1260,
       qppSelfEmployedSecondAdditionalRate: 0.0800,
-      qppSelfEmployedFirstMax: 8961.30,
+      qppSelfEmployedFirstMax: 8958.60,
       qppSelfEmployedSecondMax: 832.00,
       eiMaxInsurableEarnings: 68900,
       eiRate: 0.0163,
