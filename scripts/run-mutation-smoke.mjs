@@ -66,7 +66,11 @@ if (!fs.existsSync(vitestBin)) {
 }
 
 let killed = 0;
-const survivors = [];
+const survivors = [  ["US 2026 estate exclusion is protected", "countryRules/US.js", "basicExclusionAmount: 15000000", "basicExclusionAmount: 14000000", "overseasHundredPhase2.test.js"],
+  ["GB Lifetime ISA bonus rate is protected", "countryRules/GB.js", "governmentBonusRate: 0.25", "governmentBonusRate: 0.20", "overseasHundredPhase2.test.js"],
+  ["CA RRSP withdrawal top withholding rate is protected", "countryRules/CA.js", "{ upTo: Infinity, rate: 0.30, quebecFederalRate: 0.15 }", "{ upTo: Infinity, rate: 0.20, quebecFederalRate: 0.15 }", "overseasHundredPhase2.test.js"],
+  ["AU younger-partner super exclusion is protected", "countryRules/AU.js", "return age >= this.agePension.qualifyingAge || !!isReceivingSuperPension;", "return true;", "overseasHundredPhase2.test.js"],
+];
 for (const [name, rel, from, to, testFile] of mutants) {
   const file = path.join(ROOT, rel);
   const original = fs.readFileSync(file, "utf8");
