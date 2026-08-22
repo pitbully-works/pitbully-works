@@ -22,7 +22,7 @@ export const CA_COUNTRY_RULES = {
     noteEn: "2026 rules verified on 17 Aug 2026. OAS uses the July-September 2026 quarterly figures.",
     coverage: [
       { key: "investment", labelJa: "投資制度", labelEn: "Investment", status: "implemented", effective: "2026 calendar year", lastUpdated: "2026-08-17", updateJa: "TFSAの年間枠・未使用枠繰越・前年引出しの翌年復活、RRSP、非登録口座、RRIF最低取崩し、FHSAの年間枠・繰越・生涯上限を反映。RESP・RDSPは未実装。", updateEn: "TFSA annual room, unused-room carryforward and prior-year withdrawal restoration, RRSP, non-registered accounts, RRIF minimum withdrawals, plus FHSA annual room, carryforward and lifetime limit are modelled; RESP and RDSP remain unimplemented." },
-      { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "partial", effective: "2026 / OAS & GIS Jul-Sep", lastUpdated: "2026-08-20", updateJa: "CPP・OAS・OAS回収税・GIS/Allowanceの公表上限・CPP Post-Retirement Benefitを反映。GISの正確な支給額、QPP、CPP履歴からの自動算定は未実装。", updateEn: "CPP, OAS, OAS recovery tax, published GIS/Allowance maxima and CPP Post-Retirement Benefit are modelled; exact GIS entitlement, QPP and automatic CPP entitlement from history are not implemented." },
+      { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "partial", effective: "2026 / OAS & GIS Jul-Sep", lastUpdated: "2026-08-22", updateJa: "CPPに加え、ケベック州QPPの受給開始年齢60〜72歳・65歳満額・65歳後0.7%/月増額・早期0.5〜0.6%/月減額の選択計算を実装。OAS・回収税・GIS/Allowance上限・CPP PRBも反映。", updateEn: "Adds QPP claim-age modelling (60–72, full at 65, +0.7%/month after 65 and configurable 0.5–0.6%/month early reduction) alongside CPP, OAS recovery tax, GIS/Allowance maxima and CPP PRB." },
       { key: "healthcare", labelJa: "医療", labelEn: "Healthcare", status: "partial", effective: "2026", lastUpdated: "2026-08-21", updateJa: "州・準州の公的医療保険を前提に自己負担を計算し、CDCPの所得別自己負担率とオンタリオ州の2026年長期介護ホーム最大自己負担額を自動計算。その他の州・準州の薬剤・視力・介護費は手入力。", updateEn: "Models out-of-pocket costs under provincial/territorial coverage, the income-based CDCP co-payment and Ontario 2026 long-term-care home maximum co-payments; drug, vision and long-term-care charges outside Ontario remain manual." },
       { key: "tax", labelJa: "税金", labelEn: "Tax", status: "partial", effective: "2026 tax year", lastUpdated: "2026-08-21", updateJa: "連邦所得税に加え、オンタリオ州の所得税・サータックス・Ontario Health Premiumを反映。その他12地域、QPP、配当税額控除等は未実装。", updateEn: "Federal income tax plus Ontario income tax, surtax and Ontario Health Premium are modelled; the other 12 regions, QPP and dividend credits remain unimplemented." },
       { key: "estate", labelJa: "相続", labelEn: "Estate", status: "partial", effective: "2026", lastUpdated: "2026-08-17", updateJa: "相続目標は資産計画に反映。死亡時のみなし譲渡等の自動計算は未実装。", updateEn: "Estate targets feed the plan; deemed disposition and related death-tax calculations are not automated." },
@@ -279,6 +279,21 @@ export const CA_COUNTRY_RULES = {
       // 繰下げ：65歳より後は1か月あたり0.7%増額（70歳で +42%）
       lateIncreasePerMonth: 0.007,
     },
+    qpp: {
+      // Retraite Québec 2026：65歳時点の最大月額はC$1,507.65。
+      // 60歳から受給可、72歳まで繰下げ可。65歳後は1か月0.7%増（72歳で+58.8%）。
+      // 65歳前の減額率は本人の年金額等により0.5〜0.6%/月なので、
+      // アプリでは利用者がこの範囲内で率を選べるようにする。
+      maxMonthlyAt65: 1507.65,
+      standardAge: 65,
+      earliestAge: 60,
+      latestAge: 72,
+      earlyReductionPerMonthMin: 0.005,
+      earlyReductionPerMonthMax: 0.006,
+      earlyReductionPerMonthDefault: 0.006,
+      lateIncreasePerMonth: 0.007,
+      sourceUrl: "https://www.retraitequebec.gouv.qc.ca/en/citizens/retirement-planning/applying-your-retirement-pension/retirement-pension-quebec-pension-plan/calculation-your-retirement-pension",
+    },
     oas: {
       // 2026年7〜9月期の満額（月額）。OASは四半期ごとに物価連動で改定される
       // （2026年7月支給分から+1.2%：743.05→751.97 / 817.36→827.17）。
@@ -341,6 +356,35 @@ export const CA_COUNTRY_RULES = {
       return 1 + months * c.lateIncreasePerMonth;
     },
     getCppMaxAnnualAt65() { return this.cpp.maxMonthlyAt65 * 12; },
+    getQppMaxAnnualAt65() { return this.qpp.maxMonthlyAt65 * 12; },
+    normalizeQppEarlyReductionPerMonth(rate) {
+      const q = this.qpp;
+      const n = Number(rate);
+      if (!Number.isFinite(n)) return q.earlyReductionPerMonthDefault;
+      return Math.min(q.earlyReductionPerMonthMax, Math.max(q.earlyReductionPerMonthMin, n));
+    },
+    getQppFactor(startAge, earlyReductionPerMonth = this.qpp.earlyReductionPerMonthDefault) {
+      const q = this.qpp;
+      const a = Math.min(Math.max(Number(startAge) || q.standardAge, q.earliestAge), q.latestAge);
+      const months = (a - q.standardAge) * 12;
+      if (months < 0) {
+        return 1 + months * this.normalizeQppEarlyReductionPerMonth(earlyReductionPerMonth);
+      }
+      return 1 + months * q.lateIncreasePerMonth;
+    },
+    getQppAnnualBenefit(estimatedAnnualAt65, startAge, earlyReductionPerMonth = this.qpp.earlyReductionPerMonthDefault) {
+      return (Number(estimatedAnnualAt65) || 0) * this.getQppFactor(startAge, earlyReductionPerMonth);
+    },
+    getPublicContributoryPensionAnnual({
+      plan = "CPP",
+      estimatedAnnualAt65 = 0,
+      startAge = 65,
+      qppEarlyReductionPerMonth,
+    } = {}) {
+      return String(plan || "CPP").toUpperCase() === "QPP"
+        ? this.getQppAnnualBenefit(estimatedAnnualAt65, startAge, qppEarlyReductionPerMonth)
+        : this.getCppAnnualBenefit(estimatedAnnualAt65, startAge);
+    },
     // 年間受給額 ＝ 利用者が入力した「65歳時点の見込み年額」× 受給開始年齢による増減率
     getCppAnnualBenefit(estimatedAnnualAt65, startAge) {
       return (Number(estimatedAnnualAt65) || 0) * this.getCppFactor(startAge);
@@ -400,7 +444,7 @@ export const CA_COUNTRY_RULES = {
     },
     notImplemented: [
       "GIS/Allowanceの正確な支給額（現状は公表上限額・所得基準まで対応）",
-      "ケベック州のQPP（受給額・拠出率がCPPと異なる）",
+      "QPPは受給開始年齢による増減計算まで実装済み。実際の拠出履歴から65歳時点見込額を自動算定する機能は未実装（Retraite Québecの見込額を入力）",
       "CPP拠出履歴からの受給見込額の自動算出（利用者が見込額を入力する方式）",
       "配偶者との年金分割（pension income splitting / CPP sharing）",
       // 【B-3／将来対応】OAS回収税の判定所得は、本来はその年の純世界所得（OAS本体・CPP・
