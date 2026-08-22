@@ -346,7 +346,7 @@ export const CA_COUNTRY_RULES = {
   retirement: {
     implemented: true,
     effectiveTaxYear: "2026",
-    lastUpdated: "2026-08-20",
+    lastUpdated: "2026-08-22",
     sourceName: "Service Canada / ESDC — Canada Pension Plan, Old Age Security",
     sourceUrl: "https://www.canada.ca/en/services/benefits/publicpensions.html",
     sourceUrls: {
@@ -405,6 +405,7 @@ export const CA_COUNTRY_RULES = {
       // 満額受給には18歳以降40年のカナダ居住が必要（10年で最低受給資格）
       fullResidenceYears: 40,
       minimumResidenceYears: 10,
+      minimumResidenceYearsOutsideCanada: 20,
     },
 
 
@@ -426,6 +427,35 @@ export const CA_COUNTRY_RULES = {
     isGisIncomeEligible(status, annualIncome) {
       const rule = this.getGisRule(status);
       return (Number(annualIncome) || 0) < rule.incomeCutoff;
+    },
+    // GISの基本資格ゲート。正確な支給額は所得構成ごとの公式表を使う必要があるため別扱いだが、
+    // 65歳以上・OAS受給資格・所得基準・スポンサー期間中でないことをここで判定する。
+    isGisEligible({ age = 0, status = "single", annualIncome = 0, receivesOas = true, underSponsorshipAgreement = false } = {}) {
+      const a = Math.floor(Number(age) || 0);
+      if (a < 65 || !receivesOas || underSponsorshipAgreement) return false;
+      return this.isGisIncomeEligible(status, annualIncome);
+    },
+    isAllowanceEligible({ age = 0, combinedAnnualIncome = 0, residenceYears = 0, isCitizenOrLegalResident = true, underSponsorshipAgreement = false } = {}) {
+      const r = this.gis.allowance;
+      const a = Math.floor(Number(age) || 0);
+      const years = Math.max(0, Number(residenceYears) || 0);
+      return a >= r.minAge && a <= r.maxAge
+        && isCitizenOrLegalResident
+        && years >= 10
+        && !underSponsorshipAgreement
+        && (Number(combinedAnnualIncome) || 0) < r.incomeCutoff;
+    },
+    isAllowanceSurvivorEligible({ age = 0, annualIncome = 0, residenceYears = 0, isCitizenOrLegalResident = true, spouseOrPartnerDied = true, remarriedOrNewCommonLaw = false, underSponsorshipAgreement = false } = {}) {
+      const r = this.gis.allowanceSurvivor;
+      const a = Math.floor(Number(age) || 0);
+      const years = Math.max(0, Number(residenceYears) || 0);
+      return a >= r.minAge && a <= r.maxAge
+        && isCitizenOrLegalResident
+        && years >= 10
+        && spouseOrPartnerDied
+        && !remarriedOrNewCommonLaw
+        && !underSponsorshipAgreement
+        && (Number(annualIncome) || 0) < r.incomeCutoff;
     },
 
     // CPP Post-Retirement Benefit（PRB）。2026年の65歳時点の最大月額。
@@ -498,18 +528,31 @@ export const CA_COUNTRY_RULES = {
       const monthly = (Number(age) || 0) >= o.enhancedAge ? o.maxMonthly75plus : o.maxMonthly65to74;
       return monthly * 12;
     },
-    // 居住年数による按分（40年で満額、10年未満は受給資格なし）
-    getOasResidenceFraction(residenceYears) {
+    // OASの最低居住年数。申請時にカナダ国内に居住する場合は18歳以降10年、
+    // 国外居住の場合は原則20年。社会保障協定で資格要件を満たす場合でも、
+    // 支給額の按分は実際にカナダに居住した年数を40で割って計算する。
+    getOasMinimumResidenceYears({ livingOutsideCanada = false } = {}) {
       const o = this.oas;
-      const y = Number(residenceYears) || 0;
-      if (y < o.minimumResidenceYears) return 0;
+      return livingOutsideCanada ? o.minimumResidenceYearsOutsideCanada : o.minimumResidenceYears;
+    },
+    isOasResidenceEligible(residenceYears, { livingOutsideCanada = false, qualifiesViaSocialSecurityAgreement = false } = {}) {
+      if (qualifiesViaSocialSecurityAgreement) return true;
+      const y = Math.max(0, Number(residenceYears) || 0);
+      return y >= this.getOasMinimumResidenceYears({ livingOutsideCanada });
+    },
+    // 居住年数による按分（40年で満額）。国外居住の20年要件も区別する。
+    // 社会保障協定は「資格」を補えるが、年金額そのものの分子には国外期間を足さない。
+    getOasResidenceFraction(residenceYears, options = {}) {
+      const o = this.oas;
+      const y = Math.max(0, Number(residenceYears) || 0);
+      if (!this.isOasResidenceEligible(y, options)) return 0;
       return Math.min(1, y / o.fullResidenceYears);
     },
     // クローバック前のOAS年額
-    getOasAnnualBeforeClawback(age, startAge, residenceYears) {
+    getOasAnnualBeforeClawback(age, startAge, residenceYears, options = {}) {
       return this.getOasMaxAnnual(age)
         * this.getOasFactor(startAge)
-        * this.getOasResidenceFraction(residenceYears);
+        * this.getOasResidenceFraction(residenceYears, options);
     },
     // 支給月に対応する前年所得のクローバック閾値を返す。
     // 未指定時は制度基準日（2026-08-17）が属する 2026-07〜2027-06 を使う。
@@ -534,7 +577,7 @@ export const CA_COUNTRY_RULES = {
       return before - this.getOasClawback(netIncome, before, paymentDate);
     },
     notImplemented: [
-      "GIS/Allowanceの正確な支給額（現状は公表上限額・所得基準まで対応）",
+      "GIS/Allowanceの正確な支給額（基本資格ゲート・公表上限額・所得基準までは対応。所得構成別の公式支給額表による完全算定は未実装）",
       "QPPは受給開始年齢による増減計算まで実装済み。実際の拠出履歴から65歳時点見込額を自動算定する機能は未実装（Retraite Québecの見込額を入力）",
       "CPP拠出履歴からの受給見込額の自動算出（利用者が見込額を入力する方式）",
       "配偶者との年金分割（pension income splitting / CPP sharing）",
