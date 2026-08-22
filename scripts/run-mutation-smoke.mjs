@@ -133,6 +133,11 @@ const mutants = [
   ["GB child pension relief-at-source rate is protected", "countryRules/GB.js", "reliefAtSourceRate: 0.20,", "reliefAtSourceRate: 0.19,", "overseasHundredPhase22.test.js"],
   ["GB child pension future access age is protected", "countryRules/GB.js", "normalMinimumPensionAge: 57,", "normalMinimumPensionAge: 56,", "overseasHundredPhase22.test.js"],
 
+  ["GB child pension death exception is protected", "countryRules/GB.js", "deathBeforeAccessAge: true,", "deathBeforeAccessAge: false,", "overseasHundredPhase23.test.js"],
+  ["GB child pension serious-ill-health exception is protected", "countryRules/GB.js", "seriousIllHealthBeforeAccessAge: true,", "seriousIllHealthBeforeAccessAge: false,", "overseasHundredPhase23.test.js"],
+  ["GB child pension ordinary early withdrawal lock is protected", "countryRules/GB.js", "ordinaryEarlyWithdrawal: false,", "ordinaryEarlyWithdrawal: true,", "overseasHundredPhase23.test.js"],
+  ["GB child pension provider boundary is protected", "countryRules/GB.js", "providerSpecificTermsModelled: false,", "providerSpecificTermsModelled: true,", "overseasHundredPhase23.test.js"],
+
 ];
 
 if (!fs.existsSync(vitestBin)) {
