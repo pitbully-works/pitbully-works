@@ -569,8 +569,8 @@ export const GB_COUNTRY_RULES = {
       const nonNegative = (value) => Math.max(0, Number(value) || 0);
       const whole = (value) => Math.max(0, Math.floor(Number(value) || 0));
       const base = status === "couple"
-        ? pc.guaranteeCredit.coupleWeekly
-        : pc.guaranteeCredit.singleWeekly;
+        ? pc.standardMinimumGuaranteeWeekly.couple
+        : pc.standardMinimumGuaranteeWeekly.single;
 
       const severeCount = whole(severeDisabilityQualifiers);
       const severeDisabilityExtra =
