@@ -469,6 +469,15 @@ export const GB_COUNTRY_RULES = {
         tariffIncomePerUnitWeekly: 1,
         upperLimit: null,
       },
+      guaranteeCreditExtraAmounts: {
+        severeDisabilityWeekly: 86.05,
+        severeDisabilityCoupleBothQualifyWeekly: 172.10,
+        carerWeeklyPerQualifyingPartner: 48.15,
+        childFirstBornBefore2017Weekly: 81.07,
+        childOtherWeekly: 69.98,
+        disabledChildLowerWeekly: 37.93,
+        disabledChildHigherWeekly: 118.46,
+      },
       mixedAgeCouples: {
         newClaimRuleFrom: "2019-05-15",
         bothPartnersNormallyMustReachQualifyingAge: true,
@@ -541,6 +550,57 @@ export const GB_COUNTRY_RULES = {
         earningsDisregardWeekly: earningsDisregard,
         tariffIncomeWeekly: tariffIncome,
         fullyDisregardedIncomeWeekly: nonNegative(fullyDisregardedIncomeWeekly),
+      };
+    },
+
+    calculatePensionCreditGuaranteeAppropriateAmount({
+      status = "single",
+      severeDisabilityQualifiers = 0,
+      carerQualifiers = 0,
+      firstChildrenBornBefore2017 = 0,
+      otherChildren = 0,
+      disabledChildrenLower = 0,
+      disabledChildrenHigher = 0,
+      eligibleHousingCostsWeekly = 0,
+      transitionalAdditionalAmountWeekly = 0,
+    } = {}) {
+      const pc = this.pensionCredit;
+      const extras = pc.guaranteeCreditExtraAmounts;
+      const nonNegative = (value) => Math.max(0, Number(value) || 0);
+      const whole = (value) => Math.max(0, Math.floor(Number(value) || 0));
+      const base = status === "couple"
+        ? pc.guaranteeCredit.coupleWeekly
+        : pc.guaranteeCredit.singleWeekly;
+
+      const severeCount = whole(severeDisabilityQualifiers);
+      const severeDisabilityExtra =
+        status === "couple" && severeCount >= 2
+          ? extras.severeDisabilityCoupleBothQualifyWeekly
+          : severeCount >= 1
+            ? extras.severeDisabilityWeekly
+            : 0;
+      const carerExtra =
+        Math.min(status === "couple" ? 2 : 1, whole(carerQualifiers)) *
+        extras.carerWeeklyPerQualifyingPartner;
+      const childExtra =
+        whole(firstChildrenBornBefore2017) * extras.childFirstBornBefore2017Weekly +
+        whole(otherChildren) * extras.childOtherWeekly +
+        whole(disabledChildrenLower) * extras.disabledChildLowerWeekly +
+        whole(disabledChildrenHigher) * extras.disabledChildHigherWeekly;
+      const housingExtra = nonNegative(eligibleHousingCostsWeekly);
+      const transitionalExtra = nonNegative(transitionalAdditionalAmountWeekly);
+      const total =
+        base + severeDisabilityExtra + carerExtra + childExtra +
+        housingExtra + transitionalExtra;
+
+      return {
+        standardMinimumGuaranteeWeekly: base,
+        severeDisabilityExtraWeekly: severeDisabilityExtra,
+        carerExtraWeekly: Math.round(carerExtra * 100) / 100,
+        childExtraWeekly: Math.round(childExtra * 100) / 100,
+        housingExtraWeekly: Math.round(housingExtra * 100) / 100,
+        transitionalAdditionalAmountWeekly: Math.round(transitionalExtra * 100) / 100,
+        appropriateAmountWeekly: Math.round(total * 100) / 100,
       };
     },
 
