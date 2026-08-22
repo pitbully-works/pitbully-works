@@ -228,7 +228,6 @@ export const CA_COUNTRY_RULES = {
     notImplemented: [
       "FHSAのre-participation room・excess amount等の複雑な個別調整（基本の年間枠・繰越・生涯上限は実装済み）／RESP／RDSP",
       "RRSPからの引出し時の源泉徴収税（withholding tax）。引出時課税は口座ごとの withdrawalTaxPct（単一税率）で近似しており、実際の限界税率や源泉徴収率とは一致しない",
-      "RRIF最低取崩し率のspousal age electionは入力・計算に対応済み。実際の選択はRRIF開設時に行い、原則変更できないため利用者が選択状態を入力する方式",
       "ケベック州のQPP（CPPと拠出率・給付が異なる）",
     ],
   },
