@@ -97,9 +97,12 @@ export const GB_COUNTRY_RULES = {
     },
     // 予定されている制度変更（2026/27時点では未適用。計算には反映していない）
     scheduled: {
-      // 2027年4月6日から、65歳未満のCash ISA年間拠出上限は £12,000 になる予定（65歳以上は £20,000 のまま）
+      // 2027年4月6日からのISA改革
       cashIsaLimitUnder65From2027: 12000,
+      cashIsaLimitAge65PlusFrom2027: 20000,
       cashIsaLimitEffectiveDate: "2027-04-06",
+      cashIsaTransferFromNonCashUnder65AllowedFrom2027: false,
+      nonCashIsaCashInterestChargeRateFrom2027: 0.22,
       // 私的年金の受給可能最低年齢は2028年4月6日から57歳へ引き上げ予定
       pensionAccessAgeFrom2028: 57,
       pensionAccessAgeEffectiveDate: "2028-04-06",
@@ -113,6 +116,27 @@ export const GB_COUNTRY_RULES = {
     // ---------- 計算関数（すべて純粋関数。JP/USや共通エンジンからは呼ばれない） ----------
     _num(v) { return Number(v) || 0; },
     getIsaAnnualAllowance() { return this.limits.isaAnnualAllowance; },
+    getCashIsaAnnualLimit({ date = "2026-04-06", age = 0 } = {}) {
+      const d = String(date || "");
+      const a = Math.max(0, Math.floor(this._num(age)));
+      if (d < this.scheduled.cashIsaLimitEffectiveDate) return this.limits.isaAnnualAllowance;
+      return a >= 65
+        ? this.scheduled.cashIsaLimitAge65PlusFrom2027
+        : this.scheduled.cashIsaLimitUnder65From2027;
+    },
+    canTransferNonCashIsaToCashIsa({ date = "2026-04-06", age = 0 } = {}) {
+      const d = String(date || "");
+      const a = Math.max(0, Math.floor(this._num(age)));
+      if (d < this.scheduled.cashIsaLimitEffectiveDate) return true;
+      if (a >= 65) return true;
+      return this.scheduled.cashIsaTransferFromNonCashUnder65AllowedFrom2027;
+    },
+    getNonCashIsaCashInterestChargeRate({ date = "2026-04-06" } = {}) {
+      const d = String(date || "");
+      return d >= this.scheduled.cashIsaLimitEffectiveDate
+        ? this.scheduled.nonCashIsaCashInterestChargeRateFrom2027
+        : 0;
+    },
     getLifetimeIsaAnnualBonus(contribution, age) {
       const lisa = this.lifetimeIsa;
       const a = Number(age);
@@ -237,6 +261,45 @@ export const GB_COUNTRY_RULES = {
     getPensionCarryForwardAvailable(availableFromPrior3Years) {
       return Math.max(0, this._num(availableFromPrior3Years));
     },
+    reconstructPensionCarryForward(priorTaxYears = []) {
+      const rows = Array.isArray(priorTaxYears) ? priorTaxYears.slice(-3) : [];
+      return rows.map((row) => {
+        const annualAllowance = Math.max(0, this._num(row?.annualAllowance));
+        const pensionInputAmount = Math.max(0, this._num(row?.pensionInputAmount));
+        const wasMember = row?.wasMember !== false;
+        const unused = wasMember ? Math.max(0, annualAllowance - pensionInputAmount) : 0;
+        return {
+          taxYear: String(row?.taxYear || ""),
+          annualAllowance,
+          pensionInputAmount,
+          wasMember,
+          unused,
+        };
+      });
+    },
+    getReconstructedPensionCarryForwardAvailable(priorTaxYears = []) {
+      return this.reconstructPensionCarryForward(priorTaxYears)
+        .reduce((sum, row) => sum + row.unused, 0);
+    },
+    allocatePensionCarryForward({ currentAllowance = 0, currentPensionInput = 0, priorTaxYears = [] } = {}) {
+      const current = Math.max(0, this._num(currentAllowance));
+      let excess = Math.max(0, this._num(currentPensionInput) - current);
+      const history = this.reconstructPensionCarryForward(priorTaxYears);
+      const usage = [];
+      // HMRCの順序：当年枠を先に使い、その後は最も古いcarry-forwardから消化。
+      for (const row of history) {
+        const used = Math.min(row.unused, excess);
+        usage.push({ ...row, used, remaining: row.unused - used });
+        excess -= used;
+      }
+      return {
+        currentAllowanceUsed: Math.min(current, Math.max(0, this._num(currentPensionInput))),
+        carryForwardUsed: usage.reduce((sum, row) => sum + row.used, 0),
+        unusedCarryForwardRemaining: usage.reduce((sum, row) => sum + row.remaining, 0),
+        excessAfterCarryForward: Math.max(0, excess),
+        usage,
+      };
+    },
     getEffectivePensionAnnualAllowance(adjustedIncome, thresholdIncome, availableFromPrior3Years = 0) {
       return this.getPensionAnnualAllowance(adjustedIncome, thresholdIncome) + this.getPensionCarryForwardAvailable(availableFromPrior3Years);
     },
@@ -318,8 +381,8 @@ export const GB_COUNTRY_RULES = {
     notImplemented: [
       "Lifetime ISA（LISA）は独立口座・年間£4,000上限・25%政府ボーナス・50歳までの拠出・60歳からの退職目的アクセスを資産推移へ統合済み。初回住宅購入による途中引出しをライフプラン資産推移へ自動反映する機能は未実装",
       "Junior ISAは年間£9,000上限・18歳までロック・未使用枠繰越なし・18歳時点投影を実装済み。子ども向けSIPPは無収入時£3,600 gross（£2,880 net＋20% relief at source）・所得連動上限・57歳最低受給年齢・残高投影・死亡/重篤疾患の例外アクセス判定まで実装済み。provider固有の手数料・最低拠出額・商品制限等は未実装",
-      "年金拠出のcarry forwardは過去3年分の利用可能額を入力して当年枠へ加算済み。各年度の加入実績・使用順をアプリ内で自動再構成する機能は未実装",
-      "2027年4月からのCash ISA年間上限£12,000（65歳未満）— 上限額のみ scheduled に保持",
+      "年金carry forwardは過去3年のannual allowance・pension input amount・加入有無から未使用枠を再構成し、当年枠→最古年度の順で使用する計算まで実装済み。UIから各年度履歴を自動取得する機能は未実装",
+      "2027年4月6日ISA改革は65歳未満Cash ISA £12,000、65歳以上£20,000、65歳未満の非Cash ISA→Cash ISA移管禁止、非Cash ISA内現金利息22% chargeの切替判定までscheduled計算に実装済み。2027年制度を画面入力へ自動切替するUIは未実装",
     ],
   },
 
