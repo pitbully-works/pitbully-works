@@ -155,6 +155,13 @@ const mutants = [
   ["GB Pension Credit tariff income rate is protected", "countryRules/GB.js", "tariffIncomePerUnitWeekly: 1,\n        upperLimit: null,", "tariffIncomePerUnitWeekly: 2,\n        upperLimit: null,", "overseasHundredPhase26.test.js"],
   ["GB Pension Credit partial tariff unit is protected", "countryRules/GB.js", "Math.ceil(excess / rules.tariffUnit)", "Math.floor(excess / rules.tariffUnit)", "overseasHundredPhase26.test.js"],
 
+  ["GB Savings Credit single threshold is protected", "countryRules/GB.js", "singleThresholdWeekly: 208.07,\n        coupleThresholdWeekly: 329.75,", "singleThresholdWeekly: 207.07,\n        coupleThresholdWeekly: 329.75,", "overseasHundredPhase27.test.js"],
+  ["GB Savings Credit couple threshold is protected", "countryRules/GB.js", "singleThresholdWeekly: 208.07,\n        coupleThresholdWeekly: 329.75,", "singleThresholdWeekly: 208.07,\n        coupleThresholdWeekly: 328.75,", "overseasHundredPhase27.test.js"],
+  ["GB Savings Credit single maximum is protected", "countryRules/GB.js", "singleMaximumWeekly: 17.96,\n        coupleMaximumWeekly: 20.10,", "singleMaximumWeekly: 16.96,\n        coupleMaximumWeekly: 20.10,", "overseasHundredPhase27.test.js"],
+  ["GB Savings Credit couple maximum is protected", "countryRules/GB.js", "singleMaximumWeekly: 17.96,\n        coupleMaximumWeekly: 20.10,", "singleMaximumWeekly: 17.96,\n        coupleMaximumWeekly: 19.10,", "overseasHundredPhase27.test.js"],
+  ["GB Savings Credit Amount A 60 percent rate is protected", "countryRules/GB.js", "amountARate: 0.60,\n        amountBRate: 0.40,", "amountARate: 0.50,\n        amountBRate: 0.40,", "overseasHundredPhase27.test.js"],
+  ["GB Savings Credit Amount B 40 percent rate is protected", "countryRules/GB.js", "amountARate: 0.60,\n        amountBRate: 0.40,", "amountARate: 0.60,\n        amountBRate: 0.30,", "overseasHundredPhase27.test.js"],
+
 ];
 
 if (!fs.existsSync(vitestBin)) {
