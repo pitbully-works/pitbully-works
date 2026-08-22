@@ -53,7 +53,10 @@ if (!fs.existsSync(vitestBin)) {
 }
 
 let killed = 0;
-const survivors = [];
+const survivors = [  ["Engine always splits at retirement boundary", "lifePlanEngine.js", "const steps = buildAgeSteps(currentAge, deathAge, [...(p.boundaries || []), retireAge]);", "const steps = buildAgeSteps(currentAge, deathAge, p.boundaries);", "fiveCountryCalculationBoundaryFinal.test.js"],
+  ["Scenario uses exact retirement-boundary net worth", "utils/scenarioComparison.js", "Number.isFinite(result.netWorthAtRetire)", "false", "fiveCountryCalculationBoundaryFinal.test.js"],
+  ["Negative retirement living cost cannot enter the plan", "utils/buildPlanInput.js", "Math.max(0, Number(overrides.livingCostMonthly))", "Number(overrides.livingCostMonthly)", "fiveCountryCalculationBoundaryFinal.test.js"],
+];
 for (const [name, rel, from, to, testFile] of mutants) {
   const file = path.join(ROOT, rel);
   const original = fs.readFileSync(file, "utf8");
