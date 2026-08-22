@@ -8,7 +8,7 @@ const COUNTRIES = ["JP", "US", "GB", "CA", "AU"];
 function minimalEnginePlan(overrides = {}) {
   return {
     currentAge: 60,
-    retireAge: 60.5,
+    retireAge: 60.45,
     deathAge: 62,
     pools: [{
       id: "bank",
@@ -37,9 +37,10 @@ function minimalEnginePlan(overrides = {}) {
 describe("final five-country calculation boundaries", () => {
   it("always splits the engine exactly at a fractional retirement age", () => {
     const r = runIntegratedPlan(minimalEnginePlan());
-    // 60.0 -> 60.5 is pre-retirement, so no living-cost draw yet.
+    // 60.45 is deliberately off the normal monthly grid. The engine must insert
+    // retirement as an explicit boundary; otherwise this exact value cannot be captured.
     expect(r.netWorthAtRetire).toBeCloseTo(120000, 6);
-    // After retirement, living costs start only from 60.5 onward.
+    // After retirement, living costs start only from 60.45 onward.
     expect(r.finalNetWorth).toBeLessThan(r.netWorthAtRetire);
   });
 
@@ -48,6 +49,14 @@ describe("final five-country calculation boundaries", () => {
     const age61 = r.yearly.find((row) => row.exactAge === 61);
     expect(age61).toBeTruthy();
     expect(r.netWorthAtRetire).toBeGreaterThan(age61.netWorth);
+  });
+
+  it("scenario summary explicitly prefers the engine's exact retirement-boundary value", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const source = readFileSync(join(process.cwd(), "utils/scenarioComparison.js"), "utf8");
+    expect(source).toContain("Number.isFinite(result.netWorthAtRetire)");
+    expect(source).toContain("? result.netWorthAtRetire");
   });
 
   it.each(COUNTRIES)("%s clamps negative retirement living cost to zero", (country) => {
