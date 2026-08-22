@@ -77,6 +77,10 @@ const mutants = [
   ["GB employee NI main rate is protected", "countryRules/GB.js", "mainRate: 0.08,", "mainRate: 0.07,", "overseasHundredPhase7.test.js"],
   ["GB employee NI upper rate is protected", "countryRules/GB.js", "additionalRate: 0.02,", "additionalRate: 0.03,", "overseasHundredPhase7.test.js"],
   ["GB employee NI upper earnings limit is protected", "countryRules/GB.js", "upperEarningsLimitAnnual: 50270,", "upperEarningsLimitAnnual: 49270,", "overseasHundredPhase7.test.js"],
+  ["CA 2026 CPP employee rate is protected", "countryRules/CA.js", "cppRate: 0.0595,", "cppRate: 0.0585,", "overseasHundredPhase8.test.js"],
+  ["CA 2026 EI maximum insurable earnings is protected", "countryRules/CA.js", "eiMaxInsurableEarnings: 68900,", "eiMaxInsurableEarnings: 67900,", "overseasHundredPhase8.test.js"],
+  ["CA 2026 Quebec EI rate is protected", "countryRules/CA.js", "eiQuebecRate: 0.0130,", "eiQuebecRate: 0.0140,", "overseasHundredPhase8.test.js"],
+
 ];
 
 if (!fs.existsSync(vitestBin)) {
