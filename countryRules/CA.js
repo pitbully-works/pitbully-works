@@ -576,6 +576,7 @@ export const CA_COUNTRY_RULES = {
       capitalGains: "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/personal-income/line-12700-capital-gains.html",
       payroll: "https://www.canada.ca/en/revenue-agency/services/forms-publications/payroll/t4127-payroll-deductions-formulas/t4127-jan/t4127-jan-payroll-deductions-formulas-computer-programs.html",
       ei: "https://www.canada.ca/en/employment-social-development/programs/ei/ei-list/ei-employers/premium-reduction-program/2026-maximum-insurable-earnings.html",
+      qpip: "https://www.revenuquebec.ca/en/businesses/source-deductions-and-employer-contributions/calculating-source-deductions-and-contributions/qpip-premiums/maximum-insurable-earnings-and-premium-rate/",
     },
     // 2026-08-21時点：オンタリオ州のみ自動計算。その他12地域は未実装。
     region: "Federal + Ontario (other provincial / territorial tax not included)",
@@ -636,6 +637,9 @@ export const CA_COUNTRY_RULES = {
       eiMaxInsurableEarnings: 68900,
       eiRate: 0.0163,
       eiQuebecRate: 0.0130,
+      qpipMaxInsurableEarnings: 103000,
+      qpipEmployeeRate: 0.00430,
+      qpipEmployeeMaxPremium: 442.90,
     },
     calculateEmployeePensionContribution(employmentIncome, provinceCode = "ON") {
       const cfg = this.payrollDeductions;
@@ -660,9 +664,20 @@ export const CA_COUNTRY_RULES = {
       const rate = isQuebec ? cfg.eiQuebecRate : cfg.eiRate;
       return Math.min(income, cfg.eiMaxInsurableEarnings) * rate;
     },
+    calculateEmployeeQpipPremium(employmentIncome, provinceCode = "ON") {
+      const cfg = this.payrollDeductions;
+      const income = Math.max(0, Number(employmentIncome) || 0);
+      const isQuebec = String(provinceCode || "").toUpperCase() === "QC";
+      if (!isQuebec) return 0;
+      return Math.min(
+        cfg.qpipEmployeeMaxPremium,
+        Math.min(income, cfg.qpipMaxInsurableEarnings) * cfg.qpipEmployeeRate
+      );
+    },
     calculateEmployeePayrollDeductions(employmentIncome, provinceCode = "ON") {
       const pension = this.calculateEmployeePensionContribution(employmentIncome, provinceCode);
       const ei = this.calculateEmployeeEiPremium(employmentIncome, provinceCode);
+      const qpip = this.calculateEmployeeQpipPremium(employmentIncome, provinceCode);
       return {
         employmentIncome: Math.max(0, Number(employmentIncome) || 0),
         provinceCode: String(provinceCode || "ON").toUpperCase(),
@@ -671,7 +686,8 @@ export const CA_COUNTRY_RULES = {
         pensionFirstContribution: pension.first,
         pensionSecondContribution: pension.second,
         eiPremium: ei,
-        total: pension.total + ei,
+        qpipPremium: qpip,
+        total: pension.total + ei + qpip,
       };
     },
 
@@ -802,7 +818,7 @@ export const CA_COUNTRY_RULES = {
       "オンタリオ州の扶養家族等を含むTax Reductionの完全計算（基本本人分のみ反映）",
       "ケベック州の連邦税減額（Quebec abatement 16.5%）",
       "配当税額控除（eligible / non-eligible dividend tax credit）",
-      "CPP/QPP拠出金とEI保険料は2026年の従業員本人分を実装済み。Quebec Parental Insurance Plan（QPIP）と自営業者向け拠出は未実装",
+      "CPP/QPP拠出金・EI保険料・Quebec Parental Insurance Plan（QPIP）は2026年の従業員本人分を実装済み。自営業者向け拠出は未実装",
       "Alternative Minimum Tax（AMT）",
       "年金所得の分割（pension income splitting）",
     ],
