@@ -1815,6 +1815,15 @@ const DEFAULT_INPUTS = {
       mlsIncome: 0, // 0なら課税所得を概算利用
       mlsUncoveredDays: 365,
       estimatedCapitalGainAnnual: 0, // 年間のキャピタルゲイン実現見込み額（Brokerage口座想定）
+      estate: {
+        stateCode: "",
+        grossEstate: 0,
+        deductibleDebtsAndExpenses: 0,
+        spouseDeduction: 0,
+        charitableDeduction: 0,
+        priorTaxableGiftsUsingExclusion: 0,
+        dsueAmount: 0,
+      },
       // ⑤ 退職後の生活費（Expenses）。JPのlivingCostMonthlyとは別データ
       expensesMonthly: 0,
     },
@@ -8182,6 +8191,50 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               <span>{t("inheritanceAutoNote")}</span>
             </div>
           )}
+
+          {country === "US" && rules.estate?.implemented && (() => {
+            const e = inputs.usInvestment.estate || {};
+            const federal = rules.estate.calculateFederalEstateTaxEstimate(e);
+            const stateProfile = rules.estate.getStateDeathTaxProfile(e.stateCode);
+            const estateStates = Object.keys(rules.estate.stateDeathTaxes2026).sort();
+            return (
+              <div className="summary-box" style={{ marginTop: 14 }}>
+                <div className="field-label" style={{ marginBottom: 8 }}>{t("usEstatePlannerTitle")}</div>
+                <div className="note" style={{ marginBottom: 10 }}>
+                  <Info size={13} />
+                  <span>{t("usEstatePlannerNote")}</span>
+                </div>
+                <Field guide={t("usEstateGrossGuide")} label={t("usEstateGrossLabel")} unit="$" step={100000} value={e.grossEstate || 0} onChange={(v) => updateUsInvestmentNested("estate", "grossEstate", Math.max(0, Number(v) || 0))} />
+                <Field guide={t("usEstateDebtsGuide")} label={t("usEstateDebtsLabel")} unit="$" step={10000} value={e.deductibleDebtsAndExpenses || 0} onChange={(v) => updateUsInvestmentNested("estate", "deductibleDebtsAndExpenses", Math.max(0, Number(v) || 0))} />
+                <Field label={t("usEstateSpouseDeductionLabel")} unit="$" step={10000} value={e.spouseDeduction || 0} onChange={(v) => updateUsInvestmentNested("estate", "spouseDeduction", Math.max(0, Number(v) || 0))} />
+                <Field label={t("usEstateCharityDeductionLabel")} unit="$" step={10000} value={e.charitableDeduction || 0} onChange={(v) => updateUsInvestmentNested("estate", "charitableDeduction", Math.max(0, Number(v) || 0))} />
+                <Field guide={t("usEstatePriorGiftsGuide")} label={t("usEstatePriorGiftsLabel")} unit="$" step={10000} value={e.priorTaxableGiftsUsingExclusion || 0} onChange={(v) => updateUsInvestmentNested("estate", "priorTaxableGiftsUsingExclusion", Math.max(0, Number(v) || 0))} />
+                <Field guide={t("usEstateDsueGuide")} label={t("usEstateDsueLabel")} unit="$" step={10000} value={e.dsueAmount || 0} onChange={(v) => updateUsInvestmentNested("estate", "dsueAmount", Math.max(0, Number(v) || 0))} />
+                <div className="stats-grid" style={{ marginTop: 8 }}>
+                  <StatCard label={t("usEstateNetEstateLabel")} value={money(federal.netEstate)} />
+                  <StatCard label={t("usEstateAvailableExclusionLabel")} value={money(federal.availableExclusion)} sub={t("usEstate2026ExclusionSub")} />
+                  <StatCard label={t("usEstateTaxableAboveLabel")} value={money(federal.taxableAboveExclusion)} />
+                  <StatCard label={t("usEstateFederalTaxLabel")} value={money(federal.estimatedFederalEstateTax)} sub={t("usEstateFederalTaxSub")} tone={federal.estimatedFederalEstateTax > 0 ? "danger" : "good"} />
+                </div>
+                <label className="field" style={{ marginTop: 12 }}>
+                  <span className="field-label">{t("usEstateStateLabel")}</span>
+                  <select value={e.stateCode || ""} onChange={(ev) => updateUsInvestmentNested("estate", "stateCode", ev.target.value)}>
+                    <option value="">{t("usEstateStateNone")}</option>
+                    {estateStates.map((code) => <option key={code} value={code}>{code}</option>)}
+                  </select>
+                </label>
+                {e.stateCode && (
+                  <div className="note" style={{ marginTop: 8, borderLeftColor: stateProfile.hasStateDeathTax ? "#D9A54F" : "#6A9D62" }}>
+                    <Info size={13} />
+                    <span>{stateProfile.hasStateDeathTax
+                      ? t("usEstateStateTaxApplies", { code: stateProfile.stateCode, types: [stateProfile.estate ? t("usEstateTypeEstate") : null, stateProfile.inheritance ? t("usEstateTypeInheritance") : null].filter(Boolean).join(" / "), exemption: stateProfile.exemption ? money(stateProfile.exemption) : t("usEstateVariesByHeir"), min: (stateProfile.rateMin * 100).toFixed(1), max: (stateProfile.rateMax * 100).toFixed(1) })
+                      : t("usEstateStateTaxNone", { code: stateProfile.stateCode })}</span>
+                  </div>
+                )}
+                {stateProfile.stateCode === "NY" && <div className="note" style={{ marginTop: 8 }}><Info size={13} /><span>{t("usEstateNyCliffNote")}</span></div>}
+              </div>
+            );
+          })()}
 
           {country === "AU" && rules.estate?.implemented && (() => {
             const e = inputs.auInvestment.estate || {};
