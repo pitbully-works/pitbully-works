@@ -525,7 +525,9 @@ export function runGoldSimulation({ currentAge, deathAge, gold }) {
 export function runBankSimulation({ currentAge, retireAge, deathAge, banks }) {
   const totalMonths = Math.max(1, Math.round((deathAge - currentAge) * 12));
   const balances = banks.map((b) => b.balance);
-  const initialBankRow = { age: Math.round(currentAge), total: balances.reduce((sum, value) => sum + value, 0) };
+  const initialTotal = balances.reduce((sum, value) => sum + value, 0);
+  let totalAtRetire = currentAge >= retireAge ? initialTotal : null;
+  const initialBankRow = { age: Math.round(currentAge), total: initialTotal };
   banks.forEach((b, i) => { initialBankRow[`bank_${i}`] = balances[i]; });
   const yearly = [initialBankRow];
 
@@ -536,6 +538,11 @@ export function runBankSimulation({ currentAge, retireAge, deathAge, banks }) {
       balances[i] = balances[i] * (1 + r);
       if (age < retireAge) balances[i] += b.monthlyDeposit || 0;
     });
+    // 退職時点の銀行残高は「次の誕生日の年次行」で代用しない。
+    // 月次シミュレーション上で退職年齢へ到達した最初の月の残高を固定する。
+    if (totalAtRetire === null && age >= retireAge) {
+      totalAtRetire = balances.reduce((s, v) => s + v, 0);
+    }
     if (m % 12 === 0) {
       const row = { age: Math.round(age), total: balances.reduce((s, v) => s + v, 0) };
       banks.forEach((b, i) => { row[`bank_${i}`] = balances[i]; });
@@ -544,7 +551,7 @@ export function runBankSimulation({ currentAge, retireAge, deathAge, banks }) {
   }
   const totalNow = banks.reduce((s, b) => s + b.balance, 0);
   const totalFinal = yearly.length ? yearly[yearly.length - 1].total : totalNow;
-  const totalAtRetire = yearly.find((y) => y.age >= retireAge)?.total ?? totalFinal;
+  if (totalAtRetire === null) totalAtRetire = totalFinal;
 
   return { yearly, totalNow, totalAtRetire, totalFinal };
 }
