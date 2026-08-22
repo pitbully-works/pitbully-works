@@ -62,6 +62,9 @@ const mutants = [
   ["GB Lifetime ISA bonus rate is protected", "countryRules/GB.js", "governmentBonusRate: 0.25", "governmentBonusRate: 0.20", "overseasHundredPhase2.test.js"],
   ["CA RRSP withdrawal top withholding rate is protected", "countryRules/CA.js", "{ upTo: Infinity, rate: 0.30, quebecFederalRate: 0.15 }", "{ upTo: Infinity, rate: 0.20, quebecFederalRate: 0.15 }", "overseasHundredPhase2.test.js"],
   ["AU younger-partner super exclusion is protected", "countryRules/AU.js", "return age >= this.agePension.qualifyingAge || !!isReceivingSuperPension;", "return true;", "overseasHundredPhase2.test.js"],
+  ["GB LISA is included in the total ISA allowance", "countryRules/GB.js", "+ this._num((accounts.lifetimeIsa || {}).annualContribution);", "+ 0;", "overseasHundredPhase3.test.js"],
+  ["GB LISA projection includes the 25 percent bonus", "countryRules/GB.js", "return eligible + (eligible * this.lifetimeIsa.governmentBonusRate);", "return eligible;", "overseasHundredPhase3.test.js"],
+  ["GB LISA retirement access remains age 60", "utils/buildPlanInput.js", ": (isLifetimeIsa ? rules.investment.lifetimeIsa.retirementWithdrawalAge : 0),", ": 0,", "overseasHundredPhase3.test.js"],
 ];
 
 if (!fs.existsSync(vitestBin)) {
