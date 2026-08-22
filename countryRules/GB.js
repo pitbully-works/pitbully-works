@@ -469,6 +469,12 @@ export const GB_COUNTRY_RULES = {
         tariffIncomePerUnitWeekly: 1,
         upperLimit: null,
       },
+      mixedAgeCouples: {
+        newClaimRuleFrom: "2019-05-15",
+        bothPartnersNormallyMustReachQualifyingAge: true,
+        protectedContinuityCutoff: "2019-05-14",
+        pensionAgeHousingBenefitCanPreserveEligibility: true,
+      },
       savingsCredit: {
         singleThresholdWeekly: 208.07,
         coupleThresholdWeekly: 329.75,
@@ -503,6 +509,52 @@ export const GB_COUNTRY_RULES = {
         isExactForecast: false,
       };
     },
+    assessPensionCreditAgeEligibility({
+      status = "single",
+      claimantReachedStatePensionAge = false,
+      partnerReachedStatePensionAge = false,
+      protectedMixedAgeContinuity = false,
+      pensionAgeHousingBenefitContinuity = false,
+    } = {}) {
+      const couple = status === "couple";
+      const claimantAtAge = claimantReachedStatePensionAge === true;
+      const partnerAtAge = partnerReachedStatePensionAge === true;
+
+      if (!couple) {
+        return {
+          eligible: claimantAtAge,
+          reason: claimantAtAge ? "single-at-qualifying-age" : "single-below-qualifying-age",
+          requiresUniversalCreditRoute: !claimantAtAge,
+        };
+      }
+
+      if (claimantAtAge && partnerAtAge) {
+        return {
+          eligible: true,
+          reason: "both-partners-at-qualifying-age",
+          requiresUniversalCreditRoute: false,
+        };
+      }
+
+      const protectedContinuity =
+        protectedMixedAgeContinuity === true ||
+        pensionAgeHousingBenefitContinuity === true;
+
+      if ((claimantAtAge || partnerAtAge) && protectedContinuity) {
+        return {
+          eligible: true,
+          reason: "protected-mixed-age-continuity",
+          requiresUniversalCreditRoute: false,
+        };
+      }
+
+      return {
+        eligible: false,
+        reason: "mixed-age-new-claim",
+        requiresUniversalCreditRoute: true,
+      };
+    },
+
     calculatePensionCreditTariffIncome(capital) {
       const amount = Math.max(0, Number(capital) || 0);
       const rules = this.pensionCredit.capital;
@@ -722,7 +774,7 @@ export const GB_COUNTRY_RULES = {
     notImplemented: [
       "National Insuranceのqualifying years入力から10年最低・35年満額の単純近似は実装済み。2016年開始額、contracting-out、海外期間、credits、Protected Payment等を含む正確なState Pension forecastはGOV.UK公式記録が必要",
       "Additional State Pension（SERPS / S2P）・Protected Payment",
-      "Pension Creditの2026/27 Guarantee CreditとSavings Creditの基本計算（60% Amount A / 40% Amount B、2016-04-06境界、継続受給の経過措置フラグ）は実装済み。Savings Creditの実際の継続受給履歴の自動確認、収入控除・住宅費等を含む完全なmeans testは未実装",
+      "Pension Creditの2026/27 Guarantee Credit・Savings Credit基本計算に加え、単身の年齢要件、夫婦双方がqualifying ageに達する通常ルール、2019-05-14以前からのprotected mixed-age continuity / pension-age Housing Benefit継続例外を判定可能。実際の給付履歴の自動確認、収入控除・住宅費等を含む完全なmeans testは未実装",
     ],
   },
 
