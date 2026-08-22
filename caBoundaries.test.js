@@ -337,10 +337,10 @@ describe("CA境界：2026年の連邦税バンド", () => {
     expect(tax.getMarginalRate(0)).toBe(0.14);
   });
 
-  it("オンタリオ州税とケベック州税が実装され、他地域は未対応として残る", () => {
+  it("オンタリオ州・ケベック州・BC州税が実装され、他地域は未対応として残る", () => {
     expect(tax.province.implemented).toBe(true);
-    expect(tax.province.implementedRegions).toEqual(["ON", "QC"]);
-    expect(tax.region).toMatch(/Ontario/);
+    expect(tax.province.implementedRegions).toEqual(["ON", "QC", "BC"]);
+    expect(tax.region).toMatch(/British Columbia/);
   });
 
   it("第1バンド上限ちょうどの総額税＝58,523 × 14%", () => {
@@ -543,7 +543,7 @@ describe("CA境界：未実装項目が明示されている", () => {
 
   it("州税・QPPは未実装として列挙され、PAはRRSP枠計算に実装済み", () => {
     const all = [...inv.notImplemented, ...ret.notImplemented, ...tax.notImplemented].join(" / ");
-    expect(all).toMatch(/オンタリオ州・ケベック州以外の州・準州所得税/);
+    expect(all).toMatch(/オンタリオ州・ケベック州・ブリティッシュコロンビア州以外の州・準州所得税/);
     expect(all).toMatch(/QPP/);
     expect(all).not.toMatch(/Pension Adjustment|PA）/);
 
