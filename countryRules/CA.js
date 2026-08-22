@@ -577,12 +577,14 @@ export const CA_COUNTRY_RULES = {
       payroll: "https://www.canada.ca/en/revenue-agency/services/forms-publications/payroll/t4127-payroll-deductions-formulas/t4127-jan/t4127-jan-payroll-deductions-formulas-computer-programs.html",
       ei: "https://www.canada.ca/en/employment-social-development/programs/ei/ei-list/ei-employers/premium-reduction-program/2026-maximum-insurable-earnings.html",
       qpip: "https://www.revenuquebec.ca/en/businesses/source-deductions-and-employer-contributions/calculating-source-deductions-and-contributions/qpip-premiums/maximum-insurable-earnings-and-premium-rate/",
+      quebecIncomeTax: "https://www.revenuquebec.ca/en/citizens/income-tax-return/completing-your-income-tax-return/income-tax-rates/",
+      quebecAbatement: "https://www.canada.ca/en/department-finance/programs/federal-transfers/quebec-abatement.html",
     },
     // 2026-08-21時点：オンタリオ州のみ自動計算。その他12地域は未実装。
     region: "Federal + Ontario (other provincial / territorial tax not included)",
     province: {
       implemented: true,
-      implementedRegions: ["ON"],
+      implementedRegions: ["ON", "QC"],
       defaultRegion: "ON",
       ontario: {
         bands: [
@@ -599,6 +601,17 @@ export const CA_COUNTRY_RULES = {
         surtaxThreshold2: 7446,
         surtaxRate2: 0.36,
         taxReductionBasicAmount: 300,
+      },
+      quebec: {
+        bands: [
+          { upTo: 54345, rate: 0.14 },
+          { upTo: 108680, rate: 0.19 },
+          { upTo: 132245, rate: 0.24 },
+          { upTo: Infinity, rate: 0.2575 },
+        ],
+        basicPersonalAmount: 18952,
+        basicCreditRate: 0.14,
+        federalAbatementRate: 0.165,
       },
     },
 
@@ -733,25 +746,53 @@ export const CA_COUNTRY_RULES = {
         tax: Math.max(0, taxIncludingSurtax + healthPremium - reduction),
       };
     },
+    calculateQuebecTax(taxableIncome) {
+      const cfg = this.province.quebec;
+      const income = Math.max(0, Number(taxableIncome) || 0);
+      let grossTax = 0;
+      let lower = 0;
+      for (const b of cfg.bands) {
+        if (income > lower) {
+          grossTax += (Math.min(income, b.upTo) - lower) * b.rate;
+          lower = b.upTo;
+        } else break;
+      }
+      const basicCredit = cfg.basicPersonalAmount * cfg.basicCreditRate;
+      return {
+        taxableIncome: income,
+        grossTax,
+        basicPersonalAmount: cfg.basicPersonalAmount,
+        basicCredit,
+        tax: Math.max(0, grossTax - basicCredit),
+      };
+    },
     calculateProvincialTax(taxableIncome, provinceCode = "ON") {
-      if (provinceCode === "ON") return this.calculateOntarioTax(taxableIncome);
-      return { taxableIncome: Math.max(0, Number(taxableIncome) || 0), tax: 0, unsupported: true, provinceCode };
+      const code = String(provinceCode || "ON").toUpperCase();
+      if (code === "ON") return this.calculateOntarioTax(taxableIncome);
+      if (code === "QC") return this.calculateQuebecTax(taxableIncome);
+      return { taxableIncome: Math.max(0, Number(taxableIncome) || 0), tax: 0, unsupported: true, provinceCode: code };
     },
     calculateProvincialCapitalGainsTax(gain, otherIncome, provinceCode = "ON") {
       const g = Math.max(0, Number(gain) || 0);
-      if (g <= 0 || provinceCode !== "ON") return 0;
+      if (g <= 0) return 0;
+      const code = String(provinceCode || "ON").toUpperCase();
+      if (!["ON", "QC"].includes(code)) return 0;
       const taxableGain = g * this.capitalGains.inclusionRate;
-      const base = this.calculateOntarioTax(otherIncome).tax;
-      const withGain = this.calculateOntarioTax((Number(otherIncome) || 0) + taxableGain).tax;
+      const base = this.calculateProvincialTax(otherIncome, code).tax;
+      const withGain = this.calculateProvincialTax((Number(otherIncome) || 0) + taxableGain, code).tax;
       return Math.max(0, withGain - base);
     },
     calculateProvincialRrspTaxSaving(contribution, income, rrspRoom, provinceCode = "ON") {
-      if (provinceCode !== "ON") return 0;
+      const code = String(provinceCode || "ON").toUpperCase();
+      if (!["ON", "QC"].includes(code)) return 0;
       const cap = (rrspRoom === undefined || rrspRoom === null) ? Infinity : Math.max(0, Number(rrspRoom) || 0);
       const c = Math.min(Math.max(0, Number(contribution) || 0), cap);
       if (c <= 0) return 0;
       const g = Math.max(0, Number(income) || 0);
-      return Math.max(0, this.calculateOntarioTax(g).tax - this.calculateOntarioTax(Math.max(0, g - c)).tax);
+      return Math.max(0,
+        this.calculateProvincialTax(g, code).tax
+        - this.calculateProvincialTax(Math.max(0, g - c), code).tax
+      );
     },
 
     // BPA（高所得で逓減）
@@ -786,6 +827,31 @@ export const CA_COUNTRY_RULES = {
         tax: Math.max(0, grossTax - bpaCredit),
       };
     },
+    calculateFederalTaxForProvince(taxableIncome, provinceCode = "ON") {
+      const result = this.calculateFederalTax(taxableIncome);
+      const code = String(provinceCode || "ON").toUpperCase();
+      if (code !== "QC") return { ...result, abatement: 0, abatementRate: 0, taxAfterAbatement: result.tax };
+      const rate = this.province.quebec.federalAbatementRate;
+      const abatement = result.tax * rate;
+      return { ...result, abatement, abatementRate: rate, taxAfterAbatement: Math.max(0, result.tax - abatement) };
+    },
+    calculateCapitalGainsTaxForProvince(gain, otherIncome, provinceCode = "ON") {
+      const g = Math.max(0, Number(gain) || 0);
+      if (g <= 0) return 0;
+      const taxableGain = g * this.capitalGains.inclusionRate;
+      const base = this.calculateFederalTaxForProvince(otherIncome, provinceCode).taxAfterAbatement;
+      const withGain = this.calculateFederalTaxForProvince((Number(otherIncome) || 0) + taxableGain, provinceCode).taxAfterAbatement;
+      return Math.max(0, withGain - base);
+    },
+    calculateRrspTaxSavingForProvince(contribution, income, rrspRoom, provinceCode = "ON") {
+      const cap = (rrspRoom === undefined || rrspRoom === null) ? Infinity : Math.max(0, Number(rrspRoom) || 0);
+      const c = Math.min(Math.max(0, Number(contribution) || 0), cap);
+      if (c <= 0) return 0;
+      const g = Math.max(0, Number(income) || 0);
+      const base = this.calculateFederalTaxForProvince(g, provinceCode).taxAfterAbatement;
+      const reduced = this.calculateFederalTaxForProvince(Math.max(0, g - c), provinceCode).taxAfterAbatement;
+      return Math.max(0, base - reduced);
+    },
     getMarginalRate(income) {
       const it = this.incomeTax;
       const g = Math.max(0, Number(income) || 0);
@@ -814,9 +880,8 @@ export const CA_COUNTRY_RULES = {
       return Math.max(0, base - reduced);
     },
     notImplemented: [
-      "オンタリオ州以外の州・準州所得税（12地域。各地域で税率・バンド・控除が異なる）",
+      "オンタリオ州・ケベック州以外の州・準州所得税（11地域。各地域で税率・バンド・控除が異なる）",
       "オンタリオ州の扶養家族等を含むTax Reductionの完全計算（基本本人分のみ反映）",
-      "ケベック州の連邦税減額（Quebec abatement 16.5%）",
       "配当税額控除（eligible / non-eligible dividend tax credit）",
       "CPP/QPP拠出金・EI保険料・Quebec Parental Insurance Plan（QPIP）は2026年の従業員本人分を実装済み。自営業者向け拠出は未実装",
       "Alternative Minimum Tax（AMT）",
