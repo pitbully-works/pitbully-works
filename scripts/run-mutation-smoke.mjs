@@ -93,6 +93,10 @@ const mutants = [
   ["CA death spouse rollover is protected", "countryRules/CA.js", "const rollover = !!transferToSpouseOrCommonLaw && !!spouseResidentInCanada;", "const rollover = !!transferToSpouseOrCommonLaw;", "overseasHundredPhase11.test.js"],
   ["CA principal-residence death exclusion is protected", "countryRules/CA.js", "if (rollover || principalResidence) {", "if (rollover) {", "overseasHundredPhase11.test.js"],
 
+  ["CA BC 2026 first bracket rate is protected", "countryRules/CA.js", "{ upTo: 50363, rate: 0.056 },", "{ upTo: 50363, rate: 0.0506 },", "overseasHundredPhase12.test.js"],
+  ["CA BC 2026 basic personal amount is protected", "countryRules/CA.js", "basicPersonalAmount: 13216,", "basicPersonalAmount: 12216,", "overseasHundredPhase12.test.js"],
+  ["CA BC 2026 tax reduction max is protected", "countryRules/CA.js", "taxReductionMax: 690,", "taxReductionMax: 575,", "overseasHundredPhase12.test.js"],
+
 ];
 
 if (!fs.existsSync(vitestBin)) {
