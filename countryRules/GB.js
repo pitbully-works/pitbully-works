@@ -463,6 +463,12 @@ export const GB_COUNTRY_RULES = {
         coupleBothQualify: 172.10,
       },
       carerAdditionalWeekly: 48.15,
+      capital: {
+        disregard: 10000,
+        tariffUnit: 500,
+        tariffIncomePerUnitWeekly: 1,
+        upperLimit: null,
+      },
       savingsCredit: {
         singleThresholdWeekly: 208.07,
         coupleThresholdWeekly: 329.75,
@@ -493,9 +499,17 @@ export const GB_COUNTRY_RULES = {
         isExactForecast: false,
       };
     },
+    calculatePensionCreditTariffIncome(capital) {
+      const amount = Math.max(0, Number(capital) || 0);
+      const rules = this.pensionCredit.capital;
+      if (amount <= rules.disregard) return 0;
+      const excess = amount - rules.disregard;
+      return Math.ceil(excess / rules.tariffUnit) * rules.tariffIncomePerUnitWeekly;
+    },
     calculatePensionCreditGuarantee({
       status = "single",
       weeklyIncome = 0,
+      capital = 0,
       severeDisabilityQualifiers = 0,
       carerQualifiers = 0,
     } = {}) {
@@ -514,10 +528,15 @@ export const GB_COUNTRY_RULES = {
       const carers = Math.max(0, Math.floor(Number(carerQualifiers) || 0));
       guarantee += carers * pc.carerAdditionalWeekly;
       const income = Math.max(0, Number(weeklyIncome) || 0);
+      const tariffIncomeWeekly = this.calculatePensionCreditTariffIncome(capital);
+      const assessedIncomeWeekly = income + tariffIncomeWeekly;
       return {
         guaranteeWeekly: guarantee,
         weeklyIncome: income,
-        guaranteeCreditWeekly: Math.max(0, guarantee - income),
+        capital: Math.max(0, Number(capital) || 0),
+        tariffIncomeWeekly,
+        assessedIncomeWeekly,
+        guaranteeCreditWeekly: Math.max(0, guarantee - assessedIncomeWeekly),
       };
     },
 
@@ -638,7 +657,7 @@ export const GB_COUNTRY_RULES = {
     notImplemented: [
       "National Insuranceのqualifying years入力から10年最低・35年満額の単純近似は実装済み。2016年開始額、contracting-out、海外期間、credits、Protected Payment等を含む正確なState Pension forecastはGOV.UK公式記録が必要",
       "Additional State Pension（SERPS / S2P）・Protected Payment",
-      "Pension Creditの2026/27 Guarantee Credit（single/couple、severe disability、carer加算）は実装済み。Savings Creditの経過措置資格、資本・deemed income、住宅費等の完全なmeans testは未実装",
+      "Pension Creditの2026/27 Guarantee Credit（single/couple、severe disability、carer加算、£10,000超資本の£500単位tariff income）は実装済み。Savings Creditの経過措置資格、収入控除・住宅費等を含む完全なmeans testは未実装",
     ],
   },
 
