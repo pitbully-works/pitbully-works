@@ -24,7 +24,7 @@ describe("CA grouped audit phases 82-85 - final statutory consistency", () => {
   it("keeps July-September 2026 OAS/GIS headline amounts aligned with the live rules", () => {
     const r = CA_COUNTRY_RULES.retirement;
     expect(r.oas.maxMonthly65to74).toBeCloseTo(751.97, 2);
-    expect(r.oas.maxMonthly75Plus).toBeCloseTo(827.17, 2);
+    expect(r.oas.maxMonthly75plus).toBeCloseTo(827.17, 2);
     expect(r.gis.single.maxMonthly).toBeCloseTo(1123.17, 2);
     expect(r.gis.single.incomeCutoff).toBe(22800);
   });
