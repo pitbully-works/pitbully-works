@@ -20,7 +20,7 @@ export const GB_COUNTRY_RULES = {
     noteEn: "2026/27 rules re-verified on 21 Aug 2026. Income tax now covers England, Wales, Northern Ireland and Scottish Income Tax, with an Inheritance Tax estimate model.",
     coverage: [
       { key: "investment", labelJa: "投資制度", labelEn: "Investment", status: "implemented", effective: "2026/27 tax year", lastUpdated: "2026-08-17", updateJa: "ISA・LISA・SIPP・職域年金・GIAに加え、Junior ISAと子ども向けSIPPの2026/27拠出・税控除・年齢制約を反映。予定されるCash ISA変更は将来制度として保持。", updateEn: "ISA, LISA, SIPP, workplace pension and GIA are modelled, together with 2026/27 Junior ISA and child-pension contribution/tax-relief/age rules; the scheduled Cash ISA change is kept as a future rule." },
-      { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "implemented", effective: "2026/27 tax year", lastUpdated: "2026-08-17", updateJa: "State Pensionと私的年金の受給・繰下げを反映。NI記録からの自動見込額算定は未実装。", updateEn: "State Pension and private-pension access/deferral are modelled; automatic entitlement from NI history is not implemented." },
+      { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "implemented", effective: "2026/27 tax year", lastUpdated: "2026-08-17", updateJa: "State Pension・私的年金の受給/繰下げに加え、NI qualifying yearsによる簡易見込額と2026/27 Pension Credit Guarantee Credit概算を反映。公式NI記録を使う完全forecastは未実装。", updateEn: "Models State Pension and private-pension access/deferral, a qualifying-years State Pension estimate and a 2026/27 Pension Credit Guarantee Credit estimate; a full forecast from official NI history is not implemented." },
       { key: "healthcare", labelJa: "医療", labelEn: "Healthcare", status: "partial", effective: "2026/27", lastUpdated: "2026-08-21", updateJa: "地域別処方箋、EnglandのNHS歯科料金、Englandの介護資産判定を追加。その他地域の歯科・介護は利用者入力。", updateEn: "Adds regional prescription rules, NHS dental charges for England and England social-care capital assessment; dental/social-care costs in other nations remain user-entered." },
       { key: "tax", labelJa: "税金", labelEn: "Tax", status: "implemented", effective: "2026/27 tax year", lastUpdated: "2026-08-21", updateJa: "England/Wales/NIの所得税・配当・CGTに加え、2026/27 Scottish Income Taxを反映。", updateEn: "Models England/Wales/NI income tax, dividends and CGT, plus 2026/27 Scottish Income Tax." },
       { key: "estate", labelJa: "相続", labelEn: "Estate", status: "implemented", effective: "2026/27", lastUpdated: "2026-08-21", updateJa: "Inheritance TaxのNRB・RNRB・£2m超のテーパー・配偶者等の未使用枠移転を概算。", updateEn: "Estimates Inheritance Tax using the NRB, RNRB, the £2m taper and transferable unused spouse/civil-partner bands." },
@@ -389,7 +389,7 @@ export const GB_COUNTRY_RULES = {
   retirement: {
     implemented: true,
     effectiveTaxYear: "2026/27",
-    lastUpdated: "2026-07-13",
+    lastUpdated: "2026-08-22",
     sourceName: "GOV.UK — The new State Pension",
     sourceUrl: "https://www.gov.uk/new-state-pension",
     sourceUrls: {
@@ -397,6 +397,7 @@ export const GB_COUNTRY_RULES = {
       statePensionAge: "https://www.gov.uk/state-pension-age",
       deferral: "https://www.gov.uk/deferring-state-pension",
       forecast: "https://www.gov.uk/check-state-pension",
+      pensionCreditRates: "https://www.gov.uk/government/publications/benefit-and-pension-rates-2026-to-2027",
     },
     accountTypes: ["statePension"],
     statePension: {
@@ -450,6 +451,76 @@ export const GB_COUNTRY_RULES = {
       weeksPerYear: 52,
       earlyClaimAllowed: false,
     },
+    pensionCredit: {
+      effectiveTaxYear: "2026/27",
+      standardMinimumGuaranteeWeekly: {
+        single: 238.00,
+        couple: 363.25,
+      },
+      severeDisabilityAdditionalWeekly: {
+        single: 86.05,
+        coupleOneQualifies: 86.05,
+        coupleBothQualify: 172.10,
+      },
+      carerAdditionalWeekly: 48.15,
+      savingsCredit: {
+        singleThresholdWeekly: 208.07,
+        coupleThresholdWeekly: 329.75,
+        singleMaximumWeekly: 17.96,
+        coupleMaximumWeekly: 20.10,
+      },
+    },
+    niForecastModel: {
+      minimumQualifyingYears: 10,
+      fullRateQualifyingYears: 35,
+      exactForecastRequiresOfficialRecord: true,
+      approximationScope: "simple-new-state-pension-years-only",
+    },
+    estimateStatePensionFromQualifyingYears(qualifyingYears) {
+      const years = Math.max(0, Math.floor(Number(qualifyingYears) || 0));
+      const model = this.niForecastModel;
+      if (years < model.minimumQualifyingYears) {
+        return { qualifyingYears: years, eligible: false, weekly: 0, annual: 0, isExactForecast: false };
+      }
+      const creditedYears = Math.min(model.fullRateQualifyingYears, years);
+      const ratio = creditedYears / model.fullRateQualifyingYears;
+      const weekly = this.statePension.fullWeeklyRate * ratio;
+      return {
+        qualifyingYears: years,
+        eligible: true,
+        weekly,
+        annual: weekly * this.statePension.weeksPerYear,
+        isExactForecast: false,
+      };
+    },
+    calculatePensionCreditGuarantee({
+      status = "single",
+      weeklyIncome = 0,
+      severeDisabilityQualifiers = 0,
+      carerQualifiers = 0,
+    } = {}) {
+      const pc = this.pensionCredit;
+      const couple = status === "couple";
+      let guarantee = couple
+        ? pc.standardMinimumGuaranteeWeekly.couple
+        : pc.standardMinimumGuaranteeWeekly.single;
+      const disabled = Math.max(0, Math.floor(Number(severeDisabilityQualifiers) || 0));
+      if (couple) {
+        if (disabled >= 2) guarantee += pc.severeDisabilityAdditionalWeekly.coupleBothQualify;
+        else if (disabled === 1) guarantee += pc.severeDisabilityAdditionalWeekly.coupleOneQualifies;
+      } else if (disabled >= 1) {
+        guarantee += pc.severeDisabilityAdditionalWeekly.single;
+      }
+      const carers = Math.max(0, Math.floor(Number(carerQualifiers) || 0));
+      guarantee += carers * pc.carerAdditionalWeekly;
+      const income = Math.max(0, Number(weeklyIncome) || 0);
+      return {
+        guaranteeWeekly: guarantee,
+        weeklyIncome: income,
+        guaranteeCreditWeekly: Math.max(0, guarantee - income),
+      };
+    },
+
     // 生年月日から法定の State Pension age を算出する（自動算出が標準）。
     // 返り値は { years, months, ageInYears, isTransitional, spaDate, source }。
     //   ageInYears は年単位の小数（例：66歳4か月 → 66.3333…）。計算にはこれを使う。
@@ -565,9 +636,9 @@ export const GB_COUNTRY_RULES = {
     },
     getFullAnnualRate() { return this.statePension.fullAnnualRate; },
     notImplemented: [
-      "National Insurance納付記録からの受給資格年数・受給見込額の自動判定（利用者が見込額を入力する方式）",
+      "National Insuranceのqualifying years入力から10年最低・35年満額の単純近似は実装済み。2016年開始額、contracting-out、海外期間、credits、Protected Payment等を含む正確なState Pension forecastはGOV.UK公式記録が必要",
       "Additional State Pension（SERPS / S2P）・Protected Payment",
-      "Pension Credit",
+      "Pension Creditの2026/27 Guarantee Credit（single/couple、severe disability、carer加算）は実装済み。Savings Creditの経過措置資格、資本・deemed income、住宅費等の完全なmeans testは未実装",
     ],
   },
 
