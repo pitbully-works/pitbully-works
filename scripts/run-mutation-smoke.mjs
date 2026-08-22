@@ -105,6 +105,10 @@ const mutants = [
   ["CA Manitoba basic personal amount is protected", "countryRules/CA.js", "basicPersonalAmount: 15780,", "basicPersonalAmount: 14780,", "overseasHundredPhase14.test.js"],
   ["CA Manitoba top bracket rate is protected", "countryRules/CA.js", "{ upTo: Infinity, rate: 0.174 },", "{ upTo: Infinity, rate: 0.16 },", "overseasHundredPhase14.test.js"],
 
+  ["CA Saskatchewan first bracket rate is protected", "countryRules/CA.js", "{ upTo: 54532, rate: 0.105 },", "{ upTo: 54532, rate: 0.10 },", "overseasHundredPhase15.test.js"],
+  ["CA Saskatchewan basic personal amount is protected", "countryRules/CA.js", "basicPersonalAmount: 20381,", "basicPersonalAmount: 19381,", "overseasHundredPhase15.test.js"],
+  ["CA Saskatchewan top bracket rate is protected", "countryRules/CA.js", "{ upTo: Infinity, rate: 0.145 },", "{ upTo: Infinity, rate: 0.14 },", "overseasHundredPhase15.test.js"],
+
 ];
 
 if (!fs.existsSync(vitestBin)) {
