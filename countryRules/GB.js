@@ -39,10 +39,10 @@ export const GB_COUNTRY_RULES = {
       taxFreeLumpSum: "https://www.gov.uk/tax-on-pension",
     },
     // 英国版で別々に管理・計算する口座
-    accountTypes: ["stocksSharesIsa", "cashIsa", "sipp", "workplacePension", "gia", "cashSavings"],
-    isaAccounts: ["stocksSharesIsa", "cashIsa"],
+    accountTypes: ["stocksSharesIsa", "cashIsa", "lifetimeIsa", "sipp", "workplacePension", "gia", "cashSavings"],
+    isaAccounts: ["stocksSharesIsa", "cashIsa", "lifetimeIsa"],
     pensionAccounts: ["sipp", "workplacePension"],
-    taxAdvantagedAccounts: ["stocksSharesIsa", "cashIsa", "sipp", "workplacePension"],
+    taxAdvantagedAccounts: ["stocksSharesIsa", "cashIsa", "lifetimeIsa", "sipp", "workplacePension"],
     limits: {
       // ISA：全ISA合算での年間拠出上限（2026/27）
       isaAnnualAllowance: 20000,
@@ -104,7 +104,20 @@ export const GB_COUNTRY_RULES = {
     // ISA年間拠出額（Stocks and Shares ISA + Cash ISA の合算）
     getIsaContributed(accounts) {
       return this._num((accounts.stocksSharesIsa || {}).annualContribution)
-        + this._num((accounts.cashIsa || {}).annualContribution);
+        + this._num((accounts.cashIsa || {}).annualContribution)
+        + this._num((accounts.lifetimeIsa || {}).annualContribution);
+    },
+    getLifetimeIsaEligibleContribution(accounts, age) {
+      const a = Number(age);
+      if (!Number.isFinite(a) || a >= this.lifetimeIsa.contributionEndsAtAge) return 0;
+      return Math.min(
+        this.lifetimeIsa.annualPaymentLimit,
+        Math.max(0, this._num((accounts.lifetimeIsa || {}).annualContribution))
+      );
+    },
+    getLifetimeIsaAnnualContributionWithBonus(accounts, age) {
+      const eligible = this.getLifetimeIsaEligibleContribution(accounts, age);
+      return eligible + (eligible * this.lifetimeIsa.governmentBonusRate);
     },
     getIsaRemaining(accounts) {
       return this.limits.isaAnnualAllowance - this.getIsaContributed(accounts);
@@ -152,11 +165,15 @@ export const GB_COUNTRY_RULES = {
       keys.forEach((k) => {
         const a = accounts[k] || {};
         balances[k] = Number(a.currentValue) || 0;
-        contributions[k] = Number(a.annualContribution) || 0;
+        contributions[k] = k === "lifetimeIsa"
+          ? this.getLifetimeIsaAnnualContributionWithBonus(accounts, currentAge)
+          : (Number(a.annualContribution) || 0);
         rates[k] = (Number(a.expectedReturnPct) || 0) / 100;
-        endAges[k] = Number(a.contributionEndAge) || 0;
+        endAges[k] = k === "lifetimeIsa"
+          ? Math.min(Number(a.contributionEndAge) || this.lifetimeIsa.contributionEndsAtAge, this.lifetimeIsa.contributionEndsAtAge)
+          : (Number(a.contributionEndAge) || 0);
       });
-      const withdrawalOrder = ["gia", "cashSavings", "cashIsa", "stocksSharesIsa", "workplacePension", "sipp"];
+      const withdrawalOrder = ["gia", "cashSavings", "cashIsa", "stocksSharesIsa", "lifetimeIsa", "workplacePension", "sipp"];
       const totalOf = (b) => keys.reduce((s, k) => s + b[k], 0);
       const startAge = Math.round(currentAge);
       const endAge = Math.round(deathAge);
@@ -170,7 +187,9 @@ export const GB_COUNTRY_RULES = {
           for (const key of withdrawalOrder) {
             if (remaining <= 0) break;
             const isPension = (key === "sipp" || key === "workplacePension");
+            const isLifetimeIsa = key === "lifetimeIsa";
             if (isPension && age < accessAge) continue; // 受給可能年齢前の年金資産は取り崩せない
+            if (isLifetimeIsa && age < this.lifetimeIsa.retirementWithdrawalAge) continue;
             const take = Math.min(balances[key], remaining);
             balances[key] -= take;
             remaining -= take;
@@ -191,14 +210,16 @@ export const GB_COUNTRY_RULES = {
       this.accountTypes.forEach((k) => { v[k] = Number((accounts[k] || {}).currentValue) || 0; });
       const isAccessibleAge = age >= this.pensionAccessAge;
       const pensions = v.sipp + v.workplacePension;
+      const lisa = v.lifetimeIsa;
+      const lisaAccessible = age >= this.lifetimeIsa.retirementWithdrawalAge;
       const liquidBase = v.cashSavings + v.cashIsa + v.gia + v.stocksSharesIsa;
-      const liquid = liquidBase + (isAccessibleAge ? pensions : 0);
-      const restricted = isAccessibleAge ? 0 : pensions;
-      const taxAdvantaged = v.stocksSharesIsa + v.cashIsa + v.sipp + v.workplacePension;
-      return { liquid, restricted, taxAdvantaged, total: liquidBase + pensions, isAccessibleAge, accounts: v };
+      const liquid = liquidBase + (lisaAccessible ? lisa : 0) + (isAccessibleAge ? pensions : 0);
+      const restricted = (lisaAccessible ? 0 : lisa) + (isAccessibleAge ? 0 : pensions);
+      const taxAdvantaged = v.stocksSharesIsa + v.cashIsa + lisa + v.sipp + v.workplacePension;
+      return { liquid, restricted, taxAdvantaged, total: liquidBase + lisa + pensions, isAccessibleAge, lisaAccessible, accounts: v };
     },
     notImplemented: [
-      "Lifetime ISA（LISA）は年間£4,000・政府ボーナス25%・初回住宅条件・通常25%引出チャージのルール計算まで実装済み。LISAを独立口座として資産推移へ統合する機能は未実装",
+      "Lifetime ISA（LISA）は独立口座・年間£4,000上限・25%政府ボーナス・50歳までの拠出・60歳からの退職目的アクセスを資産推移へ統合済み。初回住宅購入による途中引出しをライフプラン資産推移へ自動反映する機能は未実装",
       "Junior ISA / Junior SIPP",
       "年金拠出のcarry forwardは過去3年分の利用可能額を入力して当年枠へ加算済み。各年度の加入実績・使用順をアプリ内で自動再構成する機能は未実装",
       "2027年4月からのCash ISA年間上限£12,000（65歳未満）— 上限額のみ scheduled に保持",
