@@ -24,7 +24,7 @@ export const AU_COUNTRY_RULES = {
     coverage: [
       { key: "investment", labelJa: "投資制度", labelEn: "Investment", status: "partial", effective: "2026-27 financial year", lastUpdated: "2026-08-23", updateJa: "Super・投資口座・拠出上限、carry-forward、bring-forwardに加え、適格確認式のDownsizer contribution（最大A$300,000）を今年度一括拠出として反映。", updateEn: "Super, investment accounts and contribution caps are modelled, including concessional carry-forward, non-concessional bring-forward, and an eligibility-confirmed one-off downsizer contribution of up to A$300,000." },
       { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "partial", effective: "2026-27 / Age Pension Mar 2026 rates / Rent Assistance & CSHC Jul 2026 rates", lastUpdated: "2026-08-22", updateJa: "Age Pensionの資産・所得テスト、Work Bonus、Rent Assistance、CSHCに加え、カップルで片方だけ67歳以上の場合の配偶者Super除外を年齢進行に合わせて投影へ統合。", updateEn: "Age Pension means tests, Work Bonus, Rent Assistance and CSHC are modelled, with dynamic partner-Super exclusion integrated when only one member of a couple has reached Age Pension age." },
-      { key: "healthcare", labelJa: "医療", labelEn: "Healthcare", status: "partial", effective: "2026-27 / 2026 calendar-year Safety Nets", lastUpdated: "2026-08-21", updateJa: "Medicare前提の自己負担に加え、2026年PBS Safety Net概算とMedicare Safety Net閾値を反映。診療ごとのSafety Net還付・aged care資力調査は未自動化。", updateEn: "Adds a 2026 PBS Safety Net estimate and Medicare Safety Net thresholds to the Medicare out-of-pocket model; item-level Safety Net rebates and aged-care means testing remain manual." },
+      { key: "healthcare", labelJa: "医療", labelEn: "Healthcare", status: "partial", effective: "2026-27 / 2026 calendar-year Safety Nets / Support at Home Jul 2026", lastUpdated: "2026-08-23", updateJa: "Medicare・2026年PBS/Medicare Safety Netに加え、Support at Homeの2026年7月拠出率・閾値・lifetime capを反映。複雑なServices Australia資力判定は手動入力を併用。", updateEn: "Adds the July 2026 Support at Home contribution schedule, thresholds and lifetime caps to the Medicare/PBS model. Complex Services Australia means-assessment outcomes remain manual inputs." },
       { key: "tax", labelJa: "税金", labelEn: "Tax", status: "partial", effective: "2026-27 financial year", lastUpdated: "2026-08-23", updateJa: "居住者所得税・LITO・SAPTO・Medicare levy・MLS・CGT・非居住者所得税に加え、Super一時金のtaxed elementについて60歳未満の基本税率を反映。", updateEn: "Resident income tax, LITO, SAPTO, Medicare levy, MLS, CGT and foreign-resident income tax are modelled, together with the core under-60 tax treatment for the taxed element of Super lump sums." },
       { key: "estate", labelJa: "相続", labelEn: "Estate", status: "partial", effective: "2026-27", lastUpdated: "2026-08-21", updateJa: "オーストラリアには相続税はありません。Super death benefitの一括受取について、death benefits dependant / non-dependant別の税額概算を実装。所得ストリーム・遺産管理人経由などの詳細税務は未自動化。", updateEn: "Australia has no inheritance tax. A lump-sum Super death-benefit estimator now models tax for death-benefits dependants versus non-dependants; income streams and detailed deceased-estate treatment remain manual." },
     ],
@@ -869,13 +869,14 @@ export const AU_COUNTRY_RULES = {
     // 閾値を表示するに留め、gapAnnualを機械的に減額しない（過小評価防止）。
     model: "medicareWithPbs2026AndSafetyNetReference",
     effectiveTaxYear: "2026-27",
-    lastUpdated: "2026-08-21",
-    sourceName: "Australian Government — Medicare / PBS Safety Nets",
+    lastUpdated: "2026-08-23",
+    sourceName: "Australian Government — Medicare / PBS Safety Nets / Support at Home",
     sourceUrl: "https://www.health.gov.au/topics/medicare/about/safety-nets",
     sourceUrls: {
       medicare: "https://www.servicesaustralia.gov.au/medicare",
       medicareSafetyNets: "https://www.health.gov.au/topics/medicare/about/safety-nets",
       pbsSafetyNet: "https://www.servicesaustralia.gov.au/pbs-safety-net-thresholds",
+      supportAtHome: "https://www.health.gov.au/resources/publications/schedule-of-contributions-for-support-at-home-services",
     },
     pbs2026: {
       effectiveCalendarYear: "2026",
@@ -888,6 +889,106 @@ export const AU_COUNTRY_RULES = {
       extendedThresholdGeneral: 2699.10,
       extendedBenefitRate: 0.80,
       greatestPermissibleGapFrom20251101: 104.50,
+    },
+    // Support at Home participant contributions — Schedule from 1 July 2026.
+    // Clinical services are government-funded at 0%.
+    // For part pensioners / CSHC holders, Services Australia determines the exact rate
+    // from income and assets. If no assessed rate is supplied, use the statutory maximum
+    // as a conservative planning estimate so costs are not understated.
+    supportAtHome2026: {
+      effectiveFrom: "2026-07-01",
+      standard: {
+        fullPensioner: { clinical: 0, independence: 0.05, everydayLiving: 0.175 },
+        partPensionerOrCshc: {
+          clinical: 0,
+          independenceMin: 0.05,
+          independenceMax: 0.50,
+          everydayLivingMin: 0.175,
+          everydayLivingMax: 0.80,
+        },
+        selfFundedRetiree: { clinical: 0, independence: 0.50, everydayLiving: 0.80 },
+      },
+      noWorseOff: {
+        fullPensioner: { clinical: 0, independence: 0, everydayLiving: 0 },
+        partPensionerOrCshc: {
+          clinical: 0,
+          independenceMin: 0,
+          independenceMax: 0.25,
+          everydayLivingMin: 0,
+          everydayLivingMax: 0.25,
+        },
+        selfFundedRetiree: { clinical: 0, independence: 0.25, everydayLiving: 0.25 },
+      },
+      nonPensionIncomeThresholds: {
+        single: { min: 5876, max: 101105 },
+        coupleCombined: { min: 10296, max: 161768 },
+        illnessSeparatedCoupleCombined: { min: 10296, max: 202210 },
+      },
+      assetThresholds: {
+        singleHomeowner: { min: 333000, max: 943442.31 },
+        singleNonHomeowner: { min: 600000, max: 1210442.31 },
+        coupleHomeownerCombined: { min: 499000, max: 1469974.36 },
+        coupleNonHomeownerCombined: { min: 766000, max: 1736974.36 },
+        illnessSeparatedCoupleHomeownerCombined: { min: 499000, max: 1729217.95 },
+        illnessSeparatedCoupleNonHomeownerCombined: { min: 766000, max: 1996217.95 },
+      },
+      lifetimeCap: 137917.01,
+      noWorseOffLifetimeCap: 86185.23,
+      deeming: {
+        singleThreshold: 66800,
+        coupleOnePensionerThreshold: 110600,
+        coupleNoPensionThreshold: 55300,
+        lowerRate: 0.0125,
+        higherRate: 0.0325,
+      },
+    },
+    getSupportAtHomeContributionRates({
+      status = "fullPensioner",
+      noWorseOff = false,
+      assessedIndependenceRate,
+      assessedEverydayLivingRate,
+    } = {}) {
+      const schedule = noWorseOff ? this.supportAtHome2026.noWorseOff : this.supportAtHome2026.standard;
+      if (status === "selfFundedRetiree") return { ...schedule.selfFundedRetiree };
+      if (status !== "partPensionerOrCshc") return { ...schedule.fullPensioner };
+      const cfg = schedule.partPensionerOrCshc;
+      const clamp = (value, min, max) => {
+        const n = Number(value);
+        if (!Number.isFinite(n)) return max;
+        return Math.max(min, Math.min(max, n));
+      };
+      return {
+        clinical: 0,
+        independence: clamp(assessedIndependenceRate, cfg.independenceMin, cfg.independenceMax),
+        everydayLiving: clamp(assessedEverydayLivingRate, cfg.everydayLivingMin, cfg.everydayLivingMax),
+      };
+    },
+    getSupportAtHomeAnnualContribution({
+      clinicalAnnual = 0,
+      independenceAnnual = 0,
+      everydayLivingAnnual = 0,
+      status = "fullPensioner",
+      noWorseOff = false,
+      assessedIndependenceRate,
+      assessedEverydayLivingRate,
+      priorLifetimeContributions = 0,
+    } = {}) {
+      const rates = this.getSupportAtHomeContributionRates({
+        status,
+        noWorseOff,
+        assessedIndependenceRate,
+        assessedEverydayLivingRate,
+      });
+      const annual = Math.max(0, Number(clinicalAnnual) || 0) * rates.clinical
+        + Math.max(0, Number(independenceAnnual) || 0) * rates.independence
+        + Math.max(0, Number(everydayLivingAnnual) || 0) * rates.everydayLiving;
+      const cap = noWorseOff
+        ? this.supportAtHome2026.noWorseOffLifetimeCap
+        : this.supportAtHome2026.lifetimeCap;
+      return Math.min(
+        Math.max(0, annual),
+        Math.max(0, cap - Math.max(0, Number(priorLifetimeContributions) || 0))
+      );
     },
     costItems: [
       "gapAnnual",
@@ -923,6 +1024,20 @@ export const AU_COUNTRY_RULES = {
         concessional: Boolean(h.pbsConcessional),
       });
     },
+    getAgedCareAnnual(healthcare) {
+      const h = healthcare || {};
+      if ((h.agedCareMode || "manual") !== "supportAtHome") return Number(h.agedCareAnnual) || 0;
+      return this.getSupportAtHomeAnnualContribution({
+        clinicalAnnual: h.supportAtHomeClinicalAnnual,
+        independenceAnnual: h.supportAtHomeIndependenceAnnual,
+        everydayLivingAnnual: h.supportAtHomeEverydayLivingAnnual,
+        status: h.supportAtHomeStatus,
+        noWorseOff: Boolean(h.supportAtHomeNoWorseOff),
+        assessedIndependenceRate: h.supportAtHomeAssessedIndependenceRate,
+        assessedEverydayLivingRate: h.supportAtHomeAssessedEverydayLivingRate,
+        priorLifetimeContributions: h.supportAtHomePriorLifetimeContributions,
+      });
+    },
     getAnnualTotal(healthcare) {
       const h = healthcare || {};
       const n = (v) => Number(v) || 0;
@@ -931,13 +1046,13 @@ export const AU_COUNTRY_RULES = {
         + this.getPharmaceuticalAnnual(h)
         + n(h.dentalAnnual)
         + n(h.opticalAnnual)
-        + n(h.agedCareAnnual)
+        + this.getAgedCareAnnual(h)
         + n(h.otherOutOfPocketAnnual);
     },
     notImplemented: [
       "Medicare levyの家族所得による減免は税計算側で実装済み。年途中の婚姻・離婚・免除日数などの日割り計算は未実装",
       "Medicare Safety Netの診療ごとの自動還付計算（MBS schedule feeと実請求額が必要）",
-      "Aged care（高齢者介護）の資力調査に基づく自己負担額",
+      "Support at Homeの標準/NWOP拠出率・主要閾値・lifetime capは実装済み。Part pensioner/CSHCの正確なServices Australia資力判定、Residential aged careの個別means assessmentは未自動化",
     ],
   },
 
