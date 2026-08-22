@@ -544,9 +544,14 @@ export const GB_COUNTRY_RULES = {
         nonNegative(otherCountedIncomeWeekly) +
         tariffIncome;
 
+      // State Pension Credit Regulations 2002, reg. 24A: where a calculation
+      // leaves a fraction of a penny, keep the claimant-favourable result. On
+      // the income side, a lower counted-income figure favours the claimant, so
+      // discard sub-penny fractions rather than rounding them up to nearest.
+      const floorPence = (value) => Math.floor((value + Number.EPSILON) * 100) / 100;
       return {
-        countedIncomeWeekly: Math.round(countedIncome * 100) / 100,
-        countedEarningsWeekly: Math.round(countedEarnings * 100) / 100,
+        countedIncomeWeekly: floorPence(countedIncome),
+        countedEarningsWeekly: floorPence(countedEarnings),
         earningsDisregardWeekly: earningsDisregard,
         tariffIncomeWeekly: tariffIncome,
         fullyDisregardedIncomeWeekly: nonNegative(fullyDisregardedIncomeWeekly),
@@ -723,7 +728,7 @@ export const GB_COUNTRY_RULES = {
       const rawWeekly =
         appropriate.appropriateAmountWeekly - income.countedIncomeWeekly;
       const guaranteeCreditWeekly =
-        age.eligible ? Math.max(0, Math.round(rawWeekly * 100) / 100) : 0;
+        age.eligible ? Math.max(0, Math.ceil((rawWeekly - Number.EPSILON) * 100) / 100) : 0;
 
       return {
         eligibleByAge: age.eligible,
