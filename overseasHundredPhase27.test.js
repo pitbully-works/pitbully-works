@@ -43,9 +43,9 @@ describe("overseas 100 phase 27 — GB Pension Credit Savings Credit", () => {
       appropriateAmountWeekly: 254.35,
       reachedStatePensionAgeBefore20160406: true,
     });
-    expect(partial.amountAWeekly).toBeCloseTo(7.776, 10);
+    expect(partial.amountAWeekly).toBe(7.78);
     expect(partial.amountBWeekly).toBe(0);
-    expect(partial.savingsCreditWeekly).toBeCloseTo(7.776, 10);
+    expect(partial.savingsCreditWeekly).toBe(7.78);
 
     const capped = ret.calculatePensionCreditSavingsCredit({
       status: "couple",
@@ -65,8 +65,8 @@ describe("overseas 100 phase 27 — GB Pension Credit Savings Credit", () => {
       appropriateAmountWeekly: 363.25,
       reachedStatePensionAgeBefore20160406: true,
     });
-    expect(r.amountBWeekly).toBeCloseTo(5.796, 10);
-    expect(r.savingsCreditWeekly).toBeCloseTo(14.304, 10);
+    expect(r.amountBWeekly).toBe(5.79);
+    expect(r.savingsCreditWeekly).toBe(14.31);
   });
 
   it("supports the preserved transitional-couple entitlement flag", () => {
