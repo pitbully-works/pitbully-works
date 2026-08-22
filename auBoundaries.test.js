@@ -402,11 +402,12 @@ describe("AU境界：Age Pension は所得テストと資産テストの低い�
     expect(near(p, ret.getAgePensionByIncomeTest(income, "single"))).toBe(true);
   });
 
-  it("Work Bonus は A$300/隔週、残高上限 A$11,800 として年次近似で反映する", () => {
+  it("Work Bonus は A$300/隔週・残高上限 A$11,800 で、隔週台帳計算まで実装済み", () => {
     expect(ret.agePension.workBonusFortnightly).toBe(300);
     expect(ret.agePension.workBonusMaxBalance).toBe(11800);
     expect(ret.agePension.workBonusNewRecipientBalance).toBe(4000);
-    expect(ret.notImplemented.join(" / ")).toMatch(/Work Bonus.*隔週単位/);
+    expect(typeof ret.getWorkBonusFortnightlyAssessment).toBe("function");
+    expect(ret.notImplemented.join(" / ")).toMatch(/給与支払日.*Centrelink報告期間/);
   });
 });
 
