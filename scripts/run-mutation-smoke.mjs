@@ -167,6 +167,10 @@ const mutants = [
   ["GB Pension Credit normally requires both partners at age", "countryRules/GB.js", "claimantAtAge && partnerAtAge", "claimantAtAge || partnerAtAge", "overseasHundredPhase28.test.js"],
   ["GB Pension Credit protected mixed-age continuity is protected", "countryRules/GB.js", "protectedMixedAgeContinuity === true ||\n        pensionAgeHousingBenefitContinuity === true", "protectedMixedAgeContinuity === false ||\n        pensionAgeHousingBenefitContinuity === true", "overseasHundredPhase28.test.js"],
 
+  ["GB Pension Credit single earnings disregard is protected", "countryRules/GB.js", "status === \"couple\" ? 10 : 5", "status === \"couple\" ? 10 : 6", "overseasHundredPhase29.test.js"],
+  ["GB Pension Credit higher earnings disregard is protected", "countryRules/GB.js", "higherEarningsDisregard ? 20 : normalEarningsDisregard", "higherEarningsDisregard ? 21 : normalEarningsDisregard", "overseasHundredPhase29.test.js"],
+  ["GB Pension Credit assessable income includes tariff income", "countryRules/GB.js", "nonNegative(otherCountedIncomeWeekly) +\n        tariffIncome;", "nonNegative(otherCountedIncomeWeekly) +\n        tariffIncome + 1;", "overseasHundredPhase29.test.js"],
+
 ];
 
 if (!fs.existsSync(vitestBin)) {
