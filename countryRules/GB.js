@@ -1004,12 +1004,14 @@ export const GB_COUNTRY_RULES = {
     implemented: true,
     model: "regionalNhsPlusUserCosts",
     effectiveTaxYear: "2026/27",
-    lastUpdated: "2026-08-21",
-    sourceName: "NHS / NHSBSA / GOV.UK — health costs and adult social care",
+    lastUpdated: "2026-08-22",
+    sourceName: "NHS / NHSBSA / NHS inform / GOV.UK — health costs and adult social care",
     sourceUrl: "https://www.nhs.uk/nhs-services/help-with-health-costs/",
     sourceUrls: {
       prescriptionEngland: "https://www.nhs.uk/nhs-services/prescriptions/nhs-prescription-charges/",
       dentalEngland: "https://www.nhsbsa.nhs.uk/help-nhs-dental-costs",
+      dentalScotland: "https://www.nhsinform.scot/care-support-and-rights/nhs-services/dental/receiving-nhs-dental-treatment-in-scotland/",
+      dentalWales: "https://faq.nhsbsa.nhs.uk/knowledgebase/article/KA-02003/en-us",
       socialCareEngland: "https://www.gov.uk/government/publications/social-care-charging-for-local-authorities-2026-to-2027",
     },
     regions: ["england", "scotland", "wales", "northernIreland"],
@@ -1021,6 +1023,29 @@ export const GB_COUNTRY_RULES = {
       band1: 27.90,
       band2: 76.60,
       band3: 332.10,
+    },
+    dentalScotland: {
+      patientShareRate: 0.80,
+      maximumPerCourse: 384,
+      examinationCharge: 0,
+      freeTreatmentUnderAge: 26,
+    },
+    dentalWales: {
+      // 2026-04-01からのNHS Wales care-package charges（成人）。
+      charges: {
+        urgent: 37.50,
+        newPatientAssessmentAdult: 27.21,
+        simpleRestorative: 36.03,
+        extensiveRestorative: 68.75,
+        periodontal: 48.53,
+        anteriorRootCanal: 91.18,
+        posteriorRootCanal: 182.72,
+        crownOrBridge: 140.44,
+        denture: 86.40,
+        stabilisation: 75.00,
+        miscellaneous: 25.00,
+        adultRecall: 25.00,
+      },
     },
     socialCareEngland: {
       lowerCapitalLimit: 14250,
@@ -1040,6 +1065,26 @@ export const GB_COUNTRY_RULES = {
       return n(band1Courses) * this.dentalEngland.band1
         + n(band2Courses) * this.dentalEngland.band2
         + n(band3Courses) * this.dentalEngland.band3;
+    },
+    getScotlandDentalCourseCharge(nhsTreatmentCost, { exempt = false, age = null } = {}) {
+      const d = this.dentalScotland;
+      const a = Number(age);
+      if (exempt || (Number.isFinite(a) && a >= 0 && a < d.freeTreatmentUnderAge)) return 0;
+      const cost = Math.max(0, Number(nhsTreatmentCost) || 0);
+      return Math.min(d.maximumPerCourse, cost * d.patientShareRate);
+    },
+    getScotlandDentalAnnual(courseCosts = [], { exempt = false, age = null } = {}) {
+      const costs = Array.isArray(courseCosts) ? courseCosts : [courseCosts];
+      return costs.reduce((sum, cost) => sum + this.getScotlandDentalCourseCharge(cost, { exempt, age }), 0);
+    },
+    getWalesDentalAnnual(packageCounts = {}, exempt = false) {
+      if (exempt) return 0;
+      const charges = this.dentalWales.charges;
+      const counts = packageCounts && typeof packageCounts === "object" ? packageCounts : {};
+      return Object.entries(charges).reduce((sum, [key, charge]) => {
+        const count = Math.max(0, Number(counts[key]) || 0);
+        return sum + count * charge;
+      }, 0);
     },
     getEnglandSocialCareAssessment(capital) {
       const c = Math.max(0, Number(capital) || 0);
@@ -1064,9 +1109,16 @@ export const GB_COUNTRY_RULES = {
       const prescriptionAnnual = h.prescriptionMode === "auto"
         ? this.getPrescriptionAnnual(region, h.prescriptionItemsAnnual, Boolean(h.prescriptionExempt))
         : n(h.prescriptionAnnual);
-      const dentalAnnual = h.dentalMode === "auto" && region === "england"
-        ? this.getEnglandDentalAnnual(h.dentalBand1Courses, h.dentalBand2Courses, h.dentalBand3Courses, Boolean(h.dentalExempt))
-        : n(h.dentalAnnual);
+      let dentalAnnual = n(h.dentalAnnual);
+      if (h.dentalMode === "auto") {
+        if (region === "england") {
+          dentalAnnual = this.getEnglandDentalAnnual(h.dentalBand1Courses, h.dentalBand2Courses, h.dentalBand3Courses, Boolean(h.dentalExempt));
+        } else if (region === "scotland") {
+          dentalAnnual = this.getScotlandDentalAnnual(h.dentalCourseCosts, { exempt: Boolean(h.dentalExempt), age: h.age });
+        } else if (region === "wales") {
+          dentalAnnual = this.getWalesDentalAnnual(h.dentalPackageCounts, Boolean(h.dentalExempt));
+        }
+      }
       return n(h.nhsBasicAnnual)
         + n(h.privateHealthInsuranceMonthly) * 12
         + dentalAnnual
@@ -1075,7 +1127,7 @@ export const GB_COUNTRY_RULES = {
         + n(h.otherOutOfPocketAnnual);
     },
     notImplemented: [
-      "Scotland / Wales / Northern Ireland のNHS歯科料金の自動計算",
+      "Northern Ireland のHealth Service歯科料金はitem-of-service fee scheduleが必要なため自動計算未実装。Scotlandは治療原価入力から80%・1コース£384上限、Walesは2026/27 care-package料金を自動計算可能",
       "England以外の社会的介護（social care）の資力調査と地域別負担額の自動計算",
       "Englandの介護費そのものの自動算定（資産判定のみ対応。実際の負担額は自治体評価・所得等で変わる）",
     ],
