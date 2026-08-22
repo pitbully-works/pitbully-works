@@ -654,10 +654,12 @@ function GBInvestmentAccountsPanel({ gbInvestment, onUpdate, onUpdateAccount, ag
           <Info size={13} />
           <span>{t("gbTaxSourceNote", { taxYear: taxRules.effectiveTaxYear, region: taxRules.region })}</span>
         </div>
+        <Field guide={t("gbEmploymentIncomeGuide")} label={t("gbEmploymentIncomeLabel")} unit="£" step={1000} value={gbInvestment.employmentIncomeAnnual || 0} onChange={(v) => onUpdate("employmentIncomeAnnual", Math.max(0, Number(v) || 0))} />
         <Field guide={t("gbDividendIncomeGuide")} label={t("gbDividendIncomeLabel")} unit="£" step={100} value={gbInvestment.dividendIncomeAnnual} onChange={(v) => onUpdate("dividendIncomeAnnual", v)} />
         <Field guide={t("gbCapitalGainGuide")} label={t("gbCapitalGainLabel")} unit="£" step={500} value={gbInvestment.estimatedCapitalGainAnnual} onChange={(v) => onUpdate("estimatedCapitalGainAnnual", v)} />
         <div className="stat-grid" style={{ marginTop: 10 }}>
           <StatCard label={t("gbIncomeTaxLabel")} value={money(taxResult.incomeTax)} sub={t("gbIncomeTaxSub", { amount: money(taxResult.taxableIncome) })} />
+          <StatCard label={t("gbNationalInsuranceLabel")} value={money(taxResult.nationalInsurance)} sub={t("gbNationalInsuranceSub", { pt: money(taxRules.nationalInsurance.primaryThresholdAnnual), uel: money(taxRules.nationalInsurance.upperEarningsLimitAnnual) })} />
           <StatCard
             label={t("gbDividendTaxLabel")}
             value={money(taxResult.dividendTax)}
@@ -1832,6 +1834,7 @@ const DEFAULT_INPUTS = {
     // 6口座それぞれが「現在額・年間積立額・想定利回り・積立終了年齢」を個別に持つ。
     gbInvestment: {
       annualIncome: 0,   // 年間総所得（Income Tax・配当税・CGT・年金税軽減の判定に使用）
+      employmentIncomeAnnual: 0, // Class 1 employee National Insurance対象の年間給与。0ならannualIncomeを給与として概算。
       adjustedIncome: 0, // 年金拠出上限のテーパリング判定用（0なら annualIncome を使用）
       thresholdIncome: 0, // テーパー適用の第1条件。0なら annualIncome を使用
       pensionCarryForwardAvailable: 0,
@@ -2599,6 +2602,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const gbCapitalGainsTax = (gbIsGB && rules.tax.implemented)
     ? rules.tax.calculateCapitalGainsTax(gbInvestment.estimatedCapitalGainAnnual, gbGrossIncome)
     : 0;
+  const gbEmploymentIncomeForNi = Math.max(0, Number(gbInvestment.employmentIncomeAnnual) || gbGrossIncome);
+  const gbNationalInsurance = (gbIsGB && rules.tax.implemented)
+    ? rules.tax.calculateEmployeeNationalInsurance(gbEmploymentIncomeForNi)
+    : 0;
   const gbMarginalRate = (gbIsGB && rules.tax.implemented)
     ? rules.tax.getMarginalRate(gbGrossIncome)
     : 0;
@@ -2615,7 +2622,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     ? rules.tax.calculatePensionTaxRelief(gbPensionContribution, gbGrossIncome, gbPensionAnnualAllowance)
     : 0;
   // 年金拠出による軽減額が税額を上回る場合でもマイナス表示にはしない
-  const gbTotalTax = Math.max(0, gbIncomeTaxResult.tax + gbDividendTax + gbCapitalGainsTax - gbPensionTaxRelief);
+  const gbTotalTax = Math.max(0, gbIncomeTaxResult.tax + gbNationalInsurance + gbDividendTax + gbCapitalGainsTax - gbPensionTaxRelief);
 
   const gbHealthcareAnnual = (gbIsGB && rules.healthcare.implemented)
     ? rules.healthcare.getAnnualTotal(gbInvestment.healthcare)
@@ -7592,6 +7599,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               taxResult={{
                 incomeTax: gbIncomeTaxResult.tax,
                 taxableIncome: gbIncomeTaxResult.taxableIncome,
+                nationalInsurance: gbNationalInsurance,
                 dividendTax: gbDividendTax,
                 capitalGainsTax: gbCapitalGainsTax,
                 pensionTaxRelief: gbPensionTaxRelief,

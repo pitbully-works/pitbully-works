@@ -34,8 +34,10 @@ describe("GB 2026/27 final user-facing consistency", () => {
     expect(note).not.toContain("Scottish Income Tax, National Insurance, tax on savings interest and Inheritance Tax are not implemented");
   });
 
-  it("still clearly identifies the genuinely unimplemented GB tax items", () => {
-    expect(ja.gbTaxSourceNote).toContain("National Insuranceと貯蓄利子課税は未実装");
-    expect(en.gbTaxSourceNote).toContain("National Insurance and tax on savings interest are not implemented");
+  it("now identifies only savings-interest tax as the remaining source-note gap", () => {
+    expect(ja.gbTaxSourceNote).toContain("貯蓄利子課税は未実装");
+    expect(ja.gbTaxSourceNote).not.toContain("National Insuranceと貯蓄利子課税は未実装");
+    expect(en.gbTaxSourceNote).toContain("Tax on savings interest is not implemented");
+    expect(en.gbTaxSourceNote).not.toContain("National Insurance and tax on savings interest are not implemented");
   });
 });
