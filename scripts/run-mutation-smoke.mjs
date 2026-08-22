@@ -45,6 +45,9 @@ const mutants = [
   ["Current backup country maps reject unknown buckets", "utils/countryProfiles.js", "if (!PROFILE_COUNTRIES.includes(code) || seen.has(code)) return false;", "if (seen.has(code)) return false;", "backupRestoreAtomicity.test.js"],
   ["Stale history reads cannot repaint another country", "App.jsx", "      if (requestGeneration !== historyRequestGenerationRef.current) return;\n      const clean = entries.map", "      if (false) return;\n      const clean = entries.map", "countryHistoryAsyncBoundary.test.js"],
   ["Country switch normalizes stored watchlists", "App.jsx", "[currentCountry]: normalizeStockWatchlist(watchlist, currentCountry)", "[currentCountry]: watchlist", "countryHistoryAsyncBoundary.test.js"],
+  ["Engine always splits at retirement boundary", "lifePlanEngine.js", "const steps = buildAgeSteps(currentAge, deathAge, [...(p.boundaries || []), retireAge]);", "const steps = buildAgeSteps(currentAge, deathAge, p.boundaries);", "fiveCountryCalculationBoundaryFinal.test.js"],
+  ["Scenario uses exact retirement-boundary net worth", "utils/scenarioComparison.js", "Number.isFinite(result.netWorthAtRetire)", "false", "fiveCountryCalculationBoundaryFinal.test.js"],
+  ["Negative retirement living cost cannot enter the plan", "utils/buildPlanInput.js", "Math.max(0, Number(overrides.livingCostMonthly))", "Number(overrides.livingCostMonthly)", "fiveCountryCalculationBoundaryFinal.test.js"],
 ];
 
 if (!fs.existsSync(vitestBin)) {
@@ -53,10 +56,7 @@ if (!fs.existsSync(vitestBin)) {
 }
 
 let killed = 0;
-const survivors = [  ["Engine always splits at retirement boundary", "lifePlanEngine.js", "const steps = buildAgeSteps(currentAge, deathAge, [...(p.boundaries || []), retireAge]);", "const steps = buildAgeSteps(currentAge, deathAge, p.boundaries);", "fiveCountryCalculationBoundaryFinal.test.js"],
-  ["Scenario uses exact retirement-boundary net worth", "utils/scenarioComparison.js", "Number.isFinite(result.netWorthAtRetire)", "false", "fiveCountryCalculationBoundaryFinal.test.js"],
-  ["Negative retirement living cost cannot enter the plan", "utils/buildPlanInput.js", "Math.max(0, Number(overrides.livingCostMonthly))", "Number(overrides.livingCostMonthly)", "fiveCountryCalculationBoundaryFinal.test.js"],
-];
+const survivors = [];
 for (const [name, rel, from, to, testFile] of mutants) {
   const file = path.join(ROOT, rel);
   const original = fs.readFileSync(file, "utf8");
