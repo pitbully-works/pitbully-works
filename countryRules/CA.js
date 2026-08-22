@@ -566,14 +566,16 @@ export const CA_COUNTRY_RULES = {
     implemented: true,
     model: "canadaFederalIncomeTax",
     effectiveTaxYear: "2026",
-    lastUpdated: "2026-08-21",
-    sourceName: "Canada Revenue Agency (CRA) — Federal and Ontario 2026 income tax rates",
+    lastUpdated: "2026-08-22",
+    sourceName: "Canada Revenue Agency (CRA) / ESDC — 2026 income tax, CPP/QPP and EI rates",
     sourceUrl: "https://www.canada.ca/en/revenue-agency/services/tax/individuals/tax-rates-brackets/current-year.html",
     sourceUrls: {
       brackets: "https://www.canada.ca/en/revenue-agency/services/tax/individuals/tax-rates-brackets/current-year.html",
       ontario: "https://www.canada.ca/en/revenue-agency/services/forms-publications/payroll/t4032-payroll-deductions-tables/t4032on-jan/t4032on-january-general-information.html",
       bpa: "https://www.canada.ca/en/revenue-agency/services/tax/individuals/frequently-asked-questions-individuals/basic-personal-amount.html",
       capitalGains: "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/personal-income/line-12700-capital-gains.html",
+      payroll: "https://www.canada.ca/en/revenue-agency/services/forms-publications/payroll/t4127-payroll-deductions-formulas/t4127-jan/t4127-jan-payroll-deductions-formulas-computer-programs.html",
+      ei: "https://www.canada.ca/en/employment-social-development/programs/ei/ei-list/ei-employers/premium-reduction-program/2026-maximum-insurable-earnings.html",
     },
     // 2026-08-21時点：オンタリオ州のみ自動計算。その他12地域は未実装。
     region: "Federal + Ontario (other provincial / territorial tax not included)",
@@ -618,6 +620,61 @@ export const CA_COUNTRY_RULES = {
     },
     // 譲渡益の課税所得算入率（2026年時点で50%）
     capitalGains: { inclusionRate: 0.50 },
+    // 2026 employee payroll deductions.
+    // CPP/QPP: YBE C$3,500, YMPE C$74,600, YAMPE C$85,000.
+    // CPP employee rate 5.95% to YMPE, CPP2/QPP2 4% from YMPE to YAMPE.
+    // QPP employee rate is 6.30% to YMPE.
+    // EI: max insurable earnings C$68,900; 1.63% outside Quebec / 1.30% in Quebec.
+    payrollDeductions: {
+      year: 2026,
+      ybe: 3500,
+      ympe: 74600,
+      yampe: 85000,
+      cppRate: 0.0595,
+      qppRate: 0.0630,
+      secondAdditionalRate: 0.0400,
+      eiMaxInsurableEarnings: 68900,
+      eiRate: 0.0163,
+      eiQuebecRate: 0.0130,
+    },
+    calculateEmployeePensionContribution(employmentIncome, provinceCode = "ON") {
+      const cfg = this.payrollDeductions;
+      const income = Math.max(0, Number(employmentIncome) || 0);
+      const isQuebec = String(provinceCode || "").toUpperCase() === "QC";
+      const firstRate = isQuebec ? cfg.qppRate : cfg.cppRate;
+      const firstBand = Math.max(0, Math.min(income, cfg.ympe) - cfg.ybe);
+      const secondBand = Math.max(0, Math.min(income, cfg.yampe) - cfg.ympe);
+      const first = firstBand * firstRate;
+      const second = secondBand * cfg.secondAdditionalRate;
+      return {
+        plan: isQuebec ? "QPP" : "CPP",
+        first,
+        second,
+        total: first + second,
+      };
+    },
+    calculateEmployeeEiPremium(employmentIncome, provinceCode = "ON") {
+      const cfg = this.payrollDeductions;
+      const income = Math.max(0, Number(employmentIncome) || 0);
+      const isQuebec = String(provinceCode || "").toUpperCase() === "QC";
+      const rate = isQuebec ? cfg.eiQuebecRate : cfg.eiRate;
+      return Math.min(income, cfg.eiMaxInsurableEarnings) * rate;
+    },
+    calculateEmployeePayrollDeductions(employmentIncome, provinceCode = "ON") {
+      const pension = this.calculateEmployeePensionContribution(employmentIncome, provinceCode);
+      const ei = this.calculateEmployeeEiPremium(employmentIncome, provinceCode);
+      return {
+        employmentIncome: Math.max(0, Number(employmentIncome) || 0),
+        provinceCode: String(provinceCode || "ON").toUpperCase(),
+        pensionPlan: pension.plan,
+        pensionContribution: pension.total,
+        pensionFirstContribution: pension.first,
+        pensionSecondContribution: pension.second,
+        eiPremium: ei,
+        total: pension.total + ei,
+      };
+    },
+
     // TFSA内の運用益・引出しは完全非課税
     tfsaTaxFree: true,
     // RRSPは拠出時に所得控除、引出し時に全額が課税所得
@@ -745,7 +802,7 @@ export const CA_COUNTRY_RULES = {
       "オンタリオ州の扶養家族等を含むTax Reductionの完全計算（基本本人分のみ反映）",
       "ケベック州の連邦税減額（Quebec abatement 16.5%）",
       "配当税額控除（eligible / non-eligible dividend tax credit）",
-      "CPP拠出金・EI保険料（所得税とは別の天引き）",
+      "CPP/QPP拠出金とEI保険料は2026年の従業員本人分を実装済み。Quebec Parental Insurance Plan（QPIP）と自営業者向け拠出は未実装",
       "Alternative Minimum Tax（AMT）",
       "年金所得の分割（pension income splitting）",
     ],
