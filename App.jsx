@@ -961,6 +961,7 @@ function CAInvestmentAccountsPanel({ caInvestment, onUpdate, onUpdateAccount, ag
               plan: taxResult.pensionPlan || "CPP",
               pension: money(taxResult.pensionContribution || 0),
               ei: money(taxResult.eiPremium || 0),
+              qpip: money(taxResult.qpipPremium || 0),
             })}
           />
         </div>
@@ -2685,7 +2686,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const caEmploymentIncome = Math.max(0, Number(caInvestment.employmentIncomeAnnual) || caGrossIncome);
   const caPayrollDeductions = (caIsCA && rules.tax.implemented && typeof rules.tax.calculateEmployeePayrollDeductions === "function")
     ? rules.tax.calculateEmployeePayrollDeductions(caEmploymentIncome, caProvinceCode)
-    : { pensionPlan: "CPP", pensionContribution: 0, pensionFirstContribution: 0, pensionSecondContribution: 0, eiPremium: 0, total: 0 };
+    : { pensionPlan: "CPP", pensionContribution: 0, pensionFirstContribution: 0, pensionSecondContribution: 0, eiPremium: 0, qpipPremium: 0, total: 0 };
   const caProvincialTaxResult = (caIsCA && rules.tax.implemented && typeof rules.tax.calculateProvincialTax === "function")
     ? rules.tax.calculateProvincialTax(caGrossIncome, caProvinceCode)
     : { tax: 0, unsupported: true, provinceCode: caProvinceCode };
@@ -2706,7 +2707,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     ? rules.tax.calculateProvincialRrspTaxSaving(caInvestment.rrsp.annualContribution, caGrossIncome, caRrspRoom, caProvinceCode)
     : 0;
   const caRrspTaxSaving = caFederalRrspTaxSaving + caProvincialRrspTaxSaving;
-  // 税・給与天引き合計（連邦＋対応州＋CGT＋CPP/QPP＋EI－RRSP軽減）。
+  // 税・給与天引き合計（連邦＋対応州＋CGT＋CPP/QPP＋EI＋Quebec QPIP－RRSP軽減）。
   // 未対応州では州税を0として明示表示する。
   const caTotalTax = Math.max(0,
     caFederalTaxResult.tax + caProvincialTaxResult.tax
@@ -7659,6 +7660,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
                 pensionFirstContribution: caPayrollDeductions.pensionFirstContribution,
                 pensionSecondContribution: caPayrollDeductions.pensionSecondContribution,
                 eiPremium: caPayrollDeductions.eiPremium,
+                qpipPremium: caPayrollDeductions.qpipPremium,
                 payrollDeductionsTotal: caPayrollDeductions.total,
                 totalTax: caTotalTax,
               }}
