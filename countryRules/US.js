@@ -448,7 +448,11 @@ export const US_COUNTRY_RULES = {
     },
     // 月額の実受給額 = FRA時点の月額（PIA、ユーザー入力） × 受給開始年齢に応じた倍率
     getMonthlyBenefit(piaMonthly, claimAgeInYears) {
-      return piaMonthly * this.getClaimingFactor(claimAgeInYears);
+      const pia = Math.max(0, Number(piaMonthly) || 0);
+      const age = Number.isFinite(Number(claimAgeInYears))
+        ? Number(claimAgeInYears)
+        : this.socialSecurity.fullRetirementAge;
+      return pia * this.getClaimingFactor(age);
     },
 
     // ------------------------------------------------------------------
@@ -720,7 +724,8 @@ export const US_COUNTRY_RULES = {
     calculateFederalTax(grossIncome, filingStatus) {
       const fs = this.federalBrackets2026[filingStatus] ? filingStatus : "single";
       const deduction = this.standardDeduction2026[fs] || this.standardDeduction2026.single;
-      const taxableIncome = Math.max(0, grossIncome - deduction);
+      const gross = Math.max(0, Number(grossIncome) || 0);
+      const taxableIncome = Math.max(0, gross - deduction);
       const brackets = this.federalBrackets2026[fs] || this.federalBrackets2026.single;
       let tax = 0;
       let lower = 0;
@@ -757,8 +762,10 @@ export const US_COUNTRY_RULES = {
     },
     calculateNiit(magi, netInvestmentIncome, filingStatus) {
       const threshold = this.niitThreshold[filingStatus] || this.niitThreshold.single;
-      const excess = Math.max(0, magi - threshold);
-      return Math.min(excess, Math.max(0, netInvestmentIncome)) * this.niitRate;
+      const safeMagi = Math.max(0, Number(magi) || 0);
+      const safeInvestmentIncome = Math.max(0, Number(netInvestmentIncome) || 0);
+      const excess = Math.max(0, safeMagi - threshold);
+      return Math.min(excess, safeInvestmentIncome) * this.niitRate;
     },
   },
   estate: {
