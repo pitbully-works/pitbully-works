@@ -582,12 +582,24 @@ export const GB_COUNTRY_RULES = {
       const carerExtra =
         Math.min(status === "couple" ? 2 : 1, whole(carerQualifiers)) *
         extras.carerWeeklyPerQualifyingPartner;
+      const firstChildren = whole(firstChildrenBornBefore2017);
+      const laterChildren = whole(otherChildren);
+      const totalChildren = firstChildren + laterChildren;
+      // A child/QYP can receive one disabled-child extra amount (lower or higher),
+      // and the disabled-child count cannot exceed the children included above.
+      // If inconsistent input supplies both tiers for more children than exist,
+      // preserve the higher-rate claims first and cap the lower-rate remainder.
+      const disabledHigherCount = Math.min(totalChildren, whole(disabledChildrenHigher));
+      const disabledLowerCount = Math.min(
+        Math.max(0, totalChildren - disabledHigherCount),
+        whole(disabledChildrenLower),
+      );
       const childExtra =
-        (whole(firstChildrenBornBefore2017) > 0 ? extras.childFirstBornBefore2017Weekly : 0) +
-        Math.max(0, whole(firstChildrenBornBefore2017) - 1) * extras.childOtherWeekly +
-        whole(otherChildren) * extras.childOtherWeekly +
-        whole(disabledChildrenLower) * extras.disabledChildLowerWeekly +
-        whole(disabledChildrenHigher) * extras.disabledChildHigherWeekly;
+        (firstChildren > 0 ? extras.childFirstBornBefore2017Weekly : 0) +
+        Math.max(0, firstChildren - 1) * extras.childOtherWeekly +
+        laterChildren * extras.childOtherWeekly +
+        disabledLowerCount * extras.disabledChildLowerWeekly +
+        disabledHigherCount * extras.disabledChildHigherWeekly;
       const housingExtra = nonNegative(eligibleHousingCostsWeekly);
       const transitionalExtra = nonNegative(transitionalAdditionalAmountWeekly);
       const total =
