@@ -34,7 +34,7 @@ describe("overseas 100 phase 4 — Canada QPP", () => {
     const app = readFileSync(join(process.cwd(), "App.jsx"), "utf8");
     const panel = readFileSync(join(process.cwd(), "panels/CARetirementPanel.jsx"), "utf8");
     expect(app).toContain('plan: "CPP"');
-    expect(panel).toContain('<option value="QPP">QPP — Québec Pension Plan</option>');
+    expect(panel).toContain('<option value="QPP">{t("caQppPlanOption")}</option>');
     expect(panel).toContain('"qppEarlyReductionPerMonth"');
   });
 
