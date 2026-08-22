@@ -73,12 +73,15 @@ describe("5-country common rule catalog", () => {
     }
   });
 
-  it("does not pretend missing estate calculators exist", () => {
-    for (const country of ["JP", "US", "CA"]) {
+  it("reports estate calculation sections only where a calculator exists", () => {
+    for (const country of ["JP", "CA"]) {
       const estate = buildCountryRuleCatalog(country).find((row) => row.key === "estate");
       expect(estate.hasCalculationSection).toBe(false);
       expect(estate.status).toBe("partial");
     }
+    const usEstate = buildCountryRuleCatalog("US").find((row) => row.key === "estate");
+    expect(usEstate.hasCalculationSection).toBe(true);
+    expect(usEstate.status).toBe("partial");
     expect(buildCountryRuleCatalog("GB").find((row) => row.key === "estate").hasCalculationSection).toBe(true);
     expect(buildCountryRuleCatalog("AU").find((row) => row.key === "estate").hasCalculationSection).toBe(true);
   });

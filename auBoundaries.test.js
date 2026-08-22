@@ -661,7 +661,10 @@ describe("AU境界：未実装項目が明示されている", () => {
     expect(typeof ret.getDeemedIncomeAnnual).toBe("function");
   });
 
-  it("片方だけ受給資格年齢の場合の配偶者Super除外が未実装として明記されている", () => {
-    expect(ret.notImplemented.join(" / ")).toMatch(/受給資格年齢未満の配偶者の積立フェーズSuper/);
+  it("片方だけ受給資格年齢の場合の配偶者Super除外は実装済みで、未実装扱いにしない", () => {
+    const all = ret.notImplemented.join(" / ");
+    expect(all).not.toMatch(/受給資格年齢未満の配偶者の積立フェーズSuper/);
+    expect(ret.isSuperAssessableForAgePension(66, false)).toBe(false);
+    expect(ret.isSuperAssessableForAgePension(67, false)).toBe(true);
   });
 });

@@ -533,8 +533,12 @@ describe("CA境界：未実装項目が明示されている", () => {
     expect(inv.getRrifMinimumAge(72, false, 65)).toBe(72);
   });
 
-  it("引出時課税が単一税率による近似であることが明記されている", () => {
-    expect(inv.notImplemented.join(" / ")).toMatch(/withdrawalTaxPct/);
+  it("RRSP/RRIF引出し源泉徴収率は実装済みで、単一withdrawalTaxPct未実装扱いにしない", () => {
+    const all = inv.notImplemented.join(" / ");
+    expect(all).not.toMatch(/withdrawalTaxPct/);
+    expect(inv.getRrspWithdrawalWithholdingRate(5000)).toBe(0.10);
+    expect(inv.getRrspWithdrawalWithholdingRate(5001)).toBe(0.20);
+    expect(inv.getRrspWithdrawalWithholdingRate(15001)).toBe(0.30);
   });
 
   it("州税・QPPは未実装として列挙され、PAはRRSP枠計算に実装済み", () => {
