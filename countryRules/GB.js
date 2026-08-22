@@ -474,6 +474,10 @@ export const GB_COUNTRY_RULES = {
         coupleThresholdWeekly: 329.75,
         singleMaximumWeekly: 17.96,
         coupleMaximumWeekly: 20.10,
+        amountARate: 0.60,
+        amountBRate: 0.40,
+        closedToNewStatePensionAgeFrom: "2016-04-06",
+        transitionalCoupleContinuityRequired: true,
       },
     },
     niForecastModel: {
@@ -506,6 +510,67 @@ export const GB_COUNTRY_RULES = {
       const excess = amount - rules.disregard;
       return Math.ceil(excess / rules.tariffUnit) * rules.tariffIncomePerUnitWeekly;
     },
+    calculatePensionCreditSavingsCredit({
+      status = "single",
+      qualifyingIncomeWeekly = 0,
+      totalIncomeWeekly = null,
+      appropriateAmountWeekly = null,
+      reachedStatePensionAgeBefore20160406 = false,
+      transitionalCoupleContinuousEntitlement = false,
+    } = {}) {
+      const pc = this.pensionCredit;
+      const rules = pc.savingsCredit;
+      const couple = status === "couple";
+      const threshold = couple ? rules.coupleThresholdWeekly : rules.singleThresholdWeekly;
+      const maximum = couple ? rules.coupleMaximumWeekly : rules.singleMaximumWeekly;
+      const standardAmount = couple
+        ? pc.standardMinimumGuaranteeWeekly.couple
+        : pc.standardMinimumGuaranteeWeekly.single;
+
+      const eligibleByAge =
+        reachedStatePensionAgeBefore20160406 === true ||
+        (couple && transitionalCoupleContinuousEntitlement === true);
+
+      const qualifyingIncome = Math.max(0, Number(qualifyingIncomeWeekly) || 0);
+      const totalIncome = Math.max(
+        0,
+        totalIncomeWeekly == null ? qualifyingIncome : Number(totalIncomeWeekly) || 0,
+      );
+      const appropriateAmount = Math.max(
+        0,
+        appropriateAmountWeekly == null ? standardAmount : Number(appropriateAmountWeekly) || 0,
+      );
+
+      if (!eligibleByAge || qualifyingIncome <= threshold) {
+        return {
+          eligible: false,
+          thresholdWeekly: threshold,
+          maximumWeekly: maximum,
+          amountAWeekly: 0,
+          amountBWeekly: 0,
+          savingsCreditWeekly: 0,
+        };
+      }
+
+      const amountA = Math.min(
+        maximum,
+        Math.max(0, qualifyingIncome - threshold) * rules.amountARate,
+      );
+      const amountB =
+        totalIncome > appropriateAmount
+          ? (totalIncome - appropriateAmount) * rules.amountBRate
+          : 0;
+
+      return {
+        eligible: true,
+        thresholdWeekly: threshold,
+        maximumWeekly: maximum,
+        amountAWeekly: amountA,
+        amountBWeekly: amountB,
+        savingsCreditWeekly: Math.max(0, amountA - amountB),
+      };
+    },
+
     calculatePensionCreditGuarantee({
       status = "single",
       weeklyIncome = 0,
@@ -657,7 +722,7 @@ export const GB_COUNTRY_RULES = {
     notImplemented: [
       "National Insuranceのqualifying years入力から10年最低・35年満額の単純近似は実装済み。2016年開始額、contracting-out、海外期間、credits、Protected Payment等を含む正確なState Pension forecastはGOV.UK公式記録が必要",
       "Additional State Pension（SERPS / S2P）・Protected Payment",
-      "Pension Creditの2026/27 Guarantee Credit（single/couple、severe disability、carer加算、£10,000超資本の£500単位tariff income）は実装済み。Savings Creditの経過措置資格、収入控除・住宅費等を含む完全なmeans testは未実装",
+      "Pension Creditの2026/27 Guarantee CreditとSavings Creditの基本計算（60% Amount A / 40% Amount B、2016-04-06境界、継続受給の経過措置フラグ）は実装済み。Savings Creditの実際の継続受給履歴の自動確認、収入控除・住宅費等を含む完全なmeans testは未実装",
     ],
   },
 
