@@ -508,6 +508,7 @@ function GBInvestmentAccountsPanel({ gbInvestment, onUpdate, onUpdateAccount, ag
       <Field guide={t("gbAnnualIncomeGuide")} label={t("gbAnnualIncomeLabel")} unit="£" step={1000} value={gbInvestment.annualIncome} onChange={(v) => onUpdate("annualIncome", v)} />
       <Field guide={t("gbAdjustedIncomeGuide")} label={t("gbAdjustedIncomeLabel")} unit="£" step={1000} value={gbInvestment.adjustedIncome} onChange={(v) => onUpdate("adjustedIncome", v)} />
       <Field guide={t("gbThresholdIncomeGuide")} label={t("gbThresholdIncomeLabel")} unit="£" step={1000} value={gbInvestment.thresholdIncome} onChange={(v) => onUpdate("thresholdIncome", v)} />
+      <Field guide={t("gbPensionCarryForwardGuide")} label={t("gbPensionCarryForwardLabel")} unit="£" step={500} value={gbInvestment.pensionCarryForwardAvailable || 0} onChange={(v) => onUpdate("pensionCarryForwardAvailable", Math.max(0, Number(v) || 0))} />
 
       <GBAccountFields
         accountKey="stocksSharesIsa" title={t("gbStocksSharesIsaLabel")} account={gbInvestment.stocksSharesIsa}
@@ -850,6 +851,12 @@ function CAInvestmentAccountsPanel({ caInvestment, onUpdate, onUpdateAccount, ag
           <span>{t("caRrspOverLabel", { amount: money(-rrspRemaining) })}</span>
         </div>
       )}
+      <div className="field-label" style={{ marginTop: 10 }}>{t("caRrifSpouseElectionLabel")}</div>
+      <div className="chip-row" style={{ marginBottom: 8 }}>
+        <button className={`chip ${caInvestment.rrifUseSpouseAge ? "chip-active" : ""}`} onClick={() => onUpdate("rrifUseSpouseAge", true)}>{t("caYes")}</button>
+        <button className={`chip ${!caInvestment.rrifUseSpouseAge ? "chip-active" : ""}`} onClick={() => onUpdate("rrifUseSpouseAge", false)}>{t("caNo")}</button>
+      </div>
+      {caInvestment.rrifUseSpouseAge && <Field guide={t("caRrifSpouseAgeGuide")} label={t("caRrifSpouseAgeLabel")} unit={t("caRrifSpouseAgeUnit")} step={1} value={caInvestment.rrifSpouseAge || 0} onChange={(v) => onUpdate("rrifSpouseAge", Math.max(0, Number(v) || 0))} />}
       <div className="note" style={{ marginTop: 10 }}>
         <Info size={13} />
         <span>{t("caRrifNote", {
@@ -1100,6 +1107,10 @@ function AUInvestmentAccountsPanel({
         return <div className="stat-grid" style={{ marginBottom: 10 }}><StatCard label={t("auDivision296TaxLabel")} value={money(d296.tax)} sub={t("auDivision296TaxSub")} tone={d296.tax > 0 ? "danger" : "good"} /></div>;
       })()}
       <div className="note" style={{ marginBottom: 10 }}><Info size={13} /><span>{t("auDivision296Note")}</span></div>
+      <div className="subsection-title" style={{ marginTop: 14, marginBottom: 8 }}>{t("auTransferBalanceTitle")}</div>
+      <Field guide={t("auPersonalTbcGuide")} label={t("auPersonalTbcLabel")} unit="A$" step={10000} value={auInvestment.personalTransferBalanceCap || 0} onChange={(v) => onUpdate("personalTransferBalanceCap", Math.max(0, Number(v) || 0))} />
+      <Field guide={t("auRetirementPhaseBalanceGuide")} label={t("auRetirementPhaseBalanceLabel")} unit="A$" step={10000} value={auInvestment.retirementPhaseBalance || 0} onChange={(v) => onUpdate("retirementPhaseBalance", Math.max(0, Number(v) || 0))} />
+      {(() => { const tbcStatus = investmentRules.getTransferBalanceCapStatus(auInvestment.retirementPhaseBalance, auInvestment.personalTransferBalanceCap); return <div className="stat-grid" style={{ marginBottom: 10 }}><StatCard label={t("auTbcRemainingLabel")} value={money(tbcStatus.remaining)} sub={t("auTbcCapSub", { cap: money(tbcStatus.cap) })} tone={tbcStatus.excess > 0 ? "danger" : "good"} /><StatCard label={t("auTbcExcessLabel")} value={money(tbcStatus.excess)} sub={t("auTbcExcessSub")} tone={tbcStatus.excess > 0 ? "danger" : "good"} /></div>; })()}
 
 
       <div className="field-label" style={{ marginBottom: 6 }}>{t("auListoEligibilityLabel")}</div>
@@ -1749,6 +1760,7 @@ const DEFAULT_INPUTS = {
     usInvestment: {
       filingStatus: "single", // "single" | "marriedJoint" | "marriedSeparate" | "headOfHousehold"
       modifiedAGI: 0,
+      priorYearPlanSponsorWages: 0,
       coveredByWorkplacePlan: false,
       spouseCoveredByWorkplacePlan: false,
       // withdrawalTaxPct = 引出時にかかる税率（%）。総資産推移の取り崩し計算に反映される。
@@ -1789,13 +1801,8 @@ const DEFAULT_INPUTS = {
       annualIncome: 0,   // 年間総所得（Income Tax・配当税・CGT・年金税軽減の判定に使用）
       adjustedIncome: 0, // 年金拠出上限のテーパリング判定用（0なら annualIncome を使用）
       thresholdIncome: 0, // テーパー適用の第1条件。0なら annualIncome を使用
+      pensionCarryForwardAvailable: 0,
       dividendIncomeAnnual: 0,
-      // Medicare Levy Surcharge (MLS) 2026-27 / Medicare levy家族所得減免
-      mlsHospitalCover: false,
-      mlsFamily: false,
-      mlsDependentChildren: 0,
-      mlsIncome: 0, // 0なら課税所得を概算利用
-      mlsUncoveredDays: 365,
       estimatedCapitalGainAnnual: 0,
       // withdrawalTaxPct：ISAは非課税(0%)。SIPP・職域年金は25%が非課税で残り75%が所得課税
       // されるため、基本税率20%なら実効15%（初期値）。GIAはCGT（初期値10%）。
@@ -1854,6 +1861,8 @@ const DEFAULT_INPUTS = {
       pensionAdjustment: 0,
       pensionAdjustmentReversal: 0,
       netPastServicePensionAdjustment: 0,
+      rrifUseSpouseAge: false,
+      rrifSpouseAge: 0,
       // Medicare Levy Surcharge (MLS) 2026-27
       mlsHospitalCover: false,
       mlsFamily: false,
@@ -1927,6 +1936,8 @@ const DEFAULT_INPUTS = {
       div293PaidFrom: "super",
       division296TotalSuperBalance: 0,
       division296RealisedEarnings: 0,
+      personalTransferBalanceCap: 0,
+      retirementPhaseBalance: 0,
       // LISTOは年齢・ビザ・10% eligible income test等があるため、利用者が対象条件を満たす場合のみ有効化。
       listoEligible: false,
       // 0なら「年収 − 給与犠牲」をATIの概算として使用。分かる場合は明示入力する。
@@ -2549,8 +2560,11 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const gbMarginalRate = (gbIsGB && rules.tax.implemented)
     ? rules.tax.getMarginalRate(gbGrossIncome)
     : 0;
-  const gbPensionAnnualAllowance = (gbIsGB && rules.investment.implemented)
+  const gbBasePensionAnnualAllowance = (gbIsGB && rules.investment.implemented)
     ? rules.investment.getPensionAnnualAllowance(gbAdjustedIncome, gbThresholdIncome)
+    : 0;
+  const gbPensionAnnualAllowance = (gbIsGB && rules.investment.implemented)
+    ? rules.investment.getEffectivePensionAnnualAllowance(gbAdjustedIncome, gbThresholdIncome, gbInvestment.pensionCarryForwardAvailable)
     : 0;
   const gbPensionContribution = (gbIsGB && rules.investment.implemented)
     ? rules.investment.getPensionContributed(gbInvestment)
@@ -3824,6 +3838,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       deathAge: inputs.deathAge,
       accounts: inputs.caInvestment,
       annualWithdrawalNeeded: caWithdrawalNeeded,
+      rrifUseSpouseAge: inputs.caInvestment.rrifUseSpouseAge === true,
+      rrifSpouseAge: inputs.caInvestment.rrifSpouseAge,
     });
   }, [simulationReady, country, rules, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, inputs.caInvestment, caWithdrawalNeeded]);
 
