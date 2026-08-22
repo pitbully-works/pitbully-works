@@ -12,21 +12,30 @@ import { LocaleContext, Field, AgeField, StatCard } from "../ui/index.js";
 // ---------- カナダ選択時：退職後パネル（CPP → OAS → Expenses → Withdrawal） ----------
 function CARetirementPanel({
   caInvestment, onUpdateCpp, onUpdateOas, onUpdate, retirementRules,
-  cppStartAge, cppFactor, cppAnnual, cppMaxAnnual,
+  pensionPlan, pensionRules, cppStartAge, cppFactor, cppAnnual, cppMaxAnnual,
   oasStartAge, oasEffectiveStartAge, oasResidenceFraction,
   oasBeforeClawback, oasClawback, oasAnnual,
   retirementIncomeAnnual, expensesAnnual, healthcareAnnual, withdrawalNeeded, incomeSurplus,
 }) {
   const { t, money } = useContext(LocaleContext);
-  const cpp = retirementRules.cpp;
+  const cpp = pensionRules || retirementRules.cpp;
   const oas = retirementRules.oas;
   const pct = (rate) => `${Number((rate * 100).toFixed(2))}`;
   const residenceYears = Number(caInvestment.oas.residenceYears) || 0;
 
   return (
     <div>
-      {/* ---- CPP ---- */}
-      <div className="field-label" style={{ marginBottom: 6 }}>{t("caCppAnnualLabel")}</div>
+      {/* ---- CPP / QPP ---- */}
+      <label className="field">
+        <span className="field-label">{t("caPensionPlanLabel")}</span>
+        <select value={pensionPlan || "CPP"} onChange={(e) => onUpdateCpp("plan", e.target.value)}>
+          <option value="CPP">CPP — Canada Pension Plan</option>
+          <option value="QPP">QPP — Québec Pension Plan</option>
+        </select>
+      </label>
+      <div className="field-label" style={{ marginBottom: 6 }}>
+        {pensionPlan === "QPP" ? t("caQppAnnualLabel") : t("caCppAnnualLabel")}
+      </div>
       <Field
         guide={t("caCppEstimateGuide")}
         label={t("caCppEstimateLabel")} unit="C$" step={100}
@@ -37,17 +46,33 @@ function CARetirementPanel({
         {t("caCppFullNote", { taxYear: retirementRules.effectiveTaxYear, amount: money(cppMaxAnnual) })}
       </div>
       <AgeField
-        label={t("caCppStartAgeLabel", { min: cpp.earliestAge, max: cpp.latestAge })}
+        label={pensionPlan === "QPP"
+          ? t("caQppStartAgeLabel", { min: cpp.earliestAge, max: cpp.latestAge })
+          : t("caCppStartAgeLabel", { min: cpp.earliestAge, max: cpp.latestAge })}
         value={cppStartAge}
         onChange={(v) => onUpdateCpp("startAge", Math.round(v))}
       />
+      {pensionPlan === "QPP" && cppStartAge < cpp.standardAge && (
+        <Field
+          guide={t("caQppEarlyRateGuide")}
+          label={t("caQppEarlyRateLabel")}
+          unit="%" step={0.1}
+          value={(Number(caInvestment.cpp.qppEarlyReductionPerMonth) || cpp.earlyReductionPerMonthDefault) * 100}
+          onChange={(v) => onUpdateCpp(
+            "qppEarlyReductionPerMonth",
+            Math.min(cpp.earlyReductionPerMonthMax, Math.max(cpp.earlyReductionPerMonthMin, (Number(v) || 0) / 100))
+          )}
+        />
+      )}
       {cppFactor !== 1 && (
         <div className="note" style={{ marginTop: -8 }}>
           <Info size={13} />
           <span>{t("caCppFactorNote", {
             age: cppStartAge,
             pct: Number((cppFactor * 100).toFixed(1)),
-            early: pct(cpp.earlyReductionPerMonth),
+            early: pensionPlan === "QPP"
+              ? `${pct(cpp.earlyReductionPerMonthMin)}–${pct(cpp.earlyReductionPerMonthMax)}`
+              : pct(cpp.earlyReductionPerMonth),
             late: pct(cpp.lateIncreasePerMonth),
           })}</span>
         </div>
@@ -106,7 +131,11 @@ function CARetirementPanel({
       />
 
       <div className="stat-grid" style={{ marginTop: 10, marginBottom: 14 }}>
-        <StatCard label={t("caCppAnnualLabel")} value={money(cppAnnual)} sub={t("caCppAnnualSub")} />
+        <StatCard
+          label={pensionPlan === "QPP" ? t("caQppAnnualLabel") : t("caCppAnnualLabel")}
+          value={money(cppAnnual)}
+          sub={pensionPlan === "QPP" ? t("caQppAnnualSub") : t("caCppAnnualSub")}
+        />
         <StatCard label={t("caOasAnnualLabel")} value={money(oasAnnual)} sub={t("caOasAnnualSub")} />
         <StatCard
           label={t("caOasClawbackLabel")}
