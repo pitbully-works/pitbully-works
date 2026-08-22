@@ -518,6 +518,10 @@ function GBInvestmentAccountsPanel({ gbInvestment, onUpdate, onUpdateAccount, ag
         accountKey="cashIsa" title={t("gbCashIsaLabel")} account={gbInvestment.cashIsa}
         onUpdateAccount={onUpdateAccount} borderColor="#8FBF7F"
       />
+      <GBAccountFields
+        accountKey="lifetimeIsa" title={t("gbLifetimeIsaLabel")} account={gbInvestment.lifetimeIsa}
+        onUpdateAccount={onUpdateAccount} borderColor="#8FBF7F"
+      />
 
       <div className="stat-grid" style={{ marginTop: 12 }}>
         <StatCard
@@ -532,6 +536,26 @@ function GBInvestmentAccountsPanel({ gbInvestment, onUpdate, onUpdateAccount, ag
           tone={isaRemaining < 0 ? "danger" : "good"}
         />
       </div>
+      <div className="stat-grid" style={{ marginTop: 10 }}>
+        <StatCard
+          label={t("gbLifetimeIsaLimitLabel")}
+          value={money(investmentRules.lifetimeIsa.annualPaymentLimit)}
+          sub={t("gbLifetimeIsaBonusLabel", {
+            amount: money(investmentRules.getLifetimeIsaAnnualBonus(
+              gbInvestment.lifetimeIsa?.annualContribution || 0,
+              age
+            )),
+          })}
+        />
+      </div>
+      <div className="note" style={{ marginTop: 10 }}>
+        <Info size={13} />
+        <span>{t("gbLifetimeIsaNote", {
+          contributionAge: investmentRules.lifetimeIsa.contributionEndsAtAge,
+          accessAge: investmentRules.lifetimeIsa.retirementWithdrawalAge,
+        })}</span>
+      </div>
+
       {isaRemaining < 0 && (
         <div className="note" style={{ borderLeftColor: "#C2694F", marginTop: 10 }}>
           <Info size={13} style={{ color: "#C2694F" }} />
@@ -1808,6 +1832,7 @@ const DEFAULT_INPUTS = {
       // されるため、基本税率20%なら実効15%（初期値）。GIAはCGT（初期値10%）。
       stocksSharesIsa:  { currentValue: 0, annualContribution: 0, expectedReturnPct: 5, contributionEndAge: 65, withdrawalTaxPct: 0 },
       cashIsa:          { currentValue: 0, annualContribution: 0, expectedReturnPct: 3, contributionEndAge: 65, withdrawalTaxPct: 0 },
+      lifetimeIsa:      { currentValue: 0, annualContribution: 0, expectedReturnPct: 5, contributionEndAge: 50, withdrawalTaxPct: 0 },
       sipp:             { currentValue: 0, annualContribution: 0, expectedReturnPct: 5, contributionEndAge: 65, withdrawalTaxPct: 15 },
       workplacePension: { currentValue: 0, annualContribution: 0, expectedReturnPct: 5, contributionEndAge: 65, withdrawalTaxPct: 15 },
       gia:              { currentValue: 0, annualContribution: 0, expectedReturnPct: 5, contributionEndAge: 65, withdrawalTaxPct: 10 },
@@ -4366,6 +4391,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     GB: [
       { key: "stocksSharesIsa", label: t("gbStocksSharesIsaLabel") },
       { key: "cashIsa", label: t("gbCashIsaLabel") },
+      { key: "lifetimeIsa", label: t("gbLifetimeIsaLabel") },
       { key: "sipp", label: t("gbSippLabel") },
       { key: "workplacePension", label: t("gbWorkplacePensionLabel") },
       { key: "gia", label: t("gbGiaLabel") },
