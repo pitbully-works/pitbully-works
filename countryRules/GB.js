@@ -814,7 +814,8 @@ export const GB_COUNTRY_RULES = {
         guarantee += pc.severeDisabilityAdditionalWeekly.single;
       }
       const carers = Math.max(0, Math.floor(Number(carerQualifiers) || 0));
-      guarantee += carers * pc.carerAdditionalWeekly;
+      const cappedCarers = Math.min(couple ? 2 : 1, carers);
+      guarantee += cappedCarers * pc.carerAdditionalWeekly;
       const income = Math.max(0, Number(weeklyIncome) || 0);
       const tariffIncomeWeekly = this.calculatePensionCreditTariffIncome(capital);
       const assessedIncomeWeekly = income + tariffIncomeWeekly;
