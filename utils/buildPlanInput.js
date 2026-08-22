@@ -77,7 +77,7 @@ const LIVING_COST_PATH = {
 // 国ごとの「投資口座」キー。倍率はこの口座群の annualContribution にだけ掛かる。
 const INVESTMENT_ACCOUNT_KEYS = {
   US: ["brokerage", "rothIra", "traditionalIra", "k401"],
-  GB: ["cashSavings", "gia", "cashIsa", "stocksSharesIsa", "workplacePension", "sipp"],
+  GB: ["cashSavings", "gia", "cashIsa", "stocksSharesIsa", "lifetimeIsa", "workplacePension", "sipp"],
   CA: ["cashSavings", "nonRegistered", "tfsa", "rrsp"],
   AU: ["cashSavings", "investmentAccount", "superannuation"],
 };
@@ -389,13 +389,21 @@ export function buildPlanInput(ctx, overrides = {}) {
     INVESTMENT_ACCOUNT_KEYS.GB.forEach((key, i) => {
       const a = acctOf(acc, key);
       const isPension = key === "sipp" || key === "workplacePension";
+      const isLifetimeIsa = key === "lifetimeIsa";
+      const lisaAnnualWithBonus = isLifetimeIsa
+        ? rules.investment.getLifetimeIsaAnnualContributionWithBonus(acc, effectiveCurrentAge)
+        : 0;
       pools.push({
         id: key, group: "investment", drawCategory: catMap[key],
         balance: Number(a.currentValue) || 0,
         annualReturnPct: a.expectedReturnPct,
-        monthlyContribution: (Number(a.annualContribution) || 0) / 12,
-        contribEndAge: Number(a.contributionEndAge) || retireAge,
-        accessAge: isPension ? accessAge : 0,
+        monthlyContribution: (isLifetimeIsa ? lisaAnnualWithBonus : (Number(a.annualContribution) || 0)) / 12,
+        contribEndAge: isLifetimeIsa
+          ? Math.min(Number(a.contributionEndAge) || rules.investment.lifetimeIsa.contributionEndsAtAge, rules.investment.lifetimeIsa.contributionEndsAtAge)
+          : (Number(a.contributionEndAge) || retireAge),
+        accessAge: isPension
+          ? accessAge
+          : (isLifetimeIsa ? rules.investment.lifetimeIsa.retirementWithdrawalAge : 0),
         withdrawalTaxPct: Number(a.withdrawalTaxPct) || 0,
         drawOrder: ord(key, i),
       });
