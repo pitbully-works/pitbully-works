@@ -24,7 +24,7 @@ export const CA_COUNTRY_RULES = {
       { key: "investment", labelJa: "投資制度", labelEn: "Investment", status: "implemented", effective: "2026 calendar year", lastUpdated: "2026-08-17", updateJa: "TFSAの年間枠・未使用枠繰越・前年引出しの翌年復活、RRSP、非登録口座、RRIF最低取崩し、FHSAの年間枠・繰越・生涯上限を反映。RESP・RDSPは未実装。", updateEn: "TFSA annual room, unused-room carryforward and prior-year withdrawal restoration, RRSP, non-registered accounts, RRIF minimum withdrawals, plus FHSA annual room, carryforward and lifetime limit are modelled; RESP and RDSP remain unimplemented." },
       { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "partial", effective: "2026 / OAS & GIS Jul-Sep", lastUpdated: "2026-08-22", updateJa: "CPPに加え、ケベック州QPPの受給開始年齢60〜72歳・65歳満額・65歳後0.7%/月増額・早期0.5〜0.6%/月減額の選択計算を実装。OAS・回収税・GIS/Allowance上限・CPP PRBも反映。", updateEn: "Adds QPP claim-age modelling (60–72, full at 65, +0.7%/month after 65 and configurable 0.5–0.6%/month early reduction) alongside CPP, OAS recovery tax, GIS/Allowance maxima and CPP PRB." },
       { key: "healthcare", labelJa: "医療", labelEn: "Healthcare", status: "partial", effective: "2026", lastUpdated: "2026-08-21", updateJa: "州・準州の公的医療保険を前提に自己負担を計算し、CDCPの所得別自己負担率とオンタリオ州の2026年長期介護ホーム最大自己負担額を自動計算。その他の州・準州の薬剤・視力・介護費は手入力。", updateEn: "Models out-of-pocket costs under provincial/territorial coverage, the income-based CDCP co-payment and Ontario 2026 long-term-care home maximum co-payments; drug, vision and long-term-care charges outside Ontario remain manual." },
-      { key: "tax", labelJa: "税金", labelEn: "Tax", status: "partial", effective: "2026 tax year", lastUpdated: "2026-08-22", updateJa: "連邦所得税に加え、オンタリオ州・ケベック州・ブリティッシュコロンビア州の所得税、Quebec abatement、CPP/QPP・EI・QPIPを反映。その他10地域、配当税額控除・AMT等は未実装。", updateEn: "Federal income tax plus Ontario, Quebec and British Columbia income tax, the Quebec abatement, CPP/QPP, EI and QPIP are modelled; the other 10 regions, dividend credits and AMT remain unimplemented." },
+      { key: "tax", labelJa: "税金", labelEn: "Tax", status: "partial", effective: "2026 tax year", lastUpdated: "2026-08-22", updateJa: "連邦所得税に加え、オンタリオ州・ケベック州・ブリティッシュコロンビア州・アルバータ州の所得税、Quebec abatement、CPP/QPP・EI・QPIPを反映。その他9地域、配当税額控除・AMT等は未実装。", updateEn: "Federal income tax plus Ontario, Quebec, British Columbia and Alberta income tax, the Quebec abatement, CPP/QPP, EI and QPIP are modelled; the other 9 regions, dividend credits and AMT remain unimplemented." },
       { key: "estate", labelJa: "相続", labelEn: "Estate", status: "implemented", effective: "2026", lastUpdated: "2026-08-22", updateJa: "死亡直前の時価によるみなし譲渡、配偶者・コモンローへの税繰延ロールオーバー、主たる住居の除外を使った概算を実装。", updateEn: "Adds an estimate for deemed disposition at fair market value immediately before death, spouse/common-law rollover, and principal-residence exclusion." },
     ],
   },
@@ -580,12 +580,14 @@ export const CA_COUNTRY_RULES = {
       quebecAbatement: "https://www.canada.ca/en/department-finance/programs/federal-transfers/quebec-abatement.html",
       britishColumbiaTax: "https://www.canada.ca/en/revenue-agency/services/tax/individuals/tax-rates-brackets/current-year.html",
       britishColumbiaBudget2026: "https://www.bcbudget.gov.bc.ca/2026/pdf/2026_Budget_and_Fiscal_Plan.pdf",
+      albertaTax: "https://www.canada.ca/en/revenue-agency/services/tax/individuals/tax-rates-brackets/current-year.html",
+      albertaTaxCredits: "https://www.canada.ca/en/revenue-agency/services/forms-publications/payroll/t4032-payroll-deductions-tables/t4032ab-jan/t4032ab-january-general-information.html",
     },
-    // 2026-08-22時点：Ontario / Quebec / British Columbia を自動計算。
-    region: "Federal + Ontario + Quebec + British Columbia",
+    // 2026-08-22時点：Ontario / Quebec / British Columbia / Alberta を自動計算。
+    region: "Federal + Ontario + Quebec + British Columbia + Alberta",
     province: {
       implemented: true,
-      implementedRegions: ["ON", "QC", "BC"],
+      implementedRegions: ["ON", "QC", "BC", "AB"],
       defaultRegion: "ON",
       ontario: {
         bands: [
@@ -630,6 +632,18 @@ export const CA_COUNTRY_RULES = {
         taxReductionMax: 690,
         taxReductionThreshold: 25570,
         taxReductionPhaseoutRate: 0.0356,
+      },
+      alberta: {
+        bands: [
+          { upTo: 61200, rate: 0.08 },
+          { upTo: 154259, rate: 0.10 },
+          { upTo: 185111, rate: 0.12 },
+          { upTo: 246813, rate: 0.13 },
+          { upTo: 370220, rate: 0.14 },
+          { upTo: Infinity, rate: 0.15 },
+        ],
+        basicPersonalAmount: 22769,
+        basicCreditRate: 0.08,
       },
     },
 
@@ -814,18 +828,39 @@ export const CA_COUNTRY_RULES = {
         tax: Math.max(0, basicTax - reduction),
       };
     },
+    calculateAlbertaTax(taxableIncome) {
+      const cfg = this.province.alberta;
+      const income = Math.max(0, Number(taxableIncome) || 0);
+      let grossTax = 0;
+      let lower = 0;
+      for (const b of cfg.bands) {
+        if (income > lower) {
+          grossTax += (Math.min(income, b.upTo) - lower) * b.rate;
+          lower = b.upTo;
+        } else break;
+      }
+      const basicCredit = cfg.basicPersonalAmount * cfg.basicCreditRate;
+      return {
+        taxableIncome: income,
+        grossTax,
+        basicPersonalAmount: cfg.basicPersonalAmount,
+        basicCredit,
+        tax: Math.max(0, grossTax - basicCredit),
+      };
+    },
     calculateProvincialTax(taxableIncome, provinceCode = "ON") {
       const code = String(provinceCode || "ON").toUpperCase();
       if (code === "ON") return this.calculateOntarioTax(taxableIncome);
       if (code === "QC") return this.calculateQuebecTax(taxableIncome);
       if (code === "BC") return this.calculateBritishColumbiaTax(taxableIncome);
+      if (code === "AB") return this.calculateAlbertaTax(taxableIncome);
       return { taxableIncome: Math.max(0, Number(taxableIncome) || 0), tax: 0, unsupported: true, provinceCode: code };
     },
     calculateProvincialCapitalGainsTax(gain, otherIncome, provinceCode = "ON") {
       const g = Math.max(0, Number(gain) || 0);
       if (g <= 0) return 0;
       const code = String(provinceCode || "ON").toUpperCase();
-      if (!["ON", "QC", "BC"].includes(code)) return 0;
+      if (!["ON", "QC", "BC", "AB"].includes(code)) return 0;
       const taxableGain = g * this.capitalGains.inclusionRate;
       const base = this.calculateProvincialTax(otherIncome, code).tax;
       const withGain = this.calculateProvincialTax((Number(otherIncome) || 0) + taxableGain, code).tax;
@@ -833,7 +868,7 @@ export const CA_COUNTRY_RULES = {
     },
     calculateProvincialRrspTaxSaving(contribution, income, rrspRoom, provinceCode = "ON") {
       const code = String(provinceCode || "ON").toUpperCase();
-      if (!["ON", "QC", "BC"].includes(code)) return 0;
+      if (!["ON", "QC", "BC", "AB"].includes(code)) return 0;
       const cap = (rrspRoom === undefined || rrspRoom === null) ? Infinity : Math.max(0, Number(rrspRoom) || 0);
       const c = Math.min(Math.max(0, Number(contribution) || 0), cap);
       if (c <= 0) return 0;
@@ -929,7 +964,7 @@ export const CA_COUNTRY_RULES = {
       return Math.max(0, base - reduced);
     },
     notImplemented: [
-      "オンタリオ州・ケベック州・ブリティッシュコロンビア州以外の州・準州所得税（10地域。各地域で税率・バンド・控除が異なる）",
+      "オンタリオ州・ケベック州・ブリティッシュコロンビア州・アルバータ州以外の州・準州所得税（9地域。各地域で税率・バンド・控除が異なる）",
       "オンタリオ州の扶養家族等を含むTax Reductionの完全計算（基本本人分のみ反映）",
       "配当税額控除（eligible / non-eligible dividend tax credit）",
       "CPP/QPP拠出金・EI保険料・Quebec Parental Insurance Plan（QPIP）は2026年の従業員本人分を実装済み。自営業者向け拠出は未実装",
