@@ -2679,10 +2679,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const caGrossIncome = Number(caInvestment.annualIncome) || 0;
   const caPriorEarnedIncome = Number(caInvestment.priorEarnedIncome) || caGrossIncome;
 
-  const caFederalTaxResult = (caIsCA && rules.tax.implemented)
-    ? rules.tax.calculateFederalTax(caGrossIncome)
-    : { taxableIncome: 0, grossTax: 0, basicPersonalAmount: 0, bpaCredit: 0, tax: 0 };
   const caProvinceCode = caInvestment.healthcare?.province || "ON";
+  const caFederalTaxResult = (caIsCA && rules.tax.implemented)
+    ? rules.tax.calculateFederalTaxForProvince(caGrossIncome, caProvinceCode)
+    : { taxableIncome: 0, grossTax: 0, basicPersonalAmount: 0, bpaCredit: 0, tax: 0, abatement: 0, abatementRate: 0, taxAfterAbatement: 0 };
   const caEmploymentIncome = Math.max(0, Number(caInvestment.employmentIncomeAnnual) || caGrossIncome);
   const caPayrollDeductions = (caIsCA && rules.tax.implemented && typeof rules.tax.calculateEmployeePayrollDeductions === "function")
     ? rules.tax.calculateEmployeePayrollDeductions(caEmploymentIncome, caProvinceCode)
@@ -2691,7 +2691,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     ? rules.tax.calculateProvincialTax(caGrossIncome, caProvinceCode)
     : { tax: 0, unsupported: true, provinceCode: caProvinceCode };
   const caCapitalGainsTax = (caIsCA && rules.tax.implemented)
-    ? rules.tax.calculateCapitalGainsTax(caInvestment.estimatedCapitalGainAnnual, caGrossIncome)
+    ? rules.tax.calculateCapitalGainsTaxForProvince(caInvestment.estimatedCapitalGainAnnual, caGrossIncome, caProvinceCode)
     : 0;
   const caProvincialCapitalGainsTax = (caIsCA && rules.tax.implemented && typeof rules.tax.calculateProvincialCapitalGainsTax === "function")
     ? rules.tax.calculateProvincialCapitalGainsTax(caInvestment.estimatedCapitalGainAnnual, caGrossIncome, caProvinceCode)
@@ -2701,7 +2701,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     ? rules.investment.getRrspRoom(caPriorEarnedIncome, caInvestment)
     : 0;
   const caFederalRrspTaxSaving = (caIsCA && rules.tax.implemented)
-    ? rules.tax.calculateRrspTaxSaving(caInvestment.rrsp.annualContribution, caGrossIncome, caRrspRoom)
+    ? rules.tax.calculateRrspTaxSavingForProvince(caInvestment.rrsp.annualContribution, caGrossIncome, caRrspRoom, caProvinceCode)
     : 0;
   const caProvincialRrspTaxSaving = (caIsCA && rules.tax.implemented && typeof rules.tax.calculateProvincialRrspTaxSaving === "function")
     ? rules.tax.calculateProvincialRrspTaxSaving(caInvestment.rrsp.annualContribution, caGrossIncome, caRrspRoom, caProvinceCode)
@@ -2710,7 +2710,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   // 税・給与天引き合計（連邦＋対応州＋CGT＋CPP/QPP＋EI＋Quebec QPIP－RRSP軽減）。
   // 未対応州では州税を0として明示表示する。
   const caTotalTax = Math.max(0,
-    caFederalTaxResult.tax + caProvincialTaxResult.tax
+    caFederalTaxResult.taxAfterAbatement + caProvincialTaxResult.tax
     + caCapitalGainsTax + caProvincialCapitalGainsTax
     + caPayrollDeductions.total - caRrspTaxSaving
   );
@@ -7645,7 +7645,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               taxRules={rules.tax}
               rrspRoom={caRrspRoom}
               taxResult={{
-                federalTax: caFederalTaxResult.tax,
+                federalTax: caFederalTaxResult.taxAfterAbatement,
+                federalTaxBeforeAbatement: caFederalTaxResult.tax,
+                federalAbatement: caFederalTaxResult.abatement || 0,
+                federalAbatementRate: caFederalTaxResult.abatementRate || 0,
                 basicPersonalAmount: caFederalTaxResult.basicPersonalAmount,
                 provincialTax: caProvincialTaxResult.tax,
                 provincialTaxUnsupported: caProvincialTaxResult.unsupported === true,
