@@ -730,6 +730,12 @@ export function buildPlanInput(ctx, overrides = {}) {
       const auStatus = auPension.status;
       const auHomeowner = auPension.homeowner;
       const auBothQualified = auPension.bothQualified;
+      const auPartnerCurrentAge = Math.max(0, Number(auPension.partnerCurrentAge) || 0);
+      const auPartnerSuperCurrentValue = Math.max(0, Number(auPension.partnerSuperCurrentValue) || 0);
+      const auPartnerSuperAnnualContribution = Math.max(0, Number(auPension.partnerSuperAnnualContribution) || 0);
+      const auPartnerSuperExpectedReturnPct = Number(auPension.partnerSuperExpectedReturnPct) || 0;
+      const auPartnerSuperContributionEndAge = Math.max(0, Number(auPension.partnerSuperContributionEndAge) || ret.getQualifyingAge());
+      const auPartnerReceivingSuperPension = !!auPension.partnerReceivingSuperPension;
       const auRentAssistanceEligible = !!auPension.rentAssistanceEligible;
       const auRentFortnightly = Number(auPension.rentFortnightly) || 0;
       const auRentAssistanceSharer = !!auPension.rentAssistanceSharer;
@@ -748,18 +754,39 @@ export function buildPlanInput(ctx, overrides = {}) {
         // 世帯合計で渡す。生活費を世帯合計で扱っているため、年金収入も世帯に揃える。
         monthlyAmount: D.auAgePensionAnnual / 12,
         monthlyAmountAt: (age, ctx) => {
+          const baseAssessedAssets = (ctx && ctx.assessedAssets !== null && ctx.assessedAssets !== undefined)
+            ? ctx.assessedAssets : 0;
+          const baseDeemedAssets = (ctx && ctx.deemedAssets !== null && ctx.deemedAssets !== undefined)
+            ? ctx.deemedAssets : 0;
+          const partnerAgeAtAge = ret.getProjectedPartnerAge(
+            auPartnerCurrentAge,
+            effectiveCurrentAge,
+            age
+          );
+          const partnerSuperAtAge = ret.projectPartnerSuperBalance({
+            currentAge: auPartnerCurrentAge,
+            targetAge: partnerAgeAtAge,
+            currentBalance: auPartnerSuperCurrentValue,
+            annualContribution: auPartnerSuperAnnualContribution,
+            expectedReturnPct: auPartnerSuperExpectedReturnPct,
+            contributionEndAge: auPartnerSuperContributionEndAge,
+          });
+          const partnerSuperAssessable = auStatus === "couple"
+            && ret.isSuperAssessableForAgePension(partnerAgeAtAge, auPartnerReceivingSuperPension);
+          const partnerSuperForMeansTest = partnerSuperAssessable ? partnerSuperAtAge : 0;
+          const dynamicBothQualified = auStatus === "couple"
+            ? partnerAgeAtAge >= ret.getQualifyingAge()
+            : auBothQualified;
           const baseMonthly = ret.getAgePensionHousehold({
             age,
             annualIncome: auOtherIncome,
             employmentIncomeAnnual: auEmploymentIncome,
             workBonusBalance: auWorkBonusBalance,
-            assessableAssets: (ctx && ctx.assessedAssets !== null && ctx.assessedAssets !== undefined)
-              ? ctx.assessedAssets : 0,
-            financialAssets: (ctx && ctx.deemedAssets !== null && ctx.deemedAssets !== undefined)
-              ? ctx.deemedAssets : 0,
+            assessableAssets: baseAssessedAssets + partnerSuperForMeansTest,
+            financialAssets: baseDeemedAssets + partnerSuperForMeansTest,
             status: auStatus,
             homeowner: auHomeowner,
-            bothQualified: auBothQualified,
+            bothQualified: dynamicBothQualified,
             rentAssistanceEligible: auRentAssistanceEligible,
             rentFortnightly: auRentFortnightly,
             rentAssistanceSharer: auRentAssistanceSharer,
