@@ -81,6 +81,10 @@ const mutants = [
   ["CA 2026 EI maximum insurable earnings is protected", "countryRules/CA.js", "eiMaxInsurableEarnings: 68900,", "eiMaxInsurableEarnings: 67900,", "overseasHundredPhase8.test.js"],
   ["CA 2026 Quebec EI rate is protected", "countryRules/CA.js", "eiQuebecRate: 0.0130,", "eiQuebecRate: 0.0140,", "overseasHundredPhase8.test.js"],
 
+  ["CA 2026 QPIP maximum insurable earnings is protected", "countryRules/CA.js", "qpipMaxInsurableEarnings: 103000,", "qpipMaxInsurableEarnings: 102000,", "overseasHundredPhase9.test.js"],
+  ["CA 2026 QPIP employee rate is protected", "countryRules/CA.js", "qpipEmployeeRate: 0.00430,", "qpipEmployeeRate: 0.00420,", "overseasHundredPhase9.test.js"],
+  ["CA QPIP applies only in Quebec", "countryRules/CA.js", "if (!isQuebec) return 0;", "if (isQuebec) return 0;", "overseasHundredPhase9.test.js"],
+
 ];
 
 if (!fs.existsSync(vitestBin)) {
