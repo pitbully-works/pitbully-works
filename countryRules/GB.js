@@ -22,7 +22,7 @@ export const GB_COUNTRY_RULES = {
       { key: "investment", labelJa: "投資制度", labelEn: "Investment", status: "implemented", effective: "2026/27 tax year", lastUpdated: "2026-08-17", updateJa: "ISA・LISA・SIPP・職域年金・GIAに加え、Junior ISAと子ども向けSIPPの2026/27拠出・税控除・年齢制約を反映。予定されるCash ISA変更は将来制度として保持。", updateEn: "ISA, LISA, SIPP, workplace pension and GIA are modelled, together with 2026/27 Junior ISA and child-pension contribution/tax-relief/age rules; the scheduled Cash ISA change is kept as a future rule." },
       { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "implemented", effective: "2026/27 tax year", lastUpdated: "2026-08-17", updateJa: "State Pension・私的年金の受給/繰下げに加え、NI qualifying yearsによる簡易見込額と2026/27 Pension Credit Guarantee Credit概算を反映。公式NI記録を使う完全forecastは未実装。", updateEn: "Models State Pension and private-pension access/deferral, a qualifying-years State Pension estimate and a 2026/27 Pension Credit Guarantee Credit estimate; a full forecast from official NI history is not implemented." },
       { key: "healthcare", labelJa: "医療", labelEn: "Healthcare", status: "partial", effective: "2026/27", lastUpdated: "2026-08-21", updateJa: "地域別処方箋、EnglandのNHS歯科料金、Englandの介護資産判定を追加。その他地域の歯科・介護は利用者入力。", updateEn: "Adds regional prescription rules, NHS dental charges for England and England social-care capital assessment; dental/social-care costs in other nations remain user-entered." },
-      { key: "tax", labelJa: "税金", labelEn: "Tax", status: "implemented", effective: "2026/27 tax year", lastUpdated: "2026-08-21", updateJa: "England/Wales/NIの所得税・配当・CGTに加え、2026/27 Scottish Income Taxを反映。", updateEn: "Models England/Wales/NI income tax, dividends and CGT, plus 2026/27 Scottish Income Tax." },
+      { key: "tax", labelJa: "税金", labelEn: "Tax", status: "implemented", effective: "2026/27 tax year", lastUpdated: "2026-08-21", updateJa: "England/Wales/NIの所得税・配当・CGTに加え、2026/27 Scottish Income Tax、貯蓄利子課税、Marriage Allowance / Married Couple's Allowanceを反映。", updateEn: "Models England/Wales/NI income tax, dividends and CGT, plus 2026/27 Scottish Income Tax, savings-interest tax and Marriage/Married Couple allowances." },
       { key: "estate", labelJa: "相続", labelEn: "Estate", status: "implemented", effective: "2026/27", lastUpdated: "2026-08-21", updateJa: "Inheritance TaxのNRB・RNRB・£2m超のテーパー・配偶者等の未使用枠移転を概算。", updateEn: "Estimates Inheritance Tax using the NRB, RNRB, the £2m taper and transferable unused spouse/civil-partner bands." },
     ],
   },
@@ -1108,7 +1108,7 @@ export const GB_COUNTRY_RULES = {
         { upTo: 16956, rate: 0.20 },
         { upTo: 31092, rate: 0.21 },
         { upTo: 62430, rate: 0.42 },
-        { upTo: 112570, rate: 0.45 },
+        { upTo: 125140, rate: 0.45 },
         { upTo: Infinity, rate: 0.48 },
       ],
     },
@@ -1119,7 +1119,7 @@ export const GB_COUNTRY_RULES = {
       // 課税所得（総所得 − Personal Allowance）に対する累進バンド
       bands: [
         { upTo: 37700, rate: 0.20 },    // Basic rate（総所得 £50,270 まで）
-        { upTo: 112570, rate: 0.40 },   // Higher rate（総所得 £125,140 まで）
+        { upTo: 125140, rate: 0.40 },   // Higher rate（Personal Allowance逓減後も£125,140まで）
         { upTo: Infinity, rate: 0.45 }, // Additional rate
       ],
     },
@@ -1152,11 +1152,23 @@ export const GB_COUNTRY_RULES = {
     },
 
     savings: {
+      startingRateLimit: 5000,
       personalSavingsAllowanceBasic: 1000,
       personalSavingsAllowanceHigher: 500,
       personalSavingsAllowanceAdditional: 0,
       // 2027年4月から貯蓄利子の税率が 22 / 42 / 47% へ引き上げ予定。2026/27では未適用。
       scheduledRatesFrom2027: { basic: 0.22, higher: 0.42, additional: 0.47 },
+    },
+    marriageAllowance: {
+      transferableAmount: 1260,
+      maximumTaxReduction: 252,
+    },
+    marriedCouplesAllowance: {
+      birthCutoffExclusive: "1935-04-06",
+      incomeLimit: 39200,
+      maximumAmount: 11700,
+      minimumAmount: 4530,
+      reliefRate: 0.10,
     },
     // ISA内の利子・配当・譲渡益はすべて非課税
     isaTaxFree: true,
@@ -1166,6 +1178,78 @@ export const GB_COUNTRY_RULES = {
       lumpSumAllowance: 268275,
     },
 
+
+    getSavingsPersonalAllowance(totalIncome) {
+      const taxableTotal = Math.max(0, Number(totalIncome) || 0);
+      const pa = this.getPersonalAllowance(taxableTotal);
+      const taxableAfterPa = Math.max(0, taxableTotal - pa);
+      if (taxableAfterPa > this.incomeTax.bands[1].upTo) return this.savings.personalSavingsAllowanceAdditional;
+      if (taxableAfterPa > this.incomeTax.bands[0].upTo) return this.savings.personalSavingsAllowanceHigher;
+      return this.savings.personalSavingsAllowanceBasic;
+    },
+    calculateSavingsInterestTax(savingsInterest, nonSavingsIncome = 0) {
+      const interest = Math.max(0, Number(savingsInterest) || 0);
+      const nonSavings = Math.max(0, Number(nonSavingsIncome) || 0);
+      const totalIncome = nonSavings + interest;
+      const personalAllowance = this.getPersonalAllowance(totalIncome);
+      const personalAllowanceForSavings = Math.max(0, personalAllowance - nonSavings);
+      const afterPersonalAllowance = Math.max(0, interest - personalAllowanceForSavings);
+      const nonSavingsAboveAllowance = Math.max(0, nonSavings - personalAllowance);
+      const startingRateAvailable = Math.max(0, this.savings.startingRateLimit - nonSavingsAboveAllowance);
+      const startingRateUsed = Math.min(afterPersonalAllowance, startingRateAvailable);
+      const afterStartingRate = Math.max(0, afterPersonalAllowance - startingRateUsed);
+      const personalSavingsAllowance = this.getSavingsPersonalAllowance(totalIncome);
+      const psaUsed = Math.min(afterStartingRate, personalSavingsAllowance);
+      const taxableInterest = Math.max(0, afterStartingRate - psaUsed);
+      const taxableAfterPa = Math.max(0, totalIncome - personalAllowance);
+      const basicRoom = Math.max(0, this.incomeTax.bands[0].upTo - Math.max(0, nonSavings - personalAllowance));
+      const higherRoom = Math.max(0, this.incomeTax.bands[1].upTo - Math.max(this.incomeTax.bands[0].upTo, taxableAfterPa - taxableInterest));
+      const basicTaxed = Math.min(taxableInterest, basicRoom);
+      const remainingAfterBasic = taxableInterest - basicTaxed;
+      const higherTaxed = Math.min(remainingAfterBasic, higherRoom);
+      const additionalTaxed = Math.max(0, remainingAfterBasic - higherTaxed);
+      const tax = basicTaxed * 0.20 + higherTaxed * 0.40 + additionalTaxed * 0.45;
+      return {
+        personalAllowanceForSavings,
+        startingRateAvailable,
+        startingRateUsed,
+        personalSavingsAllowance,
+        personalSavingsAllowanceUsed: psaUsed,
+        taxableInterest,
+        tax,
+      };
+    },
+    calculateMarriageAllowanceTaxReduction({
+      lowerEarnerIncome = 0,
+      recipientIncome = 0,
+      marriedOrCivilPartner = true,
+      receivingMarriedCouplesAllowance = false,
+    } = {}) {
+      if (!marriedOrCivilPartner || receivingMarriedCouplesAllowance) return 0;
+      const lower = Math.max(0, Number(lowerEarnerIncome) || 0);
+      const recipient = Math.max(0, Number(recipientIncome) || 0);
+      if (lower > this.incomeTax.personalAllowance) return 0;
+      const recipientTaxable = Math.max(0, recipient - this.getPersonalAllowance(recipient));
+      if (recipientTaxable <= 0 || recipientTaxable > this.incomeTax.bands[0].upTo) return 0;
+      const transferred = this.marriageAllowance.transferableAmount;
+      const lowerExtraTax = Math.max(0, lower - (this.incomeTax.personalAllowance - transferred)) * 0.20;
+      const recipientSaving = Math.min(this.marriageAllowance.maximumTaxReduction, recipientTaxable * 0.20);
+      return Math.max(0, recipientSaving - lowerExtraTax);
+    },
+    calculateMarriedCouplesAllowanceTaxReduction({
+      adjustedNetIncome = 0,
+      elderPartnerBirthDate = null,
+      marriedOrCivilPartner = true,
+    } = {}) {
+      if (!marriedOrCivilPartner || !elderPartnerBirthDate) return 0;
+      const birth = String(elderPartnerBirthDate);
+      if (birth >= this.marriedCouplesAllowance.birthCutoffExclusive) return 0;
+      const m = this.marriedCouplesAllowance;
+      const income = Math.max(0, Number(adjustedNetIncome) || 0);
+      const reduction = Math.max(0, income - m.incomeLimit) / 2;
+      const allowance = Math.max(m.minimumAmount, m.maximumAmount - reduction);
+      return allowance * m.reliefRate;
+    },
     // Personal Allowance（£100,000超で£2につき£1ずつ逓減し、£125,140でゼロ）
     getPersonalAllowance(grossIncome) {
       const it = this.incomeTax;
@@ -1264,9 +1348,8 @@ export const GB_COUNTRY_RULES = {
       return Math.min(contribution, cap) * this.getMarginalRate(grossIncome);
     },
     notImplemented: [
-      "貯蓄利子への課税額計算（Personal Savings Allowanceは保持。2027年4月からの22/42/47%への引上げも未適用）",
       "2027年4月からの不動産所得税率（22/42/47%）",
-      "Marriage Allowance / Married Couple's Allowance",
+      "Blind Person's Allowance、Maintenance Payments Reliefなど個別税額控除の完全自動判定",
     ],
   },
 
