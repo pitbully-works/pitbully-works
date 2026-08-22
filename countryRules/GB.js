@@ -1068,7 +1068,9 @@ export const GB_COUNTRY_RULES = {
     },
     getScotlandDentalCourseCharge(nhsTreatmentCost, { exempt = false, age = null } = {}) {
       const d = this.dentalScotland;
-      const a = Number(age);
+      const hasAge = age !== null && age !== undefined
+        && !(typeof age === "string" && age.trim() === "");
+      const a = hasAge ? Number(age) : Number.NaN;
       if (exempt || (Number.isFinite(a) && a >= 0 && a < d.freeTreatmentUnderAge)) return 0;
       const cost = Math.max(0, Number(nhsTreatmentCost) || 0);
       return Math.min(d.maximumPerCourse, cost * d.patientShareRate);
