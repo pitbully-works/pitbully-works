@@ -110,7 +110,7 @@ const mutants = [
   ["CA Saskatchewan top bracket rate is protected", "countryRules/CA.js", "{ upTo: Infinity, rate: 0.145 },", "{ upTo: Infinity, rate: 0.14 },", "overseasHundredPhase15.test.js"],
 
   ["CA Nova Scotia first bracket rate is protected", "countryRules/CA.js", "{ upTo: 30995, rate: 0.0879 },", "{ upTo: 30995, rate: 0.08 },", "overseasHundredPhase16.test.js"],
-  ["CA Nova Scotia basic personal amount is protected", "countryRules/CA.js", "basicPersonalAmount: 11744,", "basicPersonalAmount: 10744,", "overseasHundredPhase16.test.js"],
+  ["CA Nova Scotia basic personal amount is protected", "countryRules/CA.js", "basicPersonalAmount: 11932,", "basicPersonalAmount: 10932,", "overseasHundredPhase17.test.js"],
   ["CA Nova Scotia top bracket rate is protected", "countryRules/CA.js", "{ upTo: Infinity, rate: 0.21 },", "{ upTo: Infinity, rate: 0.20 },", "overseasHundredPhase16.test.js"],
 
 ];
