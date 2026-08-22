@@ -71,6 +71,9 @@ const mutants = [
   ["AU partner age advances with claimant age", "countryRules/AU.js", "return Math.max(0, (Number(currentPartnerAge) || 0) + ((Number(claimantTargetAge) || 0) - (Number(claimantCurrentAge) || 0)));", "return Math.max(0, Number(currentPartnerAge) || 0);", "overseasHundredPhase5.test.js"],
   ["AU younger partner Super becomes assessable at 67", "countryRules/AU.js", "return age >= this.agePension.qualifyingAge || !!isReceivingSuperPension;", "return !!isReceivingSuperPension;", "overseasHundredPhase5.test.js"],
   ["AU partner Super projection respects contribution end age", "countryRules/AU.js", "if (age < endAge) balance += annual;", "if (age <= endAge) balance += annual;", "overseasHundredPhase5.test.js"],
+  ["US 2026 New York estate exemption is protected", "countryRules/US.js", "NY: { estate: true, inheritance: false, exemption: 7350000", "NY: { estate: true, inheritance: false, exemption: 7000000", "overseasHundredPhase6.test.js"],
+  ["US Maryland keeps both death-tax types", "countryRules/US.js", "MD: { estate: true, inheritance: true, exemption: 5000000", "MD: { estate: true, inheritance: false, exemption: 5000000", "overseasHundredPhase6.test.js"],
+  ["US Pennsylvania remains inheritance-tax only", "countryRules/US.js", "PA: { estate: false, inheritance: true, exemption: null, rateMin: 0, rateMax: 0.15 }", "PA: { estate: false, inheritance: false, exemption: null, rateMin: 0, rateMax: 0.15 }", "overseasHundredPhase6.test.js"],
 ];
 
 if (!fs.existsSync(vitestBin)) {
