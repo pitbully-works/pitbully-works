@@ -4204,10 +4204,20 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   // その年齢のグループ残高（bankValue / investmentValue …）と一致する。
   // ==========================================================================
   const integratedRowAt = useCallback((age) => {
-    const target = Math.round(age);
+    const requestedAge = Number(age);
+    // 退職時点だけは次の誕生日行で代用しない。統合エンジンが保持する退職境界
+    // そのものの完全な snapshot（pool_* / loan_* / surplusBalance を含む）を使う。
+    if (
+      Number.isFinite(requestedAge)
+      && Math.abs(requestedAge - Number(inputs.retireAge)) < 1e-9
+      && integrated.retireSnapshot
+    ) {
+      return integrated.retireSnapshot;
+    }
+    const target = Math.round(requestedAge);
     const rows = integrated.yearly;
     return rows.find((y) => y.age >= target) || rows[rows.length - 1];
-  }, [integrated]);
+  }, [integrated, inputs.retireAge]);
 
   const breakdownAges = useMemo(() => ([
     { label: t("currentLabelShort"), age: effectiveCurrentAge },

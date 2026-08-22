@@ -432,9 +432,10 @@ export function runIntegratedPlan(p) {
   // 1ステップ内で混ざらない。
   const steps = buildAgeSteps(currentAge, deathAge, [...(p.boundaries || []), retireAge]);
 
-  // 「退職時点の純資産」は年次グラフ行から近似せず、退職境界そのものの残高を保持する。
-  // yearly は従来どおり誕生日/最終年だけなので、グラフ行数は増やさない。
-  let netWorthAtRetire = currentAge >= retireAge - EPS ? yearly[0].netWorth : null;
+  // 退職時点の内訳は年次グラフ行から近似せず、退職境界そのものの完全な
+  // snapshot を保持する。yearly は従来どおり誕生日/最終年だけなので、
+  // グラフ行数は増やさない。
+  let retireSnapshot = currentAge >= retireAge - EPS ? yearly[0] : null;
 
   for (let i = 0; i < steps.length; i++) {
     const { dt, age, snapshot: isBirthday } = steps[i];
@@ -735,8 +736,9 @@ export function runIntegratedPlan(p) {
     pools.forEach((x) => { x.balance = clampZero(Number.isFinite(x.balance) ? x.balance : 0); });
 
     // buildAgeSteps が retireAge を境界に含めるため、ここは退職時点ちょうどで一度だけ通る。
-    if (netWorthAtRetire === null && Math.abs(age - retireAge) < EPS) {
-      netWorthAtRetire = snapshot(age).netWorth;
+    // 純資産だけでなく pool_* / loan_* / surplusBalance まで含む完全な内訳を固定する。
+    if (retireSnapshot === null && Math.abs(age - retireAge) < EPS) {
+      retireSnapshot = snapshot(age);
     }
 
     if (isBirthday) yearly.push(snapshot(age));
@@ -745,7 +747,8 @@ export function runIntegratedPlan(p) {
   const last = yearly[yearly.length - 1];
   return {
     yearly,
-    netWorthAtRetire: netWorthAtRetire === null ? last.netWorth : netWorthAtRetire,
+    retireSnapshot: retireSnapshot || last,
+    netWorthAtRetire: (retireSnapshot || last).netWorth,
     finalNetWorth: last.netWorth,
     finalAssets: last.totalAssets,
     // 記録専用の累計余剰金の最終値（各スナップショットの surplusBalance と同じ系列の最後）。
