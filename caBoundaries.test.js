@@ -525,10 +525,12 @@ describe("CA境界：未実装項目が明示されている", () => {
     });
   });
 
-  it("RRIF最低取崩し率への配偶者年齢の選択が未実装として列挙されている", () => {
+  it("RRIF最低取崩し率への配偶者年齢の選択は実装済みで、未実装扱いにしない", () => {
     const all = inv.notImplemented.join(" / ");
     expect(all).toMatch(/spousal age election/);
-    expect(all).toMatch(/配偶者/);
+    expect(all).toMatch(/入力・計算に対応済み/);
+    expect(inv.getRrifMinimumAge(72, true, 65)).toBe(65);
+    expect(inv.getRrifMinimumAge(72, false, 65)).toBe(72);
   });
 
   it("引出時課税が単一税率による近似であることが明記されている", () => {
