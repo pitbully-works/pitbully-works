@@ -751,6 +751,7 @@ export const GB_COUNTRY_RULES = {
       totalIncomeWeekly = null,
       appropriateAmountWeekly = null,
       reachedStatePensionAgeBefore20160406 = false,
+      partnerReachedStatePensionAgeBefore20160406 = null,
       transitionalCoupleContinuousEntitlement = false,
     } = {}) {
       const pc = this.pensionCredit;
@@ -762,9 +763,20 @@ export const GB_COUNTRY_RULES = {
         ? pc.standardMinimumGuaranteeWeekly.couple
         : pc.standardMinimumGuaranteeWeekly.single;
 
-      const eligibleByAge =
-        reachedStatePensionAgeBefore20160406 === true ||
-        (couple && transitionalCoupleContinuousEntitlement === true);
+      const claimantPre2016 = reachedStatePensionAgeBefore20160406 === true;
+      const partnerPre2016 = partnerReachedStatePensionAgeBefore20160406 === true;
+      // Savings Credit closed to people reaching State Pension age on/after
+      // 6 April 2016. For a couple, both partners must be pre-2016 unless the
+      // household is a protected mixed-age couple that was already awarded
+      // Savings Credit before 6 April 2016 and has remained continuously
+      // entitled ever since. A continuity flag alone cannot make a couple
+      // eligible when neither partner had reached State Pension age before
+      // the closure date.
+      const mixedPre2016Couple = couple && (claimantPre2016 !== partnerPre2016);
+      const eligibleByAge = couple
+        ? ((claimantPre2016 && partnerPre2016) ||
+          (mixedPre2016Couple && transitionalCoupleContinuousEntitlement === true))
+        : claimantPre2016;
 
       const qualifyingIncome = Math.max(0, Number(qualifyingIncomeWeekly) || 0);
       const totalIncome = Math.max(
