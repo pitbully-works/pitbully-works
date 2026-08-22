@@ -171,6 +171,11 @@ const mutants = [
   ["GB Pension Credit higher earnings disregard is protected", "countryRules/GB.js", "higherEarningsDisregard ? 20 : normalEarningsDisregard", "higherEarningsDisregard ? 21 : normalEarningsDisregard", "overseasHundredPhase29.test.js"],
   ["GB Pension Credit assessable income includes tariff income", "countryRules/GB.js", "nonNegative(otherCountedIncomeWeekly) +\n        tariffIncome;", "nonNegative(otherCountedIncomeWeekly) +\n        tariffIncome + 1;", "overseasHundredPhase29.test.js"],
 
+  ["GB Pension Credit 2026 severe disability extra is protected", "countryRules/GB.js", "severeDisabilityWeekly: 86.05,", "severeDisabilityWeekly: 86.06,", "overseasHundredPhase30.test.js"],
+  ["GB Pension Credit 2026 carer extra is protected", "countryRules/GB.js", "carerWeeklyPerQualifyingPartner: 48.15,", "carerWeeklyPerQualifyingPartner: 48.16,", "overseasHundredPhase30.test.js"],
+  ["GB Pension Credit 2026 first-child addition is protected", "countryRules/GB.js", "childFirstBornBefore2017Weekly: 81.07,", "childFirstBornBefore2017Weekly: 81.08,", "overseasHundredPhase30.test.js"],
+  ["GB Pension Credit both severe disability qualifiers are protected", "countryRules/GB.js", "status === \"couple\" && severeCount >= 2", "status === \"couple\" && severeCount >= 3", "overseasHundredPhase30.test.js"],
+
 ];
 
 if (!fs.existsSync(vitestBin)) {
