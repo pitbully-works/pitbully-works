@@ -31,6 +31,6 @@ describe("AU 2026-27 Low Income Tax Offset (LITO)", () => {
 
   it("removes LITO from the AU notImplemented list", () => {
     expect(tax.notImplemented.join(" / ")).not.toMatch(/Low Income Tax Offset|LITO/);
-    expect(AU_COUNTRY_RULES.meta.coverage.find((x) => x.key === "tax").lastUpdated).toBe("2026-08-21");
+    expect(AU_COUNTRY_RULES.meta.coverage.find((x) => x.key === "tax").lastUpdated).toBe("2026-08-23");
   });
 });

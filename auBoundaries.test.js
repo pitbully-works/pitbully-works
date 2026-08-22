@@ -9,7 +9,7 @@
 //   - Age Pension                             : https://www.servicesaustralia.gov.au/age-pension
 //   - Income test / Assets test               : https://www.servicesaustralia.gov.au/income-test-for-age-pension
 //
-// 【適用範囲】オーストラリア居住者。非居住者（foreign resident）の税率は未実装。
+// 【適用範囲】オーストラリア居住者・非居住者。Working Holiday Maker税率は別制度のため未実装。
 //   給付額は2026年3月20日改定値（次回改定は2026年9月20日）、資産・所得テストの
 //   無影響枠は2026年7月1日改定値。
 //
@@ -470,7 +470,7 @@ describe("AU境界：2026-27の所得税バンド", () => {
   });
 
   it("非居住者は未実装であることが宣言されている", () => {
-    expect(tax.region).toMatch(/foreign residents not implemented/);
+    expect(tax.region).toMatch(/Australian and foreign residents/);
   });
 });
 
