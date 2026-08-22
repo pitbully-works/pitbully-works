@@ -774,8 +774,13 @@ export function buildPlanInput(ctx, overrides = {}) {
           const partnerSuperAssessable = auStatus === "couple"
             && ret.isSuperAssessableForAgePension(partnerAgeAtAge, auPartnerReceivingSuperPension);
           const partnerSuperForMeansTest = partnerSuperAssessable ? partnerSuperAtAge : 0;
+          // partnerCurrentAge が入力されている場合だけ年齢進行から動的判定する。
+          // 旧保存データや既存入力（bothQualified のみ）では明示値を尊重して後方互換を保つ。
+          const hasPartnerCurrentAge = Number(auPension.partnerCurrentAge) > 0;
           const dynamicBothQualified = auStatus === "couple"
-            ? partnerAgeAtAge >= ret.getQualifyingAge()
+            ? (hasPartnerCurrentAge
+              ? partnerAgeAtAge >= ret.getQualifyingAge()
+              : auBothQualified)
             : auBothQualified;
           const baseMonthly = ret.getAgePensionHousehold({
             age,
