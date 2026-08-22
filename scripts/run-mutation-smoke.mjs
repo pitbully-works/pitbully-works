@@ -65,6 +65,9 @@ const mutants = [
   ["GB LISA is included in the total ISA allowance", "countryRules/GB.js", "+ this._num((accounts.lifetimeIsa || {}).annualContribution);", "+ 0;", "overseasHundredPhase3.test.js"],
   ["GB LISA projection includes the 25 percent bonus", "countryRules/GB.js", "return eligible + (eligible * this.lifetimeIsa.governmentBonusRate);", "return eligible;", "overseasHundredPhase3.test.js"],
   ["GB LISA retirement access remains age 60", "utils/buildPlanInput.js", ": (isLifetimeIsa ? rules.investment.lifetimeIsa.retirementWithdrawalAge : 0),", ": 0,", "overseasHundredPhase3.test.js"],
+  ["CA QPP late-claim increase is 0.7 percent monthly", "countryRules/CA.js", "lateIncreasePerMonth: 0.007,", "lateIncreasePerMonth: 0.006,", "overseasHundredPhase4.test.js"],
+  ["CA QPP age-72 access is protected", "countryRules/CA.js", "latestAge: 72,", "latestAge: 70,", "overseasHundredPhase4.test.js"],
+  ["CA QPP early reduction lower bound is protected", "countryRules/CA.js", "earlyReductionPerMonthMin: 0.005,", "earlyReductionPerMonthMin: 0.004,", "overseasHundredPhase4.test.js"],
 ];
 
 if (!fs.existsSync(vitestBin)) {
