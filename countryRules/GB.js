@@ -650,6 +650,81 @@ export const GB_COUNTRY_RULES = {
       };
     },
 
+    calculatePensionCreditGuaranteeCredit({
+      status = "single",
+      claimantReachedStatePensionAge = false,
+      partnerReachedStatePensionAge = false,
+      protectedMixedAgeContinuity = false,
+      pensionAgeHousingBenefitContinuity = false,
+
+      statePensionWeekly = 0,
+      privatePensionWeekly = 0,
+      earningsWeekly = 0,
+      otherCountedBenefitsWeekly = 0,
+      otherCountedIncomeWeekly = 0,
+      capital = 0,
+      higherEarningsDisregard = false,
+      fullyDisregardedIncomeWeekly = 0,
+
+      severeDisabilityQualifiers = 0,
+      carerQualifiers = 0,
+      firstChildrenBornBefore2017 = 0,
+      otherChildren = 0,
+      disabledChildrenLower = 0,
+      disabledChildrenHigher = 0,
+      eligibleHousingCostsWeekly = 0,
+      transitionalAdditionalAmountWeekly = 0,
+    } = {}) {
+      const age = this.assessPensionCreditAgeEligibility({
+        status,
+        claimantReachedStatePensionAge,
+        partnerReachedStatePensionAge,
+        protectedMixedAgeContinuity,
+        pensionAgeHousingBenefitContinuity,
+      });
+
+      const income = this.calculatePensionCreditAssessableIncome({
+        statePensionWeekly,
+        privatePensionWeekly,
+        earningsWeekly,
+        otherCountedBenefitsWeekly,
+        otherCountedIncomeWeekly,
+        capital,
+        status,
+        higherEarningsDisregard,
+        fullyDisregardedIncomeWeekly,
+      });
+
+      const appropriate = this.calculatePensionCreditGuaranteeAppropriateAmount({
+        status,
+        severeDisabilityQualifiers,
+        carerQualifiers,
+        firstChildrenBornBefore2017,
+        otherChildren,
+        disabledChildrenLower,
+        disabledChildrenHigher,
+        eligibleHousingCostsWeekly,
+        transitionalAdditionalAmountWeekly,
+      });
+
+      const rawWeekly =
+        appropriate.appropriateAmountWeekly - income.countedIncomeWeekly;
+      const guaranteeCreditWeekly =
+        age.eligible ? Math.max(0, Math.round(rawWeekly * 100) / 100) : 0;
+
+      return {
+        eligibleByAge: age.eligible,
+        ageReason: age.reason,
+        requiresUniversalCreditRoute: age.requiresUniversalCreditRoute,
+        appropriateAmountWeekly: appropriate.appropriateAmountWeekly,
+        countedIncomeWeekly: income.countedIncomeWeekly,
+        guaranteeCreditWeekly,
+        annualGuaranteeCredit: Math.round(guaranteeCreditWeekly * 52 * 100) / 100,
+        incomeBreakdown: income,
+        appropriateAmountBreakdown: appropriate,
+      };
+    },
+
     calculatePensionCreditTariffIncome(capital) {
       const amount = Math.max(0, Number(capital) || 0);
       const rules = this.pensionCredit.capital;
