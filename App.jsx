@@ -1995,6 +1995,12 @@ const DEFAULT_INPUTS = {
         // カップルのとき、双方が受給資格年齢（67歳）に達しているか。
         // 双方なら世帯の年金収入は1人あたりの2倍になる。片方だけなら1人分。
         bothQualified: true,
+        partnerCurrentAge: 67,
+        partnerSuperCurrentValue: 0,
+        partnerSuperAnnualContribution: 0,
+        partnerSuperExpectedReturnPct: 5,
+        partnerSuperContributionEndAge: 67,
+        partnerReceivingSuperPension: false,
         // Age Pensionの所得テストで評価される、年金以外の年間収入。
         // 金融資産からのみなし収入（Deeming）は別途自動で加算されるので、ここには含めない。
         otherAnnualIncome: 0,
@@ -7966,6 +7972,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               deemedIncomeAnnual={auAgePensionFromEngine.deemedIncomeAnnual}
               retirementIncomeAnnual={auRetirementIncomeAnnual}
               assessableAssets={auAssessableAssetsAtQualifyingAge}
+              currentAge={effectiveCurrentAge}
               expensesAnnual={auExpensesAnnual}
               healthcareAnnual={auHealthcareAnnual}
               withdrawalNeeded={auWithdrawalNeeded}
