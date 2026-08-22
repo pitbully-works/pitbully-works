@@ -5,6 +5,27 @@
 // ============================================================================
 
 export const EN_TRANSLATIONS = {
+    "usPriorYearPlanWagesLabel": "Prior-year wages from this 401(k) plan sponsor",
+    "usPriorYearPlanWagesGuide": "Used for the 2026 Roth catch-up rule based on prior-year wages from the same plan sponsor.",
+    "usRothCatchUpRequiredNote": "Prior-year wages exceed {threshold}, so 2026 catch-up contributions are subject to the Roth-basis requirement.",
+    "gbPensionCarryForwardLabel": "Available pension Annual Allowance carry forward (prior 3 tax years)",
+    "gbPensionCarryForwardGuide": "Enter the unused Annual Allowance from the prior 3 tax years that you are eligible to carry forward.",
+    "caRrifSpouseElectionLabel": "Base RRIF minimum on spouse/partner age",
+    "caRrifSpouseAgeLabel": "Spouse/common-law partner age elected when RRIF opened",
+    "caRrifSpouseAgeGuide": "This election is made on the original RRIF application and generally cannot be changed later.",
+    "caRrifSpouseAgeUnit": "years",
+    "caYes": "Yes",
+    "caNo": "No",
+    "auTransferBalanceTitle": "Transfer Balance Cap",
+    "auPersonalTbcLabel": "Personal transfer balance cap (0 = general cap)",
+    "auPersonalTbcGuide": "Enter your personal cap from ATO online services if known.",
+    "auRetirementPhaseBalanceLabel": "Current retirement-phase balance",
+    "auRetirementPhaseBalanceGuide": "Enter the current amount transferred to retirement-phase income streams.",
+    "auTbcRemainingLabel": "Transfer balance cap remaining",
+    "auTbcCapSub": "Applicable cap {cap}",
+    "auTbcExcessLabel": "Excess over cap",
+    "auTbcExcessSub": "An excess may require a commutation and can attract excess transfer balance tax.",
+
     "rulesVerifiedLabel": "Rules verified as of:",
     "idecoCategoryLabel": "iDeCo participant category",
     "idecoCategoryFirst": "Category 1 insured (self-employed etc.)",

@@ -5,6 +5,27 @@
 // ============================================================================
 
 export const JA_TRANSLATIONS = {
+    "usPriorYearPlanWagesLabel": "前年の当該401(k)プランスポンサーからの賃金",
+    "usPriorYearPlanWagesGuide": "2026年のcatch-up拠出のRoth必須判定に使います。前年に同じプランスポンサーから受けた賃金が基準です。",
+    "usRothCatchUpRequiredNote": "前年賃金が{threshold}を超えているため、2026年のcatch-up拠出はRoth basisが必須となる対象です。",
+    "gbPensionCarryForwardLabel": "年金Annual Allowanceのcarry forward利用可能額（過去3税年度）",
+    "gbPensionCarryForwardGuide": "過去3税年度の未使用Annual Allowanceのうち、現在利用できる合計額を入力してください。",
+    "caRrifSpouseElectionLabel": "RRIF最低取崩し額を配偶者年齢で計算",
+    "caRrifSpouseAgeLabel": "RRIF開設時に選択した配偶者／パートナー年齢",
+    "caRrifSpouseAgeGuide": "この選択はRRIFの元の申込時に行い、原則後から変更できません。",
+    "caRrifSpouseAgeUnit": "歳",
+    "caYes": "はい",
+    "caNo": "いいえ",
+    "auTransferBalanceTitle": "Transfer Balance Cap",
+    "auPersonalTbcLabel": "個人Transfer Balance Cap（0なら一般上限）",
+    "auPersonalTbcGuide": "ATOオンラインサービスの個人上限が分かる場合に入力してください。",
+    "auRetirementPhaseBalanceLabel": "現在のretirement phase残高",
+    "auRetirementPhaseBalanceGuide": "retirement phase income streamへ移した現在残高を入力してください。",
+    "auTbcRemainingLabel": "Transfer Balance Cap 残枠",
+    "auTbcCapSub": "適用上限 {cap}",
+    "auTbcExcessLabel": "上限超過額",
+    "auTbcExcessSub": "超過がある場合はcommutationやexcess transfer balance taxの対象になり得ます。",
+
     "rulesVerifiedLabel": "制度基準日：",
     "idecoCategoryLabel": "iDeCo加入区分",
     "idecoCategoryFirst": "第1号被保険者（自営業等）",
