@@ -4,8 +4,8 @@ import { JA_TRANSLATIONS as ja } from "./translations/ja.js";
 import { EN_TRANSLATIONS as en } from "./translations/en.js";
 
 describe("GB 2026/27 final user-facing consistency", () => {
-  it("marks the final verification date as 2026-08-21", () => {
-    expect(GB_COUNTRY_RULES.meta.verifiedAsOf).toBe("2026-08-21");
+  it("marks the final verification date as 2026-08-22", () => {
+    expect(GB_COUNTRY_RULES.meta.verifiedAsOf).toBe("2026-08-22");
   });
 
   it("keeps Scottish Income Tax implemented in coverage", () => {
