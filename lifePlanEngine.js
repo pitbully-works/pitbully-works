@@ -427,7 +427,14 @@ export function runIntegratedPlan(p) {
   };
 
   const yearly = [snapshot(currentAge)];
-  const steps = buildAgeSteps(currentAge, deathAge, p.boundaries);
+  // 退職年齢は、呼び出し側が boundaries に入れ忘れても必ず計算境界にする。
+  // これにより「60歳6ヶ月退職」のような小数年齢でも、退職前/後の利回り・生活費が
+  // 1ステップ内で混ざらない。
+  const steps = buildAgeSteps(currentAge, deathAge, [...(p.boundaries || []), retireAge]);
+
+  // 「退職時点の純資産」は年次グラフ行から近似せず、退職境界そのものの残高を保持する。
+  // yearly は従来どおり誕生日/最終年だけなので、グラフ行数は増やさない。
+  let netWorthAtRetire = currentAge >= retireAge - EPS ? yearly[0].netWorth : null;
 
   for (let i = 0; i < steps.length; i++) {
     const { dt, age, snapshot: isBirthday } = steps[i];
@@ -727,12 +734,18 @@ export function runIntegratedPlan(p) {
 
     pools.forEach((x) => { x.balance = clampZero(Number.isFinite(x.balance) ? x.balance : 0); });
 
+    // buildAgeSteps が retireAge を境界に含めるため、ここは退職時点ちょうどで一度だけ通る。
+    if (netWorthAtRetire === null && Math.abs(age - retireAge) < EPS) {
+      netWorthAtRetire = snapshot(age).netWorth;
+    }
+
     if (isBirthday) yearly.push(snapshot(age));
   }
 
   const last = yearly[yearly.length - 1];
   return {
     yearly,
+    netWorthAtRetire: netWorthAtRetire === null ? last.netWorth : netWorthAtRetire,
     finalNetWorth: last.netWorth,
     finalAssets: last.totalAssets,
     // 記録専用の累計余剰金の最終値（各スナップショットの surplusBalance と同じ系列の最後）。
