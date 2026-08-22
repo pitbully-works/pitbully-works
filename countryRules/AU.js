@@ -16,13 +16,13 @@
 // 【重要】このオブジェクトは JP / US / GB / CA のルールを一切参照せず、逆に参照もされない。
 export const AU_COUNTRY_RULES = {
   meta: {
-    verifiedAsOf: "2026-08-17",
+    verifiedAsOf: "2026-08-23",
     effectivePeriod: "2026-27 financial year",
     updateCycle: "毎年7月＋Age Pensionは3/20・9/20",
-    noteJa: "2026-27年度制度を2026年8月17日に確認。Age Pensionは2026年3月20日改定値で、次回は9月20日改定を確認します。",
-    noteEn: "2026-27 rules verified on 17 Aug 2026. Age Pension uses the 20 Mar 2026 rates; the next scheduled indexation is 20 Sep 2026.",
+    noteJa: "2026-27年度制度を2026年8月23日に確認。Age Pensionは2026年3月20日改定値で、次回は9月20日改定を確認します。",
+    noteEn: "2026-27 rules verified on 23 Aug 2026. Age Pension uses the 20 Mar 2026 rates; the next scheduled indexation is 20 Sep 2026.",
     coverage: [
-      { key: "investment", labelJa: "投資制度", labelEn: "Investment", status: "partial", effective: "2026-27 financial year", lastUpdated: "2026-08-21", updateJa: "Super・投資口座・拠出上限、carry-forward、bring-forwardに加え、適格確認式のDownsizer contribution（最大A$300,000）を今年度一括拠出として反映。", updateEn: "Super, investment accounts and contribution caps are modelled, including concessional carry-forward, non-concessional bring-forward, and an eligibility-confirmed one-off downsizer contribution of up to A$300,000." },
+      { key: "investment", labelJa: "投資制度", labelEn: "Investment", status: "partial", effective: "2026-27 financial year", lastUpdated: "2026-08-23", updateJa: "Super・投資口座・拠出上限、carry-forward、bring-forwardに加え、適格確認式のDownsizer contribution（最大A$300,000）を今年度一括拠出として反映。", updateEn: "Super, investment accounts and contribution caps are modelled, including concessional carry-forward, non-concessional bring-forward, and an eligibility-confirmed one-off downsizer contribution of up to A$300,000." },
       { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "partial", effective: "2026-27 / Age Pension Mar 2026 rates / Rent Assistance & CSHC Jul 2026 rates", lastUpdated: "2026-08-22", updateJa: "Age Pensionの資産・所得テスト、Work Bonus、Rent Assistance、CSHCに加え、カップルで片方だけ67歳以上の場合の配偶者Super除外を年齢進行に合わせて投影へ統合。", updateEn: "Age Pension means tests, Work Bonus, Rent Assistance and CSHC are modelled, with dynamic partner-Super exclusion integrated when only one member of a couple has reached Age Pension age." },
       { key: "healthcare", labelJa: "医療", labelEn: "Healthcare", status: "partial", effective: "2026-27 / 2026 calendar-year Safety Nets", lastUpdated: "2026-08-21", updateJa: "Medicare前提の自己負担に加え、2026年PBS Safety Net概算とMedicare Safety Net閾値を反映。診療ごとのSafety Net還付・aged care資力調査は未自動化。", updateEn: "Adds a 2026 PBS Safety Net estimate and Medicare Safety Net thresholds to the Medicare out-of-pocket model; item-level Safety Net rebates and aged-care means testing remain manual." },
       { key: "tax", labelJa: "税金", labelEn: "Tax", status: "partial", effective: "2026-27 financial year", lastUpdated: "2026-08-21", updateJa: "居住者所得税・LITO・SAPTO・Medicare levy・MLS・CGTを反映。", updateEn: "Resident income tax, LITO, SAPTO, Medicare levy, MLS and CGT are modelled." },
@@ -32,7 +32,7 @@ export const AU_COUNTRY_RULES = {
   investment: {
     implemented: true,
     effectiveTaxYear: "2026-27",
-    lastUpdated: "2026-08-21",
+    lastUpdated: "2026-08-23",
     sourceName: "Australian Taxation Office (ATO) — Key superannuation rates and thresholds",
     sourceUrl: "https://www.ato.gov.au/tax-rates-and-codes/key-superannuation-rates-and-thresholds",
     sourceUrls: {
@@ -42,6 +42,7 @@ export const AU_COUNTRY_RULES = {
       paymentsFromSuper: "https://www.ato.gov.au/tax-rates-and-codes/key-superannuation-rates-and-thresholds/payments-from-super",
       superGuarantee: "https://www.ato.gov.au/businesses-and-organisations/super-for-employers/paying-super-contributions/how-much-super-to-pay",
       preservationAge: "https://www.ato.gov.au/individuals-and-families/super-for-individuals-and-families/super/withdrawing-and-using-your-super",
+      fhss: "https://www.ato.gov.au/law/view/document?LocID=%22TXR%2FTR20244%2FNAT%2FATO%2F00001%22",
     },
     // オーストラリア版で別々に管理・計算する口座
     accountTypes: ["superannuation", "investmentAccount", "cashSavings"],
@@ -77,8 +78,63 @@ export const AU_COUNTRY_RULES = {
       "95plus": 0.14,
     },
 
+    // First Home Super Saver (FHSS): eligible voluntary contributions are limited to
+    // A$15,000 per financial year and A$50,000 overall. Releasable contribution amounts are
+    // 100% of eligible non-concessional contributions and 85% of eligible concessional contributions.
+    // The caller must provide contribution entries in the statutory ordering already determined for
+    // that financial year; associated earnings are calculated by the ATO and are not reconstructed here.
+    firstHomeSuperSaver: {
+      annualEligibleContributionLimit: 15000,
+      overallEligibleContributionLimit: 50000,
+      concessionalReleaseRate: 0.85,
+      nonConcessionalReleaseRate: 1.00,
+      taxOffsetRateOnAssessableReleasedAmount: 0.30,
+    },
+
     // ---------- 計算関数（すべて純関数） ----------
     _num(v) { return Number(v) || 0; },
+    calculateFhssReleasableContributions(entries = []) {
+      const cfg = this.firstHomeSuperSaver;
+      const usedByYear = new Map();
+      let includedContributions = 0;
+      let releasableContributions = 0;
+      const details = [];
+
+      for (const raw of Array.isArray(entries) ? entries : []) {
+        if (includedContributions >= cfg.overallEligibleContributionLimit) break;
+        const financialYear = String(raw?.financialYear || "").trim();
+        if (!financialYear) continue;
+        const type = raw?.type === "nonConcessional" ? "nonConcessional"
+          : raw?.type === "concessional" ? "concessional" : null;
+        if (!type) continue;
+        const amount = Math.max(0, this._num(raw?.amount));
+        if (amount <= 0) continue;
+
+        const usedThisYear = usedByYear.get(financialYear) || 0;
+        const annualRoom = Math.max(0, cfg.annualEligibleContributionLimit - usedThisYear);
+        const overallRoom = Math.max(0, cfg.overallEligibleContributionLimit - includedContributions);
+        const included = Math.min(amount, annualRoom, overallRoom);
+        if (included <= 0) continue;
+
+        const rate = type === "concessional"
+          ? cfg.concessionalReleaseRate
+          : cfg.nonConcessionalReleaseRate;
+        const releasable = included * rate;
+        usedByYear.set(financialYear, usedThisYear + included);
+        includedContributions += included;
+        releasableContributions += releasable;
+        details.push({ financialYear, type, contributed: amount, included, releasable });
+      }
+
+      return {
+        includedContributions,
+        releasableContributions,
+        associatedEarningsIncluded: false,
+        maximumContributionLimitReached:
+          includedContributions >= cfg.overallEligibleContributionLimit,
+        details,
+      };
+    },
     getConcessionalCap() { return this.limits.concessionalCap; },
     // Carry-forward unused concessional cap amounts:
     // ATO上で現在利用可能と表示される未使用枠を入力してもらい、前年6/30時点の
@@ -400,6 +456,7 @@ export const AU_COUNTRY_RULES = {
       "繰越拠出（carry-forward）はATOオンラインサービスに表示される現在利用可能額を入力して反映済み。過去5年の各年度履歴をアプリ内で自動再構成する機能は未実装",
       "Bring-forwardはATO表示の今年度利用可能額を入力して初年度の一括拠出へ反映済み。既に開始済みの2年/3年bring-forward期間について、過年度の拠出履歴をアプリ内で自動再構成する機能は未実装",
       "Transfer Balance Capは個人上限・退職フェーズ残高を入力して超過/残枠を判定済み。超過transfer balance earnings taxとcommutationの自動投影は未実装",
+      "First Home Super Saver (FHSS)は年A$15,000・通算A$50,000と85%/100%のreleasable contribution計算を実装済み。ATOが算定するassociated earnings、最終determination、実際のrelease authority・住宅購入期限などは未自動化",
       "Downsizer contributionは55歳以上かつATOの適格要件を満たすことを本人確認した場合、今年度一括額として最大A$300,000を反映済み。自宅保有10年・主たる住居CGT要件・売却代金・90日以内拠出等の資格条件の完全自動判定は未実装",
     ],
   },
