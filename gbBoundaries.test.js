@@ -460,9 +460,9 @@ describe("GB境界：投影での取崩し順序と年金アクセス年齢", ()
 // 未実装項目の明示
 // ---------------------------------------------------------------------------
 describe("GB境界：未実装項目が明示されている", () => {
-  it("税セクションの未実装リストに主要項目が挙がっている", () => {
+  it("実装済みのNational InsuranceとInheritance Taxを未実装扱いにしない", () => {
     const joined = tax.notImplemented.join(" ");
-    expect(joined.includes("National Insurance")).toBe(true);
+    expect(joined.includes("National Insurance")).toBe(false);
     expect(joined.includes("Inheritance Tax")).toBe(false);
   });
 
