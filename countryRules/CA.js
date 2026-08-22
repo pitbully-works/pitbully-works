@@ -24,7 +24,7 @@ export const CA_COUNTRY_RULES = {
       { key: "investment", labelJa: "投資制度", labelEn: "Investment", status: "implemented", effective: "2026 calendar year", lastUpdated: "2026-08-17", updateJa: "TFSA、RRSP、非登録口座、RRIF、FHSAに加え、RESPの2026 CESG・生涯拠出上限・CLB基準、RDSPの生涯拠出上限・2026 Grant/Bond基準を反映。", updateEn: "TFSA, RRSP, non-registered accounts, RRIF and FHSA are modelled, together with 2026 RESP CESG/lifetime limits/CLB thresholds and RDSP lifetime contribution/grant/bond rules." },
       { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "partial", effective: "2026 / OAS & GIS Jul-Sep", lastUpdated: "2026-08-22", updateJa: "CPPに加え、ケベック州QPPの受給開始年齢60〜72歳・65歳満額・65歳後0.7%/月増額・早期0.5〜0.6%/月減額の選択計算を実装。OAS・回収税・GIS/Allowance上限・CPP PRBも反映。", updateEn: "Adds QPP claim-age modelling (60–72, full at 65, +0.7%/month after 65 and configurable 0.5–0.6%/month early reduction) alongside CPP, OAS recovery tax, GIS/Allowance maxima and CPP PRB." },
       { key: "healthcare", labelJa: "医療", labelEn: "Healthcare", status: "partial", effective: "2026", lastUpdated: "2026-08-21", updateJa: "州・準州の公的医療保険を前提に自己負担を計算し、CDCPの所得別自己負担率とオンタリオ州の2026年長期介護ホーム最大自己負担額を自動計算。その他の州・準州の薬剤・視力・介護費は手入力。", updateEn: "Models out-of-pocket costs under provincial/territorial coverage, the income-based CDCP co-payment and Ontario 2026 long-term-care home maximum co-payments; drug, vision and long-term-care charges outside Ontario remain manual." },
-      { key: "tax", labelJa: "税金", labelEn: "Tax", status: "partial", effective: "2026 tax year", lastUpdated: "2026-08-22", updateJa: "連邦所得税に加え、全10州・3準州の所得税、Quebec abatement、CPP/QPP・EI・QPIPを反映。2026年のCPP自営業者拠出と、適格年金所得の最大50%分割の計画用上限判定も実装。配当税額控除・AMT等は未実装。", updateEn: "Federal income tax plus all 10 provinces and 3 territories, the Quebec abatement, CPP/QPP, EI and QPIP are modelled. Also includes 2026 self-employed CPP contributions and a planning cap for splitting up to 50% of eligible pension income; dividend credits and AMT remain unimplemented." },
+      { key: "tax", labelJa: "税金", labelEn: "Tax", status: "partial", effective: "2026 tax year", lastUpdated: "2026-08-22", updateJa: "連邦所得税に加え、全10州・3準州の所得税、Quebec abatement、CPP/QPP・EI・QPIPを反映。2026年のCPP自営業者拠出と、適格年金所得の最大50%分割の計画用上限判定も実装。連邦のeligible / non-eligible dividend gross-upと配当税額控除を実装。AMT等は未実装。", updateEn: "Federal income tax plus all 10 provinces and 3 territories, the Quebec abatement, CPP/QPP, EI and QPIP are modelled. Also includes 2026 self-employed CPP contributions and a planning cap for splitting up to 50% of eligible pension income; federal eligible/non-eligible dividend gross-up and dividend tax credits are modelled; AMT remains unimplemented." },
       { key: "estate", labelJa: "相続", labelEn: "Estate", status: "implemented", effective: "2026", lastUpdated: "2026-08-22", updateJa: "死亡直前の時価によるみなし譲渡、配偶者・コモンローへの税繰延ロールオーバー、主たる住居の除外を使った概算を実装。", updateEn: "Adds an estimate for deemed disposition at fair market value immediately before death, spouse/common-law rollover, and principal-residence exclusion." },
     ],
   },
@@ -711,6 +711,7 @@ export const CA_COUNTRY_RULES = {
       payroll: "https://www.canada.ca/en/revenue-agency/services/forms-publications/payroll/t4127-payroll-deductions-formulas/t4127-jan/t4127-jan-payroll-deductions-formulas-computer-programs.html",
       cppSelfEmployed: "https://www.canada.ca/en/employment-social-development/programs/pensions/pension/statistics/2026-quarterly-july-september.html",
       pensionIncomeSplitting: "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/pension-income-splitting.html",
+      federalDividendTaxCredit: "https://www.canada.ca/en/revenue-agency/services/forms-publications/publications/t4015/t5-guide-return-investment-income.html",
       ei: "https://www.canada.ca/en/employment-social-development/programs/ei/ei-list/ei-employers/premium-reduction-program/2026-maximum-insurable-earnings.html",
       qpip: "https://www.revenuquebec.ca/en/businesses/source-deductions-and-employer-contributions/calculating-source-deductions-and-contributions/qpip-premiums/maximum-insurable-earnings-and-premium-rate/",
       quebecIncomeTax: "https://www.revenuquebec.ca/en/citizens/income-tax-return/completing-your-income-tax-return/income-tax-rates/",
@@ -1328,6 +1329,46 @@ export const CA_COUNTRY_RULES = {
       );
     },
 
+    // カナダ法人から受け取る課税配当の連邦 gross-up / Dividend Tax Credit (DTC)。
+    // Eligible dividend: 現金配当の38%をgross-upし、課税配当額の15.0198%を連邦DTC。
+    // Other-than-eligible dividend: 現金配当の15%をgross-upし、課税配当額の9.0301%を連邦DTC。
+    // 外国配当は対象外なので、この関数へはカナダ法人の課税配当だけを渡す。
+    dividendTaxCredit: {
+      eligibleGrossUpRate: 0.38,
+      eligibleCreditRateOnTaxableAmount: 0.150198,
+      nonEligibleGrossUpRate: 0.15,
+      nonEligibleCreditRateOnTaxableAmount: 0.090301,
+    },
+    calculateFederalDividendTax({ eligibleDividends = 0, nonEligibleDividends = 0, otherTaxableIncome = 0 } = {}) {
+      const cfg = this.dividendTaxCredit;
+      const eligibleCash = Math.max(0, Number(eligibleDividends) || 0);
+      const nonEligibleCash = Math.max(0, Number(nonEligibleDividends) || 0);
+      const other = Math.max(0, Number(otherTaxableIncome) || 0);
+      const eligibleTaxable = eligibleCash * (1 + cfg.eligibleGrossUpRate);
+      const nonEligibleTaxable = nonEligibleCash * (1 + cfg.nonEligibleGrossUpRate);
+      const taxableDividends = eligibleTaxable + nonEligibleTaxable;
+      const eligibleCredit = eligibleTaxable * cfg.eligibleCreditRateOnTaxableAmount;
+      const nonEligibleCredit = nonEligibleTaxable * cfg.nonEligibleCreditRateOnTaxableAmount;
+      const federalDividendTaxCredit = eligibleCredit + nonEligibleCredit;
+      const baseFederalTax = this.calculateFederalTax(other).tax;
+      const federalTaxBeforeDividendCredit = this.calculateFederalTax(other + taxableDividends).tax;
+      const netFederalTax = Math.max(0, federalTaxBeforeDividendCredit - federalDividendTaxCredit);
+      return {
+        eligibleCash,
+        nonEligibleCash,
+        eligibleTaxable,
+        nonEligibleTaxable,
+        taxableDividends,
+        eligibleCredit,
+        nonEligibleCredit,
+        federalDividendTaxCredit,
+        baseFederalTax,
+        federalTaxBeforeDividendCredit,
+        netFederalTax,
+        incrementalFederalTax: netFederalTax - baseFederalTax,
+      };
+    },
+
     // BPA（高所得で逓減）
     getBasicPersonalAmount(income) {
       const it = this.incomeTax;
@@ -1415,7 +1456,6 @@ export const CA_COUNTRY_RULES = {
     notImplemented: [
       "州・準州所得税の追加地域はなし（カナダ10州・3準州を実装済み）",
       "オンタリオ州の扶養家族等を含むTax Reductionの完全計算（基本本人分のみ反映）",
-      "配当税額控除（eligible / non-eligible dividend tax credit）",
       "CPP/QPP拠出金・EI保険料・Quebec Parental Insurance Plan（QPIP）は2026年の従業員本人分を実装済み。CPPの自営業者拠出（Quebec以外）と自営業QPPは2026年基準で実装済み",
       "Alternative Minimum Tax（AMT）",
       "年金所得分割は最大50%の移転上限を計画用に実装済み。所得種類・年齢ごとのeligible pension income判定と双方の最終申告税額の完全自動最適化は未実装",
