@@ -8,53 +8,54 @@ import { AU_COUNTRY_RULES } from "./countryRules/AU.js";
 describe("5-country critical statutory values audit - 2026", () => {
   it("JP preserves the 2026 NISA annual and lifetime limits", () => {
     const inv = JP_COUNTRY_RULES.investment;
-    expect(inv.nisa.tsumitateAnnualLimit).toBe(1200000);
-    expect(inv.nisa.growthAnnualLimit).toBe(2400000);
-    expect(inv.nisa.annualLimit).toBe(3600000);
-    expect(inv.nisa.lifetimeLimit).toBe(18000000);
+    expect(inv.annualInstallmentLimit).toBe(1200000);
+    expect(inv.annualGrowthLimit).toBe(2400000);
+    expect(inv.taxFreeInvestmentLimit).toBe(18000000);
   });
 
   it("US preserves the 2026 401(k), IRA and standard-deduction anchors", () => {
     const inv = US_COUNTRY_RULES.investment;
     const tax = US_COUNTRY_RULES.tax;
-    expect(inv.retirementAccounts["401k"].employeeAnnualLimit).toBe(24500);
-    expect(inv.retirementAccounts.ira.annualLimit).toBe(7500);
-    expect(tax.standardDeduction.single).toBe(16100);
+    expect(inv.limits2026.k401.employeeDeferral).toBe(24500);
+    expect(inv.limits2026.ira.contribution).toBe(7500);
+    expect(tax.standardDeduction2026.single).toBe(16100);
   });
 
   it("GB preserves the ISA and pension annual-allowance anchors", () => {
     const inv = GB_COUNTRY_RULES.investment;
-    expect(inv.isa.annualAllowance).toBe(20000);
-    expect(inv.pension.annualAllowance).toBe(60000);
+    expect(inv.limits.isaAnnualAllowance).toBe(20000);
+    expect(inv.limits.pensionAnnualAllowance).toBe(60000);
   });
 
-  it("CA preserves TFSA/RRSP identity and 2026 pension anchors", () => {
+  it("CA preserves TFSA/RRSP and 2026 OAS/GIS anchors", () => {
     const inv = CA_COUNTRY_RULES.investment;
     const ret = CA_COUNTRY_RULES.retirement;
-    expect(inv.tfsa.annualLimit2026).toBeGreaterThan(0);
-    expect(inv.rrsp.contributionRate).toBeCloseTo(0.18, 8);
-    expect(ret.oas).toBeTruthy();
-    expect(ret.gis).toBeTruthy();
+    expect(inv.limits.tfsaAnnualLimit).toBe(7000);
+    expect(inv.limits.rrspIncomePercent).toBeCloseTo(0.18, 8);
+    expect(ret.oas.maxMonthly65to74).toBeCloseTo(751.97, 2);
+    expect(ret.gis.single.maxMonthly).toBeCloseTo(1123.17, 2);
   });
 
-  it("AU preserves Super, Age Pension and tax anchors", () => {
+  it("AU preserves Super, Age Pension and resident-tax anchors", () => {
     const inv = AU_COUNTRY_RULES.investment;
     const ret = AU_COUNTRY_RULES.retirement;
     const tax = AU_COUNTRY_RULES.tax;
-    expect(inv.super.concessionalCap).toBeGreaterThan(0);
+    expect(inv.limits.concessionalCap).toBe(32500);
     expect(ret.agePension.qualifyingAge).toBe(67);
-    expect(tax.residentRates).toBeTruthy();
+    expect(tax.incomeTax.taxFreeThreshold).toBe(18200);
+    expect(tax.incomeTax.bands[1].rate).toBeCloseTo(0.15, 8);
   });
 
   it("keeps the five countries on materially different statutory regimes", () => {
-    expect(JP_COUNTRY_RULES.investment.nisa.lifetimeLimit).not.toBe(
-      US_COUNTRY_RULES.investment.retirementAccounts["401k"].employeeAnnualLimit
+    expect(JP_COUNTRY_RULES.investment.taxFreeInvestmentLimit).not.toBe(
+      US_COUNTRY_RULES.investment.limits2026.k401.employeeDeferral
     );
-    expect(GB_COUNTRY_RULES.investment.isa.annualAllowance).not.toBe(
-      CA_COUNTRY_RULES.investment.tfsa.annualLimit2026
+    expect(GB_COUNTRY_RULES.investment.limits.isaAnnualAllowance).not.toBe(
+      CA_COUNTRY_RULES.investment.limits.tfsaAnnualLimit
     );
-    expect(AU_COUNTRY_RULES.retirement.agePension.qualifyingAge).not.toBe(
-      US_COUNTRY_RULES.retirement.fullRetirementAge
+    expect(AU_COUNTRY_RULES.investment.limits.concessionalCap).not.toBe(
+      GB_COUNTRY_RULES.investment.limits.pensionAnnualAllowance
     );
+    expect(US_COUNTRY_RULES.retirement.socialSecurity.fullRetirementAge).toBe(67);
   });
 });
