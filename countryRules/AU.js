@@ -95,6 +95,13 @@ export const AU_COUNTRY_RULES = {
         + this.getCarryForwardAvailable(priorYearTotalSuperBalance, availableUnusedCap);
     },
     getNonConcessionalCap() { return this.limits.nonConcessionalCap; },
+    getTransferBalanceCapStatus(retirementPhaseBalance, personalTransferBalanceCap = 0) {
+      const general = this.limits.transferBalanceCap;
+      const personal = Math.max(0, this._num(personalTransferBalanceCap)) || general;
+      const cap = Math.min(personal, general);
+      const balance = Math.max(0, this._num(retirementPhaseBalance));
+      return { cap, balance, excess: Math.max(0, balance - cap), remaining: Math.max(0, cap - balance) };
+    },
     // Bring-forward arrangement (non-concessional contributions):
     // The ATO table is derived from the general Transfer Balance Cap (TBC).
     // If the prior 30 June TSB is below TBC - 2×NCC, up to 3 years can be brought forward;
@@ -392,7 +399,7 @@ export const AU_COUNTRY_RULES = {
         + "concessional cap までに制限し、超過分は投影に入れていない",
       "繰越拠出（carry-forward）はATOオンラインサービスに表示される現在利用可能額を入力して反映済み。過去5年の各年度履歴をアプリ内で自動再構成する機能は未実装",
       "Bring-forwardはATO表示の今年度利用可能額を入力して初年度の一括拠出へ反映済み。既に開始済みの2年/3年bring-forward期間について、過年度の拠出履歴をアプリ内で自動再構成する機能は未実装",
-      "Transfer Balance Capを超えた分の課税（超過分は積立フェーズに留まり15%課税）",
+      "Transfer Balance Capは個人上限・退職フェーズ残高を入力して超過/残枠を判定済み。超過transfer balance earnings taxとcommutationの自動投影は未実装",
       "Downsizer contributionは55歳以上かつATOの適格要件を満たすことを本人確認した場合、今年度一括額として最大A$300,000を反映済み。自宅保有10年・主たる住居CGT要件・売却代金・90日以内拠出等の資格条件の完全自動判定は未実装",
     ],
   },

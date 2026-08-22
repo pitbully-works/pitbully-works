@@ -38,10 +38,11 @@ export const US_COUNTRY_RULES = {
     sourceNote: "IRS Notice 2025-67 (published Nov 13, 2025): 2026 cost-of-living adjustments for retirement plans.",
     limits2026: {
       k401: {
-        employeeDeferral: 24500,     // 従業員拠出（elective deferral）上限
-        catchUp50: 8000,             // 50歳以上の追加拠出（catch-up）
-        catchUp60to63: 11250,        // 60〜63歳の特例追加拠出（"super catch-up"）
-        combinedEmployerEmployee: 72000, // 従業員＋雇用主合計（IRC §415(c)）上限
+        employeeDeferral: 24500,
+        catchUp50: 8000,
+        catchUp60to63: 11250,
+        combinedEmployerEmployee: 72000,
+        rothCatchUpPriorYearWageThreshold: 150000,
       },
       ira: {
         // Traditional IRAとRoth IRAは拠出上限を共有する（合算で上限まで）
@@ -86,6 +87,10 @@ export const US_COUNTRY_RULES = {
       const l = this.limits2026.k401;
       const catchUp = age >= 60 && age <= 63 ? l.catchUp60to63 : (age >= 50 ? l.catchUp50 : 0);
       return l.combinedEmployerEmployee + catchUp;
+    },
+    requiresRothCatchUp(priorYearPlanSponsorWages, age) {
+      const wages = Math.max(0, Number(priorYearPlanSponsorWages) || 0);
+      return Number(age) >= 50 && wages > this.limits2026.k401.rothCatchUpPriorYearWageThreshold;
     },
     // IRA（Traditional + Roth 合算）の年間拠出上限
     getIraContributionLimit(age) {

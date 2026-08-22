@@ -127,8 +127,14 @@ export const CA_COUNTRY_RULES = {
       if (a >= 95) return this.rrifMinimumFactorAt95Plus;
       return this.rrifMinimumFactors[a] || 0;
     },
-    getRrifMinimumWithdrawal(age, rrspBalance) {
-      return (Number(rrspBalance) || 0) * this.getRrifMinimumFactor(age);
+    getRrifMinimumAge(ownerAge, useSpouseAge = false, spouseAge = 0) {
+      const owner = Math.floor(Number(ownerAge) || 0);
+      const spouse = Math.floor(Number(spouseAge) || 0);
+      return useSpouseAge && spouse > 0 ? spouse : owner;
+    },
+    getRrifMinimumWithdrawal(age, rrspBalance, useSpouseAge = false, spouseAge = 0) {
+      const factorAge = this.getRrifMinimumAge(age, useSpouseAge, spouseAge);
+      return (Number(rrspBalance) || 0) * this.getRrifMinimumFactor(factorAge);
     },
 
     // 4口座の残高を、現在の年齢から死亡想定年齢まで年単位で積み上げる。
@@ -138,7 +144,7 @@ export const CA_COUNTRY_RULES = {
     //   restricted と完全に一致させること。ここが食い違うと、パネルのプレビューと
     //   lifePlanEngine の本計算で取崩し順が変わり、結果が一致しなくなる）
     // ただし rrifFirstWithdrawalAge 以降は、RRSPからの最低取崩し額が強制的に発生する。
-    simulateGrowth({ currentAge, retireAge, deathAge, accounts, annualWithdrawalNeeded }) {
+    simulateGrowth({ currentAge, retireAge, deathAge, accounts, annualWithdrawalNeeded, rrifUseSpouseAge = false, rrifSpouseAge = 0 }) {
       const keys = this.accountTypes;
       const balances = {}, contributions = {}, rates = {}, endAges = {}, withdrawalTax = {};
       keys.forEach((k) => {
@@ -167,7 +173,7 @@ export const CA_COUNTRY_RULES = {
         // 税引後の手取りだけを非登録口座へ移す（税額 rrifTax のぶん総資産が減る）。
         let rrifMinimum = 0, rrifTax = 0;
         if (age >= this.rrifFirstWithdrawalAge && balances.rrsp > 0) {
-          rrifMinimum = Math.min(balances.rrsp, this.getRrifMinimumWithdrawal(age, balances.rrsp));
+          rrifMinimum = Math.min(balances.rrsp, this.getRrifMinimumWithdrawal(age, balances.rrsp, rrifUseSpouseAge, rrifSpouseAge));
           const net = rrifMinimum * (1 - withdrawalTax.rrsp);
           rrifTax = rrifMinimum - net;
           balances.rrsp -= rrifMinimum;
@@ -222,7 +228,7 @@ export const CA_COUNTRY_RULES = {
     notImplemented: [
       "FHSAのre-participation room・excess amount等の複雑な個別調整（基本の年間枠・繰越・生涯上限は実装済み）／RESP／RDSP",
       "RRSPからの引出し時の源泉徴収税（withholding tax）。引出時課税は口座ごとの withdrawalTaxPct（単一税率）で近似しており、実際の限界税率や源泉徴収率とは一致しない",
-      "RRIF最低取崩し率に配偶者（通常は年下の配偶者）の年齢を使う選択（spousal age election）。RRIF開設時に一度だけ選べ、以後は変更できない",
+      "RRIF最低取崩し率のspousal age electionは入力・計算に対応済み。実際の選択はRRIF開設時に行い、原則変更できないため利用者が選択状態を入力する方式",
       "ケベック州のQPP（CPPと拠出率・給付が異なる）",
     ],
   },

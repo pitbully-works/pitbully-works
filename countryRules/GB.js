@@ -96,8 +96,14 @@ export const GB_COUNTRY_RULES = {
       return this._num((accounts.sipp || {}).annualContribution)
         + this._num((accounts.workplacePension || {}).annualContribution);
     },
-    getPensionRemaining(accounts, adjustedIncome, thresholdIncome) {
-      return this.getPensionAnnualAllowance(adjustedIncome, thresholdIncome) - this.getPensionContributed(accounts);
+    getPensionCarryForwardAvailable(availableFromPrior3Years) {
+      return Math.max(0, this._num(availableFromPrior3Years));
+    },
+    getEffectivePensionAnnualAllowance(adjustedIncome, thresholdIncome, availableFromPrior3Years = 0) {
+      return this.getPensionAnnualAllowance(adjustedIncome, thresholdIncome) + this.getPensionCarryForwardAvailable(availableFromPrior3Years);
+    },
+    getPensionRemaining(accounts, adjustedIncome, thresholdIncome, availableFromPrior3Years = 0) {
+      return this.getEffectivePensionAnnualAllowance(adjustedIncome, thresholdIncome, availableFromPrior3Years) - this.getPensionContributed(accounts);
     },
 
     // 6口座の残高を、現在の年齢から死亡想定年齢まで年単位で積み上げる。
@@ -166,7 +172,7 @@ export const GB_COUNTRY_RULES = {
     notImplemented: [
       "Lifetime ISA（LISA）の政府ボーナス25%および60歳前引出時のペナルティ",
       "Junior ISA / Junior SIPP",
-      "年金拠出のキャリーフォワード（過去3年分の未使用枠の繰越）",
+      "年金拠出のcarry forwardは過去3年分の利用可能額を入力して当年枠へ加算済み。各年度の加入実績・使用順をアプリ内で自動再構成する機能は未実装",
       "2027年4月からのCash ISA年間上限£12,000（65歳未満）— 上限額のみ scheduled に保持",
     ],
   },
