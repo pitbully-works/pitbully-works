@@ -475,6 +475,7 @@ export const AU_COUNTRY_RULES = {
       residence: "https://www.servicesaustralia.gov.au/who-can-get-age-pension",
       overseas: "https://www.servicesaustralia.gov.au/when-you-leave-australia-if-you-get-age-pension",
       realEstateIncome: "https://www.servicesaustralia.gov.au/real-estate-income",
+      workBonus: "https://www.servicesaustralia.gov.au/how-work-bonus-works",
       rentAssistance: "https://www.servicesaustralia.gov.au/rent-assistance",
       seniorsHealthCard: "https://www.servicesaustralia.gov.au/commonwealth-seniors-health-card",
     },
@@ -761,6 +762,57 @@ export const AU_COUNTRY_RULES = {
       const standard = p.workBonusFortnightly * p.fortnightsPerYear;
       return Math.min(employment, standard + balance);
     },
+    // Exact fortnight-by-fortnight Work Bonus ledger.
+    // For each fortnight:
+    //   1) up to A$300 of eligible income is disregarded;
+    //   2) if income is below A$300, the unused portion is added to the balance;
+    //   3) if income exceeds A$300, the remaining excess consumes the stored balance;
+    //   4) balance is capped at A$11,800.
+    // This helper is used when the caller has actual fortnightly income; the annual
+    // projection helper above remains for coarse long-term scenarios.
+    getWorkBonusFortnightlyAssessment(
+      eligibleIncomeFortnightly = [],
+      startingBalance = 0
+    ) {
+      const p = this.agePension;
+      const incomes = Array.isArray(eligibleIncomeFortnightly)
+        ? eligibleIncomeFortnightly
+        : [];
+      let balance = Math.min(
+        p.workBonusMaxBalance,
+        Math.max(0, Number(startingBalance) || 0)
+      );
+      const periods = incomes.map((rawIncome, index) => {
+        const income = Math.max(0, Number(rawIncome) || 0);
+        const standardUsed = Math.min(income, p.workBonusFortnightly);
+        const unusedStandard = Math.max(0, p.workBonusFortnightly - income);
+        let assessable = Math.max(0, income - p.workBonusFortnightly);
+        const balanceUsed = Math.min(balance, assessable);
+        assessable -= balanceUsed;
+        balance = Math.min(
+          p.workBonusMaxBalance,
+          Math.max(0, balance - balanceUsed + unusedStandard)
+        );
+        return {
+          index,
+          eligibleIncome: income,
+          standardUsed,
+          balanceUsed,
+          assessableIncome: assessable,
+          endingBalance: balance,
+        };
+      });
+      return {
+        periods,
+        startingBalance: Math.min(
+          p.workBonusMaxBalance,
+          Math.max(0, Number(startingBalance) || 0)
+        ),
+        endingBalance: balance,
+        totalEligibleIncome: periods.reduce((s, x) => s + x.eligibleIncome, 0),
+        totalAssessableIncome: periods.reduce((s, x) => s + x.assessableIncome, 0),
+      };
+    },
     getAssessableEmploymentIncomeAnnual(employmentIncomeAnnual, workBonusBalance = 0) {
       const employment = Math.max(0, Number(employmentIncomeAnnual) || 0);
       return Math.max(0, employment - this.getWorkBonusExcludedAnnual(employment, workBonusBalance));
@@ -962,7 +1014,7 @@ export const AU_COUNTRY_RULES = {
       //   （publicPensions.monthlyAmountAt + assessedPoolIds）。
       //   projectAgePension は画面カードに出す「受給開始時点の見込額」を求めるためのもので、
       //   投影値そのものではない。
-      "Work Bonus残高は年次近似で反映済み。Centrelinkの隔週単位での残高増減・雇用収入発生日ごとの厳密計算は未実装",
+      "Work Bonusは年次近似に加え、隔週ごとのA$300控除・未使用分の残高加算・超過所得による残高消費・A$11,800上限の厳密台帳計算を実装済み。実際の給与支払日からCentrelink報告期間へ自動割当する機能は未実装",
       "カップルのSuperは、Age Pension年齢未満かつincome stream未開始なら資産・所得テストから除外する基本判定を実装済み。特殊なincome stream商品や免除判定は未実装",
       "投資用不動産の実収入は、総家賃－Services Australiaで認められる控除を物件ごとに0未満へ落とさず所得テストへ算入する基本計算を実装済み。税務上の減価償却・建物償却・借入費用等はCentrelink控除として自動算入しない",
       "カップルで片方だけが受給資格年齢に達している場合、配偶者の積立フェーズSuper除外は投影へ統合済み。特殊なincome stream商品・免除判定は未実装",
