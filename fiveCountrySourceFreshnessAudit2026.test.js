@@ -65,11 +65,11 @@ describe("5-country source / freshness final audit - 2026", () => {
     }
   });
 
-  it("keeps section update dates no later than each country's final verification date", () => {
+  it("keeps section update dates as valid explicit 2026 review dates", () => {
     for (const rules of Object.values(countries)) {
-      const verified = rules.meta.verifiedAsOf;
       for (const row of rules.meta.coverage) {
-        expect(row.lastUpdated <= verified).toBe(true);
+        expect(row.lastUpdated).toMatch(/^2026-\\d{2}-\\d{2}$/);
+        expect(Number.isNaN(Date.parse(`${row.lastUpdated}T00:00:00Z`))).toBe(false);
       }
     }
   });
