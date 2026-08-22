@@ -26,7 +26,7 @@ export const US_COUNTRY_RULES = {
       { key: "retirement", labelJa: "年金・退職口座", labelEn: "Pension / retirement", status: "implemented", effective: "2026 tax year", lastUpdated: "2026-08-17", updateJa: "Social Security、退職口座の取崩し、RMD等を反映。", updateEn: "Social Security, retirement-account drawdown and RMD rules are modelled." },
       { key: "healthcare", labelJa: "医療", labelEn: "Healthcare", status: "implemented", effective: "2026", lastUpdated: "2026-08-17", updateJa: "Medicare Part B・IRMAA等の2026年公表値を反映。", updateEn: "2026 Medicare Part B and IRMAA figures are reflected." },
       { key: "tax", labelJa: "税金", labelEn: "Tax", status: "implemented", effective: "2026 tax year", lastUpdated: "2026-08-17", updateJa: "連邦所得税・標準控除・Social Security課税・長期譲渡益を概算。州税は入力方式。", updateEn: "Federal income tax, standard deduction, Social Security taxation and long-term gains are estimated; state tax remains user-entered." },
-      { key: "estate", labelJa: "相続", labelEn: "Estate", status: "partial", effective: "2026", lastUpdated: "2026-08-17", updateJa: "相続目標は資産計画に反映。連邦・州のestate/inheritance tax自動計算は未実装。", updateEn: "Estate targets feed the plan; federal/state estate or inheritance tax is not automatically calculated." },
+      { key: "estate", labelJa: "相続", labelEn: "Estate", status: "partial", effective: "2026", lastUpdated: "2026-08-22", updateJa: "2026年の連邦estate tax基本控除$15,000,000を使う概算を追加。州estate/inheritance tax・贈与履歴・portability等は未自動化。", updateEn: "Adds a 2026 federal estate-tax planning estimate using the $15,000,000 basic exclusion; state taxes, gift history and portability remain manual." },
     ],
   },
   investment: {
@@ -761,6 +761,47 @@ export const US_COUNTRY_RULES = {
       return Math.min(excess, Math.max(0, netInvestmentIncome)) * this.niitRate;
     },
   },
+  estate: {
+    implemented: true,
+    effectiveTaxYear: "2026",
+    lastUpdated: "2026-08-22",
+    sourceName: "IRS — Estate tax / 2026 basic exclusion amount",
+    sourceUrl: "https://www.irs.gov/businesses/small-businesses-self-employed/frequently-asked-questions-on-estate-taxes",
+    basicExclusionAmount: 15000000,
+    topRate: 0.40,
+    calculateFederalEstateTaxEstimate({
+      grossEstate = 0,
+      deductibleDebtsAndExpenses = 0,
+      spouseDeduction = 0,
+      charitableDeduction = 0,
+      priorTaxableGiftsUsingExclusion = 0,
+      dsueAmount = 0,
+    } = {}) {
+      const clean = (v) => Math.max(0, Number(v) || 0);
+      const netEstate = Math.max(
+        0,
+        clean(grossEstate) - clean(deductibleDebtsAndExpenses) - clean(spouseDeduction) - clean(charitableDeduction)
+      );
+      const availableExclusion = Math.max(
+        0,
+        this.basicExclusionAmount + clean(dsueAmount) - clean(priorTaxableGiftsUsingExclusion)
+      );
+      const taxableAboveExclusion = Math.max(0, netEstate - availableExclusion);
+      return {
+        netEstate,
+        availableExclusion,
+        taxableAboveExclusion,
+        estimatedFederalEstateTax: taxableAboveExclusion * this.topRate,
+      };
+    },
+    notImplemented: [
+      "州estate/inheritance tax",
+      "生前贈与履歴・gift tax returnを使ったunified creditの完全再構成",
+      "DSUE portabilityの自動判定（入力値でのみ反映）",
+      "special-use valuation・QTIP・GST tax等の詳細税務",
+    ],
+  },
+
   labels: {
     // 米国版は投資・年金・医療費・税制のすべてを実装済みのため、未実装の注記は使用しない。
     // （以前はここが "…NotImplementedNote" を指しており、表示条件が変わると

@@ -55,6 +55,17 @@ export const GB_COUNTRY_RULES = {
       pensionAnnualAllowanceFloor: 10000,
       moneyPurchaseAnnualAllowance: 10000,
     },
+    lifetimeIsa: {
+      annualPaymentLimit: 4000,
+      governmentBonusRate: 0.25,
+      openingMinAge: 18,
+      openingMaxAge: 39,
+      contributionEndsAtAge: 50,
+      retirementWithdrawalAge: 60,
+      firstHomeMaxPrice: 450000,
+      firstHomeMinimumHoldingMonths: 12,
+      unauthorisedWithdrawalChargeRate: 0.25,
+    },
     // 予定されている制度変更（2026/27時点では未適用。計算には反映していない）
     scheduled: {
       // 2027年4月6日から、65歳未満のCash ISA年間拠出上限は £12,000 になる予定（65歳以上は £20,000 のまま）
@@ -73,6 +84,23 @@ export const GB_COUNTRY_RULES = {
     // ---------- 計算関数（すべて純粋関数。JP/USや共通エンジンからは呼ばれない） ----------
     _num(v) { return Number(v) || 0; },
     getIsaAnnualAllowance() { return this.limits.isaAnnualAllowance; },
+    getLifetimeIsaAnnualBonus(contribution, age) {
+      const lisa = this.lifetimeIsa;
+      const a = Number(age);
+      if (!Number.isFinite(a) || a < lisa.openingMinAge || a >= lisa.contributionEndsAtAge) return 0;
+      const eligibleContribution = Math.min(lisa.annualPaymentLimit, Math.max(0, Number(contribution) || 0));
+      return eligibleContribution * lisa.governmentBonusRate;
+    },
+    canUseLifetimeIsaForFirstHome({ propertyPrice = 0, monthsSinceFirstPayment = 0, isFirstHome = true, usesMortgage = true } = {}) {
+      const lisa = this.lifetimeIsa;
+      return !!isFirstHome
+        && !!usesMortgage
+        && Math.max(0, Number(propertyPrice) || 0) <= lisa.firstHomeMaxPrice
+        && Math.max(0, Number(monthsSinceFirstPayment) || 0) >= lisa.firstHomeMinimumHoldingMonths;
+    },
+    getLifetimeIsaUnauthorisedWithdrawalCharge(withdrawalAmount) {
+      return Math.max(0, Number(withdrawalAmount) || 0) * this.lifetimeIsa.unauthorisedWithdrawalChargeRate;
+    },
     // ISA年間拠出額（Stocks and Shares ISA + Cash ISA の合算）
     getIsaContributed(accounts) {
       return this._num((accounts.stocksSharesIsa || {}).annualContribution)
@@ -170,7 +198,7 @@ export const GB_COUNTRY_RULES = {
       return { liquid, restricted, taxAdvantaged, total: liquidBase + pensions, isAccessibleAge, accounts: v };
     },
     notImplemented: [
-      "Lifetime ISA（LISA）の政府ボーナス25%および60歳前引出時のペナルティ",
+      "Lifetime ISA（LISA）は年間£4,000・政府ボーナス25%・初回住宅条件・通常25%引出チャージのルール計算まで実装済み。LISAを独立口座として資産推移へ統合する機能は未実装",
       "Junior ISA / Junior SIPP",
       "年金拠出のcarry forwardは過去3年分の利用可能額を入力して当年枠へ加算済み。各年度の加入実績・使用順をアプリ内で自動再構成する機能は未実装",
       "2027年4月からのCash ISA年間上限£12,000（65歳未満）— 上限額のみ scheduled に保持",

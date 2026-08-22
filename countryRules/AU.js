@@ -419,6 +419,25 @@ export const AU_COUNTRY_RULES = {
       seniorsHealthCard: "https://www.servicesaustralia.gov.au/commonwealth-seniors-health-card",
     },
     accountTypes: ["agePension"],
+    isSuperAssessableForAgePension(personAge, isReceivingSuperPension = false) {
+      const age = Math.max(0, Number(personAge) || 0);
+      return age >= this.agePension.qualifyingAge || !!isReceivingSuperPension;
+    },
+    getAssessableCoupleSuper({
+      claimantAge = 0,
+      claimantSuper = 0,
+      claimantReceivingSuperPension = false,
+      partnerAge = 0,
+      partnerSuper = 0,
+      partnerReceivingSuperPension = false,
+    } = {}) {
+      const clean = (v) => Math.max(0, Number(v) || 0);
+      const claimantAssessable = this.isSuperAssessableForAgePension(claimantAge, claimantReceivingSuperPension)
+        ? clean(claimantSuper) : 0;
+      const partnerAssessable = this.isSuperAssessableForAgePension(partnerAge, partnerReceivingSuperPension)
+        ? clean(partnerSuper) : 0;
+      return { claimantAssessable, partnerAssessable, combinedAssessable: claimantAssessable + partnerAssessable };
+    },
     agePension: {
       // 受給資格年齢（引き上げは2023年7月に完了し、67歳で確定）
       qualifyingAge: 67,
@@ -738,7 +757,7 @@ export const AU_COUNTRY_RULES = {
       //   projectAgePension は画面カードに出す「受給開始時点の見込額」を求めるためのもので、
       //   投影値そのものではない。
       "Work Bonus残高は年次近似で反映済み。Centrelinkの隔週単位での残高増減・雇用収入発生日ごとの厳密計算は未実装",
-      "カップルで片方だけが受給資格年齢の場合、受給資格年齢未満の配偶者の積立フェーズSuperを資産テストから除外する扱い",
+      "カップルのSuperは、Age Pension年齢未満かつincome stream未開始なら資産・所得テストから除外する基本判定を実装済み。特殊なincome stream商品や免除判定は未実装",
       "投資用不動産の実収入（Deemingの対象外だが所得テストには算入される）",
       "カップルで片方だけが受給資格年齢に達している場合の取り扱い（資産・所得は世帯合算のまま）",
       "Commonwealth Seniors Health Cardは2026年7月の所得上限で見込み判定を実装済み。居住・TFN・本人確認・特例カード等の完全自動判定は未実装",

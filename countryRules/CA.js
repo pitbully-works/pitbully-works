@@ -58,6 +58,26 @@ export const CA_COUNTRY_RULES = {
       fhsaCarryforwardMax: 8000,
       fhsaLifetimeLimit: 40000,
     },
+    rrspWithdrawalWithholding: {
+      residentRates: [
+        { upTo: 5000, rate: 0.10, quebecFederalRate: 0.05 },
+        { upTo: 15000, rate: 0.20, quebecFederalRate: 0.10 },
+        { upTo: Infinity, rate: 0.30, quebecFederalRate: 0.15 },
+      ],
+      nonResidentDefaultRate: 0.25,
+    },
+    getRrspWithdrawalWithholdingRate(amount, { isQuebec = false, isNonResident = false } = {}) {
+      if (isNonResident) return this.rrspWithdrawalWithholding.nonResidentDefaultRate;
+      const a = Math.max(0, Number(amount) || 0);
+      const band = this.rrspWithdrawalWithholding.residentRates.find((b) => a <= b.upTo)
+        || this.rrspWithdrawalWithholding.residentRates[this.rrspWithdrawalWithholding.residentRates.length - 1];
+      return isQuebec ? band.quebecFederalRate : band.rate;
+    },
+    estimateRrspWithdrawalWithholding(amount, options = {}) {
+      const a = Math.max(0, Number(amount) || 0);
+      return a * this.getRrspWithdrawalWithholdingRate(a, options);
+    },
+
     // RRSPは71歳の年末までにRRIF（またはアニュイティ）へ強制転換される（rrifConversionAge）。
     // 最低取崩しが義務づけられるのは転換の「翌年」＝72歳の年からで、その年の1月1日時点の
     // 残高に年齢別の率を掛けた額を引き出す（rrifFirstWithdrawalAge）。
@@ -227,7 +247,7 @@ export const CA_COUNTRY_RULES = {
     },
     notImplemented: [
       "FHSAのre-participation room・excess amount等の複雑な個別調整（基本の年間枠・繰越・生涯上限は実装済み）／RESP／RDSP",
-      "RRSPからの引出し時の源泉徴収税（withholding tax）。引出時課税は口座ごとの withdrawalTaxPct（単一税率）で近似しており、実際の限界税率や源泉徴収率とは一致しない",
+      "RRSP/RRIFの一括・超過引出し源泉徴収率（10/20/30%、Quebec連邦分5/10/15%、非居住者25%既定）はルール計算を実装済み。実際の最終所得税・租税条約・Quebec州税は別途",
       "ケベック州のQPP（CPPと拠出率・給付が異なる）",
     ],
   },
