@@ -361,9 +361,10 @@ describe("GB境界：Personal Savings Allowance", () => {
     expect(tax.savings.scheduledRatesFrom2027.additional).toBe(0.47);
   });
 
-  it("貯蓄利子への課税額計算は未実装であることが明示されている", () => {
+  it("貯蓄利子への課税額計算が実装済みで、未実装一覧から除外されている", () => {
     const listed = tax.notImplemented.some((n) => n.includes("貯蓄利子"));
-    expect(listed).toBe(true);
+    expect(listed).toBe(false);
+    expect(typeof tax.calculateSavingsInterestTax).toBe("function");
   });
 });
 
