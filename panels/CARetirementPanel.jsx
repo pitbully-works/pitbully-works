@@ -29,8 +29,8 @@ function CARetirementPanel({
       <label className="field">
         <span className="field-label">{t("caPensionPlanLabel")}</span>
         <select value={pensionPlan || "CPP"} onChange={(e) => onUpdateCpp("plan", e.target.value)}>
-          <option value="CPP">CPP — Canada Pension Plan</option>
-          <option value="QPP">QPP — Québec Pension Plan</option>
+          <option value="CPP">{t("caCppPlanOption")}</option>
+          <option value="QPP">{t("caQppPlanOption")}</option>
         </select>
       </label>
       <div className="field-label" style={{ marginBottom: 6 }}>
