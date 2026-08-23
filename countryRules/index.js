@@ -31,6 +31,7 @@ export const UNIMPLEMENTED_COUNTRY_RULES = {
   retirement: { implemented: false, plannedAccountTypes: [], hasFixedContributionLimit: null },
   healthcare: { implemented: false, model: null },
   tax: { implemented: false, model: null },
+  estate: { implemented: false, model: null },
   labels: {},
   defaults: {},
 };

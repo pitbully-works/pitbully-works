@@ -95,6 +95,13 @@ export const JP_COUNTRY_RULES = {
     // iDeCoの節税額（概算）は年収から推定した実効税率で簡易計算する。
     model: "estimatedMarginalRateFromIncome",
   },
+  estate: {
+    implemented: true,
+    // 日本版は相続予定額・相続目標を資産計画へ反映する入力モデル。
+    // 相続税の自動計算は行わないことを構造上も明示し、coverage と実体を一致させる。
+    model: "plannedInheritanceInput",
+    automaticInheritanceTaxCalculation: false,
+  },
   labels: {
     investmentNote: null, // JPは実際のNISA制度の説明文（TRANSLATIONS側）をそのまま使うため未使用
     retirementNote: null,
