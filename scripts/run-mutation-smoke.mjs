@@ -203,15 +203,8 @@ const mutants = [
   ["GB Married Couple's Allowance maximum is mutation-protected", "countryRules/GB.js", "maximumAmount: 11700,", "maximumAmount: 11699,", "overseasHundredPhase42to45.test.js"],
   ["GB Married Couple's Allowance minimum is mutation-protected", "countryRules/GB.js", "minimumAmount: 4530,", "minimumAmount: 4529,", "overseasHundredPhase42to45.test.js"],
   ["GB Married Couple's Allowance birth cutoff is mutation-protected", "countryRules/GB.js", "birthCutoffExclusive: \"1935-04-06\",", "birthCutoffExclusive: \"1935-04-07\",", "overseasHundredPhase42to45.test.js"],
-];
 
-if (!fs.existsSync(vitestBin)) {
-  console.error(`vitest binary not found: ${vitestBin}`);
-  process.exit(2);
-}
-
-let killed = 0;
-const survivors = [  ["GB Scotland dental patient share is mutation-protected", "countryRules/GB.js", "patientShareRate: 0.80,", "patientShareRate: 0.79,", "overseasHundredPhase46to49.test.js"],
+  ["GB Scotland dental patient share is mutation-protected", "countryRules/GB.js", "patientShareRate: 0.80,", "patientShareRate: 0.79,", "overseasHundredPhase46to49.test.js"],
   ["GB Scotland dental course cap is mutation-protected", "countryRules/GB.js", "maximumPerCourse: 384,", "maximumPerCourse: 383,", "overseasHundredPhase46to49.test.js"],
   ["GB Scotland dental under-26 boundary is mutation-protected", "countryRules/GB.js", "freeTreatmentUnderAge: 26,", "freeTreatmentUnderAge: 27,", "overseasHundredPhase46to49.test.js"],
   ["GB Wales urgent dental charge is mutation-protected", "countryRules/GB.js", "urgent: 37.50,", "urgent: 37.49,", "overseasHundredPhase46to49.test.js"],
@@ -220,6 +213,14 @@ const survivors = [  ["GB Scotland dental patient share is mutation-protected", 
   ["GB annual healthcare routes Scotland dental auto mode", "countryRules/GB.js", "} else if (region === \"scotland\") {", "} else if (region === \"scotland-disabled\") {", "overseasHundredPhase46to49.test.js"],
   ["GB annual healthcare routes Wales dental auto mode", "countryRules/GB.js", "} else if (region === \"wales\") {", "} else if (region === \"wales-disabled\") {", "overseasHundredPhase46to49.test.js"],
 ];
+
+if (!fs.existsSync(vitestBin)) {
+  console.error(`vitest binary not found: ${vitestBin}`);
+  process.exit(2);
+}
+
+let killed = 0;
+const survivors = [];
 for (const [name, rel, from, to, testFile] of mutants) {
   const file = path.join(ROOT, rel);
   const original = fs.readFileSync(file, "utf8");
