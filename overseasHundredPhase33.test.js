@@ -13,13 +13,13 @@ describe("overseas 100 phase 33 — GB Pension Credit carer addition boundary", 
     expect(r.guaranteeWeekly).toBe(286.15);
   });
 
-  it("caps a couple at two carer additional amounts", () => {
-    const r = ret.calculatePensionCreditGuarantee({
+  it("caps a couple at exactly two carer additional amounts", () => {
+    const r = ret.calculatePensionCreditGuaranteeAppropriateAmount({
       status: "couple",
-      weeklyIncome: 0,
-      carerQualifiers: 5,
+      carerQualifiers: 3,
     });
-    expect(r.guaranteeWeekly).toBe(459.55);
+    expect(r.carerExtraWeekly).toBe(96.30);
+    expect(r.appropriateAmountWeekly).toBe(459.55);
   });
 
   it("keeps negative or fractional carer counts from creating phantom additions", () => {

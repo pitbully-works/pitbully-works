@@ -16,7 +16,7 @@ describe("overseas 100 phase 35 — GB Pension Credit severe-disability boundary
   it("caps a couple at the both-qualify severe-disability amount", () => {
     const r = ret.calculatePensionCreditGuaranteeAppropriateAmount({
       status: "couple",
-      severeDisabilityQualifiers: 7,
+      severeDisabilityQualifiers: 2,
     });
     expect(r.severeDisabilityExtraWeekly).toBe(172.10);
     expect(r.appropriateAmountWeekly).toBe(535.35);
