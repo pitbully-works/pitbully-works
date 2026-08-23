@@ -218,6 +218,17 @@ const mutants = [
   ["GB final-audit verified date is protected", "countryRules/GB.js", "verifiedAsOf: \"2026-08-22\",", "verifiedAsOf: \"2026-08-21\",", "overseasHundredPhase50to53.test.js"],
   ["GB healthcare coverage remains partial", "countryRules/GB.js", "{ key: \"healthcare\", labelJa: \"医療\", labelEn: \"Healthcare\", status: \"partial\",", "{ key: \"healthcare\", labelJa: \"医療\", labelEn: \"Healthcare\", status: \"implemented\",", "overseasHundredPhase50to53.test.js"],
   ["GB Northern Ireland dental stays explicitly item-of-service", "countryRules/GB.js", "Northern Ireland のHealth Service歯科料金はitem-of-service fee scheduleが必要なため自動計算未実装。", "Northern Ireland のHealth Service歯科料金はflat feeで自動計算実装済み。", "overseasHundredPhase50to53.test.js"],
+
+  ["5-country supported-country list is protected", "utils/countryProfiles.js", "export const PROFILE_COUNTRIES = Object.freeze([\"JP\", \"US\", \"GB\", \"CA\", \"AU\"]);", "export const PROFILE_COUNTRIES = Object.freeze([\"JP\", \"US\", \"GB\", \"CA\"]);", "fiveCountryUiLocaleAudit2026.test.js"],
+  ["GB profile keeps British-English locale", "utils/countryProfiles.js", "GB: { baseCurrency: \"GBP\", language: \"en-GB\" },", "GB: { baseCurrency: \"GBP\", language: \"en\" },", "fiveCountryUiLocaleAudit2026.test.js"],
+  ["CA profile keeps CAD planning currency", "utils/countryProfiles.js", "CA: { baseCurrency: \"CAD\", language: \"en\" },", "CA: { baseCurrency: \"USD\", language: \"en\" },", "fiveCountryUiLocaleAudit2026.test.js"],
+  ["CAD symbol stays distinct from USD", "ui/locale.js", "CAD: { symbol: \"C$\", locale: \"en-CA\" },", "CAD: { symbol: \"$\", locale: \"en-CA\" },", "fiveCountryUiLocaleAudit2026.test.js"],
+  ["AUD locale stays Australian English", "ui/locale.js", "AUD: { symbol: \"A$\", locale: \"en-AU\" },", "AUD: { symbol: \"A$\", locale: \"en-US\" },", "fiveCountryUiLocaleAudit2026.test.js"],
+  ["GB tax-advantaged label remains ISA-specific", "ui/locale.js", "GB: \"ISA (Stocks & Shares)\",", "GB: \"Investment Account (Stocks & Shares)\",", "fiveCountryUiLocaleAudit2026.test.js"],
+  ["AU retirement label remains Superannuation-specific", "ui/locale.js", "AU: \"Superannuation Contributions\",", "AU: \"Retirement Account Contributions\",", "fiveCountryUiLocaleAudit2026.test.js"],
+  ["British-English dictionary keeps GB overrides", "translations/index.js", "TRANSLATIONS[\"en-GB\"] = { ...TRANSLATIONS.en, ...EN_GB_OVERRIDES };", "TRANSLATIONS[\"en-GB\"] = { ...TRANSLATIONS.en };", "fiveCountryUiLocaleAudit2026.test.js"],
+  ["5-country snapshot keys retain the country namespace", "utils/countryProfiles.js", "return `snapshot:${code}:${normalizedDate}`;", "return `snapshot:${normalizedDate}`;", "fiveCountryPersistenceBoundaryAudit2026.test.js"],
+  ["5-country watchlists keep each country's canonical currency", "utils/countryProfiles.js", "const currency = profileMeta(code).baseCurrency;", "const currency = \"JPY\";", "fiveCountryPersistenceBoundaryAudit2026.test.js"],
 ];
 
 if (!fs.existsSync(vitestBin)) {
