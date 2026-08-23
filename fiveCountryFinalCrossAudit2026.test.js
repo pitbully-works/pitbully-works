@@ -7,7 +7,7 @@ import {
 
 describe("5-country final cross audit - 2026-08", () => {
   const countries = ["JP", "US", "GB", "CA", "AU"];
-  const commonSections = ["investment", "retirement", "healthcare", "tax"];
+  const commonSections = ["investment", "retirement", "healthcare", "tax", "estate"];
 
   it("exposes exactly the five supported countries", () => {
     expect(Object.keys(COUNTRY_RULES).sort()).toEqual([...countries].sort());

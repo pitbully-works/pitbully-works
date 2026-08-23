@@ -16,7 +16,7 @@ const RULES = {
   AU: AU_COUNTRY_RULES,
 };
 
-const REQUIRED_SECTIONS = ["investment", "retirement", "healthcare", "tax"];
+const REQUIRED_SECTIONS = ["investment", "retirement", "healthcare", "tax", "estate"];
 
 describe("5-country final release gate - 2026", () => {
   it("ships exactly the five supported country rule sets with the common contract", () => {
