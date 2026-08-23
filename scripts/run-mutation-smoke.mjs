@@ -211,7 +211,15 @@ if (!fs.existsSync(vitestBin)) {
 }
 
 let killed = 0;
-const survivors = [];
+const survivors = [  ["GB Scotland dental patient share is mutation-protected", "countryRules/GB.js", "patientShareRate: 0.80,", "patientShareRate: 0.79,", "overseasHundredPhase46to49.test.js"],
+  ["GB Scotland dental course cap is mutation-protected", "countryRules/GB.js", "maximumPerCourse: 384,", "maximumPerCourse: 383,", "overseasHundredPhase46to49.test.js"],
+  ["GB Scotland dental under-26 boundary is mutation-protected", "countryRules/GB.js", "freeTreatmentUnderAge: 26,", "freeTreatmentUnderAge: 27,", "overseasHundredPhase46to49.test.js"],
+  ["GB Wales urgent dental charge is mutation-protected", "countryRules/GB.js", "urgent: 37.50,", "urgent: 37.49,", "overseasHundredPhase46to49.test.js"],
+  ["GB Wales posterior root canal charge is mutation-protected", "countryRules/GB.js", "posteriorRootCanal: 182.72,", "posteriorRootCanal: 182.71,", "overseasHundredPhase46to49.test.js"],
+  ["GB Wales crown-or-bridge charge is mutation-protected", "countryRules/GB.js", "crownOrBridge: 140.44,", "crownOrBridge: 140.43,", "overseasHundredPhase46to49.test.js"],
+  ["GB annual healthcare routes Scotland dental auto mode", "countryRules/GB.js", "} else if (region === \"scotland\") {", "} else if (region === \"scotland-disabled\") {", "overseasHundredPhase46to49.test.js"],
+  ["GB annual healthcare routes Wales dental auto mode", "countryRules/GB.js", "} else if (region === \"wales\") {", "} else if (region === \"wales-disabled\") {", "overseasHundredPhase46to49.test.js"],
+];
 for (const [name, rel, from, to, testFile] of mutants) {
   const file = path.join(ROOT, rel);
   const original = fs.readFileSync(file, "utf8");
