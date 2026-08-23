@@ -212,6 +212,12 @@ const mutants = [
   ["GB Wales crown-or-bridge charge is mutation-protected", "countryRules/GB.js", "crownOrBridge: 140.44,", "crownOrBridge: 140.43,", "overseasHundredPhase46to49.test.js"],
   ["GB annual healthcare routes Scotland dental auto mode", "countryRules/GB.js", "} else if (region === \"scotland\") {", "} else if (region === \"scotland-disabled\") {", "overseasHundredPhase46to49.test.js"],
   ["GB annual healthcare routes Wales dental auto mode", "countryRules/GB.js", "} else if (region === \"wales\") {", "} else if (region === \"wales-disabled\") {", "overseasHundredPhase46to49.test.js"],
+  ["GB Northern Ireland prescriptions remain free", "countryRules/GB.js", "freeRegions: [\"scotland\", \"wales\", \"northernIreland\"],", "freeRegions: [\"scotland\", \"wales\"],", "overseasHundredPhase50to53.test.js"],
+  ["GB Northern Ireland dental auto mode preserves user-entered cost", "countryRules/GB.js", "let dentalAnnual = n(h.dentalAnnual);", "let dentalAnnual = 0;", "overseasHundredPhase50to53.test.js"],
+  ["GB Northern Ireland dental source remains nidirect", "countryRules/GB.js", "dentalNorthernIreland: \"https://www.nidirect.gov.uk/articles/seeing-dentist\",", "dentalNorthernIreland: \"https://www.gov.uk/articles/seeing-dentist\",", "overseasHundredPhase50to53.test.js"],
+  ["GB final-audit verified date is protected", "countryRules/GB.js", "verifiedAsOf: \"2026-08-22\",", "verifiedAsOf: \"2026-08-21\",", "overseasHundredPhase50to53.test.js"],
+  ["GB healthcare coverage remains partial", "countryRules/GB.js", "{ key: \"healthcare\", labelJa: \"医療\", labelEn: \"Healthcare\", status: \"partial\",", "{ key: \"healthcare\", labelJa: \"医療\", labelEn: \"Healthcare\", status: \"implemented\",", "overseasHundredPhase50to53.test.js"],
+  ["GB Northern Ireland dental stays explicitly item-of-service", "countryRules/GB.js", "Northern Ireland のHealth Service歯科料金はitem-of-service fee scheduleが必要なため自動計算未実装。", "Northern Ireland のHealth Service歯科料金はflat feeで自動計算実装済み。", "overseasHundredPhase50to53.test.js"],
 ];
 
 if (!fs.existsSync(vitestBin)) {
