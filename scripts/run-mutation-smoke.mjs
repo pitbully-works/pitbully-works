@@ -191,6 +191,10 @@ const mutants = [
   ["GB Savings Credit total-income consistency is mutation-protected", "countryRules/GB.js", "const totalIncome = Math.max(qualifyingIncome, suppliedTotalIncome);", "const totalIncome = suppliedTotalIncome;", "overseasHundredPhase38.test.js"],
   ["GB legacy Guarantee penny rounding is mutation-protected", "countryRules/GB.js", "Math.ceil(((guarantee - assessedIncomeWeekly) - Number.EPSILON) * 100) / 100", "Math.floor(((guarantee - assessedIncomeWeekly) + Number.EPSILON) * 100) / 100", "overseasHundredPhase39.test.js"],
   ["GB assessable-income claimant rounding is mutation-protected", "countryRules/GB.js", "const floorPence = (value) => Math.floor((value + Number.EPSILON) * 100) / 100;\n      return {\n        countedIncomeWeekly: floorPence(countedIncome),", "const floorPence = (value) => Math.ceil((value - Number.EPSILON) * 100) / 100;\n      return {\n        countedIncomeWeekly: floorPence(countedIncome),", "overseasHundredPhase41.test.js"],
+
+  ["GB legacy/modern Guarantee base parity is mutation-protected", "countryRules/GB.js", "let guarantee = couple\n        ? pc.standardMinimumGuaranteeWeekly.couple\n        : pc.standardMinimumGuaranteeWeekly.single;", "let guarantee = couple\n        ? pc.standardMinimumGuaranteeWeekly.single\n        : pc.standardMinimumGuaranteeWeekly.couple;", "overseasHundredPhase40.test.js"],
+  ["GB legacy/modern weekly-income parity is mutation-protected", "countryRules/GB.js", "const income = Math.max(0, Number(weeklyIncome) || 0);", "const income = Math.max(0, Number(weeklyIncome) || 0) + 1;", "overseasHundredPhase40.test.js"],
+  ["GB legacy/modern tariff-income parity is mutation-protected", "countryRules/GB.js", "const assessedIncomeWeekly = income + tariffIncomeWeekly;", "const assessedIncomeWeekly = income;", "overseasHundredPhase40.test.js"],
 ];
 
 if (!fs.existsSync(vitestBin)) {
