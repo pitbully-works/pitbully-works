@@ -180,6 +180,17 @@ const mutants = [
   ["GB Guarantee Credit mixed-age gate is protected", "countryRules/GB.js", "age.eligible ? Math.max(0, Math.ceil((rawWeekly - Number.EPSILON) * 100) / 100) : 0", "true ? Math.max(0, Math.round(rawWeekly * 100) / 100) : 0", "overseasHundredPhase31.test.js"],
   ["GB Guarantee Credit annualises at 52 weeks", "countryRules/GB.js", "guaranteeCreditWeekly * 52 * 100", "guaranteeCreditWeekly * 51 * 100", "overseasHundredPhase31.test.js"],
 
+
+  ["GB child first-born boundary is mutation-protected", "countryRules/GB.js", "(firstChildren > 0 ? extras.childFirstBornBefore2017Weekly : 0)", "(firstChildren >= 0 ? extras.childFirstBornBefore2017Weekly : 0)", "overseasHundredPhase32.test.js"],
+  ["GB carer qualifier cap is mutation-protected", "countryRules/GB.js", "Math.min(status === \"couple\" ? 2 : 1, whole(carerQualifiers))", "Math.min(status === \"couple\" ? 3 : 2, whole(carerQualifiers))", "overseasHundredPhase33.test.js"],
+  ["GB disabled-child total cap is mutation-protected", "countryRules/GB.js", "const disabledHigherCount = Math.min(totalChildren, whole(disabledChildrenHigher));", "const disabledHigherCount = whole(disabledChildrenHigher);", "overseasHundredPhase34.test.js"],
+  ["GB severe-disability couple cap is mutation-protected", "countryRules/GB.js", "status === \"couple\" && severeCount >= 2", "status === \"couple\" && severeCount >= 3", "overseasHundredPhase35.test.js"],
+  ["GB Savings Credit Amount A claimant rounding is mutation-protected", "countryRules/GB.js", "const ceilPence = (value) => Math.ceil((value - Number.EPSILON) * 100) / 100;", "const ceilPence = (value) => Math.floor((value + Number.EPSILON) * 100) / 100;", "overseasHundredPhase36.test.js"],
+  ["GB Savings Credit Amount B claimant rounding is mutation-protected", "countryRules/GB.js", "const ceilPence = (value) => Math.ceil((value - Number.EPSILON) * 100) / 100;\n      const floorPence = (value) => Math.floor((value + Number.EPSILON) * 100) / 100;", "const ceilPence = (value) => Math.ceil((value - Number.EPSILON) * 100) / 100;\n      const floorPence = (value) => Math.ceil((value - Number.EPSILON) * 100) / 100;", "overseasHundredPhase36.test.js"],
+  ["GB mixed-age Savings Credit continuity is mutation-protected", "countryRules/GB.js", "(mixedPre2016Couple && transitionalCoupleContinuousEntitlement === true)", "(mixedPre2016Couple && transitionalCoupleContinuousEntitlement === false)", "overseasHundredPhase37.test.js"],
+  ["GB Savings Credit total-income consistency is mutation-protected", "countryRules/GB.js", "const totalIncome = Math.max(qualifyingIncome, suppliedTotalIncome);", "const totalIncome = suppliedTotalIncome;", "overseasHundredPhase38.test.js"],
+  ["GB legacy Guarantee penny rounding is mutation-protected", "countryRules/GB.js", "Math.ceil(((guarantee - assessedIncomeWeekly) - Number.EPSILON) * 100) / 100", "Math.floor(((guarantee - assessedIncomeWeekly) + Number.EPSILON) * 100) / 100", "overseasHundredPhase39.test.js"],
+  ["GB assessable-income claimant rounding is mutation-protected", "countryRules/GB.js", "const floorPence = (value) => Math.floor((value + Number.EPSILON) * 100) / 100;\n      return {\n        countedIncomeWeekly: floorPence(countedIncome),", "const floorPence = (value) => Math.ceil((value - Number.EPSILON) * 100) / 100;\n      return {\n        countedIncomeWeekly: floorPence(countedIncome),", "overseasHundredPhase41.test.js"],
 ];
 
 if (!fs.existsSync(vitestBin)) {
