@@ -98,7 +98,13 @@ export function buildCountryRuleCatalog(country, rules) {
       limitations,
       limitationCount: limitations.length,
       notImplemented: Array.isArray(section?.notImplemented) ? [...section.notImplemented] : [],
-      hasCalculationSection: !!section,
+      // A section can exist as metadata/input-only without providing a statutory calculator.
+      // Treat it as a calculation section only when the rule object actually exposes a
+      // calculation function. This keeps JP estate (planned inheritance input only) distinct
+      // from US/GB/CA/AU estate calculators.
+      hasCalculationSection: !!section && Object.entries(section).some(
+        ([name, value]) => typeof value === "function" && /^calculate/.test(name)
+      ),
     };
   });
 }
