@@ -229,6 +229,15 @@ const mutants = [
   ["British-English dictionary keeps GB overrides", "translations/index.js", "TRANSLATIONS[\"en-GB\"] = { ...TRANSLATIONS.en, ...EN_GB_OVERRIDES };", "TRANSLATIONS[\"en-GB\"] = { ...TRANSLATIONS.en };", "fiveCountryUiLocaleAudit2026.test.js"],
   ["5-country snapshot keys retain the country namespace", "utils/countryProfiles.js", "return `snapshot:${code}:${normalizedDate}`;", "return `snapshot:${normalizedDate}`;", "fiveCountryPersistenceBoundaryAudit2026.test.js"],
   ["5-country watchlists keep each country's canonical currency", "utils/countryProfiles.js", "const currency = profileMeta(code).baseCurrency;", "const currency = \"JPY\";", "fiveCountryPersistenceBoundaryAudit2026.test.js"],
+
+  ["CA TFSA annual limit remains 2026 anchor", "countryRules/CA.js", "tfsaAnnualLimit: 7000,", "tfsaAnnualLimit: 6999,", "fiveCountryCriticalValuesAudit2026.test.js"],
+  ["CA RRSP earned-income rate remains 18 percent", "countryRules/CA.js", "rrspIncomePercent: 0.18,", "rrspIncomePercent: 0.17,", "fiveCountryCriticalValuesAudit2026.test.js"],
+  ["CA OAS age-65-to-74 monthly maximum remains protected", "countryRules/CA.js", "maxMonthly65to74: 751.97,", "maxMonthly65to74: 751.96,", "fiveCountryCriticalValuesAudit2026.test.js"],
+  ["CA GIS single monthly maximum remains protected", "countryRules/CA.js", "single: { maxMonthly: 1123.17, incomeCutoff: 22800 },", "single: { maxMonthly: 1123.16, incomeCutoff: 22800 },", "fiveCountryCriticalValuesAudit2026.test.js"],
+  ["AU Super concessional cap remains protected", "countryRules/AU.js", "concessionalCap: 32500,", "concessionalCap: 32499,", "fiveCountryCriticalValuesAudit2026.test.js"],
+  ["AU Age Pension qualifying age remains protected", "countryRules/AU.js", "qualifyingAge: 67,", "qualifyingAge: 68,", "fiveCountryCriticalValuesAudit2026.test.js"],
+  ["AU resident tax-free threshold remains protected", "countryRules/AU.js", "taxFreeThreshold: 18200,", "taxFreeThreshold: 18199,", "fiveCountryCriticalValuesAudit2026.test.js"],
+  ["AU resident 15-percent tax band remains protected", "countryRules/AU.js", "{ upTo: 45000, rate: 0.15 },", "{ upTo: 45000, rate: 0.16 },", "fiveCountryCriticalValuesAudit2026.test.js"],
 ];
 
 if (!fs.existsSync(vitestBin)) {
