@@ -195,6 +195,14 @@ const mutants = [
   ["GB legacy/modern Guarantee base parity is mutation-protected", "countryRules/GB.js", "let guarantee = couple\n        ? pc.standardMinimumGuaranteeWeekly.couple\n        : pc.standardMinimumGuaranteeWeekly.single;", "let guarantee = couple\n        ? pc.standardMinimumGuaranteeWeekly.single\n        : pc.standardMinimumGuaranteeWeekly.couple;", "overseasHundredPhase40.test.js"],
   ["GB legacy/modern weekly-income parity is mutation-protected", "countryRules/GB.js", "const income = Math.max(0, Number(weeklyIncome) || 0);", "const income = Math.max(0, Number(weeklyIncome) || 0) + 1;", "overseasHundredPhase40.test.js"],
   ["GB legacy/modern tariff-income parity is mutation-protected", "countryRules/GB.js", "const assessedIncomeWeekly = income + tariffIncomeWeekly;", "const assessedIncomeWeekly = income;", "overseasHundredPhase40.test.js"],
+
+  ["GB 2026/27 higher-rate upper boundary is mutation-protected", "countryRules/GB.js", "{ upTo: 125140, rate: 0.40 },   // Higher rate（Personal Allowance逓減後も£125,140まで）", "{ upTo: 125141, rate: 0.40 },   // Higher rate（Personal Allowance逓減後も£125,140まで）", "overseasHundredPhase42to45.test.js"],
+  ["GB savings starting-rate limit is mutation-protected", "countryRules/GB.js", "startingRateLimit: 5000,", "startingRateLimit: 4999,", "overseasHundredPhase42to45.test.js"],
+  ["GB basic-rate Personal Savings Allowance is mutation-protected", "countryRules/GB.js", "personalSavingsAllowanceBasic: 1000,", "personalSavingsAllowanceBasic: 999,", "overseasHundredPhase42to45.test.js"],
+  ["GB Marriage Allowance maximum reduction is mutation-protected", "countryRules/GB.js", "maximumTaxReduction: 252,", "maximumTaxReduction: 251,", "overseasHundredPhase42to45.test.js"],
+  ["GB Married Couple's Allowance maximum is mutation-protected", "countryRules/GB.js", "maximumAmount: 11700,", "maximumAmount: 11699,", "overseasHundredPhase42to45.test.js"],
+  ["GB Married Couple's Allowance minimum is mutation-protected", "countryRules/GB.js", "minimumAmount: 4530,", "minimumAmount: 4529,", "overseasHundredPhase42to45.test.js"],
+  ["GB Married Couple's Allowance birth cutoff is mutation-protected", "countryRules/GB.js", "birthCutoffExclusive: \"1935-04-06\",", "birthCutoffExclusive: \"1935-04-07\",", "overseasHundredPhase42to45.test.js"],
 ];
 
 if (!fs.existsSync(vitestBin)) {
