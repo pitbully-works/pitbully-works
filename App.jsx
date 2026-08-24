@@ -13,6 +13,7 @@ import { estimatePublicPensionTax, estimatePrivatePensionTax, resolveTaxAmount, 
 import { FIXED_COST_TEMPLATE_KEYS, deriveTaxFixedCostForecastRows } from "./utils/fixedCostForecast.js";
 import { resolveInflationPct } from "./utils/inflation.js";
 import { resolvePublicPensionIndexationPct, realValueAt } from "./utils/pensionIndexation.js";
+import { calculateJapanPublicPension, isLegacyJapanPublicPensionName } from "./utils/jpPublicPension.js";
 import { derivePensionTakeHomeRows } from "./utils/pensionTakeHome.js";
 import { ASSET_DRAWDOWN_CATEGORIES, deriveAnnualAssetDrawdownRows } from "./utils/assetDrawdown.js";
 import { deriveAnnualCashflowRows } from "./utils/annualCashflow.js";
@@ -1707,6 +1708,24 @@ export function mergeSavedInputs(defaults, saved) {
     }
     // Unknown scalar/container shapes are intentionally left at the current default.
   });
+
+  // 日本の旧保存形式では「公的年金・企業年金基金等」が pensionSources に同居していた。
+  // 新形式へ初めて読み込むときだけ、名称が明確に公的年金と判定できる1件を専用欄へ移す。
+  // 曖昧な名称は勝手に分類せず、そのまま「その他の年金」に残して金額改変を防ぐ。
+  if (Object.prototype.hasOwnProperty.call(defaults, "jpPublicPensionMonthlyAt65")
+      && !Object.prototype.hasOwnProperty.call(saved, "jpPublicPensionMonthlyAt65")) {
+    const legacySources = Array.isArray(saved.pensionSources) ? saved.pensionSources.slice(0, MAX_PERSISTED_ARRAY_ITEMS) : [];
+    const idx = legacySources.findIndex((item) => item && isLegacyJapanPublicPensionName(item.name));
+    if (idx >= 0) {
+      const amount = Number(legacySources[idx]?.monthlyAmount);
+      if (Number.isFinite(amount) && amount >= 0) out.jpPublicPensionMonthlyAt65 = amount;
+      out.pensionSources = legacySources.filter((_, i) => i !== idx);
+    } else if (legacySources.length === 0 && typeof saved.pensionMonthly === "number" && Number.isFinite(saved.pensionMonthly)) {
+      // 旧画面の単独欄はガイド上「ねんきん定期便等の公的年金見込額」として案内していたため、
+      // 明細を1件も登録していない旧データだけは公的年金基準額として引き継ぐ。
+      out.jpPublicPensionMonthlyAt65 = Math.max(0, saved.pensionMonthly);
+    }
+  }
   return out;
 }
 
@@ -1751,8 +1770,9 @@ const DEFAULT_INPUTS = {
     tsumitateAllocation: [],
     growthAllocation: [],
     extraFundReturns: {},
-    pensionMonthly: 0,
-    // 【追加】公的年金の受給開始年齢。退職年齢とは独立（未入力＝65歳）。
+    pensionMonthly: 0, // 旧保存データ互換用。新規の日本公的年金は jpPublicPensionMonthlyAt65 を使う。
+    jpPublicPensionMonthlyAt65: 0,
+    // 公的年金の受給開始年齢。小数部は月（例 67.5 = 67歳6か月）。
     // 退職60歳・年金65歳なら、60〜64歳は公的年金収入が0になる。
     publicPensionStartAge: 65,
     pensionSources: [],
@@ -2990,7 +3010,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   });
   const [newBank, setNewBank] = useState({ name: "", balance: "", monthlyDeposit: "", interestPct: "" });
   const [newInheritance, setNewInheritance] = useState({ name: "", relation: "", amount: "" });
-  const [newPensionSource, setNewPensionSource] = useState({ name: "", monthlyAmount: "" });
+  const [newPensionSource, setNewPensionSource] = useState({ name: "", monthlyAmount: "", startYears: "65", startMonths: "0" });
   const [newAssetHolding, setNewAssetHolding] = useState({ name: "", value: "" });
   const [newTsumitateHolding, setNewTsumitateHolding] = useState({ name: "", value: "" });
   const [newGrowthHolding, setNewGrowthHolding] = useState({ name: "", value: "" });
@@ -3785,9 +3805,17 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     return (age) => Math.abs(age - idecoSim.payoutStartAge) < (1 / 24) ? idecoSim.lumpAmount : 0;
   }, [idecoPayoutMethod, idecoSim.payoutStartAge, idecoSim.lumpAmount]);
 
-  // 年金受給見込み額：国民年金・企業年金基金など複数の項目を追加すると、その合計が自動的に使われる
-  const pensionSourcesTotal = inputs.pensionSources.reduce((s, p) => s + (p.monthlyAmount || 0), 0);
-  const effectivePensionMonthly = inputs.pensionSources.length > 0 ? pensionSourcesTotal : inputs.pensionMonthly;
+  // 日本の公的年金と、それ以外の年金を完全に分離する。
+  // 「公的年金」だけに繰上げ・繰下げ率を適用し、企業年金基金・国民年金基金等には掛けない。
+  const jpPublicPension = useMemo(() => calculateJapanPublicPension({
+    monthlyAt65: inputs.jpPublicPensionMonthlyAt65,
+    claimAge: inputs.publicPensionStartAge,
+    birthDate: inputs.birthDate,
+  }), [inputs.jpPublicPensionMonthlyAt65, inputs.publicPensionStartAge, inputs.birthDate]);
+  const pensionSourcesTotal = inputs.pensionSources.reduce((s, p) => s + (Number(p.monthlyAmount) || 0), 0);
+  const effectivePensionMonthly = country === "JP"
+    ? jpPublicPension.monthlyAmount + pensionSourcesTotal
+    : (inputs.pensionSources.length > 0 ? pensionSourcesTotal : inputs.pensionMonthly);
 
   const effectiveInputs = useMemo(
     () => ({
@@ -3974,9 +4002,10 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   // ==========================================================================
 
   // 公的年金の受給開始年齢（日本）。未入力なら65歳。退職年齢とは独立。
-  const effectivePublicPensionStartAge =
-    (inputs.publicPensionStartAge === null || inputs.publicPensionStartAge === undefined || inputs.publicPensionStartAge === "")
-      ? 65 : Number(inputs.publicPensionStartAge);
+  const effectivePublicPensionStartAge = country === "JP"
+    ? jpPublicPension.claimAge
+    : ((inputs.publicPensionStartAge === null || inputs.publicPensionStartAge === undefined || inputs.publicPensionStartAge === "")
+      ? 65 : Number(inputs.publicPensionStartAge));
 
   // 【移設】境界年齢（planBoundaries）とNISA枠計算（nisaPlan）は、
   // utils/buildPlanInput.js の中で組み立てるようになったため、ここでは持たない。
@@ -3995,7 +4024,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   // planCtx は「シナリオ比較の3項目（積立額・退職年齢・生活費）に影響されない派生値」
   // だけを集めたもの。比較プランはこの同じ planCtx に overrides を渡して計算する。
   // ==========================================================================
-  const publicPensionAnnualForTax = country === "JP" ? effectivePensionMonthly * 12
+  const publicPensionAnnualForTax = country === "JP" ? (jpPublicPension.monthlyAmount + pensionSourcesTotal) * 12
     : country === "US" ? usSSAnnualBenefit
     : country === "GB" ? gbRetirementIncomeAnnual
     : country === "CA" ? caRetirementIncomeAnnual
@@ -4033,6 +4062,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     dynamicFunds, stockTotalNow, effectiveStockReturnPct,
     goldCurrentValue: goldSim.currentValue, effectiveGoldReturnPct,
     effectivePensionMonthly, effectivePublicPensionStartAge,
+    jpPublicPensionMonthly: jpPublicPension.monthlyAmount,
+    jpOtherPensionSources: inputs.pensionSources,
     drawdownOrder,
     uncategorizedLabel: t("uncategorizedLabel"),
     countryDerived: {
@@ -4048,7 +4079,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     inputs, dynamicFunds, drawdownOrder,
     stockTotalNow, effectiveStockReturnPct,
     goldSim.currentValue, effectiveGoldReturnPct,
-    effectivePensionMonthly, effectivePublicPensionStartAge,
+    effectivePensionMonthly, effectivePublicPensionStartAge, jpPublicPension.monthlyAmount,
     usSSMonthlyBenefit, usTotalHealthcareAnnual, usClaimAge,
     gbStatePensionAnnual, gbAdditionalPensionAnnual, gbEffectiveClaimAge, gbHealthcareAnnual,
     caCppAnnual, caCppStartAge, caOasAnnual, caOasStartAge, caAdditionalPensionAnnual, caHealthcareAnnual,
@@ -4582,14 +4613,17 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
   const addPensionSource = () => {
     if (!newPensionSource.name.trim()) return;
+    const startAge = Math.max(0, Number(newPensionSource.startYears) || 65)
+      + Math.min(11, Math.max(0, Number(newPensionSource.startMonths) || 0)) / 12;
     setInputs((prev) => ({
       ...prev,
       pensionSources: [...prev.pensionSources, {
         name: newPensionSource.name.trim(),
         monthlyAmount: Number(newPensionSource.monthlyAmount) || 0,
+        startAge,
       }],
     }));
-    setNewPensionSource({ name: "", monthlyAmount: "" });
+    setNewPensionSource({ name: "", monthlyAmount: "", startYears: "65", startMonths: "0" });
   };
   const removePensionSource = (idx) =>
     setInputs((prev) => ({ ...prev, pensionSources: prev.pensionSources.filter((_, i) => i !== idx) }));
@@ -7898,15 +7932,42 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
           <SectionTitle index="04" title={label("pensionRetirement")} icon={Landmark} />
           {country === "JP" ? (
           <>
-          <GuideLabel guide={t("pensionSourcesGuide")}>{t("pensionSourcesLabel")}</GuideLabel>
+          <GuideLabel guide={t("jpPublicPensionGuide")}>{t("jpPublicPensionSectionLabel")}</GuideLabel>
+          <MoneyField
+            unitPer="month"
+            label={t("jpPublicPensionAt65Label")}
+            value={inputs.jpPublicPensionMonthlyAt65}
+            onChange={(v) => update({ jpPublicPensionMonthlyAt65: v })}
+          />
+          <AgeField
+            guide={t("publicPensionStartAgeGuide")}
+            label={t("publicPensionStartAgeLabel")}
+            value={effectivePublicPensionStartAge}
+            onChange={(v) => update({ publicPensionStartAge: v })}
+          />
+          <div className="stat-sub" style={{ marginBottom: 4 }}>
+            {t("jpPublicPensionAdjustmentLabel")}：<span className="mono">{jpPublicPension.adjustmentRate >= 0 ? "+" : ""}{(jpPublicPension.adjustmentRate * 100).toFixed(1)}%</span>
+          </div>
+          <div className="stat-sub" style={{ marginBottom: 10 }}>
+            {t("jpPublicPensionAdjustedLabel")}：<span className="mono">{money(jpPublicPension.monthlyAmount)}</span>{t("perMonthSuffix")}
+          </div>
+          {!jpPublicPension.birthDateKnown && (
+            <div className="note" style={{ marginTop: -4 }}>
+              <Info size={13} />
+              <span>{t("jpPublicPensionBirthDateNote")}</span>
+            </div>
+          )}
+
+          <GuideLabel guide={t("jpOtherPensionsGuide")}>{t("jpOtherPensionsLabel")}</GuideLabel>
           {inputs.pensionSources.length > 0 && (
             <table className="watchlist" style={{ marginBottom: 8 }}>
-              <thead><tr><th>{t("pensionTypeCol")}</th><th>{t("monthlyAmountCol")}</th><th></th></tr></thead>
+              <thead><tr><th>{t("pensionTypeCol")}</th><th>{t("monthlyAmountCol")}</th><th>{t("pensionStartCol")}</th><th></th></tr></thead>
               <tbody>
                 {inputs.pensionSources.map((p, i) => (
                   <tr key={i}>
                     <td>{p.name}</td>
                     <td className="mono">{money(p.monthlyAmount)}</td>
+                    <td className="mono">{formatAge(Number.isFinite(Number(p.startAge)) ? Number(p.startAge) : 65)}</td>
                     <td style={{ width: 24 }}>
                       <button className="del-btn" onClick={() => removePensionSource(i)}><Trash2 size={13} /></button>
                     </td>
@@ -7915,31 +7976,27 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               </tbody>
             </table>
           )}
-          <div className="add-row" style={{ marginBottom: 8 }}>
-            <input placeholder={t("pensionNamePlaceholder")} value={newPensionSource.name} onChange={(e) => setNewPensionSource((p) => ({ ...p, name: e.target.value }))} />
+          <div className="add-row" style={{ marginBottom: 6 }}>
+            <input placeholder={t("pensionNamePlaceholderOther")} value={newPensionSource.name} onChange={(e) => setNewPensionSource((p) => ({ ...p, name: e.target.value }))} />
             <MoneyInput placeholder={t("monthlyAmountPlaceholderMan")} value={newPensionSource.monthlyAmount} onChange={(v) => setNewPensionSource((p) => ({ ...p, monthlyAmount: v }))} />
+          </div>
+          <div className="add-row" style={{ marginBottom: 8 }}>
+            <AgeYMInput
+              placeholder={t("pensionStartShort")}
+              years={newPensionSource.startYears}
+              months={newPensionSource.startMonths}
+              onYears={(v) => setNewPensionSource((p) => ({ ...p, startYears: v }))}
+              onMonths={(v) => setNewPensionSource((p) => ({ ...p, startMonths: v }))}
+            />
             <button className="add-btn" onClick={addPensionSource}><Plus size={15} /></button>
           </div>
-          <MoneyField
-            unitPer="month"
-            label={inputs.pensionSources.length > 0 ? t("pensionTotalAutoLabel") : t("pensionEstimateLabel")}
-            value={effectivePensionMonthly}
-            disabled={inputs.pensionSources.length > 0}
-            onChange={(v) => update({ pensionMonthly: v })}
-          />
-          {inputs.pensionSources.length > 0 && (
-            <div className="note" style={{ marginTop: -8 }}>
-              <Info size={13} />
-              <span>{t("pensionAutoNote")}</span>
-            </div>
-          )}
-          {/* 【追加】公的年金の受給開始年齢。退職年齢とは独立して設定できる。 */}
-          <AgeField
-            guide={t("publicPensionStartAgeGuide")}
-            label={t("publicPensionStartAgeLabel")}
-            value={effectivePublicPensionStartAge}
-            onChange={(v) => update({ publicPensionStartAge: v })}
-          />
+          <div className="stat-sub" style={{ marginBottom: 10 }}>
+            {t("jpPensionCombinedLabel")}：<span className="mono">{money(effectivePensionMonthly)}</span>{t("perMonthSuffix")}
+          </div>
+          <div className="note" style={{ marginTop: -4 }}>
+            <Info size={13} />
+            <span>{t("jpPensionSeparationNote")}</span>
+          </div>
           <MoneyField unitPer="month" guide={t("livingCostGuide")} label={t("livingCostLabel")} value={inputs.livingCostMonthly} onChange={(v) => update({ livingCostMonthly: v })} />
           <div className="note" style={{ marginTop: -8 }}><Info size={13} /><span>{t("livingCostCurrentValueNote")}</span></div>
           <Field
