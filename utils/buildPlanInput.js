@@ -184,6 +184,7 @@ export function buildPlanInput(ctx, overrides = {}) {
     dynamicFunds, stockTotalNow, effectiveStockReturnPct,
     goldCurrentValue, effectiveGoldReturnPct,
     effectivePensionMonthly, effectivePublicPensionStartAge,
+    jpPublicPensionMonthly = null, jpOtherPensionSources = null,
     drawdownOrder, uncategorizedLabel,
     countryDerived = {},
   } = ctx;
@@ -225,6 +226,9 @@ export function buildPlanInput(ctx, overrides = {}) {
   // 境界年齢。上書きされた retireAge を使う点だけが移設前と異なる。
   // ==========================================================================
   const boundaries = [retireAge, effectivePublicPensionStartAge];
+  if (country === "JP" && Array.isArray(jpOtherPensionSources)) {
+    jpOtherPensionSources.forEach((p) => boundaries.push(Number.isFinite(Number(p?.startAge)) ? Number(p.startAge) : 65));
+  }
   (inputs.insurancePolicies || []).forEach((x) => boundaries.push(x.premiumFromAge, x.premiumToAge));
   (inputs.privatePensionPlans || []).forEach((x) => {
     boundaries.push(x.contribFromAge, x.contribToAge, x.payoutFromAge, x.payoutToAge);
@@ -645,11 +649,26 @@ export function buildPlanInput(ctx, overrides = {}) {
     healthCostAnnual = (age) => healthAnnualCost(age, inputs.healthBrackets);
     const inflationPct = resolveInflationPct(country, inputs.inflation);
     const pensionIndexPct = resolvePublicPensionIndexationPct(country, inflationPct, inputs.retirementTax?.publicPensionIndexation);
+    const publicMonthly = jpPublicPensionMonthly === null || jpPublicPensionMonthly === undefined
+      ? Number(effectivePensionMonthly) || 0
+      : Math.max(0, Number(jpPublicPensionMonthly) || 0);
     publicPensions.push({
-      monthlyAmount: effectivePensionMonthly,
-      monthlyAmountAt: (age) => indexedPensionMonthly(effectivePensionMonthly, effectivePublicPensionStartAge, age, pensionIndexPct),
+      monthlyAmount: publicMonthly,
+      monthlyAmountAt: (age) => indexedPensionMonthly(publicMonthly, effectivePublicPensionStartAge, age, pensionIndexPct),
       startAge: effectivePublicPensionStartAge,
     });
+    // 企業年金基金・国民年金基金等は公的年金の繰上げ/繰下げ率を適用しない。
+    // 利用者が登録した各制度の開始年齢から固定月額の収入として加える。
+    if (Array.isArray(jpOtherPensionSources)) {
+      jpOtherPensionSources.forEach((p) => {
+        const amount = Math.max(0, Number(p?.monthlyAmount) || 0);
+        if (amount <= 0) return;
+        publicPensions.push({
+          monthlyAmount: amount,
+          startAge: Number.isFinite(Number(p?.startAge)) ? Number(p.startAge) : 65,
+        });
+      });
+    }
   } else if (country === "US") {
     healthCostAnnual = () => D.usTotalHealthcareAnnual;
     const inflationPct = resolveInflationPct(country, inputs.inflation);
@@ -841,7 +860,17 @@ export function buildPlanInput(ctx, overrides = {}) {
       }
       const taxSetting = inputs.retirementTax || {};
       let publicAnnual = 0, publicStart = retireAge;
-      if (country === "JP") { publicAnnual = effectivePensionMonthly * 12; publicStart = effectivePublicPensionStartAge; }
+      if (country === "JP") {
+        const jpPublicMonthlyForTax = jpPublicPensionMonthly === null || jpPublicPensionMonthly === undefined
+          ? Number(effectivePensionMonthly) || 0
+          : Math.max(0, Number(jpPublicPensionMonthly) || 0);
+        const jpOtherForTax = Array.isArray(jpOtherPensionSources) ? jpOtherPensionSources : [];
+        publicAnnual = (jpPublicMonthlyForTax + jpOtherForTax.reduce((sum, p) => sum + Math.max(0, Number(p?.monthlyAmount) || 0), 0)) * 12;
+        const otherStarts = jpOtherForTax
+          .filter((p) => Math.max(0, Number(p?.monthlyAmount) || 0) > 0)
+          .map((p) => Number.isFinite(Number(p?.startAge)) ? Number(p.startAge) : 65);
+        publicStart = Math.min(effectivePublicPensionStartAge, ...(otherStarts.length ? otherStarts : [Infinity]));
+      }
       else if (country === "US") { publicAnnual = D.usSSMonthlyBenefit * 12; publicStart = D.usClaimAge; }
       else if (country === "GB") { publicAnnual = D.gbStatePensionAnnual + D.gbAdditionalPensionAnnual; publicStart = Math.min(D.gbEffectiveClaimAge || retireAge, D.gbAdditionalPensionAnnual > 0 ? retireAge : Infinity); }
       else if (country === "CA") { publicAnnual = D.caCppAnnual + D.caOasAnnual + D.caAdditionalPensionAnnual; publicStart = Math.min(D.caCppStartAge || 65, D.caOasStartAge || 65, D.caAdditionalPensionAnnual > 0 ? retireAge : Infinity); }
@@ -852,12 +881,25 @@ export function buildPlanInput(ctx, overrides = {}) {
         if (country === "JP" && (taxSetting.publicPension?.mode || "auto") === "auto") {
           const inflationPct = resolveInflationPct(country, inputs.inflation);
           const pensionIndexPct = resolvePublicPensionIndexationPct(country, inflationPct, taxSetting.publicPensionIndexation);
+          const jpPublicMonthlyForTax = jpPublicPensionMonthly === null || jpPublicPensionMonthly === undefined
+            ? Number(effectivePensionMonthly) || 0
+            : Math.max(0, Number(jpPublicPensionMonthly) || 0);
+          const jpOtherForTax = Array.isArray(jpOtherPensionSources) ? jpOtherPensionSources : [];
           charges.push({
             id: "publicPensionTax",
             annualAmount: publicTax,
             annualAmountAt: (age) => {
-              const monthly = indexedPensionMonthly(effectivePensionMonthly, publicStart, age, pensionIndexPct);
-              return estimatePublicPensionTax(country, monthly * 12, Math.max(65, Number(age) || publicStart));
+              const a = Number(age) || publicStart;
+              // 公的年金の改定率は公的年金だけへ適用する。企業年金基金・国民年金基金等は
+              // 各登録開始年齢から固定入力額を加え、繰上げ/繰下げ・公的年金改定を混ぜない。
+              const publicMonthlyAtAge = a + 1e-9 >= effectivePublicPensionStartAge
+                ? indexedPensionMonthly(jpPublicMonthlyForTax, effectivePublicPensionStartAge, a, pensionIndexPct)
+                : 0;
+              const otherMonthlyAtAge = jpOtherForTax.reduce((sum, p) => {
+                const start = Number.isFinite(Number(p?.startAge)) ? Number(p.startAge) : 65;
+                return sum + (a + 1e-9 >= start ? Math.max(0, Number(p?.monthlyAmount) || 0) : 0);
+              }, 0);
+              return estimatePublicPensionTax(country, (publicMonthlyAtAge + otherMonthlyAtAge) * 12, Math.max(65, a));
             },
             fromAge: publicStart,
             toAge: inputs.deathAge + 0.001,

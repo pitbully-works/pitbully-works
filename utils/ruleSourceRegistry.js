@@ -6,6 +6,8 @@ export const RULE_SOURCE_REGISTRY = [
   { id: "JP-FSA-NISA", country: "JP", category: "nisa", labelJa: "NISA", labelEn: "NISA", sourceLabel: "金融庁 NISA特設ウェブサイト「NISAを知る」", url: "https://www.fsa.go.jp/policy/nisa2/know/index.html" },
   { id: "JP-MHLW-IDECO-REFORM", country: "JP", category: "ideco", labelJa: "iDeCo", labelEn: "iDeCo", sourceLabel: "厚生労働省「2025年の制度改正」", url: "https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/nenkin/nenkin/kyoshutsu/2025kaisei.html" },
   { id: "JP-JPS-PUBLIC-PENSION", country: "JP", category: "publicPension", labelJa: "公的年金", labelEn: "Public pension", sourceLabel: "日本年金機構「年金額等の改定」", url: "https://www.nenkin.go.jp/tokusetsu/nenkingakutou_kaitei.html" },
+  { id: "JP-JPS-PENSION-EARLY", country: "JP", category: "publicPension", labelJa: "公的年金（繰上げ）", labelEn: "Public pension (early claim)", sourceLabel: "日本年金機構「年金の繰上げ受給」", url: "https://www.nenkin.go.jp/service/jukyu/seido/roureinenkin/kuriage-kurisage/20140421-01.html" },
+  { id: "JP-JPS-PENSION-DEFER", country: "JP", category: "publicPension", labelJa: "公的年金（繰下げ）", labelEn: "Public pension (deferral)", sourceLabel: "日本年金機構「年金の繰下げ受給」", url: "https://www.nenkin.go.jp/service/jukyu/seido/roureinenkin/kuriage-kurisage/20140421-02.html" },
 
   // United States
   { id: "US-IRS-401K-IRA", country: "US", category: "investment", labelJa: "401(k)・IRA", labelEn: "401(k) / IRA", sourceLabel: "IRS — Retirement plan contribution limits", url: "https://www.irs.gov/retirement-plans/plan-participant-employee/retirement-topics-contributions" },
