@@ -46,7 +46,7 @@ function signedMoney(v, money) {
   return `${n > 0 ? "+" : "−"}${money(Math.abs(n))}`;
 }
 
-export default function AiConcierge({ language = "ja", snapshot, onRunAgentScenario, onUseComparisonScenario, money = (v) => String(v) }) {
+export default function AiConcierge({ language = "ja", snapshot, onRunAgentScenario, onUseComparisonScenario, onApplyAgentScenario, money = (v) => String(v) }) {
   const ja = language === "ja";
   const suggestions = ja ? JP_QUESTIONS : EN_QUESTIONS;
   const finalAge = Math.round(Number(snapshot?.deathAge) || 0);
@@ -56,6 +56,8 @@ export default function AiConcierge({ language = "ja", snapshot, onRunAgentScena
   const [agentResults, setAgentResults] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [pendingApply, setPendingApply] = useState(null);
+  const [applyMessage, setApplyMessage] = useState("");
   const [remaining, setRemaining] = useState(() => typeof window === "undefined" ? AI_DAILY_LIMIT : aiUsageRemaining(window.localStorage));
   const [consented, setConsented] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -98,6 +100,8 @@ export default function AiConcierge({ language = "ja", snapshot, onRunAgentScena
     setError("");
     setAnswer("");
     setAgentResults([]);
+    setPendingApply(null);
+    setApplyMessage("");
     try {
       // The basic questions that do not require what-if calculations should use the
       // proven single-request path.  Only comparison/what-if requests invoke the
@@ -194,14 +198,60 @@ export default function AiConcierge({ language = "ja", snapshot, onRunAgentScena
                 <div className="stat-sub">{ja ? "将来の積立倍率" : "Future contribution multiplier"}: {item.scenario.contributionMultiplier.toFixed(1)}x</div>
                 <div style={{ marginTop: 7, fontWeight: 700 }}>{ja ? "最終年齢時点" : "At final age"}: {money(item.metrics.finalNetWorth)}</div>
                 <div className="stat-sub">{ja ? "現在プランとの差" : "Difference vs current"}: {signedMoney(item.metrics.finalNetWorthDiff, money)}</div>
-                <button type="button" className="section-nav-btn" style={{ marginTop: 9 }} onClick={() => onUseComparisonScenario?.(item.scenario)}>
-                  {ja ? "この案を比較画面で詳しく見る" : "Open this in comparison"}
-                </button>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 9 }}>
+                  <button type="button" className="section-nav-btn" onClick={() => onUseComparisonScenario?.(item.scenario)}>
+                    {ja ? "この案を比較画面で詳しく見る" : "Open this in comparison"}
+                  </button>
+                  {Number(item.scenario?.contributionMultiplier) === 1 ? (
+                    <button type="button" className="section-nav-btn" onClick={() => { setPendingApply(item.scenario); setApplyMessage(""); }}>
+                      {ja ? "この案を設定に反映" : "Apply this scenario"}
+                    </button>
+                  ) : (
+                    <div className="stat-sub" style={{ flexBasis: "100%" }}>
+                      {ja
+                        ? "※ 積立倍率を含む案は、過去の積立実績を変えないため自動反映しません。比較画面で確認してください。"
+                        : "Contribution-multiplier scenarios are not auto-applied, so past contribution history is never rewritten. Review them in comparison."}
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
           </div>
         </div>
       )}
+
+
+      {pendingApply && (
+        <div className="card" style={{ marginTop: 14, borderLeft: "4px solid #D89B4F" }}>
+          <div className="chart-label">{ja ? "設定変更の最終確認" : "Confirm setting changes"}</div>
+          <div className="guide-text" style={{ lineHeight: 1.7, marginBottom: 10 }}>
+            {ja
+              ? "AIが直接設定を変更することはありません。下の内容を確認し、『この内容で反映する』を押した場合だけ保存設定を変更します。"
+              : "AI never changes settings by itself. Saved settings change only after you press Apply below."}
+          </div>
+          <div className="stat-sub">{ja ? "退職年齢" : "Retirement age"}: {snapshot?.retireAge} → {pendingApply.retireAge}</div>
+          <div className="stat-sub">{ja ? "退職後生活費" : "Retirement living cost"}: {money(snapshot?.livingCostMonthly)} → {money(pendingApply.livingCostMonthly)} / {ja ? "月" : "month"}</div>
+          <div className="stat-sub">{ja ? "将来の積立倍率" : "Future contribution multiplier"}: {Number(pendingApply.contributionMultiplier).toFixed(1)}x</div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+            <button type="button" className="section-nav-btn" onClick={() => {
+              const result = onApplyAgentScenario?.(pendingApply);
+              if (result?.ok === false) {
+                setApplyMessage(result.message || (ja ? "設定を反映できませんでした。" : "Could not apply settings."));
+                return;
+              }
+              setApplyMessage(ja ? "設定に反映しました。ライフプランを新しい条件で再計算しています。" : "Settings applied. The life plan is recalculating with the new values.");
+              setPendingApply(null);
+            }}>
+              {ja ? "この内容で反映する" : "Apply these settings"}
+            </button>
+            <button type="button" className="section-nav-btn" onClick={() => { setPendingApply(null); setApplyMessage(""); }}>
+              {ja ? "キャンセル" : "Cancel"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {applyMessage && <div className="note" style={{ marginTop: 10 }}><span>{applyMessage}</span></div>}
 
       {answer && (
         <div className="card" style={{ marginTop: 14, whiteSpace: "pre-wrap", lineHeight: 1.75 }}>
