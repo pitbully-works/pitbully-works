@@ -42,6 +42,7 @@ import {
 } from "./utils/countryProfiles.js";
 import { buildNisaBreakdown, breakdownPrincipalItems, breakdownReturnBars, breakdownTotals } from "./utils/nisaBreakdown.js";
 import { buildAiPlanSnapshot } from "./utils/aiConcierge.js";
+import { summarizeAgentComparison } from "./utils/aiAgent.js";
 import { describeSchedulePace } from "./utils/schedulePace.js";
 import { newSci, sciPress, sciExpr, sciFormat, sciTokensFromExpr, normalizeSciHistory, sciClearHistory } from "./utils/scientificCalculator.js";
 import {
@@ -4307,6 +4308,34 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const finalRealNetWorth = realValueAt(netWorthFinal, effectiveCurrentAge, inputs.deathAge, inflationPct);
   const inheritanceTotal = inputs.inheritancePlans.reduce((s, p) => s + (p.amount || 0), 0);
   const effectiveInheritanceTarget = inputs.inheritancePlans.length > 0 ? inheritanceTotal : inputs.inheritanceTarget;
+
+
+  const runAiAgentScenario = useCallback((scenario) => {
+    if (!scenario || !simulationReady) return null;
+    const draft = {
+      ...createComparisonDraft(country, inputs),
+      retireAge: Number(scenario.retireAge),
+      livingCostMonthly: Number(scenario.livingCostMonthly),
+      contributionMultiplier: Number(scenario.contributionMultiplier),
+    };
+    const result = runScenarioComparison(planCtx, draft, { inheritanceTarget: effectiveInheritanceTarget });
+    return summarizeAgentComparison(draft, result, inputs.deathAge);
+  }, [simulationReady, country, inputs, planCtx, effectiveInheritanceTarget]);
+
+  const useAiComparisonScenario = useCallback((scenario) => {
+    if (!scenario) return;
+    setComparisonDraft({
+      ...createComparisonDraft(country, inputs),
+      retireAge: Number(scenario.retireAge),
+      livingCostMonthly: Number(scenario.livingCostMonthly),
+      contributionMultiplier: Number(scenario.contributionMultiplier),
+    });
+    if (typeof window !== "undefined") {
+      window.requestAnimationFrame(() => {
+        document.getElementById("section-comparison")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
+  }, [country, inputs]);
 
   // 比較プラン。draft が null のときは計算自体を行わない（＝比較していないときの負荷ゼロ）。
   // planCtx は現在プランと同じものを使い、3項目だけを overrides として渡す。
@@ -9297,7 +9326,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
           {/* 診断コメント：グラフを見る前に、いまの状況が良いのか悪いのかが一目で分かるようにする。
               色だけに頼らず、アイコン（🟢🟡🔴✅⚠️💰💡）と文章の両方で伝える。 */}
-          <AiConcierge language={language} snapshot={aiPlanSnapshot} />
+          <AiConcierge language={language} snapshot={aiPlanSnapshot} money={money} onRunAgentScenario={runAiAgentScenario} onUseComparisonScenario={useAiComparisonScenario} />
 
           <div className="section-block" id="section-advice" style={{ borderColor: adviceBorderColor }}>
             <div className="field-label-row">
