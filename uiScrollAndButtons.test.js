@@ -144,16 +144,16 @@ describe("UI改善：トップへ戻るボタンとスクロール着地点", ()
 describe("UI改善：クイックジャンプ（各項目ボタン）", () => {
   const app = read("./App.jsx");
 
-  it("クイックジャンプの項目一覧に26個ある（ページ表示順：概要〜個別株）", () => {
+  it("クイックジャンプの項目一覧に27個ある（ページ表示順：概要〜個別株）", () => {
     // 12の入力セクションに加え、概要・家計簿・コラム・トップ・総財布・項目・配分・余剰金・
-    // 民年金の下の固定費・サマリ・診断・比較・グラフ・個別株を足して26個。
+    // 民年金の下の固定費・サマリ・診断・比較・グラフ・個別株を足して27個。
     // （配分は country === "JP"、家計簿は language === "ja" のときだけ画面に出るが、
     //   一覧の定義としてはそれぞれ1個）
     const idx = app.indexOf("const quickNavItems = useMemo");
     expect(idx).toBeGreaterThan(0);
     const block = app.slice(idx, app.indexOf("]), [t, country, language]);", idx));
     const anchors = block.match(/anchor: "/g) || [];
-    expect(anchors.length).toBe(26);
+    expect(anchors.length).toBe(27);
   });
 
   it("追加したジャンプ先のアンカーがすべて実在する", () => {
