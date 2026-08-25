@@ -4349,6 +4349,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       return { ok: false, message };
     }
     const changeRecord = buildAgentChangeRecord({ currentSnapshot: aiPlanSnapshot, scenario });
+    if (!changeRecord) {
+      return { ok: false, message: language === "ja" ? "変更履歴を安全に作成できなかったため、設定変更を中止しました。" : "The setting change was cancelled because a safe undo record could not be created." };
+    }
     setInputs(result.nextInputs);
     setComparisonDraft(null);
     return { ok: true, changeRecord };
