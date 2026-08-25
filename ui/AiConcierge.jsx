@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { AI_DAILY_LIMIT, aiUsageRemaining, incrementAiUsage } from "../utils/aiConcierge.js";
 import { agentBaselineFromSnapshot, normalizeAgentScenarios } from "../utils/aiAgent.js";
+import { agentScenarioKey, agentSettingsFingerprint, scenarioMatchesSnapshot, validateAgentScenarioApplication } from "../utils/aiAgentApply.js";
 
 const JP_QUESTIONS = [
   "このライフプランを総合診断して",
@@ -58,6 +59,11 @@ export default function AiConcierge({ language = "ja", snapshot, onRunAgentScena
   const [loading, setLoading] = useState(false);
   const [pendingApply, setPendingApply] = useState(null);
   const [applyMessage, setApplyMessage] = useState("");
+  const [scenarioBaselineFingerprint, setScenarioBaselineFingerprint] = useState("");
+  const [appliedScenarioKeys, setAppliedScenarioKeys] = useState([]);
+  const [postApplyReview, setPostApplyReview] = useState("");
+  const [reviewingApply, setReviewingApply] = useState(false);
+  const pendingReviewRef = useRef(null);
   const [remaining, setRemaining] = useState(() => typeof window === "undefined" ? AI_DAILY_LIMIT : aiUsageRemaining(window.localStorage));
   const [consented, setConsented] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -102,6 +108,9 @@ export default function AiConcierge({ language = "ja", snapshot, onRunAgentScena
     setAgentResults([]);
     setPendingApply(null);
     setApplyMessage("");
+    setPostApplyReview("");
+    setReviewingApply(false);
+    pendingReviewRef.current = null;
     try {
       // The basic questions that do not require what-if calculations should use the
       // proven single-request path.  Only comparison/what-if requests invoke the
@@ -115,6 +124,8 @@ export default function AiConcierge({ language = "ja", snapshot, onRunAgentScena
         const plan = await postAi({ mode: "agent-plan", question: q, snapshot, language });
         if (plan?.kind === "scenario" && typeof onRunAgentScenario === "function") {
         const normalized = normalizeAgentScenarios(plan.scenarios, agentBaselineFromSnapshot(snapshot));
+        setScenarioBaselineFingerprint(agentSettingsFingerprint(snapshot));
+        setAppliedScenarioKeys([]);
         const calculated = normalized.map((scenario) => {
           try { return onRunAgentScenario(scenario); } catch { return null; }
         }).filter(Boolean);
@@ -139,6 +150,39 @@ export default function AiConcierge({ language = "ja", snapshot, onRunAgentScena
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const pending = pendingReviewRef.current;
+    if (!pending || reviewingApply) return;
+    if (!scenarioMatchesSnapshot(snapshot, pending.scenario)) return;
+
+    let cancelled = false;
+    const runReview = async () => {
+      setReviewingApply(true);
+      try {
+        const reviewed = await postAi({
+          mode: "agent-review",
+          question: pending.question,
+          beforeSnapshot: pending.beforeSnapshot,
+          afterSnapshot: snapshot,
+          appliedScenario: pending.scenario,
+          language,
+        });
+        if (!cancelled) setPostApplyReview(formatAiAnswer(reviewed?.answer || "", ja));
+      } catch (e) {
+        if (!cancelled) {
+          setPostApplyReview(ja
+            ? "設定の反映と再計算は完了しました。AIによる反映後の再評価だけ取得できませんでした。"
+            : "The settings were applied and recalculated, but the AI post-apply review could not be retrieved.");
+        }
+      } finally {
+        if (!cancelled) setReviewingApply(false);
+        pendingReviewRef.current = null;
+      }
+    };
+    runReview();
+    return () => { cancelled = true; };
+  }, [snapshot, reviewingApply, language, ja]);
 
   return (
     <section className="card section-block" id="section-ai" style={{ borderColor: "#4FA8D8" }}>
@@ -202,11 +246,40 @@ export default function AiConcierge({ language = "ja", snapshot, onRunAgentScena
                   <button type="button" className="section-nav-btn" onClick={() => onUseComparisonScenario?.(item.scenario)}>
                     {ja ? "この案を比較画面で詳しく見る" : "Open this in comparison"}
                   </button>
-                  {Number(item.scenario?.contributionMultiplier) === 1 ? (
-                    <button type="button" className="section-nav-btn" onClick={() => { setPendingApply(item.scenario); setApplyMessage(""); }}>
-                      {ja ? "この案を設定に反映" : "Apply this scenario"}
-                    </button>
-                  ) : (
+                  {Number(item.scenario?.contributionMultiplier) === 1 ? (() => {
+                    const scenarioKey = agentScenarioKey(item.scenario);
+                    const applied = appliedScenarioKeys.includes(scenarioKey);
+                    const stale = Boolean(scenarioBaselineFingerprint) && agentSettingsFingerprint(snapshot) !== scenarioBaselineFingerprint;
+                    return (
+                      <>
+                        <button
+                          type="button"
+                          className="section-nav-btn"
+                          disabled={applied || stale}
+                          onClick={() => {
+                            const check = validateAgentScenarioApplication({
+                              scenario: item.scenario,
+                              currentSnapshot: snapshot,
+                              baselineFingerprint: scenarioBaselineFingerprint,
+                              appliedKeys: appliedScenarioKeys,
+                            });
+                            if (!check.ok) {
+                              setApplyMessage(check.reason === "already-applied"
+                                ? (ja ? "この案はすでに反映済みです。" : "This scenario has already been applied.")
+                                : (ja ? "現在の設定が試算時から変わったため、この案はそのまま反映できません。もう一度試算してください。" : "Current settings changed after these scenarios were calculated. Please run the scenarios again."));
+                              return;
+                            }
+                            setPendingApply(item.scenario);
+                            setApplyMessage("");
+                          }}
+                        >
+                          {applied ? (ja ? "✅ 反映済み" : "✅ Applied") : stale ? (ja ? "再試算が必要" : "Re-run required") : (ja ? "この案を設定に反映" : "Apply this scenario")}
+                        </button>
+                        {applied && <div className="stat-sub" style={{ flexBasis: "100%" }}>{ja ? "※ この案は反映済みです。表示中の差額は反映前の比較結果です。" : "This scenario is already applied. The displayed difference is the pre-apply comparison result."}</div>}
+                        {!applied && stale && <div className="stat-sub" style={{ flexBasis: "100%" }}>{ja ? "※ 設定が変わったため、この試算は古くなっています。安全のため再試算してください。" : "Settings changed after this calculation. Re-run scenarios before applying another one."}</div>}
+                      </>
+                    );
+                  })() : (
                     <div className="stat-sub" style={{ flexBasis: "100%" }}>
                       {ja
                         ? "※ 積立倍率を含む案は、過去の積立実績を変えないため自動反映しません。比較画面で確認してください。"
@@ -234,11 +307,32 @@ export default function AiConcierge({ language = "ja", snapshot, onRunAgentScena
           <div className="stat-sub">{ja ? "将来の積立倍率" : "Future contribution multiplier"}: {Number(pendingApply.contributionMultiplier).toFixed(1)}x</div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
             <button type="button" className="section-nav-btn" onClick={() => {
-              const result = onApplyAgentScenario?.(pendingApply);
+              const check = validateAgentScenarioApplication({
+                scenario: pendingApply,
+                currentSnapshot: snapshot,
+                baselineFingerprint: scenarioBaselineFingerprint,
+                appliedKeys: appliedScenarioKeys,
+              });
+              if (!check.ok) {
+                setApplyMessage(check.reason === "already-applied"
+                  ? (ja ? "この案はすでに反映済みです。" : "This scenario has already been applied.")
+                  : check.reason === "stale-baseline"
+                    ? (ja ? "試算後に設定が変更されたため、安全のため反映を中止しました。もう一度試算してください。" : "Settings changed after the scenario was calculated. Re-run the scenarios before applying it.")
+                    : (ja ? "この案は設定に反映できませんでした。" : "This scenario could not be applied."));
+                setPendingApply(null);
+                return;
+              }
+              const beforeSnapshot = snapshot;
+              const scenarioToApply = pendingApply;
+              const result = onApplyAgentScenario?.(scenarioToApply);
               if (result?.ok === false) {
                 setApplyMessage(result.message || (ja ? "設定を反映できませんでした。" : "Could not apply settings."));
                 return;
               }
+              const scenarioKey = agentScenarioKey(scenarioToApply);
+              setAppliedScenarioKeys((prev) => prev.includes(scenarioKey) ? prev : [...prev, scenarioKey]);
+              pendingReviewRef.current = { scenario: scenarioToApply, beforeSnapshot, question };
+              setPostApplyReview("");
               setApplyMessage(ja ? "設定に反映しました。ライフプランを新しい条件で再計算しています。" : "Settings applied. The life plan is recalculating with the new values.");
               setPendingApply(null);
             }}>
@@ -252,6 +346,14 @@ export default function AiConcierge({ language = "ja", snapshot, onRunAgentScena
       )}
 
       {applyMessage && <div className="note" style={{ marginTop: 10 }}><span>{applyMessage}</span></div>}
+
+      {(reviewingApply || postApplyReview) && (
+        <div className="card" style={{ marginTop: 14, borderLeft: "4px solid #78B96B", whiteSpace: "pre-wrap", lineHeight: 1.75 }}>
+          <div className="chart-label">{ja ? "✅ 反映後の再評価" : "✅ Post-apply review"}</div>
+          <div>{reviewingApply ? (ja ? "新しい計算結果をAIエージェントが再評価しています…" : "The AI agent is reviewing the recalculated plan…") : postApplyReview}</div>
+          <div className="stat-sub" style={{ marginTop: 10 }}>{ja ? "※ 再評価は反映後のアプリ本体の計算結果を使います。追加の設定変更は自動では行いません。" : "The review uses the app's recalculated results. No additional setting changes are made automatically."}</div>
+        </div>
+      )}
 
       {answer && (
         <div className="card" style={{ marginTop: 14, whiteSpace: "pre-wrap", lineHeight: 1.75 }}>
