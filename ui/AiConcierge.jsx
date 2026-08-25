@@ -11,6 +11,27 @@ const JP_QUESTIONS = [
 ];
 const AI_CONSENT_KEY = "lifeplan-ai-consent-v1";
 
+function formatAiAnswer(raw, ja) {
+  let text = String(raw || "");
+  // The AI may return Markdown even though this UI intentionally renders plain text.
+  text = text.replace(/\*\*(.*?)\*\*/gs, "$1").replace(/__(.*?)__/gs, "$1");
+  if (ja) {
+    const labels = {
+      depletionAge: "資産が底をつく年齢",
+      currentNetWorth: "現在の総資産",
+      finalNetWorth: "最終年齢時点の総資産",
+      publicPensionStartAge: "公的年金の受給開始年齢",
+      livingCostMonthly: "毎月の生活費",
+      milestones: "年齢ごとの資産推移",
+      schemaVersion: "データ形式",
+    };
+    for (const [key, label] of Object.entries(labels)) {
+      text = text.replace(new RegExp(`\\b${key}\\b`, "g"), label);
+    }
+  }
+  return text;
+}
+
 const EN_QUESTIONS = [
   "Give me an overall review of this life plan",
   "Will my retirement funds last?",
@@ -56,7 +77,7 @@ export default function AiConcierge({ language = "ja", snapshot }) {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || (ja ? "AIとの通信に失敗しました" : "AI request failed"));
-      setAnswer(String(data?.answer || ""));
+      setAnswer(formatAiAnswer(data?.answer, ja));
       if (typeof window !== "undefined") {
         incrementAiUsage(window.localStorage);
         setRemaining(aiUsageRemaining(window.localStorage));
