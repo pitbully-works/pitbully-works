@@ -1,19 +1,27 @@
 import React, { useMemo, useState } from "react";
 import { AI_DAILY_LIMIT, aiUsageRemaining, incrementAiUsage } from "../utils/aiConcierge.js";
+import { agentBaselineFromSnapshot, normalizeAgentScenarios } from "../utils/aiAgent.js";
 
 const JP_QUESTIONS = [
   "このライフプランを総合診断して",
   "老後資金は足りますか？",
+  "老後資金をもっと増やす方法を3案試算して",
+  "生活費や退職年齢を変えるとどうなる？",
   "資産が減り始める主な原因を教えて",
-  "このアプリの計算結果はどう見ればいい？",
-  "公的年金の受給開始年齢の考え方を教えて",
   "入力内容で注意した方がよい点はある？",
+];
+const EN_QUESTIONS = [
+  "Give me an overall review of this life plan",
+  "Will my retirement funds last?",
+  "Test three ways to improve my retirement assets",
+  "What if I change retirement age or living costs?",
+  "What mainly causes my assets to decline?",
+  "Are there any inputs I should review?",
 ];
 const AI_CONSENT_KEY = "lifeplan-ai-consent-v1";
 
 function formatAiAnswer(raw, ja) {
   let text = String(raw || "");
-  // The AI may return Markdown even though this UI intentionally renders plain text.
   text = text.replace(/\*\*(.*?)\*\*/gs, "$1").replace(/__(.*?)__/gs, "$1");
   if (ja) {
     const labels = {
@@ -32,25 +40,21 @@ function formatAiAnswer(raw, ja) {
   return text;
 }
 
-const EN_QUESTIONS = [
-  "Give me an overall review of this life plan",
-  "Will my retirement funds last?",
-  "What mainly causes my assets to decline?",
-  "How should I read the calculation results?",
-  "Explain how to think about public pension claiming age",
-  "Are there any inputs I should review?",
-];
+function signedMoney(v, money) {
+  const n = Number(v) || 0;
+  if (Math.abs(n) < 1) return "±0";
+  return `${n > 0 ? "+" : "−"}${money(Math.abs(n))}`;
+}
 
-export default function AiConcierge({ language = "ja", snapshot }) {
+export default function AiConcierge({ language = "ja", snapshot, onRunAgentScenario, onUseComparisonScenario, money = (v) => String(v) }) {
   const ja = language === "ja";
   const suggestions = ja ? JP_QUESTIONS : EN_QUESTIONS;
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
+  const [agentResults, setAgentResults] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [remaining, setRemaining] = useState(() =>
-    typeof window === "undefined" ? AI_DAILY_LIMIT : aiUsageRemaining(window.localStorage)
-  );
+  const [remaining, setRemaining] = useState(() => typeof window === "undefined" ? AI_DAILY_LIMIT : aiUsageRemaining(window.localStorage));
   const [consented, setConsented] = useState(() => {
     if (typeof window === "undefined") return false;
     try { return window.localStorage.getItem(AI_CONSENT_KEY) === "1"; } catch { return false; }
@@ -63,21 +67,40 @@ export default function AiConcierge({ language = "ja", snapshot }) {
 
   const canSend = useMemo(() => consented && question.trim().length > 0 && !loading && remaining > 0, [consented, question, loading, remaining]);
 
+  const postAi = async (payload) => {
+    const res = await fetch("/api/ai", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data?.error || (ja ? "AIとの通信に失敗しました" : "AI request failed"));
+    return data;
+  };
+
   const send = async (preset) => {
     const q = String(preset ?? question).trim();
     if (!consented || !q || loading || remaining <= 0) return;
     setQuestion(q);
     setLoading(true);
     setError("");
+    setAnswer("");
+    setAgentResults([]);
     try {
-      const res = await fetch("/api/ai", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ question: q, snapshot, language }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || (ja ? "AIとの通信に失敗しました" : "AI request failed"));
-      setAnswer(formatAiAnswer(data?.answer, ja));
+      const plan = await postAi({ mode: "agent-plan", question: q, snapshot, language });
+      if (plan?.kind === "scenario" && typeof onRunAgentScenario === "function") {
+        const normalized = normalizeAgentScenarios(plan.scenarios, agentBaselineFromSnapshot(snapshot));
+        const calculated = normalized.map((scenario) => onRunAgentScenario(scenario)).filter(Boolean);
+        setAgentResults(calculated);
+        if (calculated.length) {
+          const explained = await postAi({ mode: "agent-explain", question: q, snapshot, language, results: calculated });
+          setAnswer(formatAiAnswer(explained?.answer || plan?.message, ja));
+        } else {
+          setAnswer(formatAiAnswer(plan?.message, ja));
+        }
+      } else {
+        setAnswer(formatAiAnswer(plan?.message || "", ja));
+      }
       if (typeof window !== "undefined") {
         incrementAiUsage(window.localStorage);
         setRemaining(aiUsageRemaining(window.localStorage));
@@ -91,11 +114,11 @@ export default function AiConcierge({ language = "ja", snapshot }) {
 
   return (
     <section className="card section-block" id="section-ai" style={{ borderColor: "#4FA8D8" }}>
-      <div className="chart-label">🤖 {ja ? "AIに相談" : "Ask AI"}</div>
+      <div className="chart-label">🤖 {ja ? "AIエージェントに相談" : "Ask AI agent"}</div>
       <div className="note" style={{ marginBottom: 12 }}>
         <span>{ja
-          ? "AIは説明・分析・提案を担当します。資産計算はアプリ本体の計算結果を優先し、AIが設定を直接変更することはありません。"
-          : "AI explains and analyzes. The app's own calculation engine remains authoritative, and AI cannot directly change saved settings."}</span>
+          ? "AIが質問を理解し、必要ならアプリ本体の比較計算を自動実行します。金融計算はAIではなくアプリ本体が行い、保存設定をAIが直接変更することはありません。"
+          : "AI interprets your question and can ask the app's own comparison engine to run scenarios. The app performs the financial calculations; AI cannot directly modify saved settings."}</span>
       </div>
 
       {!consented && (
@@ -104,7 +127,7 @@ export default function AiConcierge({ language = "ja", snapshot }) {
           <div className="guide-text" style={{ lineHeight: 1.7 }}>
             {ja
               ? "質問内容と回答に必要な最小限の計算結果が外部AI処理基盤へ送信されます。氏名・住所・口座番号などは入力しないでください。AIは保存データを直接変更できず、回答は参考情報です。"
-              : "Your question and the minimum calculated data needed to answer it are sent to an external AI service. Do not enter names, addresses, account numbers, or similar identifiers. AI cannot directly change saved data and its answers are for reference."}
+              : "Your question and the minimum calculated data needed to answer it are sent to an external AI service. Do not enter names, addresses, account numbers, or similar identifiers."}
           </div>
           <button type="button" className="section-nav-btn" onClick={acceptConsent} style={{ marginTop: 10 }}>
             {ja ? "内容を確認してAIを利用する" : "I understand — enable AI"}
@@ -120,27 +143,42 @@ export default function AiConcierge({ language = "ja", snapshot }) {
 
       <label className="field">
         <span className="field-label">{ja ? "自由に質問" : "Your question"}</span>
-        <textarea
-          value={question}
-          maxLength={1000}
-          onChange={(e) => setQuestion(e.target.value)}
-          placeholder={ja ? "例：私の資産推移で注意する点は？" : "Example: What should I watch in my asset projection?"}
-          style={{ width: "100%", minHeight: 92, resize: "vertical" }}
-        />
+        <textarea value={question} maxLength={1000} onChange={(e) => setQuestion(e.target.value)} placeholder={ja ? "例：95歳の資産を増やす方法を3案比較して" : "Example: Compare three ways to improve my assets at age 95"} style={{ width: "100%", minHeight: 92, resize: "vertical" }} />
       </label>
       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-        <button type="button" className="section-nav-btn" onClick={() => send()} disabled={!canSend}>
-          {loading ? (ja ? "AIが確認中…" : "Checking…") : (ja ? "質問する" : "Ask")}
-        </button>
+        <button type="button" className="section-nav-btn" onClick={() => send()} disabled={!canSend}>{loading ? (ja ? "AIが試算中…" : "Running scenarios…") : (ja ? "質問する" : "Ask")}</button>
         <span className="stat-sub">{ja ? `本日の残り ${remaining}/${AI_DAILY_LIMIT} 回` : `${remaining}/${AI_DAILY_LIMIT} requests left today`}</span>
       </div>
       {remaining <= 0 && <div className="note" style={{ marginTop: 10 }}><span>{ja ? "本日のAI利用回数に達しました。通常のライフプラン機能は引き続き利用できます。" : "Today's AI limit has been reached. The rest of the app remains available."}</span></div>}
       {error && <div className="note" style={{ marginTop: 10, borderLeftColor: "#C2694F" }}><span>{error}</span></div>}
+
+      {agentResults.length > 0 && (
+        <div style={{ marginTop: 14 }}>
+          <div className="chart-label">{ja ? "アプリ本体で自動試算した案" : "Scenarios calculated by the app"}</div>
+          <div style={{ display: "grid", gap: 9 }}>
+            {agentResults.map((item, idx) => (
+              <div className="card" key={`${item.scenario?.id || idx}-${idx}`} style={{ borderLeft: "4px solid #4FA8D8" }}>
+                <div style={{ fontWeight: 800, marginBottom: 6 }}>{item.scenario?.label || `${ja ? "案" : "Scenario"} ${idx + 1}`}</div>
+                {item.scenario?.rationale && <div className="guide-text" style={{ marginBottom: 8 }}>{item.scenario.rationale}</div>}
+                <div className="stat-sub">{ja ? "退職年齢" : "Retirement age"}: {item.scenario.retireAge}</div>
+                <div className="stat-sub">{ja ? "退職後生活費" : "Retirement living cost"}: {money(item.scenario.livingCostMonthly)} / {ja ? "月" : "month"}</div>
+                <div className="stat-sub">{ja ? "将来の積立倍率" : "Future contribution multiplier"}: {item.scenario.contributionMultiplier.toFixed(1)}x</div>
+                <div style={{ marginTop: 7, fontWeight: 700 }}>{ja ? "最終年齢時点" : "At final age"}: {money(item.metrics.finalNetWorth)}</div>
+                <div className="stat-sub">{ja ? "現在プランとの差" : "Difference vs current"}: {signedMoney(item.metrics.finalNetWorthDiff, money)}</div>
+                <button type="button" className="section-nav-btn" style={{ marginTop: 9 }} onClick={() => onUseComparisonScenario?.(item.scenario)}>
+                  {ja ? "この案を比較画面で詳しく見る" : "Open this in comparison"}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {answer && (
         <div className="card" style={{ marginTop: 14, whiteSpace: "pre-wrap", lineHeight: 1.75 }}>
-          <div className="chart-label">{ja ? "AIの回答" : "AI response"}</div>
+          <div className="chart-label">{ja ? "AIエージェントの回答" : "AI agent response"}</div>
           <div>{answer}</div>
-          <div className="stat-sub" style={{ marginTop: 10 }}>{ja ? "※ AIの回答は参考情報です。最終判断はアプリの計算結果・公的資料等も確認してください。" : "AI output is reference information. Confirm important decisions against the app's calculations and official sources."}</div>
+          <div className="stat-sub" style={{ marginTop: 10 }}>{ja ? "※ 金額はアプリ本体の計算結果です。AIは結果の比較・説明を担当します。将来の市場結果を保証するものではありません。" : "Amounts come from the app's calculation engine. AI compares and explains them; future market outcomes are not guaranteed."}</div>
         </div>
       )}
     </section>
