@@ -65,6 +65,7 @@ export default function AiConcierge({ language = "ja", snapshot, onRunAgentScena
   const [lastChangeRecord, setLastChangeRecord] = useState(null);
   const [reviewingApply, setReviewingApply] = useState(false);
   const pendingReviewRef = useRef(null);
+  const reviewedScenarioKeysRef = useRef(new Set());
   const [remaining, setRemaining] = useState(() => typeof window === "undefined" ? AI_DAILY_LIMIT : aiUsageRemaining(window.localStorage));
   const [consented, setConsented] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -156,6 +157,15 @@ export default function AiConcierge({ language = "ja", snapshot, onRunAgentScena
     const pending = pendingReviewRef.current;
     if (!pending || reviewingApply) return;
     if (!scenarioMatchesSnapshot(snapshot, pending.scenario)) return;
+    const reviewKey = agentScenarioKey(pending.scenario);
+    if (reviewKey && reviewedScenarioKeysRef.current.has(reviewKey)) {
+      pendingReviewRef.current = null;
+      setPostApplyReview(ja
+        ? "この案の反映後AI再評価はすでに実施済みです。現在のアプリ本体の再計算結果を確認してください。"
+        : "The post-apply AI review for this scenario has already run. Please review the app's current recalculated results.");
+      return;
+    }
+    if (reviewKey) reviewedScenarioKeysRef.current.add(reviewKey);
 
     let cancelled = false;
     const runReview = async () => {
@@ -267,7 +277,11 @@ export default function AiConcierge({ language = "ja", snapshot, onRunAgentScena
                             if (!check.ok) {
                               setApplyMessage(check.reason === "already-applied"
                                 ? (ja ? "この案はすでに反映済みです。" : "This scenario has already been applied.")
-                                : (ja ? "現在の設定が試算時から変わったため、この案はそのまま反映できません。もう一度試算してください。" : "Current settings changed after these scenarios were calculated. Please run the scenarios again."));
+                                : check.reason === "no-op-scenario"
+                                  ? (ja ? "この案は現在の設定と同じため、反映する変更がありません。" : "This scenario already matches the current settings, so there is nothing to apply.")
+                                  : check.reason === "retire-age-out-of-range"
+                                    ? (ja ? "退職年齢が現在年齢から最終年齢の範囲外のため、反映できません。" : "The retirement age is outside the valid current-to-final-age range.")
+                                    : (ja ? "現在の設定が試算時から変わったか、試算情報が無効なため、この案はそのまま反映できません。もう一度試算してください。" : "Current settings changed or the scenario is no longer valid. Please run the scenarios again."));
                               return;
                             }
                             setPendingApply(item.scenario);
@@ -317,9 +331,13 @@ export default function AiConcierge({ language = "ja", snapshot, onRunAgentScena
               if (!check.ok) {
                 setApplyMessage(check.reason === "already-applied"
                   ? (ja ? "この案はすでに反映済みです。" : "This scenario has already been applied.")
-                  : check.reason === "stale-baseline"
-                    ? (ja ? "試算後に設定が変更されたため、安全のため反映を中止しました。もう一度試算してください。" : "Settings changed after the scenario was calculated. Re-run the scenarios before applying it.")
-                    : (ja ? "この案は設定に反映できませんでした。" : "This scenario could not be applied."));
+                  : check.reason === "no-op-scenario"
+                    ? (ja ? "この案は現在の設定と同じため、反映する変更がありません。" : "This scenario already matches the current settings, so there is nothing to apply.")
+                    : check.reason === "stale-baseline" || check.reason === "missing-baseline"
+                      ? (ja ? "試算後に設定が変更されたか試算基準が失われたため、安全のため反映を中止しました。もう一度試算してください。" : "Settings changed or the scenario baseline is missing. Re-run the scenarios before applying it.")
+                      : check.reason === "retire-age-out-of-range"
+                        ? (ja ? "退職年齢が現在年齢から最終年齢の範囲外のため、反映を中止しました。" : "The retirement age is outside the valid current-to-final-age range.")
+                        : (ja ? "この案は安全条件を満たさないため設定に反映できませんでした。" : "This scenario did not pass the safety checks and was not applied."));
                 setPendingApply(null);
                 return;
               }
