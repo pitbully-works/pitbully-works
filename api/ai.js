@@ -1,4 +1,4 @@
-const WORKER_URL = "https://lifeplan-ai.kunihiko.workers.dev";
+const WORKER_URL = "https://lifeplan-ai.kunihiko.hioki.workers.dev";
 const MAX_BODY_CHARS = 18000;
 
 function cleanSnapshot(raw) {
