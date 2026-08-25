@@ -47,7 +47,7 @@ function signedMoney(v, money) {
   return `${n > 0 ? "+" : "−"}${money(Math.abs(n))}`;
 }
 
-export default function AiConcierge({ language = "ja", snapshot, onRunAgentScenario, onUseComparisonScenario, onApplyAgentScenario, money = (v) => String(v) }) {
+export default function AiConcierge({ language = "ja", snapshot, onRunAgentScenario, onUseComparisonScenario, onApplyAgentScenario, onUndoAgentScenario, money = (v) => String(v) }) {
   const ja = language === "ja";
   const suggestions = ja ? JP_QUESTIONS : EN_QUESTIONS;
   const finalAge = Math.round(Number(snapshot?.deathAge) || 0);
@@ -62,6 +62,7 @@ export default function AiConcierge({ language = "ja", snapshot, onRunAgentScena
   const [scenarioBaselineFingerprint, setScenarioBaselineFingerprint] = useState("");
   const [appliedScenarioKeys, setAppliedScenarioKeys] = useState([]);
   const [postApplyReview, setPostApplyReview] = useState("");
+  const [lastChangeRecord, setLastChangeRecord] = useState(null);
   const [reviewingApply, setReviewingApply] = useState(false);
   const pendingReviewRef = useRef(null);
   const [remaining, setRemaining] = useState(() => typeof window === "undefined" ? AI_DAILY_LIMIT : aiUsageRemaining(window.localStorage));
@@ -331,6 +332,7 @@ export default function AiConcierge({ language = "ja", snapshot, onRunAgentScena
               }
               const scenarioKey = agentScenarioKey(scenarioToApply);
               setAppliedScenarioKeys((prev) => prev.includes(scenarioKey) ? prev : [...prev, scenarioKey]);
+              setLastChangeRecord(result?.changeRecord || null);
               pendingReviewRef.current = { scenario: scenarioToApply, beforeSnapshot, question };
               setPostApplyReview("");
               setApplyMessage(ja ? "設定に反映しました。ライフプランを新しい条件で再計算しています。" : "Settings applied. The life plan is recalculating with the new values.");
@@ -346,6 +348,37 @@ export default function AiConcierge({ language = "ja", snapshot, onRunAgentScena
       )}
 
       {applyMessage && <div className="note" style={{ marginTop: 10 }}><span>{applyMessage}</span></div>}
+
+      {lastChangeRecord && (
+        <div className="card" style={{ marginTop: 14, borderLeft: "4px solid #7D8C99" }}>
+          <div className="chart-label">{ja ? "変更履歴・取り消し" : "Change history & undo"}</div>
+          <div className="stat-sub">{ja ? "反映前" : "Before"}: {ja ? "退職" : "Retire"} {lastChangeRecord.before?.retireAge} / {ja ? "生活費" : "Living cost"} {money(lastChangeRecord.before?.livingCostMonthly)} / {ja ? "月" : "month"}</div>
+          <div className="stat-sub">{ja ? "反映後" : "After"}: {ja ? "退職" : "Retire"} {lastChangeRecord.after?.retireAge} / {ja ? "生活費" : "Living cost"} {money(lastChangeRecord.after?.livingCostMonthly)} / {ja ? "月" : "month"}</div>
+          <div className="guide-text" style={{ marginTop: 8, lineHeight: 1.6 }}>
+            {ja ? "AIが反映した直前の変更だけを安全に元へ戻せます。反映後に手動で設定を変えた場合は、誤上書きを防ぐため自動取り消しを停止します。" : "You can safely undo only the most recent AI-applied change. If settings changed afterward, automatic undo is blocked to avoid overwriting newer edits."}
+          </div>
+          <button type="button" className="section-nav-btn" style={{ marginTop: 10 }} onClick={() => {
+            const result = onUndoAgentScenario?.(lastChangeRecord);
+            if (result?.ok === false) {
+              setApplyMessage(result.message || (ja ? "変更を取り消せませんでした。" : "Could not undo the change."));
+              return;
+            }
+            setAppliedScenarioKeys((prev) => prev.filter((key) => key !== lastChangeRecord.key));
+            setScenarioBaselineFingerprint(agentSettingsFingerprint({
+              country: lastChangeRecord.before?.country,
+              retireAge: lastChangeRecord.before?.retireAge,
+              livingCostMonthly: lastChangeRecord.before?.livingCostMonthly,
+            }));
+            pendingReviewRef.current = null;
+            setReviewingApply(false);
+            setPostApplyReview("");
+            setApplyMessage(ja ? "直前のAI設定変更を取り消しました。ライフプランを元の条件で再計算しています。" : "The most recent AI setting change was undone. Recalculating the original plan.");
+            setLastChangeRecord(null);
+          }}>
+            {ja ? "↩ 直前のAI変更を取り消す" : "↩ Undo last AI change"}
+          </button>
+        </div>
+      )}
 
       {(reviewingApply || postApplyReview) && (
         <div className="card" style={{ marginTop: 14, borderLeft: "4px solid #78B96B", whiteSpace: "pre-wrap", lineHeight: 1.75 }}>
