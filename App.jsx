@@ -43,6 +43,7 @@ import {
 import { buildNisaBreakdown, breakdownPrincipalItems, breakdownReturnBars, breakdownTotals } from "./utils/nisaBreakdown.js";
 import { buildAiPlanSnapshot } from "./utils/aiConcierge.js";
 import { summarizeAgentComparison } from "./utils/aiAgent.js";
+import { applyAgentScenarioToInputs } from "./utils/aiAgentApply.js";
 import { describeSchedulePace } from "./utils/schedulePace.js";
 import { newSci, sciPress, sciExpr, sciFormat, sciTokensFromExpr, normalizeSciHistory, sciClearHistory } from "./utils/scientificCalculator.js";
 import {
@@ -4336,6 +4337,21 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       });
     }
   }, [country, inputs]);
+
+  const applyAiAgentScenario = useCallback((scenario) => {
+    const result = applyAgentScenarioToInputs(inputs, country, scenario);
+    if (!result.ok) {
+      const message = result.reason === "contribution-multiplier-not-persistable"
+        ? (language === "ja"
+          ? "積立倍率を含む案は、過去の積立実績を変えないため自動反映できません。比較画面で確認してください。"
+          : "Contribution-multiplier scenarios are not auto-applied because past contribution history must remain unchanged.")
+        : (language === "ja" ? "この案は設定に反映できませんでした。" : "This scenario could not be applied.");
+      return { ok: false, message };
+    }
+    setInputs(result.nextInputs);
+    setComparisonDraft(null);
+    return { ok: true };
+  }, [inputs, country, language]);
 
   // 比較プラン。draft が null のときは計算自体を行わない（＝比較していないときの負荷ゼロ）。
   // planCtx は現在プランと同じものを使い、3項目だけを overrides として渡す。
@@ -9326,7 +9342,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
           {/* 診断コメント：グラフを見る前に、いまの状況が良いのか悪いのかが一目で分かるようにする。
               色だけに頼らず、アイコン（🟢🟡🔴✅⚠️💰💡）と文章の両方で伝える。 */}
-          <AiConcierge language={language} snapshot={aiPlanSnapshot} money={money} onRunAgentScenario={runAiAgentScenario} onUseComparisonScenario={useAiComparisonScenario} />
+          <AiConcierge language={language} snapshot={aiPlanSnapshot} money={money} onRunAgentScenario={runAiAgentScenario} onUseComparisonScenario={useAiComparisonScenario} onApplyAgentScenario={applyAiAgentScenario} />
 
           <div className="section-block" id="section-advice" style={{ borderColor: adviceBorderColor }}>
             <div className="field-label-row">
