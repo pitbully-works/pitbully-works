@@ -101,6 +101,8 @@ export default async function handler(req, res) {
 Answer the user's question using the supplied snapshot when relevant.
 Do not invent missing financial data.
 Keep the answer clear and practical.
+Write for an ordinary end user, not a developer. Never expose JSON keys or internal field names such as depletionAge, currentNetWorth, finalNetWorth, publicPensionStartAge, livingCostMonthly, milestones, or schemaVersion; translate them into natural user-facing wording.
+Return plain text only. Do not use Markdown syntax such as **, __, #, backticks, or Markdown tables.
 
 Snapshot:
 ${JSON.stringify(snapshot, null, 2)}
