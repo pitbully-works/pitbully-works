@@ -1,3 +1,5 @@
+const MAX_BODY_CHARS = 18000;
+
 export default {
   async fetch(request, env) {
     try {
@@ -22,7 +24,7 @@ export default {
         );
       }
 
-      if (question.length > 12000) {
+      if (question.length > MAX_BODY_CHARS) {
         return Response.json(
           { error: "Question is too long" },
           { status: 400 }
