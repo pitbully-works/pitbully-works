@@ -41,6 +41,7 @@ import {
   targetCountryFromKakeibo, targetCountryFromBackup, normalizeStockWatchlist, normalizeProfileStorageVersion, isPlainRecord, MAX_SNAPSHOT_HISTORY, MAX_PERSISTED_ARRAY_ITEMS, localCalendarDateKey,
 } from "./utils/countryProfiles.js";
 import { buildNisaBreakdown, breakdownPrincipalItems, breakdownReturnBars, breakdownTotals } from "./utils/nisaBreakdown.js";
+import { buildAiPlanSnapshot } from "./utils/aiConcierge.js";
 import { describeSchedulePace } from "./utils/schedulePace.js";
 import { newSci, sciPress, sciExpr, sciFormat, sciTokensFromExpr, normalizeSciHistory, sciClearHistory } from "./utils/scientificCalculator.js";
 import {
@@ -73,6 +74,7 @@ import {
   AllocationBreakdown,
   StatCard,
   ScenarioComparisonCard,
+  AiConcierge,
 } from "./ui/index.js";
 // 各国パネル（アメリカの投資口座 / イギリス・カナダ・オーストラリアの退職後）は panels/ 配下へ分離。
 // いずれも state を持たず、App.jsx から props で値を受け取るだけ（計算式は移動前と同一）。
@@ -4228,6 +4230,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     { index: "11", title: label("privatePension"), icon: PiggyBank },
     { index: "12", title: t("otherTaxesFixedCostsTitle"), icon: Landmark },
     { anchor: "section-summary", title: t("summarySectionTitle") },     // 資産サマリー（右側ダッシュボードの先頭）
+    { anchor: "section-ai", title: language === "ja" ? "AIに相談" : "Ask AI" },
     { anchor: "section-advice", title: t("adviceCardTitle") },          // 診断コメント
     { anchor: "section-comparison", title: t("scenarioCompareTitle") }, // シナリオ比較
     { anchor: "section-networth-chart", title: t("navFullChart") },     // 総資産推移グラフ
@@ -4265,6 +4268,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     { anchor: "section-11", short: t("navShortPrivatePension") },      // 民年金
     { anchor: "section-12", short: t("navShortFixedCosts") },          // 固定費（その他の税金・固定費）
     { anchor: "section-summary", short: t("navShortSummary") },        // サマリ（資産サマリーの先頭）
+    { anchor: "section-ai", short: language === "ja" ? "AI" : "AI" },
     { anchor: "section-advice", short: t("navShortDiagnosis") },       // 診断
     { anchor: "section-comparison", short: t("navShortComparison") },  // 比較
     { anchor: "section-networth-chart", short: t("navShortChart") },   // グラフ
@@ -4280,6 +4284,24 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
     [integrated.yearly, inputs.retireAge]
   );
   const annualCashflowByEndAge = useMemo(() => new Map(annualCashflowRows.map((row) => [row.endAge, row])), [annualCashflowRows]);
+
+  const aiPlanSnapshot = useMemo(() => buildAiPlanSnapshot({
+    country,
+    language,
+    currentAge: effectiveCurrentAge,
+    retireAge: inputs.retireAge,
+    deathAge: inputs.deathAge,
+    currentNetWorth: integrated.yearly?.[0]?.netWorth ?? 0,
+    finalNetWorth: integrated.finalNetWorth,
+    depletionAge: integrated.depletionAge,
+    publicPensionMonthly: country === "JP" ? jpPublicPension.monthlyAmount : effectivePensionMonthly,
+    totalPensionMonthly: effectivePensionMonthly,
+    publicPensionStartAge: effectivePublicPensionStartAge,
+    livingCostMonthly: country === "JP" ? inputs.livingCostMonthly : inputs[`${country.toLowerCase()}Investment`]?.expensesMonthly,
+    inflationPct,
+    postRetireReturnPct: effectivePostRetireReturn,
+    yearly: integrated.yearly,
+  }), [country, language, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, inputs.livingCostMonthly, inputs.usInvestment, inputs.gbInvestment, inputs.caInvestment, inputs.auInvestment, integrated.yearly, integrated.finalNetWorth, integrated.depletionAge, jpPublicPension.monthlyAmount, effectivePensionMonthly, effectivePublicPensionStartAge, inflationPct, effectivePostRetireReturn]);
 
   const netWorthFinal = integrated.finalNetWorth;
   const finalRealNetWorth = realValueAt(netWorthFinal, effectiveCurrentAge, inputs.deathAge, inflationPct);
@@ -9275,6 +9297,8 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
           {/* 診断コメント：グラフを見る前に、いまの状況が良いのか悪いのかが一目で分かるようにする。
               色だけに頼らず、アイコン（🟢🟡🔴✅⚠️💰💡）と文章の両方で伝える。 */}
+          <AiConcierge language={language} snapshot={aiPlanSnapshot} />
+
           <div className="section-block" id="section-advice" style={{ borderColor: adviceBorderColor }}>
             <div className="field-label-row">
               <span className="field-label">{t("adviceCardTitle")}</span>
