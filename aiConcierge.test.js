@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildAiPlanSnapshot, readAiUsage, incrementAiUsage, aiUsageRemaining } from "./utils/aiConcierge.js";
+import { buildAiPlanSnapshot, buildPlanMilestoneAges, readAiUsage, incrementAiUsage, aiUsageRemaining } from "./utils/aiConcierge.js";
 
 describe("AI concierge safety helpers", () => {
   it("exports only summarized calculated values", () => {
@@ -23,5 +23,13 @@ describe("AI concierge safety helpers", () => {
     expect(readAiUsage(storage, now).count).toBe(0);
     incrementAiUsage(storage, now);
     expect(aiUsageRemaining(storage, now, 3)).toBe(2);
+  });
+});
+
+
+describe("AI dynamic plan ages", () => {
+  it("uses the user retirement/final ages instead of fixed 65/75/85/95", () => {
+    expect(buildPlanMilestoneAges({ currentAge: 58, retireAge: 67, deathAge: 92 })).toEqual([67, 70, 80, 90, 92]);
+    expect(buildPlanMilestoneAges({ currentAge: 58, retireAge: 60, deathAge: 88 })).toEqual([60, 70, 80, 88]);
   });
 });
