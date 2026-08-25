@@ -4,6 +4,21 @@ export const AI_USAGE_KEY = "lifeplan-ai-usage-v1";
 const safeNum = (v) => Number.isFinite(Number(v)) ? Number(v) : 0;
 const rounded = (v) => Math.round(safeNum(v));
 
+export function buildPlanMilestoneAges({ currentAge, retireAge, deathAge }) {
+  const current = Math.max(0, safeNum(currentAge));
+  const retire = Math.max(current, safeNum(retireAge));
+  const end = Math.max(retire, safeNum(deathAge));
+  const ages = [];
+  const add = (age) => {
+    const n = Math.round(safeNum(age));
+    if (n >= Math.floor(current) && n <= Math.ceil(end) && !ages.includes(n)) ages.push(n);
+  };
+  add(retire);
+  for (let age = Math.ceil(retire / 10) * 10; age < end; age += 10) add(age);
+  add(end);
+  return ages.sort((a, b) => a - b);
+}
+
 export function buildAiPlanSnapshot({
   country,
   language,
@@ -21,8 +36,7 @@ export function buildAiPlanSnapshot({
   postRetireReturnPct,
   yearly = [],
 }) {
-  const milestones = [65, 75, 85, 95]
-    .filter((age) => age <= safeNum(deathAge) + 0.001)
+  const milestones = buildPlanMilestoneAges({ currentAge, retireAge, deathAge })
     .map((age) => {
       const row = (yearly || []).find((r) => safeNum(r.age) >= age) || null;
       return row ? { age, netWorth: rounded(row.netWorth) } : null;

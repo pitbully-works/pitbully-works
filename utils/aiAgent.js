@@ -1,4 +1,5 @@
 import { CONTRIBUTION_MULTIPLIERS } from "./buildPlanInput.js";
+import { buildPlanMilestoneAges } from "./aiConcierge.js";
 
 const finite = (v) => Number.isFinite(Number(v)) ? Number(v) : null;
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -64,7 +65,11 @@ function atAge(yearly, age) {
 
 export function summarizeAgentComparison(scenario, result, deathAge) {
   if (!result) return null;
-  const milestoneAges = [65, 75, 85, 95].filter((age) => age <= Number(deathAge || 0));
+  const milestoneAges = buildPlanMilestoneAges({
+    currentAge: result.base?.currentAge ?? result.compare?.currentAge ?? 0,
+    retireAge: scenario?.retireAge ?? result.compare?.retireAge ?? 0,
+    deathAge,
+  });
   return {
     scenario,
     metrics: {
