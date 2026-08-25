@@ -168,6 +168,38 @@ ${question}`;
       });
     }
 
+    if (mode === "agent-review") {
+      const beforeSnapshot = cleanSnapshot(body.beforeSnapshot);
+      const afterSnapshot = cleanSnapshot(body.afterSnapshot);
+      const appliedScenario = body.appliedScenario && typeof body.appliedScenario === "object" ? body.appliedScenario : {};
+      const prompt = `You are the post-action review step of a life-planning agent.
+The user explicitly approved a scenario, and the app has now recalculated the life plan.
+The app's before/after numbers are authoritative. Do not recalculate them and do not invent missing values.
+
+Your task:
+- Confirm, in natural language, what setting change was actually applied.
+- Compare the before and after plan using only the supplied app-calculated values.
+- Say whether the user's original goal appears improved, unchanged, or worsened.
+- Mention the main trade-off.
+- If another action may be worth considering, suggest it as a next option, but do not claim it has been tested unless it appears in the supplied data.
+- Never change settings yourself. Never imply that an unapproved action was performed.
+- Write plain text only, no Markdown, and never expose internal JSON field names.
+
+Original user goal:
+${question}
+
+Approved scenario:
+${JSON.stringify(appliedScenario)}
+
+Before recalculation:
+${JSON.stringify(beforeSnapshot)}
+
+After recalculation:
+${JSON.stringify(afterSnapshot)}`;
+      const answer = await askWorker(prompt);
+      return res.status(200).json({ answer });
+    }
+
     if (mode === "agent-explain") {
       const compactResults = Array.isArray(body.results) ? body.results.slice(0, 3) : [];
       const prompt = `You are the explanation step of a life-planning agent.
