@@ -89,3 +89,48 @@ export function applyAgentScenarioToInputs(inputs, country, scenario) {
 
   return { ok: true, reason: null, nextInputs: next };
 }
+
+
+export function buildAgentChangeRecord({ currentSnapshot, scenario, appliedAt = Date.now() } = {}) {
+  const before = agentSnapshotSettings(currentSnapshot);
+  const key = agentScenarioKey(scenario);
+  if (!before || !key || !scenario) return null;
+  const after = {
+    country: before.country,
+    retireAge: Math.round(Number(scenario.retireAge) * 12) / 12,
+    livingCostMonthly: rounded(scenario.livingCostMonthly),
+  };
+  if (!Number.isFinite(after.retireAge) || after.livingCostMonthly === null) return null;
+  return {
+    version: 1,
+    key,
+    appliedAt: Number(appliedAt) || 0,
+    country: before.country,
+    before,
+    after,
+  };
+}
+
+export function validateAgentChangeUndo({ record, currentSnapshot } = {}) {
+  if (!record || typeof record !== "object" || !record.before || !record.after) {
+    return { ok: false, reason: "missing-record" };
+  }
+  const current = agentSnapshotSettings(currentSnapshot);
+  if (!current) return { ok: false, reason: "invalid-current" };
+  if (String(current.country || "") !== String(record.country || record.after.country || "")) {
+    return { ok: false, reason: "country-changed" };
+  }
+  const matchesAfter = Math.abs(current.retireAge - Number(record.after.retireAge)) < 1e-9
+    && current.livingCostMonthly === Number(record.after.livingCostMonthly);
+  if (!matchesAfter) return { ok: false, reason: "settings-changed" };
+  return { ok: true, reason: null };
+}
+
+export function undoAgentChangeToInputs(inputs, country, record) {
+  if (!record?.before) return { ok: false, reason: "missing-record", nextInputs: inputs };
+  return applyAgentScenarioToInputs(inputs, country, {
+    retireAge: record.before.retireAge,
+    livingCostMonthly: record.before.livingCostMonthly,
+    contributionMultiplier: 1,
+  });
+}
