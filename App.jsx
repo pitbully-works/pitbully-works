@@ -43,7 +43,7 @@ import {
 import { buildNisaBreakdown, breakdownPrincipalItems, breakdownReturnBars, breakdownTotals } from "./utils/nisaBreakdown.js";
 import { buildAiPlanSnapshot } from "./utils/aiConcierge.js";
 import { summarizeAgentComparison } from "./utils/aiAgent.js";
-import { applyAgentScenarioToInputs } from "./utils/aiAgentApply.js";
+import { applyAgentScenarioToInputs, buildAgentChangeRecord, undoAgentChangeToInputs, validateAgentChangeUndo } from "./utils/aiAgentApply.js";
 import { describeSchedulePace } from "./utils/schedulePace.js";
 import { newSci, sciPress, sciExpr, sciFormat, sciTokensFromExpr, normalizeSciHistory, sciClearHistory } from "./utils/scientificCalculator.js";
 import {
@@ -4348,10 +4348,28 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
         : (language === "ja" ? "この案は設定に反映できませんでした。" : "This scenario could not be applied.");
       return { ok: false, message };
     }
+    const changeRecord = buildAgentChangeRecord({ currentSnapshot: aiPlanSnapshot, scenario });
+    setInputs(result.nextInputs);
+    setComparisonDraft(null);
+    return { ok: true, changeRecord };
+  }, [inputs, country, language, aiPlanSnapshot]);
+
+  const undoAiAgentScenario = useCallback((changeRecord) => {
+    const check = validateAgentChangeUndo({ record: changeRecord, currentSnapshot: aiPlanSnapshot });
+    if (!check.ok) {
+      const message = check.reason === "settings-changed"
+        ? (language === "ja"
+          ? "AI反映後に設定が変更されているため、安全のため自動取り消しはできません。現在の設定を確認してください。"
+          : "Settings changed after the AI update, so automatic undo was blocked for safety.")
+        : (language === "ja" ? "この変更は自動で取り消せませんでした。" : "This change could not be undone automatically.");
+      return { ok: false, message };
+    }
+    const result = undoAgentChangeToInputs(inputs, country, changeRecord);
+    if (!result.ok) return { ok: false, message: language === "ja" ? "変更を取り消せませんでした。" : "Could not undo the change." };
     setInputs(result.nextInputs);
     setComparisonDraft(null);
     return { ok: true };
-  }, [inputs, country, language]);
+  }, [inputs, country, language, aiPlanSnapshot]);
 
   // 比較プラン。draft が null のときは計算自体を行わない（＝比較していないときの負荷ゼロ）。
   // planCtx は現在プランと同じものを使い、3項目だけを overrides として渡す。
@@ -9342,7 +9360,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
           {/* 診断コメント：グラフを見る前に、いまの状況が良いのか悪いのかが一目で分かるようにする。
               色だけに頼らず、アイコン（🟢🟡🔴✅⚠️💰💡）と文章の両方で伝える。 */}
-          <AiConcierge language={language} snapshot={aiPlanSnapshot} money={money} onRunAgentScenario={runAiAgentScenario} onUseComparisonScenario={useAiComparisonScenario} onApplyAgentScenario={applyAiAgentScenario} />
+          <AiConcierge language={language} snapshot={aiPlanSnapshot} money={money} onRunAgentScenario={runAiAgentScenario} onUseComparisonScenario={useAiComparisonScenario} onApplyAgentScenario={applyAiAgentScenario} onUndoAgentScenario={undoAiAgentScenario} />
 
           <div className="section-block" id="section-advice" style={{ borderColor: adviceBorderColor }}>
             <div className="field-label-row">
