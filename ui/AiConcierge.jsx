@@ -70,14 +70,24 @@ export default function AiConcierge({ language = "ja", snapshot, onRunAgentScena
   const canSend = useMemo(() => consented && question.trim().length > 0 && !loading && remaining > 0, [consented, question, loading, remaining]);
 
   const postAi = async (payload) => {
-    const res = await fetch("/api/ai", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data?.error || (ja ? "AIとの通信に失敗しました" : "AI request failed"));
-    return data;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 30000);
+    try {
+      const res = await fetch("/api/ai", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.detail || data?.error || (ja ? "AIとの通信に失敗しました" : "AI request failed"));
+      return data;
+    } catch (e) {
+      if (e?.name === "AbortError") throw new Error(ja ? "AIの応答が時間内に返りませんでした。もう一度お試しください。" : "AI response timed out. Please try again.");
+      throw e;
+    } finally {
+      clearTimeout(timer);
+    }
   };
 
   const send = async (preset) => {
@@ -89,10 +99,21 @@ export default function AiConcierge({ language = "ja", snapshot, onRunAgentScena
     setAnswer("");
     setAgentResults([]);
     try {
-      const plan = await postAi({ mode: "agent-plan", question: q, snapshot, language });
-      if (plan?.kind === "scenario" && typeof onRunAgentScenario === "function") {
+      // The basic questions that do not require what-if calculations should use the
+      // proven single-request path.  Only comparison/what-if requests invoke the
+      // two-step agent planner.  This keeps ordinary AI questions responsive even
+      // if the planner cannot produce structured scenario JSON.
+      const wantsScenario = /3案|試算|比較|変える|増やす方法|what if|three ways|compare|improve/i.test(q);
+      if (!wantsScenario) {
+        const basic = await postAi({ mode: "answer", question: q, snapshot, language });
+        setAnswer(formatAiAnswer(basic?.answer || basic?.message || "", ja));
+      } else {
+        const plan = await postAi({ mode: "agent-plan", question: q, snapshot, language });
+        if (plan?.kind === "scenario" && typeof onRunAgentScenario === "function") {
         const normalized = normalizeAgentScenarios(plan.scenarios, agentBaselineFromSnapshot(snapshot));
-        const calculated = normalized.map((scenario) => onRunAgentScenario(scenario)).filter(Boolean);
+        const calculated = normalized.map((scenario) => {
+          try { return onRunAgentScenario(scenario); } catch { return null; }
+        }).filter(Boolean);
         setAgentResults(calculated);
         if (calculated.length) {
           const explained = await postAi({ mode: "agent-explain", question: q, snapshot, language, results: calculated });
@@ -100,8 +121,9 @@ export default function AiConcierge({ language = "ja", snapshot, onRunAgentScena
         } else {
           setAnswer(formatAiAnswer(plan?.message, ja));
         }
-      } else {
-        setAnswer(formatAiAnswer(plan?.message || "", ja));
+        } else {
+          setAnswer(formatAiAnswer(plan?.message || "", ja));
+        }
       }
       if (typeof window !== "undefined") {
         incrementAiUsage(window.localStorage);
