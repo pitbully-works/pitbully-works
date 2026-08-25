@@ -49,6 +49,8 @@ function signedMoney(v, money) {
 export default function AiConcierge({ language = "ja", snapshot, onRunAgentScenario, onUseComparisonScenario, money = (v) => String(v) }) {
   const ja = language === "ja";
   const suggestions = ja ? JP_QUESTIONS : EN_QUESTIONS;
+  const finalAge = Math.round(Number(snapshot?.deathAge) || 0);
+  const retireAge = Math.round(Number(snapshot?.retireAge) || 0);
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
   const [agentResults, setAgentResults] = useState([]);
@@ -136,14 +138,19 @@ export default function AiConcierge({ language = "ja", snapshot, onRunAgentScena
       )}
 
       <div className="section-nav" style={{ marginBottom: 12, opacity: consented ? 1 : 0.55 }}>
-        {suggestions.map((q) => (
-          <button key={q} type="button" className="section-nav-btn" onClick={() => send(q)} disabled={!consented || loading || remaining <= 0}>{q}</button>
-        ))}
+        {suggestions.map((q) => {
+          const dynamicQ = ja && q === "生活費や退職年齢を変えるとどうなる？" && retireAge
+            ? `生活費や退職年齢（現在${retireAge}歳）を変えるとどうなる？`
+            : q;
+          return <button key={q} type="button" className="section-nav-btn" onClick={() => send(dynamicQ)} disabled={!consented || loading || remaining <= 0}>{dynamicQ}</button>;
+        })}
       </div>
 
       <label className="field">
         <span className="field-label">{ja ? "自由に質問" : "Your question"}</span>
-        <textarea value={question} maxLength={1000} onChange={(e) => setQuestion(e.target.value)} placeholder={ja ? "例：95歳の資産を増やす方法を3案比較して" : "Example: Compare three ways to improve my assets at age 95"} style={{ width: "100%", minHeight: 92, resize: "vertical" }} />
+        <textarea value={question} maxLength={1000} onChange={(e) => setQuestion(e.target.value)} placeholder={ja
+          ? `例：${finalAge || "最終"}歳時点の資産を増やす方法を3案比較して`
+          : `Example: Compare three ways to improve my assets at age ${finalAge || "the final age"}`} style={{ width: "100%", minHeight: 92, resize: "vertical" }} />
       </label>
       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
         <button type="button" className="section-nav-btn" onClick={() => send()} disabled={!canSend}>{loading ? (ja ? "AIが試算中…" : "Running scenarios…") : (ja ? "質問する" : "Ask")}</button>
