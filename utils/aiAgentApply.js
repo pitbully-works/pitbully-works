@@ -1,4 +1,6 @@
 const SUPPORTED = new Set(["JP", "US", "GB", "CA", "AU"]);
+const MAX_LIVING_COST_MONTHLY = 100_000_000;
+const MAX_RETIRE_AGE = 130;
 
 const finite = (v) => Number.isFinite(Number(v)) ? Number(v) : null;
 const rounded = (v) => {
@@ -39,13 +41,39 @@ export function validateAgentScenarioApplication({ scenario, currentSnapshot, ba
   if (Array.isArray(appliedKeys) && appliedKeys.includes(key)) {
     return { ok: false, reason: "already-applied", key };
   }
+
+  const current = agentSnapshotSettings(currentSnapshot);
+  if (!current || !SUPPORTED.has(current.country)) {
+    return { ok: false, reason: "invalid-current", key };
+  }
+  if (!baselineFingerprint) {
+    return { ok: false, reason: "missing-baseline", key };
+  }
+
   const multiplier = finite(scenario.contributionMultiplier);
   if (multiplier === null || Math.abs(multiplier - 1) > 1e-9) {
     return { ok: false, reason: "contribution-multiplier-not-persistable", key };
   }
+
+  const retireAge = finite(scenario.retireAge);
+  const livingCostMonthly = rounded(scenario.livingCostMonthly);
+  if (retireAge === null || livingCostMonthly === null
+      || retireAge < 0 || retireAge > MAX_RETIRE_AGE
+      || livingCostMonthly < 0 || livingCostMonthly > MAX_LIVING_COST_MONTHLY) {
+    return { ok: false, reason: "invalid-scenario", key };
+  }
+  const currentAge = finite(currentSnapshot?.currentAge);
+  const deathAge = finite(currentSnapshot?.deathAge);
+  if ((currentAge !== null && retireAge < currentAge) || (deathAge !== null && retireAge > deathAge)) {
+    return { ok: false, reason: "retire-age-out-of-range", key };
+  }
+
   const currentFingerprint = agentSettingsFingerprint(currentSnapshot);
-  if (baselineFingerprint && currentFingerprint && baselineFingerprint !== currentFingerprint) {
+  if (baselineFingerprint !== currentFingerprint) {
     return { ok: false, reason: "stale-baseline", key, currentFingerprint };
+  }
+  if (scenarioMatchesSnapshot(currentSnapshot, scenario)) {
+    return { ok: false, reason: "no-op-scenario", key, currentFingerprint };
   }
   return { ok: true, reason: null, key, currentFingerprint };
 }
@@ -72,7 +100,9 @@ export function applyAgentScenarioToInputs(inputs, country, scenario) {
 
   const retireAge = Number(scenario.retireAge);
   const livingCostMonthly = Number(scenario.livingCostMonthly);
-  if (!Number.isFinite(retireAge) || !Number.isFinite(livingCostMonthly) || livingCostMonthly < 0) {
+  if (!Number.isFinite(retireAge) || !Number.isFinite(livingCostMonthly)
+      || retireAge < 0 || retireAge > MAX_RETIRE_AGE
+      || livingCostMonthly < 0 || livingCostMonthly > MAX_LIVING_COST_MONTHLY) {
     return { ok: false, reason: "invalid-scenario", nextInputs: inputs };
   }
 
@@ -112,16 +142,31 @@ export function buildAgentChangeRecord({ currentSnapshot, scenario, appliedAt = 
 }
 
 export function validateAgentChangeUndo({ record, currentSnapshot } = {}) {
-  if (!record || typeof record !== "object" || !record.before || !record.after) {
+  if (!record || typeof record !== "object" || record.version !== 1 || !record.before || !record.after) {
     return { ok: false, reason: "missing-record" };
   }
+  const recordCountry = String(record.country || record.after.country || "").trim().toUpperCase();
+  if (!SUPPORTED.has(recordCountry)) return { ok: false, reason: "invalid-record" };
+
+  const beforeRetire = finite(record.before.retireAge);
+  const beforeLiving = rounded(record.before.livingCostMonthly);
+  const afterRetire = finite(record.after.retireAge);
+  const afterLiving = rounded(record.after.livingCostMonthly);
+  if (beforeRetire === null || afterRetire === null || beforeLiving === null || afterLiving === null
+      || beforeRetire < 0 || beforeRetire > MAX_RETIRE_AGE
+      || afterRetire < 0 || afterRetire > MAX_RETIRE_AGE
+      || beforeLiving < 0 || beforeLiving > MAX_LIVING_COST_MONTHLY
+      || afterLiving < 0 || afterLiving > MAX_LIVING_COST_MONTHLY) {
+    return { ok: false, reason: "invalid-record" };
+  }
+
   const current = agentSnapshotSettings(currentSnapshot);
   if (!current) return { ok: false, reason: "invalid-current" };
-  if (String(current.country || "") !== String(record.country || record.after.country || "")) {
+  if (current.country !== recordCountry) {
     return { ok: false, reason: "country-changed" };
   }
-  const matchesAfter = Math.abs(current.retireAge - Number(record.after.retireAge)) < 1e-9
-    && current.livingCostMonthly === Number(record.after.livingCostMonthly);
+  const matchesAfter = Math.abs(current.retireAge - afterRetire) < 1e-9
+    && current.livingCostMonthly === afterLiving;
   if (!matchesAfter) return { ok: false, reason: "settings-changed" };
   return { ok: true, reason: null };
 }
