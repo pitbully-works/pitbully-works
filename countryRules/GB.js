@@ -109,6 +109,21 @@ export const GB_COUNTRY_RULES = {
     },
     // 私的年金（SIPP・職域年金）にアクセスできる最低年齢（2026/27時点）
     pensionAccessAge: 55,
+    getPensionAccessAgeForDate(date) {
+      const d = String(date || "");
+      if (d && d >= this.scheduled.pensionAccessAgeEffectiveDate) {
+        return this.scheduled.pensionAccessAgeFrom2028;
+      }
+      return this.pensionAccessAge;
+    },
+    getProjectionDateForAge(birthDate, age) {
+      const raw = String(birthDate || "");
+      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
+      const a = Math.floor(Number(age));
+      if (!m || !Number.isFinite(a)) return null;
+      const year = Number(m[1]) + a;
+      return `${String(year).padStart(4, "0")}-${m[2]}-${m[3]}`;
+    },
     // 非課税一時金：年金資産の25%（Lump Sum Allowance の範囲内）
     taxFreeLumpSumRate: 0.25,
     lumpSumAllowance: 268275,
@@ -313,10 +328,10 @@ export const GB_COUNTRY_RULES = {
     // 取崩し順：General Investment Account → Cash Savings → Cash ISA → Stocks and Shares ISA
     //           → Workplace Pension → SIPP
     // （税制優遇の小さい口座から先に取り崩し、年金資産は受給可能年齢に達するまで手を付けない）
-    simulateGrowth({ currentAge, retireAge, deathAge, accounts, annualWithdrawalNeeded, pensionAccessAge }) {
+    simulateGrowth({ currentAge, retireAge, deathAge, accounts, annualWithdrawalNeeded, pensionAccessAge, birthDate }) {
       const keys = this.accountTypes;
-      const accessAge = (pensionAccessAge === undefined || pensionAccessAge === null)
-        ? this.pensionAccessAge
+      const explicitAccessAge = (pensionAccessAge === undefined || pensionAccessAge === null)
+        ? null
         : Number(pensionAccessAge);
       const balances = {};
       const contributions = {};
@@ -344,6 +359,10 @@ export const GB_COUNTRY_RULES = {
         keys.forEach((k) => { if (age <= endAges[k]) balances[k] += contributions[k]; });
         if (age > retireAge) {
           let remaining = Number(annualWithdrawalNeeded) || 0;
+          const projectionDate = this.getProjectionDateForAge(birthDate, age);
+          const accessAge = Number.isFinite(explicitAccessAge)
+            ? explicitAccessAge
+            : this.getPensionAccessAgeForDate(projectionDate);
           for (const key of withdrawalOrder) {
             if (remaining <= 0) break;
             const isPension = (key === "sipp" || key === "workplacePension");
@@ -365,10 +384,12 @@ export const GB_COUNTRY_RULES = {
     // ・Retirement / Restricted：SIPP・職域年金（受給可能年齢に達するまで）
     // ・Tax-Advantaged：ISA（S&S・Cash）＋SIPP＋職域年金 ＝ 上2区分と重なる「横断的な内訳」
     // 総資産（total）は6口座すべての単純合計であり、Liquid + Restricted と必ず一致する。
-    splitAssets(age, accounts) {
+    splitAssets(age, accounts, birthDate = null, asOfDate = null) {
       const v = {};
       this.accountTypes.forEach((k) => { v[k] = Number((accounts[k] || {}).currentValue) || 0; });
-      const isAccessibleAge = age >= this.pensionAccessAge;
+      const projectionDate = asOfDate || this.getProjectionDateForAge(birthDate, age);
+      const accessAge = this.getPensionAccessAgeForDate(projectionDate);
+      const isAccessibleAge = age >= accessAge;
       const pensions = v.sipp + v.workplacePension;
       const lisa = v.lifetimeIsa;
       const lisaAccessible = age >= this.lifetimeIsa.retirementWithdrawalAge;

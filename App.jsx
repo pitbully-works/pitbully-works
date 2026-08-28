@@ -3625,7 +3625,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   // イギリス選択時：6口座を Liquid / Restricted / Tax-Advantaged に分ける。
   // total は6口座の単純合計（＝ Liquid + Restricted）。Tax-Advantaged は横断的な内訳のため合計には含めない。
   const gbAssetSplit = (country === "GB" && rules.investment.implemented)
-    ? rules.investment.splitAssets(effectiveCurrentAge, inputs.gbInvestment)
+    ? rules.investment.splitAssets(effectiveCurrentAge, inputs.gbInvestment, inputs.birthDate)
     : { liquid: 0, restricted: 0, taxAdvantaged: 0, total: 0, isAccessibleAge: false };
 
   // カナダ選択時：4口座を Liquid / Restricted / Tax-Advantaged に分ける。
@@ -3955,8 +3955,9 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       deathAge: inputs.deathAge,
       accounts: inputs.gbInvestment,
       annualWithdrawalNeeded: gbWithdrawalNeeded,
+      birthDate: inputs.birthDate,
     });
-  }, [simulationReady, country, rules, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, inputs.gbInvestment, gbWithdrawalNeeded]);
+  }, [simulationReady, country, rules, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, inputs.gbInvestment, inputs.birthDate, gbWithdrawalNeeded]);
 
   // カナダ選択時：TFSA / RRSP / 非登録口座 / 現金 の残高推移シミュレーション。
   // CA_COUNTRY_RULES.investment.simulateGrowth のみを使用し、他国とは完全に独立している。

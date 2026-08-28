@@ -551,3 +551,34 @@ describe("GB境界：Inheritance Tax 2026/27", () => {
     expect(r.tax).toBeCloseTo(40000, 2);
   });
 });
+
+
+// GB audit: 2028 pension access transition
+describe("GB境界：2028年4月6日の私的年金最低受給年齢切替", () => {
+  it("基準日前は55歳、基準日以後は57歳", () => {
+    expect(inv.getPensionAccessAgeForDate("2028-04-05")).toBe(55);
+    expect(inv.getPensionAccessAgeForDate("2028-04-06")).toBe(57);
+  });
+
+  it("生年月日から投影年の日付を作り、2028年以後の56歳はrestrictedになる", () => {
+    const a = accounts({ sipp: 10000 });
+    expect(inv.splitAssets(56, a, "1972-05-01").isAccessibleAge).toBe(false);
+    expect(inv.splitAssets(57, a, "1972-05-01").isAccessibleAge).toBe(true);
+  });
+
+  it("2028年4月6日以後のシミュレーションでは56歳でSIPPを取り崩さない", () => {
+    const a = accounts({ sipp: 10000, contributionEndAge: 0 });
+    const result = inv.simulateGrowth({
+      currentAge: 55,
+      retireAge: 55,
+      deathAge: 57,
+      accounts: a,
+      annualWithdrawalNeeded: 5000,
+      birthDate: "1972-05-01",
+    });
+    const age56 = result.yearly.find((r) => r.age === 56);
+    const age57 = result.yearly.find((r) => r.age === 57);
+    expect(age56.accounts.sipp).toBe(10000);
+    expect(age57.accounts.sipp).toBe(5000);
+  });
+});
