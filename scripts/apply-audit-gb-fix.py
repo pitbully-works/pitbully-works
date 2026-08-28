@@ -1,0 +1,114 @@
+from pathlib import Path
+
+
+def replace_once(path, old, new):
+    p = Path(path)
+    text = p.read_text()
+    count = text.count(old)
+    if count != 1:
+        raise SystemExit(f"{path}: expected exactly 1 match, found {count}")
+    p.write_text(text.replace(old, new, 1))
+
+
+replace_once(
+    "countryRules/GB.js",
+    '''    // 私的年金（SIPP・職域年金）にアクセスできる最低年齢（2026/27時点）
+    pensionAccessAge: 55,
+    // 非課税一時金：年金資産の25%（Lump Sum Allowance の範囲内）''',
+    '''    // 私的年金（SIPP・職域年金）にアクセスできる最低年齢（2026/27時点）
+    pensionAccessAge: 55,
+    getPensionAccessAgeForDate(date) {
+      const d = String(date || "");
+      if (d && d >= this.scheduled.pensionAccessAgeEffectiveDate) {
+        return this.scheduled.pensionAccessAgeFrom2028;
+      }
+      return this.pensionAccessAge;
+    },
+    getProjectionDateForAge(birthDate, age) {
+      const raw = String(birthDate || "");
+      const m = /^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(raw);
+      const a = Math.floor(Number(age));
+      if (!m || !Number.isFinite(a)) return null;
+      const year = Number(m[1]) + a;
+      return `${String(year).padStart(4, "0")}-${m[2]}-${m[3]}`;
+    },
+    // 非課税一時金：年金資産の25%（Lump Sum Allowance の範囲内）'''
+)
+
+replace_once(
+    "countryRules/GB.js",
+    '''    simulateGrowth({ currentAge, retireAge, deathAge, accounts, annualWithdrawalNeeded, pensionAccessAge }) {
+      const keys = this.accountTypes;
+      const accessAge = (pensionAccessAge === undefined || pensionAccessAge === null)
+        ? this.pensionAccessAge
+        : Number(pensionAccessAge);''',
+    '''    simulateGrowth({ currentAge, retireAge, deathAge, accounts, annualWithdrawalNeeded, pensionAccessAge, birthDate }) {
+      const keys = this.accountTypes;
+      const explicitAccessAge = (pensionAccessAge === undefined || pensionAccessAge === null)
+        ? null
+        : Number(pensionAccessAge);'''
+)
+
+replace_once(
+    "countryRules/GB.js",
+    '''        if (age > retireAge) {
+          let remaining = Number(annualWithdrawalNeeded) || 0;
+          for (const key of withdrawalOrder) {
+            if (remaining <= 0) break;
+            const isPension = (key === "sipp" || key === "workplacePension");
+            const isLifetimeIsa = key === "lifetimeIsa";
+            if (isPension && age < accessAge) continue; // 受給可能年齢前の年金資産は取り崩せない''',
+    '''        if (age > retireAge) {
+          let remaining = Number(annualWithdrawalNeeded) || 0;
+          const projectionDate = this.getProjectionDateForAge(birthDate, age);
+          const accessAge = Number.isFinite(explicitAccessAge)
+            ? explicitAccessAge
+            : this.getPensionAccessAgeForDate(projectionDate);
+          for (const key of withdrawalOrder) {
+            if (remaining <= 0) break;
+            const isPension = (key === "sipp" || key === "workplacePension");
+            const isLifetimeIsa = key === "lifetimeIsa";
+            if (isPension && age < accessAge) continue; // 受給可能年齢前の年金資産は取り崩せない'''
+)
+
+replace_once(
+    "countryRules/GB.js",
+    '''    splitAssets(age, accounts) {
+      const v = {};
+      this.accountTypes.forEach((k) => { v[k] = Number((accounts[k] || {}).currentValue) || 0; });
+      const isAccessibleAge = age >= this.pensionAccessAge;''',
+    '''    splitAssets(age, accounts, birthDate = null, asOfDate = null) {
+      const v = {};
+      this.accountTypes.forEach((k) => { v[k] = Number((accounts[k] || {}).currentValue) || 0; });
+      const projectionDate = asOfDate || this.getProjectionDateForAge(birthDate, age);
+      const accessAge = this.getPensionAccessAgeForDate(projectionDate);
+      const isAccessibleAge = age >= accessAge;'''
+)
+
+replace_once(
+    "App.jsx",
+    '''      accounts: inputs.gbInvestment,
+      annualWithdrawalNeeded: gbWithdrawalNeeded,
+    });
+  }, [simulationReady, country, rules, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, inputs.gbInvestment, gbWithdrawalNeeded]);''',
+    '''      accounts: inputs.gbInvestment,
+      annualWithdrawalNeeded: gbWithdrawalNeeded,
+      birthDate: inputs.birthDate,
+    });
+  }, [simulationReady, country, rules, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, inputs.gbInvestment, inputs.birthDate, gbWithdrawalNeeded]);'''
+)
+
+replace_once(
+    "App.jsx",
+    '''  const gbAssetSplit = (country === "GB" && rules.investment.implemented)
+    ? rules.investment.splitAssets(effectiveCurrentAge, inputs.gbInvestment)''',
+    '''  const gbAssetSplit = (country === "GB" && rules.investment.implemented)
+    ? rules.investment.splitAssets(effectiveCurrentAge, inputs.gbInvestment, inputs.birthDate)'''
+)
+
+p = Path("gbBoundaries.test.js")
+text = p.read_text()
+marker = "GB audit: 2028 pension access transition"
+if marker not in text:
+    text += '''\n\n// GB audit: 2028 pension access transition\ndescribe("GB境界：2028年4月6日の私的年金最低受給年齢切替", () => {\n  it("基準日前は55歳、基準日以後は57歳", () => {\n    expect(inv.getPensionAccessAgeForDate("2028-04-05")).toBe(55);\n    expect(inv.getPensionAccessAgeForDate("2028-04-06")).toBe(57);\n  });\n\n  it("生年月日から投影年の日付を作り、2028年以後の56歳はrestrictedになる", () => {\n    const a = accounts({ sipp: 10000 });\n    expect(inv.splitAssets(56, a, "1972-05-01").isAccessibleAge).toBe(false);\n    expect(inv.splitAssets(57, a, "1972-05-01").isAccessibleAge).toBe(true);\n  });\n\n  it("2028年4月6日以後のシミュレーションでは56歳でSIPPを取り崩さない", () => {\n    const a = accounts({ sipp: 10000, contributionEndAge: 0 });\n    const result = inv.simulateGrowth({\n      currentAge: 55,\n      retireAge: 55,\n      deathAge: 57,\n      accounts: a,\n      annualWithdrawalNeeded: 5000,\n      birthDate: "1972-05-01",\n    });\n    const age56 = result.yearly.find((r) => r.age === 56);\n    const age57 = result.yearly.find((r) => r.age === 57);\n    expect(age56.accounts.sipp).toBe(10000);\n    expect(age57.accounts.sipp).toBe(5000);\n  });\n});\n'''
+    p.write_text(text)
