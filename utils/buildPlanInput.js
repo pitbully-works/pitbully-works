@@ -527,13 +527,14 @@ export function buildPlanInput(ctx, overrides = {}) {
             : 0;
           return recurring + (stepIndex === 0 ? bringForwardOneOffApplied + downsizerOneOffApplied : 0);
         };
-        pool.accessAge = inv.preservationAge; // preservation age まで取り崩せない
-        // 60〜64歳は condition of release（退職等）が必要、65歳以降は無条件。
-        // simulateGrowth の canAccessSuperAt と同じ規則をエンジンにも渡す。
+        const preservationAge = inv.getPreservationAge(inputs.birthDate);
+        pool.accessAge = preservationAge; // 生年月日別 preservation age まで取り崩せない
+        // preservation age〜64歳は condition of release（退職等）が必要、65歳以降は無条件。
+        // simulateGrowth と同じ生年月日ルールを統合エンジンにも渡す。
         pool.unconditionalAccessAge = inv.unrestrictedAccessAge;
         pool.earningsTaxPct = earnTax * 100;  // 積立期の運用益に15%課税
         pool.minimumDrawdown = (age, bal) =>
-          (inv.canAccessSuper(age) ? inv.getMinimumDrawdown(age, bal) : 0);
+          (inv.canAccessSuper(age, inputs.birthDate) ? inv.getMinimumDrawdown(age, bal) : 0);
         pool.minimumDrawdownTo = "investmentAccount";
       }
       pools.push(pool);

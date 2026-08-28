@@ -3636,7 +3636,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
 
   // オーストラリア選択時：3口座を Liquid / Restricted / Tax-Advantaged に分ける。
   const auAssetSplit = (country === "AU" && rules.investment.implemented)
-    ? rules.investment.splitAssets(effectiveCurrentAge, inputs.auInvestment)
+    ? rules.investment.splitAssets(effectiveCurrentAge, inputs.auInvestment, inputs.birthDate)
     : { liquid: 0, restricted: 0, taxAdvantaged: 0, total: 0, isAccessibleAge: false };
 
   // 銘柄名から、その銘柄の想定年率（利回り）を取得する（銘柄別内訳のスライダーで手動調整した値があればそちらを優先）
@@ -4154,6 +4154,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       deathAge: inputs.deathAge,
       accounts: inputs.auInvestment,
       annualWithdrawalNeeded: auWithdrawalNeeded,
+      birthDate: inputs.birthDate,
       annualSalary: inputs.auInvestment.annualSalary,
       voluntaryConcessional: inputs.auInvestment.voluntaryConcessional,
       contributionsTaxRate: rules.tax.superannuation.contributionsTaxRate,
@@ -4170,7 +4171,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
       downsizerEligible: inputs.auInvestment.downsizerEligible,
       downsizerContribution: inputs.auInvestment.downsizerContribution,
     });
-  }, [simulationReady, country, rules, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, inputs.auInvestment, auWithdrawalNeeded, auDiv293Tax, auDiv293PaidFrom, auListoAnnual, auCoContributionAnnual]);
+  }, [simulationReady, country, rules, effectiveCurrentAge, inputs.retireAge, inputs.deathAge, inputs.auInvestment, inputs.birthDate, auWithdrawalNeeded, auDiv293Tax, auDiv293PaidFrom, auListoAnnual, auCoContributionAnnual]);
 
 
   // チャート用データ。行の age は「その時点で実際に到達している年齢」（整数）で、

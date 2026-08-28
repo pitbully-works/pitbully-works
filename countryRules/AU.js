@@ -63,10 +63,23 @@ export const AU_COUNTRY_RULES = {
       // 繰越拠出（carry-forward）が使える総残高の上限
       carryForwardBalanceThreshold: 500000,
     },
-    // Preservation age：Superにアクセスできる最低年齢。1964年7月1日以降生まれは60歳。
-    // 60歳＋「条件を満たす退職」で引き出し可能。65歳になれば就労状況に関わらず無条件で引き出せる。
+    // Preservation age は生年月日で55〜60歳に分かれる。
+    // 1964年7月1日以降生まれは60歳。古い生年はATOの移行表を使う。
     preservationAge: 60,
     unrestrictedAccessAge: 65,
+    getPreservationAge(birthDate) {
+      const raw = String(birthDate || "").trim();
+      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
+      if (!m) return this.preservationAge;
+      const key = Number(`${m[1]}${m[2]}${m[3]}`);
+      if (!Number.isFinite(key)) return this.preservationAge;
+      if (key < 19600701) return 55;
+      if (key < 19610701) return 56;
+      if (key < 19620701) return 57;
+      if (key < 19630701) return 58;
+      if (key < 19640701) return 59;
+      return 60;
+    },
     // Account-based pension の年齢別「最低取崩し率」（ATO公表テーブル）
     minimumDrawdownFactors: {
       under65: 0.04,
@@ -233,18 +246,18 @@ export const AU_COUNTRY_RULES = {
     // 【注意】これは「preservation age に達しているか」だけを見る従来の判定で、
     //   資産区分の表示（splitAssets）に使う。実際の取り崩し可否は
     //   canAccessSuperAt(age, retired) を使うこと。
-    canAccessSuper(age) {
-      return (Number(age) || 0) >= this.preservationAge;
+    canAccessSuper(age, birthDate = null) {
+      return (Number(age) || 0) >= this.getPreservationAge(birthDate);
     },
     // 実際に取り崩せるか。condition of release を反映する。
     //   ・60歳未満              ：不可
     //   ・60〜64歳              ：退職等の condition of release を満たしている場合のみ可
     //   ・65歳以降              ：就労状況に関わらず無条件で可
     // simulateGrowth と lifePlanEngine の双方がこの同じ判定を使う。
-    canAccessSuperAt(age, retired) {
+    canAccessSuperAt(age, retired, birthDate = null) {
       const a = Number(age) || 0;
       if (a >= this.unrestrictedAccessAge) return true;
-      return a >= this.preservationAge && !!retired;
+      return a >= this.getPreservationAge(birthDate) && !!retired;
     },
     // 年齢別の最低取崩し率（Account-based pension）
     getMinimumDrawdownFactor(age) {
@@ -285,7 +298,7 @@ export const AU_COUNTRY_RULES = {
       div293TaxAnnual, div293PaidFrom, listoAnnual, coContributionAnnual,
       carryForwardPriorYearBalance, carryForwardAvailableUnusedCap,
       bringForwardUseAtoCap, bringForwardAvailableCap, bringForwardOneOffContribution,
-      downsizerEligible, downsizerContribution,
+      downsizerEligible, downsizerContribution, birthDate,
     }) {
       const keys = this.accountTypes;
       const contribTax = (contributionsTaxRate === undefined || contributionsTaxRate === null) ? 0.15 : Number(contributionsTaxRate);
@@ -347,9 +360,9 @@ export const AU_COUNTRY_RULES = {
         // pension phase（運用益非課税・最低取崩し義務）は、退職して preservation age に
         // 達していることが前提。取り崩しの可否とは判定が別であることに注意。
         const retired = age > retireAge;
-        const inRetirementPhase = retired && this.canAccessSuper(age);
-        // 実際に取り崩せるか：60〜64歳は退職が条件、65歳以降は無条件。
-        const superAccessible = this.canAccessSuperAt(age, retired);
+        const inRetirementPhase = retired && this.canAccessSuper(age, birthDate);
+        // 実際に取り崩せるか：preservation age〜64歳は退職が条件、65歳以降は無条件。
+        const superAccessible = this.canAccessSuperAt(age, retired, birthDate);
 
         keys.forEach((k) => {
           let r = rates[k];
@@ -433,10 +446,10 @@ export const AU_COUNTRY_RULES = {
     // ・Restricted：Superannuation（preservation age未満は一切引き出せない）
     // ・Tax-Advantaged：Superannuation（上2区分と重なる横断的な内訳）
     // 総資産（total）は3口座の単純合計であり、Liquid + Restricted と必ず一致する。
-    splitAssets(age, accounts) {
+    splitAssets(age, accounts, birthDate = null) {
       const v = {};
       this.accountTypes.forEach((k) => { v[k] = Number((accounts[k] || {}).currentValue) || 0; });
-      const accessible = this.canAccessSuper(age);
+      const accessible = this.canAccessSuper(age, birthDate);
       const liquidBase = v.investmentAccount + v.cashSavings;
       const liquid = liquidBase + (accessible ? v.superannuation : 0);
       const restricted = accessible ? 0 : v.superannuation;

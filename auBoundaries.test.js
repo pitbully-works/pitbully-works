@@ -671,3 +671,30 @@ describe("AU境界：未実装項目が明示されている", () => {
     expect(ret.isSuperAssessableForAgePension(67, false)).toBe(true);
   });
 });
+
+
+// AU audit: preservation age by birth date
+describe("AU境界：生年月日別 preservation age", () => {
+  it("ATO移行表どおり55〜60歳を返す", () => {
+    expect(inv.getPreservationAge("1959-12-31")).toBe(55);
+    expect(inv.getPreservationAge("1960-07-01")).toBe(56);
+    expect(inv.getPreservationAge("1961-07-01")).toBe(57);
+    expect(inv.getPreservationAge("1962-07-01")).toBe(58);
+    expect(inv.getPreservationAge("1963-07-01")).toBe(59);
+    expect(inv.getPreservationAge("1964-07-01")).toBe(60);
+  });
+
+  it("旧生年では固定60歳ではなく本人のpreservation ageでアクセス判定する", () => {
+    expect(inv.canAccessSuper(55, "1959-12-31")).toBe(true);
+    expect(inv.canAccessSuper(55, "1960-07-01")).toBe(false);
+    expect(inv.canAccessSuperAt(56, true, "1960-07-01")).toBe(true);
+    expect(inv.canAccessSuperAt(56, false, "1960-07-01")).toBe(false);
+    expect(inv.canAccessSuperAt(65, false, "1964-07-01")).toBe(true);
+  });
+
+  it("資産区分も生年月日別preservation ageを使う", () => {
+    const a = accounts({ superannuation: 10000 });
+    expect(inv.splitAssets(55, a, "1959-12-31").isAccessibleAge).toBe(true);
+    expect(inv.splitAssets(55, a, "1960-07-01").isAccessibleAge).toBe(false);
+  });
+});
