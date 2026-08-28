@@ -401,7 +401,7 @@ function CashflowTableHeading() {
 
 
 // ---------- アメリカ選択時：退職後パネル（Social Security → Expenses → Withdrawal） ----------
-function USRetirementPanel({ usInvestment, onUpdateSS, onUpdate, retirementRules, claimAge, ssMonthly, ssAnnual, expensesAnnual, healthcareAnnual, withdrawalNeeded, incomeSurplus }) {
+function USRetirementPanel({ usInvestment, onUpdateSS, onUpdate, retirementRules, claimAge, fullRetirementAge, ssMonthly, ssAnnual, expensesAnnual, healthcareAnnual, withdrawalNeeded, incomeSurplus }) {
   const { t, money } = useContext(LocaleContext);
   const ss = retirementRules.socialSecurity;
   return (
@@ -416,7 +416,7 @@ function USRetirementPanel({ usInvestment, onUpdateSS, onUpdate, retirementRules
         value={claimAge}
         onChange={(v) => onUpdateSS("claimAge", Math.min(ss.latestClaimAge, Math.max(ss.earliestClaimAge, Math.round(v))))}
       />
-      <div className="stat-sub">{t("usFraNote", { age: ss.fullRetirementAge })}</div>
+      <div className="stat-sub">{t("usFraNote", { age: fullRetirementAge })}</div>
       <div className="stat-grid" style={{ marginTop: 10, marginBottom: 14 }}>
         <StatCard label={t("usSsMonthlyLabel")} value={money(ssMonthly)} sub={t("usSsMonthlySub", { age: claimAge })} />
         <StatCard label={t("usSsAnnualLabel")} value={money(ssAnnual)} sub={t("usSsAnnualSub")} />
@@ -2619,10 +2619,13 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
   const usOutOfPocketAnnual = Number(inputs.usInvestment.healthcare.outOfPocketAnnual) || 0;
   const usTotalHealthcareAnnual = usMedicareAnnual + usHealthInsuranceAnnual + usOutOfPocketAnnual;
 
-  const usClaimAge = Number(inputs.usInvestment.socialSecurity.claimAge) || 67;
+  const usFullRetirementAge = (country === "US" && rules.retirement.implemented)
+    ? rules.retirement.getFullRetirementAge(inputs.birthDate)
+    : 67;
+  const usClaimAge = Number(inputs.usInvestment.socialSecurity.claimAge) || usFullRetirementAge;
   const usPiaMonthly = Number(inputs.usInvestment.socialSecurity.piaMonthly) || 0;
   const usSSMonthlyBenefit = (country === "US" && rules.retirement.implemented)
-    ? rules.retirement.getMonthlyBenefit(usPiaMonthly, usClaimAge)
+    ? rules.retirement.getMonthlyBenefit(usPiaMonthly, usClaimAge, inputs.birthDate)
     : 0;
   const usSSAnnualBenefit = usSSMonthlyBenefit * 12;
 
@@ -8115,6 +8118,7 @@ export default function NisaLifePlan({ onOpenBlog } = {}) {
               onUpdate={updateUsInvestment}
               retirementRules={rules.retirement}
               claimAge={usClaimAge}
+              fullRetirementAge={usFullRetirementAge}
               ssMonthly={usSSMonthlyBenefit}
               ssAnnual={usSSAnnualBenefit}
               expensesAnnual={usExpensesAnnual}
