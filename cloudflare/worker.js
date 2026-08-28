@@ -1,4 +1,5 @@
 const MAX_BODY_CHARS = 18000;
+const MAX_DECLARED_BODY_BYTES = 64 * 1024;
 
 export default {
   async fetch(request, env) {
@@ -6,6 +7,17 @@ export default {
       if (request.method !== "POST") {
         return Response.json({ error: "POST required" }, { status: 405 });
       }
+
+      // Reject clearly oversized requests before parsing JSON. This is only an
+      // application boundary; deployment-level rate limiting/WAF is still required.
+      const contentLength = request.headers.get("content-length");
+      if (contentLength) {
+        const declaredBytes = Number(contentLength);
+        if (Number.isFinite(declaredBytes) && declaredBytes > MAX_DECLARED_BODY_BYTES) {
+          return Response.json({ error: "Request body is too large" }, { status: 413 });
+        }
+      }
+
       const body = await request.json();
       const question = typeof body?.question === "string" ? body.question.trim() : "";
       if (!question) return Response.json({ error: "Question is required" }, { status: 400 });
@@ -22,7 +34,8 @@ export default {
       });
       return Response.json({ ok: true, result });
     } catch (error) {
-      return Response.json({ ok: false, error: "AI request failed", detail: String(error?.message || error) }, { status: 500 });
+      console.error("AI Worker request failed", error);
+      return Response.json({ ok: false, error: "AI request failed" }, { status: 500 });
     }
   }
 };
