@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "checkedAt": "2026-10-12T06:02:23.141Z",
+  "checkedAt": "2026-10-19T04:45:04.979Z",
   "sources": [
     {
       "id": "JP-FSA-NISA",
@@ -8,9 +8,9 @@
       "category": "nisa",
       "label": "金融庁 NISA特設ウェブサイト「NISAを知る」",
       "url": "https://www.fsa.go.jp/policy/nisa2/know/index.html",
-      "hash": "2ae11ae1b0c7e7d44e0276289a923056fe511beaf4de48b45cfef0f66fd9ac07",
-      "checkedAt": "2026-10-12T06:02:23.141Z",
-      "changed": false,
+      "hash": "0849d1da9719226736acde25c625be504684ca3e1ba03f32a18175e5ff8613d9",
+      "checkedAt": "2026-10-19T04:45:04.979Z",
+      "changed": true,
       "previousHash": "2ae11ae1b0c7e7d44e0276289a923056fe511beaf4de48b45cfef0f66fd9ac07",
       "error": ""
     },
@@ -21,9 +21,9 @@
       "label": "厚生労働省「2025年の制度改正」",
       "url": "https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/nenkin/nenkin/kyoshutsu/2025kaisei.html",
       "hash": "4a938afdc3486073ec4452be19772cd33b5331167dca22139f7348fa2d0e0930",
-      "checkedAt": "2026-10-12T06:02:23.141Z",
+      "checkedAt": "2026-10-19T04:45:04.979Z",
       "changed": true,
-      "previousHash": "18a25cce30d0baf46c14e1f6e0095c66f91b97812b29c7dc6f3af1204601150d",
+      "previousHash": "4a938afdc3486073ec4452be19772cd33b5331167dca22139f7348fa2d0e0930",
       "error": ""
     },
     {
@@ -32,9 +32,9 @@
       "category": "publicPension",
       "label": "日本年金機構「年金額等の改定」",
       "url": "https://www.nenkin.go.jp/tokusetsu/nenkingakutou_kaitei.html",
-      "hash": "4d41b8e3dc83d5ecb131dbe565f56c8a09f64ecef4dabddd11cb13d422cc6008",
-      "checkedAt": "2026-10-12T06:02:23.141Z",
-      "changed": false,
+      "hash": "be2b5f208b02aee0265c11dc34feb0701ce33fe131307758b029dc15d08ebd78",
+      "checkedAt": "2026-10-19T04:45:04.979Z",
+      "changed": true,
       "previousHash": "4d41b8e3dc83d5ecb131dbe565f56c8a09f64ecef4dabddd11cb13d422cc6008",
       "error": ""
     },
@@ -44,9 +44,9 @@
       "category": "publicPension",
       "label": "日本年金機構「年金の繰上げ受給」",
       "url": "https://www.nenkin.go.jp/service/jukyu/seido/roureinenkin/kuriage-kurisage/20140421-01.html",
-      "hash": "6970f4240e335d4acb4d80b85772057d208ca29aee6568f50f3ff3d11d4fde3a",
-      "checkedAt": "2026-10-12T06:02:23.141Z",
-      "changed": false,
+      "hash": "75698cca6737aa8462bfbbd01b57e054092beb988d2b901a458a6255d7735454",
+      "checkedAt": "2026-10-19T04:45:04.979Z",
+      "changed": true,
       "previousHash": "6970f4240e335d4acb4d80b85772057d208ca29aee6568f50f3ff3d11d4fde3a",
       "error": ""
     },
@@ -56,9 +56,9 @@
       "category": "publicPension",
       "label": "日本年金機構「年金の繰下げ受給」",
       "url": "https://www.nenkin.go.jp/service/jukyu/seido/roureinenkin/kuriage-kurisage/20140421-02.html",
-      "hash": "e7c0a5bd07514ab7a0c04d0fabb6457e0ac94be9f1575034be3dece4032e2458",
-      "checkedAt": "2026-10-12T06:02:23.141Z",
-      "changed": false,
+      "hash": "cfa8a134e075a65d49c47d48626bcfd42aa4d58bdd7a24b371b27ae7c3714ea7",
+      "checkedAt": "2026-10-19T04:45:04.979Z",
+      "changed": true,
       "previousHash": "e7c0a5bd07514ab7a0c04d0fabb6457e0ac94be9f1575034be3dece4032e2458",
       "error": ""
     },
@@ -68,10 +68,10 @@
       "category": "investment",
       "label": "IRS — Retirement plan contribution limits",
       "url": "https://www.irs.gov/retirement-plans/plan-participant-employee/retirement-topics-contributions",
-      "hash": "deb378f7a4a37fdf4247f165bfe75874594149aadf50d9d606279ec52cf4cd28",
-      "checkedAt": "2026-10-12T06:02:23.141Z",
+      "hash": "dd3387b80ce977000233437772b17fa84a260678e9ef3e60dadcc4e135e7d337",
+      "checkedAt": "2026-10-19T04:45:04.979Z",
       "changed": true,
-      "previousHash": "046d6245915deb1f3e062f5c376d0e09926ce7e4c5f4be3015e3c898bdf3156c",
+      "previousHash": "deb378f7a4a37fdf4247f165bfe75874594149aadf50d9d606279ec52cf4cd28",
       "error": ""
     },
     {
@@ -80,10 +80,10 @@
       "category": "retirement",
       "label": "IRS — COLA increases for retirement plan limits",
       "url": "https://www.irs.gov/retirement-plans/cola-increases-for-dollar-limitations-on-benefits-and-contributions",
-      "hash": "2ba4080cc850ac1ea61ffa772e3725fbdd84e8cbe91ed3af42039abf66d25e35",
-      "checkedAt": "2026-10-12T06:02:23.141Z",
+      "hash": "43a995fba35aefcebcc1e272847355e30e91ab330f2e887ff24ac155484dee9b",
+      "checkedAt": "2026-10-19T04:45:04.979Z",
       "changed": true,
-      "previousHash": "571fa7ceb28fcdfbb09905eecd6d3d919c94b8cf48cd276f379f29893ffd875a",
+      "previousHash": "2ba4080cc850ac1ea61ffa772e3725fbdd84e8cbe91ed3af42039abf66d25e35",
       "error": ""
     },
     {
@@ -92,8 +92,8 @@
       "category": "publicPension",
       "label": "Social Security Administration — Latest COLA",
       "url": "https://www.ssa.gov/OACT/COLA/latestCOLA.html",
-      "hash": "3e61b3cd935f508b9394c34a5ae294be4dd8552338f12ece8550ef40d77dba02",
-      "checkedAt": "2026-10-12T06:02:23.141Z",
+      "hash": "4b88ac8c2bd1411b2a1ef8f86cb76d1afc58ae2d989a6a0634445767c86f0be4",
+      "checkedAt": "2026-10-19T04:45:04.979Z",
       "changed": true,
       "previousHash": "3e61b3cd935f508b9394c34a5ae294be4dd8552338f12ece8550ef40d77dba02",
       "error": ""
@@ -104,10 +104,10 @@
       "category": "healthcare",
       "label": "CMS — Medicare premiums and costs",
       "url": "https://www.medicare.gov/basics/costs/medicare-costs",
-      "hash": "1e6007443308b4cbb894e980b693afd343c18227c02109c7beb07be6a80e8afb",
-      "checkedAt": "2026-10-12T06:02:23.141Z",
+      "hash": "cf4583a188d61e46b06afbad52d794128ba9134654a21b60f99d45f1f1b0f4a4",
+      "checkedAt": "2026-10-19T04:45:04.979Z",
       "changed": true,
-      "previousHash": "d3cd300a05d58b934184ce0da6fbdda0a152ffa0d69b1b3c73eaad44379e72ad",
+      "previousHash": "1e6007443308b4cbb894e980b693afd343c18227c02109c7beb07be6a80e8afb",
       "error": ""
     },
     {
@@ -116,10 +116,10 @@
       "category": "investment",
       "label": "GOV.UK — Individual Savings Accounts (ISAs)",
       "url": "https://www.gov.uk/individual-savings-accounts",
-      "hash": "b5c8643da866715affeab586c5e6e8f47188b7179bc877f919976c81806c52ca",
-      "checkedAt": "2026-10-12T06:02:23.141Z",
+      "hash": "5a0fbe267cbe6cd6a72896e7da9059772c7f113800db72fe2ee9299ab42af4a6",
+      "checkedAt": "2026-10-19T04:45:04.979Z",
       "changed": true,
-      "previousHash": "3dfe00dc1da0b3a45c43cca4048eaffdb276a114715a3c9b6ba3623576e357e3",
+      "previousHash": "b5c8643da866715affeab586c5e6e8f47188b7179bc877f919976c81806c52ca",
       "error": ""
     },
     {
@@ -128,10 +128,10 @@
       "category": "retirement",
       "label": "GOV.UK — Tax on your private pension contributions",
       "url": "https://www.gov.uk/tax-on-your-private-pension/pension-tax-relief",
-      "hash": "e2012062018a91bdc3b67070f8e123d08595e676fd19b2534b6963977f30cc8a",
-      "checkedAt": "2026-10-12T06:02:23.141Z",
+      "hash": "d59a27334058d907e8f873fc13169621a2f0651e7edf803d334d429cfd90fd50",
+      "checkedAt": "2026-10-19T04:45:04.979Z",
       "changed": true,
-      "previousHash": "1aa59de01e3ef76f09b7dac1373a1355eb2d3db153bdea05aa3a22a584d13c4a",
+      "previousHash": "e2012062018a91bdc3b67070f8e123d08595e676fd19b2534b6963977f30cc8a",
       "error": ""
     },
     {
@@ -140,10 +140,10 @@
       "category": "publicPension",
       "label": "GOV.UK — The new State Pension",
       "url": "https://www.gov.uk/new-state-pension",
-      "hash": "eb9a7485257790840f550909483bc47e612fac21a7616f311c61e406cb12749d",
-      "checkedAt": "2026-10-12T06:02:23.141Z",
+      "hash": "e9fc8ee0f315359e85baaf9083ba966933f3815fb4a868b2a3fdbd5682bb2935",
+      "checkedAt": "2026-10-19T04:45:04.979Z",
       "changed": true,
-      "previousHash": "b033f275cd8fc9b04fad31786399ad162b38ceea4953ac04032cba9afdbe4fcb",
+      "previousHash": "eb9a7485257790840f550909483bc47e612fac21a7616f311c61e406cb12749d",
       "error": ""
     },
     {
@@ -153,7 +153,7 @@
       "label": "Canada Revenue Agency — Tax-Free Savings Account",
       "url": "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/tax-free-savings-account.html",
       "hash": "8d6da41a474af179727f84ffe0007e7170ae7b22be5de9824c3c168169e2258c",
-      "checkedAt": "2026-10-12T06:02:23.141Z",
+      "checkedAt": "2026-10-19T04:45:04.979Z",
       "changed": true,
       "previousHash": "8d6da41a474af179727f84ffe0007e7170ae7b22be5de9824c3c168169e2258c",
       "error": ""
@@ -165,7 +165,7 @@
       "label": "Canada Revenue Agency — RRSP",
       "url": "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/rrsps-related-plans.html",
       "hash": "02cc880e8bc38666830bf6c3301e62a0448f5206388717b18adc6b0ca6797ea7",
-      "checkedAt": "2026-10-12T06:02:23.141Z",
+      "checkedAt": "2026-10-19T04:45:04.979Z",
       "changed": true,
       "previousHash": "02cc880e8bc38666830bf6c3301e62a0448f5206388717b18adc6b0ca6797ea7",
       "error": ""
@@ -177,9 +177,9 @@
       "label": "Government of Canada — Public pensions",
       "url": "https://www.canada.ca/en/services/benefits/publicpensions.html",
       "hash": "144c19fdeea256a91ba647804a7dc2547df3116437d20e8c44e7f482570977b6",
-      "checkedAt": "2026-10-12T06:02:23.141Z",
+      "checkedAt": "2026-10-19T04:45:04.979Z",
       "changed": true,
-      "previousHash": "4c16182b80d6b6cf7f5b19d5f189764ec0d1a0e6374d793aff0e2c3e2c511f9c",
+      "previousHash": "144c19fdeea256a91ba647804a7dc2547df3116437d20e8c44e7f482570977b6",
       "error": ""
     },
     {
@@ -188,10 +188,10 @@
       "category": "retirement",
       "label": "Australian Taxation Office — Key superannuation rates and thresholds",
       "url": "https://www.ato.gov.au/tax-rates-and-codes/key-superannuation-rates-and-thresholds",
-      "hash": "fbd1ec5153d3cecf816d5d08cc7e68dc71c0067893358e8d6fc20b663f57b537",
-      "checkedAt": "2026-10-12T06:02:23.141Z",
+      "hash": "22efebc98607e949b33a2290b3e541ef92dbfa37e71367a4463c8d04dc228bea",
+      "checkedAt": "2026-10-19T04:45:04.979Z",
       "changed": true,
-      "previousHash": "a8282fd19c31f5ff5727c5c608ccea4aac01dffae5f7f0e5deee75e884ecd25e",
+      "previousHash": "fbd1ec5153d3cecf816d5d08cc7e68dc71c0067893358e8d6fc20b663f57b537",
       "error": ""
     },
     {
@@ -200,10 +200,10 @@
       "category": "publicPension",
       "label": "Services Australia — Age Pension",
       "url": "https://www.servicesaustralia.gov.au/age-pension",
-      "hash": "41b55fff52984e54f40842c23b0038aec8849e36f0991fb763b61c597a6d3779",
-      "checkedAt": "2026-10-12T06:02:23.141Z",
+      "hash": "30fb0ac6e0b1334245907103f4c66681c9aad92eaab514c37c2548f1e9bb56cb",
+      "checkedAt": "2026-10-19T04:45:04.979Z",
       "changed": true,
-      "previousHash": "e9c80b5229fc45a658229f3b9bc02af8d4300ab5ad564b651b59fd9a7646b65a",
+      "previousHash": "41b55fff52984e54f40842c23b0038aec8849e36f0991fb763b61c597a6d3779",
       "error": ""
     },
     {
@@ -212,10 +212,10 @@
       "category": "tax",
       "label": "Australian Taxation Office — Tax rates for Australian residents",
       "url": "https://www.ato.gov.au/tax-rates-and-codes/tax-rates-australian-residents",
-      "hash": "4e234531b197165a82433885264fdce68bcbe48735636d198d1e429a35137763",
-      "checkedAt": "2026-10-12T06:02:23.141Z",
+      "hash": "6b47f29577a803dd3e98269858f1f4034ed156a25ba86f84ccac792945066e47",
+      "checkedAt": "2026-10-19T04:45:04.979Z",
       "changed": true,
-      "previousHash": "b0db0e45219e9cb855d08352d0f615ef5fb2e52c95a761950ce41c26f0d1f20a",
+      "previousHash": "4e234531b197165a82433885264fdce68bcbe48735636d198d1e429a35137763",
       "error": ""
     },
     {
@@ -224,8 +224,8 @@
       "category": "healthcare",
       "label": "厚生労働省 — 医療保険制度",
       "url": "https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/kenkou_iryou/iryouhoken/index.html",
-      "hash": "b90009bee3dfc07d1b72eb4da61cf4cbd7c1e7fd541a841b4f2b1f0a721e5c63",
-      "checkedAt": "2026-10-12T06:02:23.141Z",
+      "hash": "d372b383dc438fe9817552026b4e754e99adb2342bc4e48436730aa03aee2ced",
+      "checkedAt": "2026-10-19T04:45:04.979Z",
       "changed": true,
       "previousHash": "b90009bee3dfc07d1b72eb4da61cf4cbd7c1e7fd541a841b4f2b1f0a721e5c63",
       "error": ""
@@ -237,7 +237,7 @@
       "label": "国税庁 — 所得税の税率",
       "url": "https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/2260.htm",
       "hash": "6defef74b3829c4e2c7facc2f14d1247ffb8cbc38a6aab180cfd2e48babdcd37",
-      "checkedAt": "2026-10-12T06:02:23.141Z",
+      "checkedAt": "2026-10-19T04:45:04.979Z",
       "changed": true,
       "previousHash": "6defef74b3829c4e2c7facc2f14d1247ffb8cbc38a6aab180cfd2e48babdcd37",
       "error": ""
@@ -249,7 +249,7 @@
       "label": "国税庁 — 相続税",
       "url": "https://www.nta.go.jp/taxes/shiraberu/taxanswer/sozoku/4155.htm",
       "hash": "4fdc2511c643c2cb4710816807fecccaf540a9389f722cedfa1bb1858cc0d6e9",
-      "checkedAt": "2026-10-12T06:02:23.141Z",
+      "checkedAt": "2026-10-19T04:45:04.979Z",
       "changed": true,
       "previousHash": "4fdc2511c643c2cb4710816807fecccaf540a9389f722cedfa1bb1858cc0d6e9",
       "error": ""
@@ -261,7 +261,7 @@
       "label": "IRS — Inflation adjustments for tax items",
       "url": "https://www.irs.gov/newsroom/irs-releases-tax-inflation-adjustments",
       "hash": "",
-      "checkedAt": "2026-10-12T06:02:23.141Z",
+      "checkedAt": "2026-10-19T04:45:04.979Z",
       "changed": false,
       "previousHash": "",
       "error": "HTTP 404"
@@ -272,10 +272,10 @@
       "category": "estate",
       "label": "IRS — Estate Tax",
       "url": "https://www.irs.gov/businesses/small-businesses-self-employed/estate-tax",
-      "hash": "13c9612205acbde2d4d72527d283680168496f78b3c68b197c1114e351cba88a",
-      "checkedAt": "2026-10-12T06:02:23.141Z",
+      "hash": "6311f482d00edbdc7563d9a81bcef3ec89c26159e74f5a4ab8686099ce552ce2",
+      "checkedAt": "2026-10-19T04:45:04.979Z",
       "changed": true,
-      "previousHash": "934ddc7c79b61e0a36d7e155d4950c183c69ff3c5f51a3e16e54b4ee5699d616",
+      "previousHash": "13c9612205acbde2d4d72527d283680168496f78b3c68b197c1114e351cba88a",
       "error": ""
     },
     {
@@ -285,9 +285,9 @@
       "label": "NHS — Help with health costs",
       "url": "https://www.nhs.uk/nhs-services/help-with-health-costs/",
       "hash": "4cbbd92a709ca6c09dbdf9ac09000e7523a2f59a44859d0866aa8409c7ad1952",
-      "checkedAt": "2026-10-12T06:02:23.141Z",
+      "checkedAt": "2026-10-19T04:45:04.979Z",
       "changed": true,
-      "previousHash": "ba7dd421cd9b135c676767dc88e3f66db908c5366429aedd4cccdd3a08f9ede8",
+      "previousHash": "4cbbd92a709ca6c09dbdf9ac09000e7523a2f59a44859d0866aa8409c7ad1952",
       "error": ""
     },
     {
@@ -296,10 +296,10 @@
       "category": "tax",
       "label": "GOV.UK — Income Tax rates and Personal Allowances",
       "url": "https://www.gov.uk/income-tax-rates",
-      "hash": "2ed322a8e1058bb774aaf5fbc4d8a84e802d05104da495f5632b8638b8217f93",
-      "checkedAt": "2026-10-12T06:02:23.141Z",
+      "hash": "7abd81d092fa1f2b512940eb9737a96182da7449ff1be4d8fe0d09b0a28a9900",
+      "checkedAt": "2026-10-19T04:45:04.979Z",
       "changed": true,
-      "previousHash": "303f02054e76735085802904d35b8f6df7d1aa5b5bf9584f6237e777e06136e1",
+      "previousHash": "2ed322a8e1058bb774aaf5fbc4d8a84e802d05104da495f5632b8638b8217f93",
       "error": ""
     },
     {
@@ -308,10 +308,10 @@
       "category": "estate",
       "label": "GOV.UK — Inheritance Tax",
       "url": "https://www.gov.uk/inheritance-tax",
-      "hash": "01a139267eacad258fde1595f5efb095175b0963434db753c4016241fefaeff5",
-      "checkedAt": "2026-10-12T06:02:23.141Z",
+      "hash": "1d78b4ebab75a847a909169de81c51fe77e9dc1b6a28701a8b19dcac895838dc",
+      "checkedAt": "2026-10-19T04:45:04.979Z",
       "changed": true,
-      "previousHash": "5c5a1b3cb8096ac841fb77b9fc050e911f1359c565181d4f299339e459382c5f",
+      "previousHash": "01a139267eacad258fde1595f5efb095175b0963434db753c4016241fefaeff5",
       "error": ""
     },
     {
@@ -321,7 +321,7 @@
       "label": "Health Canada — Canada's health care system",
       "url": "https://www.canada.ca/en/health-canada/services/canada-health-care-system.html",
       "hash": "3a22f2abf2685d7928091ae86a7317a16e166dea82e20fade3a610fa140c93a9",
-      "checkedAt": "2026-10-12T06:02:23.141Z",
+      "checkedAt": "2026-10-19T04:45:04.979Z",
       "changed": true,
       "previousHash": "3a22f2abf2685d7928091ae86a7317a16e166dea82e20fade3a610fa140c93a9",
       "error": ""
@@ -333,7 +333,7 @@
       "label": "Canada Revenue Agency — Tax rates and income brackets",
       "url": "https://www.canada.ca/en/revenue-agency/services/tax/individuals/frequently-asked-questions-individuals/canadian-income-tax-rates-individuals-current-previous-years.html",
       "hash": "58d122fa1ca6d2e6547a20e7908446b0de75c8aa02c8477c149ce5c8bb280c06",
-      "checkedAt": "2026-10-12T06:02:23.141Z",
+      "checkedAt": "2026-10-19T04:45:04.979Z",
       "changed": true,
       "previousHash": "58d122fa1ca6d2e6547a20e7908446b0de75c8aa02c8477c149ce5c8bb280c06",
       "error": ""
@@ -345,7 +345,7 @@
       "label": "Canada Revenue Agency — Taxable capital gains for someone who died",
       "url": "https://www.canada.ca/en/revenue-agency/services/tax/individuals/life-events/doing-taxes-someone-died/prepare-returns/report-income/capital-gains.html",
       "hash": "32986bceb03c1b96ac3e4c9b0c66149d0dfb6feb2ec8d2c32eea62f5ffa7c04e",
-      "checkedAt": "2026-10-12T06:02:23.141Z",
+      "checkedAt": "2026-10-19T04:45:04.979Z",
       "changed": true,
       "previousHash": "32986bceb03c1b96ac3e4c9b0c66149d0dfb6feb2ec8d2c32eea62f5ffa7c04e",
       "error": ""
@@ -356,10 +356,10 @@
       "category": "investment",
       "label": "Australian Taxation Office — Super contribution caps",
       "url": "https://www.ato.gov.au/tax-rates-and-codes/key-superannuation-rates-and-thresholds",
-      "hash": "fbd1ec5153d3cecf816d5d08cc7e68dc71c0067893358e8d6fc20b663f57b537",
-      "checkedAt": "2026-10-12T06:02:23.141Z",
+      "hash": "fa39143f3d89022955e1de460592c5c003ce3266a3d8dc0d10515f5428317b3a",
+      "checkedAt": "2026-10-19T04:45:04.979Z",
       "changed": true,
-      "previousHash": "a8282fd19c31f5ff5727c5c608ccea4aac01dffae5f7f0e5deee75e884ecd25e",
+      "previousHash": "fbd1ec5153d3cecf816d5d08cc7e68dc71c0067893358e8d6fc20b663f57b537",
       "error": ""
     },
     {
@@ -368,10 +368,10 @@
       "category": "healthcare",
       "label": "Australian Government Department of Health — Medicare Safety Nets",
       "url": "https://www.health.gov.au/topics/medicare/about/safety-nets",
-      "hash": "b372de19ae14a413016b974dce33ae4294698cf53e2c4077ead92e4cc7fc5abc",
-      "checkedAt": "2026-10-12T06:02:23.141Z",
+      "hash": "44fe94d50170e0b982e74543d75b8cae95084788548de44df5d791218c5d68b6",
+      "checkedAt": "2026-10-19T04:45:04.979Z",
       "changed": true,
-      "previousHash": "9191d8ce51af400207e8d70e5242f680077d9acf84b0062eac7a78c445cdc70c",
+      "previousHash": "b372de19ae14a413016b974dce33ae4294698cf53e2c4077ead92e4cc7fc5abc",
       "error": ""
     },
     {
@@ -380,10 +380,10 @@
       "category": "estate",
       "label": "Australian Taxation Office — Deceased estates",
       "url": "https://www.ato.gov.au/individuals-and-families/deceased-estates",
-      "hash": "de0b890b4227be390f44dcb9bfcab393dd463078ae7ffb78cec2f8f01ef19705",
-      "checkedAt": "2026-10-12T06:02:23.141Z",
+      "hash": "1992110c43b4a207c56d7243fd85a94335d9864cba3845ec39205fc59881363c",
+      "checkedAt": "2026-10-19T04:45:04.979Z",
       "changed": true,
-      "previousHash": "f27a81bb028fe9b8bd0d985d71126ae82195a9667dad7e25a15906598ee54113",
+      "previousHash": "de0b890b4227be390f44dcb9bfcab393dd463078ae7ffb78cec2f8f01ef19705",
       "error": ""
     }
   ]
