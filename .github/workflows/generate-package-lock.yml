@@ -19,7 +19,7 @@ jobs:
       - name: Node.js をセットアップ
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
 
       - name: package-lock.json を生成
         run: npm install --package-lock-only --ignore-scripts
