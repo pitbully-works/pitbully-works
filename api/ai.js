@@ -1,5 +1,8 @@
 const WORKER_URL = "https://lifeplan-ai.kunihiko-hioki.workers.dev";
-const MAX_BODY_CHARS = 18000;
+const MAX_QUESTION_CHARS = 18000;
+const MAX_BODY_BYTES = 64 * 1024;
+const UPSTREAM_TIMEOUT_MS = 25000;
+const ALLOWED_MODES = new Set(["answer", "agent-plan", "agent-review", "agent-explain"]);
 
 function cleanSnapshot(raw) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
@@ -94,7 +97,8 @@ async function askWorker(prompt) {
   const upstream = await fetch(WORKER_URL, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ question: prompt })
+    body: JSON.stringify({ question: prompt }),
+    signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS)
   });
 
   const text = await upstream.text();
@@ -103,7 +107,6 @@ async function askWorker(prompt) {
   if (!upstream.ok) {
     const error = new Error("AI upstream request failed");
     error.status = 502;
-    error.detail = extractText(data) || text.slice(0, 500);
     throw error;
   }
   const answer = extractText(data);
@@ -116,16 +119,34 @@ async function askWorker(prompt) {
 }
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).json({ error: "POST required" });
+  res.setHeader("Cache-Control", "no-store");
+  if (req.method !== "POST") {
+    res.setHeader("Allow", "POST");
+    return res.status(405).json({ error: "POST required" });
+  }
+
+  const contentType = String(req.headers?.["content-type"] || "").split(";")[0].trim().toLowerCase();
+  if (contentType !== "application/json") {
+    return res.status(415).json({ error: "JSON required" });
+  }
 
   try {
-    const body = req.body || {};
+    const body = req.body;
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return res.status(400).json({ error: "Invalid JSON body" });
+    }
+    if (Buffer.byteLength(JSON.stringify(body), "utf8") > MAX_BODY_BYTES) {
+      return res.status(413).json({ error: "Request is too large" });
+    }
     const question = typeof body.question === "string" ? body.question.trim() : "";
     if (!question) return res.status(400).json({ error: "Question is required" });
-    if (question.length > MAX_BODY_CHARS) return res.status(413).json({ error: "Question is too long" });
+    if (question.length > MAX_QUESTION_CHARS) return res.status(413).json({ error: "Question is too long" });
 
     const snapshot = cleanSnapshot(body.snapshot);
-    const mode = String(body.mode || "answer");
+    const mode = body.mode ?? "answer";
+    if (!ALLOWED_MODES.has(mode)) {
+      return res.status(400).json({ error: "Invalid AI mode" });
+    }
 
     if (mode === "agent-plan") {
       const prompt = `You are the planning controller for a life-planning app.
@@ -233,9 +254,7 @@ ${question}`;
     const answer = await askWorker(prompt);
     return res.status(200).json({ answer });
   } catch (error) {
-    return res.status(Number(error?.status) || 500).json({
-      error: error?.message || "AI request failed",
-      detail: String(error?.detail || error?.message || error)
-    });
+    const status = error?.name === "TimeoutError" ? 504 : error?.status === 502 ? 502 : 500;
+    return res.status(status).json({ error: "AI request failed" });
   }
 }
