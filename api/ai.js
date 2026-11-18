@@ -1,3 +1,5 @@
+import { createHmac, randomUUID } from "node:crypto";
+
 const WORKER_URL = "https://lifeplan-ai.kunihiko-hioki.workers.dev";
 const MAX_QUESTION_CHARS = 18000;
 const MAX_BODY_BYTES = 64 * 1024;
@@ -93,10 +95,10 @@ function extractJsonObject(text) {
   return null;
 }
 
-async function askWorker(prompt) {
+async function askWorker(prompt, quotaHeaders) {
   const upstream = await fetch(WORKER_URL, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", ...quotaHeaders },
     body: JSON.stringify({ question: prompt }),
     signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS)
   });
@@ -106,7 +108,7 @@ async function askWorker(prompt) {
   try { data = JSON.parse(text); } catch { data = { result: text }; }
   if (!upstream.ok) {
     const error = new Error("AI upstream request failed");
-    error.status = 502;
+    error.status = [409, 429, 503].includes(upstream.status) ? upstream.status : 502;
     throw error;
   }
   const answer = extractText(data);
@@ -148,6 +150,23 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Invalid AI mode" });
     }
 
+    const quotaHeaders = {};
+    const secret = process.env.LIFEPLAN_WORKER_SECRET;
+    if (secret) {
+      const ip = req.headers["x-vercel-forwarded-for"];
+      if (typeof ip !== "string" || !ip) {
+        return res.status(503).json({ error: "AI quota unavailable" });
+      }
+      const flow = body.flowId ?? (mode === "answer" ? randomUUID() : null);
+      if (typeof flow !== "string" || !/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(flow)) {
+        return res.status(400).json({ error: "Invalid AI question identifier" });
+      }
+      quotaHeaders.Authorization = `Bearer ${secret}`;
+      quotaHeaders["X-Lifeplan-Subject"] = createHmac("sha256", secret).update(ip).digest("hex");
+      quotaHeaders["X-Lifeplan-Flow"] = flow;
+      quotaHeaders["X-Lifeplan-Mode"] = mode;
+    }
+
     if (mode === "agent-plan") {
       const prompt = `You are the planning controller for a life-planning app.
 The app, not you, performs every financial calculation. Your job is only to decide whether the user's request needs scenario calculations and, if so, choose safe scenario inputs for the app's existing comparison engine.
@@ -177,7 +196,7 @@ ${JSON.stringify(snapshot)}
 
 User question:
 ${question}`;
-      const raw = await askWorker(prompt);
+      const raw = await askWorker(prompt, quotaHeaders);
       const parsed = extractJsonObject(raw);
       if (!parsed || !["scenario", "answer"].includes(parsed.kind)) {
         return res.status(200).json({ kind: "answer", message: raw, scenarios: [] });
@@ -217,7 +236,7 @@ ${JSON.stringify(beforeSnapshot)}
 
 After recalculation:
 ${JSON.stringify(afterSnapshot)}`;
-      const answer = await askWorker(prompt);
+      const answer = await askWorker(prompt, quotaHeaders);
       return res.status(200).json({ answer });
     }
 
@@ -235,7 +254,7 @@ ${JSON.stringify(snapshot)}
 
 App-calculated scenario results:
 ${JSON.stringify(compactResults)}`;
-      const answer = await askWorker(prompt);
+      const answer = await askWorker(prompt, quotaHeaders);
       return res.status(200).json({ answer });
     }
 
@@ -251,9 +270,15 @@ ${JSON.stringify(snapshot, null, 2)}
 
 Question:
 ${question}`;
-    const answer = await askWorker(prompt);
+    const answer = await askWorker(prompt, quotaHeaders);
     return res.status(200).json({ answer });
   } catch (error) {
+    if (error?.status === 429) {
+      return res.status(429).json({ error: "本日のAI利用上限に達しました（日本時間の午前0時にリセット）", code: "AI_DAILY_LIMIT" });
+    }
+    if (error?.status === 409 || error?.status === 503) {
+      return res.status(error.status).json({ error: "AI request unavailable" });
+    }
     const status = error?.name === "TimeoutError" ? 504 : error?.status === 502 ? 502 : 500;
     return res.status(status).json({ error: "AI request failed" });
   }

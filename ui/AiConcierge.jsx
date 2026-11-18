@@ -65,6 +65,7 @@ export default function AiConcierge({ language = "ja", snapshot, onRunAgentScena
   const [lastChangeRecord, setLastChangeRecord] = useState(null);
   const [reviewingApply, setReviewingApply] = useState(false);
   const pendingReviewRef = useRef(null);
+  const questionFlowRef = useRef(null);
   const reviewedScenarioKeysRef = useRef(new Set());
   const [remaining, setRemaining] = useState(() => typeof window === "undefined" ? AI_DAILY_LIMIT : aiUsageRemaining(window.localStorage));
   const [consented, setConsented] = useState(() => {
@@ -90,6 +91,9 @@ export default function AiConcierge({ language = "ja", snapshot, onRunAgentScena
         signal: controller.signal,
       });
       const data = await res.json().catch(() => ({}));
+      if (res.status === 429 && data?.code === "AI_DAILY_LIMIT") {
+        throw new Error(ja ? data.error : "Daily AI limit reached. It resets at midnight Japan time.");
+      }
       if (!res.ok) throw new Error(data?.detail || data?.error || (ja ? "AIとの通信に失敗しました" : "AI request failed"));
       return data;
     } catch (e) {
@@ -118,12 +122,14 @@ export default function AiConcierge({ language = "ja", snapshot, onRunAgentScena
       // proven single-request path.  Only comparison/what-if requests invoke the
       // two-step agent planner.  This keeps ordinary AI questions responsive even
       // if the planner cannot produce structured scenario JSON.
+      const flowId = crypto.randomUUID();
+      questionFlowRef.current = { flowId, question: q };
       const wantsScenario = /3案|試算|比較|変える|増やす方法|what if|three ways|compare|improve/i.test(q);
       if (!wantsScenario) {
-        const basic = await postAi({ mode: "answer", question: q, snapshot, language });
+        const basic = await postAi({ mode: "answer", flowId, question: q, snapshot, language });
         setAnswer(formatAiAnswer(basic?.answer || basic?.message || "", ja));
       } else {
-        const plan = await postAi({ mode: "agent-plan", question: q, snapshot, language });
+        const plan = await postAi({ mode: "agent-plan", flowId, question: q, snapshot, language });
         if (plan?.kind === "scenario" && typeof onRunAgentScenario === "function") {
         const normalized = normalizeAgentScenarios(plan.scenarios, agentBaselineFromSnapshot(snapshot));
         setScenarioBaselineFingerprint(agentSettingsFingerprint(snapshot));
@@ -133,7 +139,7 @@ export default function AiConcierge({ language = "ja", snapshot, onRunAgentScena
         }).filter(Boolean);
         setAgentResults(calculated);
         if (calculated.length) {
-          const explained = await postAi({ mode: "agent-explain", question: q, snapshot, language, results: calculated });
+          const explained = await postAi({ mode: "agent-explain", flowId, question: q, snapshot, language, results: calculated });
           setAnswer(formatAiAnswer(explained?.answer || plan?.message, ja));
         } else {
           setAnswer(formatAiAnswer(plan?.message, ja));
@@ -174,6 +180,7 @@ export default function AiConcierge({ language = "ja", snapshot, onRunAgentScena
         const reviewed = await postAi({
           mode: "agent-review",
           question: pending.question,
+          flowId: pending.flowId,
           beforeSnapshot: pending.beforeSnapshot,
           afterSnapshot: snapshot,
           appliedScenario: pending.scenario,
@@ -351,7 +358,7 @@ export default function AiConcierge({ language = "ja", snapshot, onRunAgentScena
               const scenarioKey = agentScenarioKey(scenarioToApply);
               setAppliedScenarioKeys((prev) => prev.includes(scenarioKey) ? prev : [...prev, scenarioKey]);
               setLastChangeRecord(result?.changeRecord || null);
-              pendingReviewRef.current = { scenario: scenarioToApply, beforeSnapshot, question };
+              pendingReviewRef.current = { scenario: scenarioToApply, beforeSnapshot, ...questionFlowRef.current };
               setPostApplyReview("");
               setApplyMessage(ja ? "設定に反映しました。ライフプランを新しい条件で再計算しています。" : "Settings applied. The life plan is recalculating with the new values.");
               setPendingApply(null);
