@@ -67,7 +67,6 @@ export default {
   } catch {
     return reject(503, "AI quota unavailable");
   }
-}{
       if (request.method !== "POST") {
         return Response.json({ error: "POST required" }, { status: 405 });
       }
